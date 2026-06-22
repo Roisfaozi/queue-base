@@ -99,8 +99,7 @@ When rebuilding queue app:
 
 1. live starter code for current capabilities and extension points
 2. `documentation/task-overview.md` for target product rules
-3. `documentation/project-diagram.md` for target decomposition and flow sequencing
-4. `code_context.txt` for legacy evidence only when naming or old behavior matters
+3. `code_context.txt` for legacy evidence only when naming or old behavior matters
 
 ## QMS Rebuild Addendum
 

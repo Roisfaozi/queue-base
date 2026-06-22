@@ -37,14 +37,13 @@ If task is queue-management rebuild from this starter, read these immediately af
 - `llm/research/queue-management-rebuild-brief.md`
 - `llm/plans/roadmap/queue-management-rebuild.md`
 - `documentation/task-overview.md`
-- `documentation/project-diagram.md`
 - `code_context.txt` only as legacy evidence source, not runtime truth for this repo
 
 Then verify against live code before changing anything.
 
 Fast routing by task type:
 
-- queue-management rebuild / legacy porting: read `llm/research/queue-management-rebuild-brief.md`, `llm/plans/roadmap/queue-management-rebuild.md`, `documentation/task-overview.md`, `documentation/project-diagram.md`, then verify against `internal/config/app.go`, `internal/router/router.go`, and target module paths.
+- queue-management rebuild / legacy porting: read `llm/research/queue-management-rebuild-brief.md`, `llm/plans/roadmap/queue-management-rebuild.md`, `documentation/task-overview.md`, then verify against `internal/config/app.go`, `internal/router/router.go`, and target module paths.
 - backend feature: read `llm/workflows/go-service.md`, `llm/cache/backend-map.md`, `llm/cache/module-map.md`.
 - benchmarking/refactor/improve before code change: read `llm/workflows/benchmarking.md`, `llm/conventions/testing.md`, then target package tests.
 - API route change: read `llm/workflows/api-endpoint.md`, `llm/cache/api-contracts.md`, `internal/router/router.go`.

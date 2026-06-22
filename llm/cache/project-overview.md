@@ -9,7 +9,6 @@ This repository is currently a hybrid starter monorepo with a Go API backend as 
 Current product goal is not generic starter maintenance. Current goal is rebuilding a hospital/clinic queue-management application using:
 
 - `documentation/task-overview.md`
-- `documentation/project-diagram.md`
 - `code_context.txt` as legacy evidence only
 
 Important distinction:
