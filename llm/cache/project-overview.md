@@ -1,8 +1,24 @@
 # Project Overview
 
-This repository is a hybrid monorepo with a Go API backend as the operational core and multiple JavaScript/TypeScript workspace packages for web clients and shared frontend libraries.
+## Current repo state
 
-## Repository shape
+This repository is currently a hybrid starter monorepo with a Go API backend as the operational core and multiple JavaScript/TypeScript workspace packages for web clients and shared frontend libraries.
+
+## Rebuild target context
+
+Current product goal is not generic starter maintenance. Current goal is rebuilding a hospital/clinic queue-management application using:
+
+- `documentation/task-overview.md`
+- `documentation/project-diagram.md`
+- `code_context.txt` as legacy evidence only
+
+Important distinction:
+
+- live code describes what starter repo can do today
+- rebuild docs describe what queue product must do next
+- `code_context.txt` describes old implementation shape and bugs, not current runtime truth here
+
+## Repository shape today
 
 - Root workspace package name: `casbin-monorepo` from `package.json`.
 - Root package manager: `pnpm@10.8.0` from `package.json`.
@@ -14,16 +30,11 @@ This repository is a hybrid monorepo with a Go API backend as the operational co
   - `apps/web` with `next dev --turbo` / `next build`
   - `apps/client` with `react-router dev` / `react-router build`
 
-## Languages in active toolchain
-
-- Go for API backend and backend test/build pipeline.
-- TypeScript/JavaScript for workspace frontend apps and shared packages.
-
-## Confirmed backend stack
+## Confirmed backend stack today
 
 - HTTP framework: Gin.
 - ORM / database access: GORM.
-- Database driver in module dependencies: MySQL.
+- Database drivers present: MySQL, Postgres, SQLite.
 - Authorization library: Casbin.
 - Cache / session / worker backend: Redis.
 - Background jobs: Asynq.
@@ -31,26 +42,40 @@ This repository is a hybrid monorepo with a Go API backend as the operational co
 - Observability: OpenTelemetry.
 - API documentation: Swagger (`swag`).
 
-These are confirmed from `go.mod` and root docs, not inferred from naming.
+These are confirmed from `go.mod`, `package.json`, and runtime wiring.
 
-## Confirmed frontend stack present in workspace
+## Confirmed queue-target needs from rebuild docs
 
-- `apps/web`: Next.js 16 + React 19.
-- `apps/client`: React Router 7 + Vite + React 19.
-- `apps/web` and `apps/client` are active application surfaces and still need improvement toward production readiness.
+Target product must eventually cover:
 
-Architecture and backend relationship details for these apps live in `llm/cache/frontend-map.md` and `llm/cache/api-contracts.md`.
+- patient/customer queue registration
+- queue forward orchestration
+- scanner check-in and credential validation
+- branch/menu/station/device relations
+- pharmacy flow validation
+- transaction-safe queue number allocation
+- business-day handling around `04:00 Asia/Jakarta`
+- external integration-oriented flows
 
-## Workspace package structure
+Those target capabilities are not yet represented as first-class starter modules.
 
-Shared workspace packages currently present:
+## Current module gap
 
-- `packages/api-types`
-- `packages/hooks`
-- `packages/ui`
-- `packages/utils`
+Current starter modules are platform-oriented:
 
-These packages are consumed by frontend apps and are part of the active workspace, not standalone side directories.
+- `access`
+- `api_key`
+- `audit`
+- `auth`
+- `organization`
+- `permission`
+- `project`
+- `role`
+- `stats`
+- `user`
+- `webhook`
+
+Queue-domain modules still need to be designed and added.
 
 ## Canonical development commands confirmed
 
@@ -76,30 +101,6 @@ Backend via Makefile:
 - `make test-all`
 - `make docs`
 
-The Makefile is confirmed active as an operational command surface for this repo.
-
-Frontend app packages:
-
-- `pnpm --filter casbin-web dev`
-- `pnpm --filter casbin-client dev`
-
-## Local infrastructure confirmed
-
-- Docker Compose files exist: `docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.prod.yml`.
-- `.env.example` exists and is referenced by repo guidance.
-
-## Repo-level operational files
-
-- `README.md` gives high-level repository guidance and command references.
-- `AGENTS.md` is the agent entrypoint and points to concretized `llm/` context.
-- `documentation/` contains supporting architecture, API, guide, and product docs.
-
-## CI / delivery presence confirmed
-
-- CI workflow exists at `.github/workflows/ci.yml`.
-- Staging deploy workflow exists at `.github/workflows/cd-staging.yml`.
-- Production deploy workflow exists at `.github/workflows/cd-production.yml`.
-
 ## Scope boundary
 
-This file is the high-level map. Detailed runtime, module, auth, tenant, and request-flow behavior belongs in `llm/cache/architecture.md`, `llm/cache/backend-map.md`, `llm/cache/module-map.md`, and `llm/cache/domain-rules.md`.
+For queue rebuild work, use `llm/research/queue-management-rebuild-brief.md` and `llm/plans/roadmap/queue-management-rebuild.md` together with live code.

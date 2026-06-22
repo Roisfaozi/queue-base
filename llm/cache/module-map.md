@@ -1,142 +1,98 @@
 # Module Map
 
-## Purpose
+## Live starter modules
 
-Durable routing map for backend module ownership in this repo.
+Current live modules under `internal/modules` are:
 
-Use this file to answer:
-
-- which module owns business rule
-- which module only exposes route/controller shell
-- which dependency edges make a change cross-domain
-- when change that looks local is really shared-infra work
-
-This file is for fast ownership decisions before deep code reads.
-
-## Primary source of truth
-
-1. `internal/config/app.go`
-2. `internal/router/router.go`
-3. `internal/modules/*/module.go`
-4. relevant `llm/cache/*` domain files
-
-## Composition-root facts
-
-`internal/config/app.go` is real dependency graph.
-
-It wires:
-
-- modules
-- middleware
-- storage
-- Redis
-- Casbin
-- task distributor/processor
-- websocket and sse managers
-- TUS registry and handler
-
-If module ownership is unclear, inspect app wiring before guessing from package names.
-
-## Module ownership table
-
-| Module         | Entrypoint                                | Primary responsibility                                                                        | High-signal dependencies                                                 | Route strata                                       |
-| -------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------- |
-| `auth`         | `internal/modules/auth/module.go`         | login, register-adjacent auth, refresh/logout, session validation, SSO, ticket issuance       | JWT, Redis token repo, audit, worker, organization repo, ws, sse, Casbin | public + authenticated                             |
-| `organization` | `internal/modules/organization/module.go` | organization lifecycle, membership, invitations, tenant reader/cache, restore/admin org flows | Redis, task distributor, user repo, enforcer, presence manager           | public + authenticated + tenant + admin            |
-| `user`         | `internal/modules/user/module.go`         | registration, self profile, avatar, admin user management                                     | tx, enforcer, audit, auth, webhook, storage                              | public + authenticated + admin                     |
-| `permission`   | `internal/modules/permission/module.go`   | permission CRUD, role/user assignment, batch permission checks, policy expansion              | enforcer, role repo, user repo, access repo, audit                       | authenticated + admin                              |
-| `access`       | `internal/modules/access/module.go`       | access-right registry and endpoint/resource-action catalog                                    | DB, validation, permission consumers downstream                          | admin                                              |
-| `role`         | `internal/modules/role/module.go`         | role CRUD, role validation, role-policy cleanup orchestration                                 | tx manager, permission usecase, role repo                                | admin                                              |
-| `project`      | `internal/modules/project/module.go`      | tenant-scoped project CRUD                                                                    | tenant route group, API-key scope, Casbin                                | tenant-authorized                                  |
-| `api_key`      | `internal/modules/api_key/module.go`      | API-key create/list/revoke/authenticate and scope identity                                    | user repo, Redis, middleware coupling                                    | authenticated + tenant/admin enforcement consumers |
-| `audit`        | `internal/modules/audit/module.go`        | audit logging, outbox, list/search, cleanup                                                   | ws manager, task distributor, querybuilder                               | admin + worker side effects                        |
-| `stats`        | `internal/modules/stats/module.go`        | dashboard summaries and system insights                                                       | DB, realtime broadcaster in app wiring                                   | authenticated                                      |
-| `webhook`      | `internal/modules/webhook/module.go`      | webhook CRUD, logging, trigger dispatch                                                       | worker task distributor, validation                                      | tenant-authorized                                  |
-
-## Route-group map
-
-### Public-owned module surfaces
-
+- `access`
+- `api_key`
+- `audit`
 - `auth`
-- `user` registration
-- `organization` public bootstrap/acceptance paths
-
-### Authenticated-owned module surfaces
-
-- `auth` session endpoints
-- `user` self profile
-- `organization` list/create for current member
-- `permission` batch check
-- `api_key` CRUD
-- `stats`
-
-### Tenant-authorized module surfaces
-
-- `organization` tenant member/invite/presence style flows
+- `organization`
+- `permission`
 - `project`
+- `role`
+- `stats`
+- `user`
 - `webhook`
 
-### Admin/authorized module surfaces
+These remain source of truth for current runtime only.
 
-- `organization` restore/admin
-- `permission`
-- `access`
-- `role`
-- `user` admin management
-- `audit`
+## Rebuild-target module map
 
-Route strata matter because same module may appear in multiple access layers with different guarantees.
+Queue-management rebuild docs imply future module ownership closer to:
 
-## Dependency patterns that usually mean cross-domain work
+### Queue core
 
-Treat change as cross-domain, not module-local, when module touches any of these:
+Likely responsibilities:
 
-- auth + Redis session state
-- tenant/org context
-- Casbin enforcer or permission usecase
-- worker task distributor
-- TUS/storage/avatar flow
-- `pkg/querybuilder`
-- frontend API contracts or proxy assumptions
+- register queue
+- allocate next queue number
+- detect active duplicate queue
+- list/detail queue state
+- compute business date window
 
-Examples:
+### Queue forward
 
-- changing `user` registration likely touches auth, audit, webhook, Casbin
-- changing `project` route semantics likely touches tenant middleware, API-key scope, Casbin, frontend contract
-- changing `organization` membership can affect presence, cache invalidation, tenant reader, and route auth
+Likely responsibilities:
 
-## Shared package hotspots
+- lock and validate source queue
+- validate destination station/menu/device
+- enforce pharmacy transition rule
+- detect existing destination queue
+- create destination queue and update source state atomically
 
-These often own real behavior even when issue appears module-local:
+### Scanner
 
-- `pkg/querybuilder` — dynamic filter/sort security
-- `pkg/tx` — transaction propagation
-- `pkg/storage` — file/object storage abstraction
-- `pkg/tus` — resumable upload path and hook dispatch
-- `pkg/ws` — websocket/ticket/presence behavior
-- `pkg/sse` — SSE fanout behavior
-- `pkg/database` — org context propagation
+Likely responsibilities:
 
-## Ownership heuristics
+- validate `x-client-id` + `x-api-key`
+- validate branch/station/menu/device relation
+- choose existing queue vs forward vs new registration path
+- delegate into queue or forward usecases
 
-Use these fast rules:
+### Service-point metadata
 
-- if route protection changed, start in `internal/router/router.go` before module code
-- if DB + Casbin must commit together, owner is usecase + transactional enforcer, not repository only
-- if async side effect exists, inspect module plus worker/task distributor
-- if frontend breaks after backend patch, inspect `llm/cache/api-contracts.md` and frontend proxy files before blaming frontend alone
-- if field-level search/list behavior changed, check `pkg/querybuilder` before editing repositories broadly
+Likely responsibilities:
 
-## Known sharp edges
+- branch
+- locket/counter/station
+- menu/submenu or service code
+- device/client registration
+- explicit pharmacy classification fields
 
-- module names hide real coupling; `user` and `organization` are especially cross-cutting.
-- `stats` module looks isolated but realtime metrics broadcaster is wired outside module in app root.
-- `api_key` behavior is split between module usecase and router/middleware layering.
-- `permission` behavior is inseparable from `role`, `access`, and tenant domain semantics.
+### Patient or customer
 
-## Hard rules
+Likely responsibilities:
 
-- Prefer module owner over scattered helper edits.
-- Do not move business logic into controllers.
-- If permission or tenant semantics move, inspect router and middleware before patching module internals.
-- If change crosses backend and frontend, update API contract thinking together.
+- patient identity lookup
+- appointment lookup
+- active queue search inputs
+
+### Integration layer
+
+Likely responsibilities:
+
+- internal notification dispatch after forward commit when needed
+- external adapters separated from core queue business rules
+
+## Mapping rule for future coding
+
+Do not force old legacy folder names from `code_context.txt` directly into this starter if they fight current repo layering.
+
+Preferred mapping:
+
+- old handler/controller logic -> `delivery/http`
+- old business/service logic -> `usecase`
+- old repository/data logic -> `repository`
+- old cross-cutting helper logic -> `pkg/*` or shared infra only when truly reusable
+
+## Smell list
+
+If future queue implementation does any of these, stop and refactor:
+
+- handler directly increments counters
+- handler directly contains forward/pharmacy branching
+- regex on menu names decides pharmacy semantics
+- notification happens before transaction commit
+- scanner middleware only checks header presence
