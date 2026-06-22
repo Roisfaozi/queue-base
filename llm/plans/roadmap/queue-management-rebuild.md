@@ -11,3 +11,12 @@ This roadmap adds QMS-specific implementation ordering without removing starter 
 5. implement forward via queue_journeys
 6. implement scanner orchestration
 7. wire routes and tests
+
+## QMS TDD Requirement
+
+Each phase must include failing-first tests where feasible and must not be marked complete without coverage for:
+
+- positive cases
+- negative cases
+- edge cases
+- vulnerability/security cases

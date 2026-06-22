@@ -270,4 +270,27 @@ QMS rebuild rules that override older queue assumptions:
 - no Medifrans/Bithealth integration scope unless user explicitly reintroduces it
 
 IMPORTANT!!
-NEVER GENERATE WITH PYTHON OR ANY SCRIPT TO UPDATE CODEBASE AND/OR FILE.
+NEVER GENERATE WITH PYTHON OR ANY SCRIPT like .sh or etc TO UPDATE CODEBASE AND/OR FILE.
+
+### QMS TDD Rule
+
+For every new feature or feature update in QMS rebuild work, use TDD by default:
+
+- write failing test first when feasible
+- implement smallest code to make test pass
+- refactor after behavior is protected
+- do not declare feature complete without test coverage for positive, negative, edge, and vulnerability cases
+
+Minimum expected test categories for each queue-domain change:
+
+- positive case
+- negative case
+- edge case
+- vulnerability/security case
+
+Examples:
+
+- positive: valid tenant/branch queue creation succeeds
+- negative: invalid scanner credential fails
+- edge: queue_date before reset_time uses previous business date
+- vulnerability: cross-tenant branch access is rejected

@@ -15,3 +15,12 @@ This note augments existing starter AI-native context for QMS rebuild work. It d
 ## Starter compatibility
 
 Keep existing starter architecture, module boundaries, verification habits, and live-code-first rules intact. Use QMS architecture only to add domain detail.
+
+## QMS Testing Rule
+
+Implementation should follow TDD whenever feasible. Each feature slice should explicitly plan tests for:
+
+- positive case
+- negative case
+- edge case
+- vulnerability/security case

@@ -73,3 +73,16 @@ Additional QMS domain rules:
 - `visit_journeys` is internal history, not external integration logic
 - pharmacy validation may consult `queue_journeys` history
 - queue reset time may inherit from tenant and be overridden by branch
+
+## QMS TDD Addendum
+
+For QMS rebuild features, TDD is mandatory by default.
+
+Every new feature or update should add tests covering:
+
+- positive behavior
+- negative behavior
+- edge behavior
+- vulnerability/security behavior
+
+Do not treat handler smoke tests alone as enough for queue domain work. At minimum, protect usecase/domain logic and add route/repository tests where boundary risk exists.
