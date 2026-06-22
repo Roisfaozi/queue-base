@@ -22,6 +22,8 @@ import (
 	roleHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/delivery/http"
 	serviceModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
 	serviceHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/delivery/http"
+	settingsModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings"
+	settingsHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user"
 	userHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/delivery/http"
@@ -72,6 +74,7 @@ func SetupRouter(
 	projectModule *project.ProjectModule,
 	serviceModule *serviceModulePkg.ServiceModule,
 	counterModule *counterModulePkg.CounterModule,
+	settingsModule *settingsModulePkg.SettingsModule,
 	apiKeyModule *api_key.ApiKeyModule,
 	webhookModule *webhook.WebhookModule,
 	authMiddleware *middleware.AuthMiddleware,
@@ -226,6 +229,7 @@ func SetupRouter(
 		organizationHttp.RegisterBranchRoutes(tenantAuthorized, branchModule.BranchController, apiKeyMiddleware)
 		serviceHttp.RegisterServiceRoutes(tenantAuthorized, serviceModule.ServiceController, apiKeyMiddleware)
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
+		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
 
 		// Project Routes
 		projectGroup := tenantAuthorized.Group("/projects")
