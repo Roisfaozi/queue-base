@@ -16,6 +16,7 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/scanner"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats"
@@ -48,6 +49,7 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&counter.CounterModule{},
 		&settings.SettingsModule{},
 		&queue.QueueModule{},
+		&scanner.ScannerModule{},
 		&api_key.ApiKeyModule{},
 		&webhook.WebhookModule{},
 		&middleware.AuthMiddleware{},

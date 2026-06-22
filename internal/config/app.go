@@ -22,6 +22,7 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role"
 	roleRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/repository"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/scanner"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats"
@@ -217,6 +218,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	counterModule := counter.NewCounterModule(dbConnection, validate)
 	settingsModule := settings.NewSettingsModule(dbConnection, validate)
 	queueModule := queue.NewQueueModule(dbConnection, validate, settings.NewQueueSettingsResolver(settingsModule.SettingsUseCase))
+	scannerModule := scanner.NewScannerModule(queueModule, validate, scanner.NoopAuthenticator{})
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate)
@@ -376,6 +378,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		counterModule,
 		settingsModule,
 		queueModule,
+		scannerModule,
 		apiKeyModule,
 		webhookModule,
 		authMiddleware,
