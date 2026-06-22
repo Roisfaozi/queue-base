@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/entity"
@@ -13,17 +15,22 @@ import (
 	"github.com/google/uuid"
 )
 
+type SettingsResolver interface {
+	Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error)
+}
+
 type QueueUseCase interface {
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
 	ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error)
 }
 
 type queueUseCase struct {
-	repo repository.QueueRepository
+	repo             repository.QueueRepository
+	settingsResolver SettingsResolver
 }
 
-func NewQueueUseCase(repo repository.QueueRepository) QueueUseCase {
-	return &queueUseCase{repo: repo}
+func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver) QueueUseCase {
+	return &queueUseCase{repo: repo, settingsResolver: settingsResolver}
 }
 
 func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error) {
@@ -36,10 +43,24 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 
 	req.Sanitize()
 
-	now := time.Now()
-	// FIXME: should compute queue_date based on branch reset_time
-	queueDateStr := now.Format("2006-01-02")
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	resetTime := "04:00"
+	if u.settingsResolver != nil {
+		if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
+			resetTime = resolved
+		}
+	}
+	queueDateStr := computeBusinessQueueDate(now, resetTime)
 	prefix := "A" // FIXME: dynamic by service
+
+	exists, err := u.repo.ExistsRegistration(ctx, tenantID, branchID, queueDateStr, req.PatientID, req.PatientName)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, exception.ErrConflict
+	}
 
 	qNo, err := u.repo.NextQueueNumber(ctx, tenantID, branchID, now, prefix)
 	if err != nil {
@@ -106,6 +127,23 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		CreatedAt:        q.CreatedAt,
 		UpdatedAt:        q.UpdatedAt,
 	}, nil
+}
+
+func computeBusinessQueueDate(now time.Time, resetTime string) string {
+	parts := strings.Split(resetTime, ":")
+	if len(parts) != 2 {
+		return now.Format("2006-01-02")
+	}
+	hour, errHour := strconv.Atoi(parts[0])
+	minute, errMinute := strconv.Atoi(parts[1])
+	if errHour != nil || errMinute != nil {
+		return now.Format("2006-01-02")
+	}
+	resetAt := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, now.Location())
+	if now.Before(resetAt) {
+		return now.AddDate(0, 0, -1).Format("2006-01-02")
+	}
+	return now.Format("2006-01-02")
 }
 
 func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error) {

@@ -14,10 +14,9 @@ type QueueModule struct {
 	QueueUseCase    usecase.QueueUseCase
 }
 
-func NewQueueModule(db *gorm.DB, validate *validator.Validate) *QueueModule {
-	// FIXME: repository implementation will be completed with transaction-safe DB layer
-	var repo repository.QueueRepository
-	uc := usecase.NewQueueUseCase(repo)
+func NewQueueModule(db *gorm.DB, validate *validator.Validate, settingsResolver usecase.SettingsResolver) *QueueModule {
+	repo := repository.NewQueueRepository(db)
+	uc := usecase.NewQueueUseCase(repo, settingsResolver)
 	ctrl := queueHttp.NewQueueController(uc, validate)
 	return &QueueModule{QueueController: ctrl, QueueRepo: repo, QueueUseCase: uc}
 }

@@ -17,6 +17,7 @@ type stubQueueRepo struct {
 	j       *entity.QueueJourney
 	err     error
 	seenNum int
+	exists  bool
 }
 
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
@@ -25,6 +26,12 @@ func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID 
 		return 0, s.err
 	}
 	return s.seenNum, nil
+}
+func (s *stubQueueRepo) ExistsRegistration(ctx context.Context, tenantID, branchID, queueDate, patientID, patientName string) (bool, error) {
+	if s.err != nil {
+		return false, s.err
+	}
+	return s.exists, nil
 }
 func (s *stubQueueRepo) CreateRegistration(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error {
 	s.q = queue
@@ -64,7 +71,7 @@ func (s *stubQueueRepo) CreateForwarding(ctx context.Context, queue *entity.Queu
 
 func TestRegisterQueue_Success(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo)
+	uc := NewQueueUseCase(repo, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -83,9 +90,19 @@ func TestRegisterQueue_Success(t *testing.T) {
 	assert.Equal(t, entity.QueueStatusWaiting, res.Status)
 }
 
+func TestRegisterQueue_DuplicateReturnsConflict(t *testing.T) {
+	repo := &stubQueueRepo{exists: true}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "s-1", PatientName: "John Doe"})
+	assert.ErrorIs(t, err, exception.ErrConflict)
+}
+
 func TestRegisterQueue_NoTenantOrBranch(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo)
+	uc := NewQueueUseCase(repo, nil)
 
 	// Test no tenant
 	ctx := database.SetBranchContext(context.Background(), "b-1")
@@ -101,7 +118,7 @@ func TestRegisterQueue_NoTenantOrBranch(t *testing.T) {
 
 func TestRegisterQueue_Security_VulnerabilitySQLInjection(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo)
+	uc := NewQueueUseCase(repo, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -137,7 +154,7 @@ func TestForwardQueue_Success(t *testing.T) {
 			Status:    entity.JourneyStatusPending,
 		},
 	}
-	uc := NewQueueUseCase(repo)
+	uc := NewQueueUseCase(repo, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	res, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2"})
@@ -147,7 +164,7 @@ func TestForwardQueue_Success(t *testing.T) {
 }
 
 func TestForwardQueue_Negative_NoTenant(t *testing.T) {
-	uc := NewQueueUseCase(&stubQueueRepo{})
+	uc := NewQueueUseCase(&stubQueueRepo{}, nil)
 	_, err := uc.ForwardQueue(context.Background(), "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2"})
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 }
@@ -157,7 +174,7 @@ func TestForwardQueue_Edge_SameServiceStillCreatesJourney(t *testing.T) {
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
 	}
-	uc := NewQueueUseCase(repo)
+	uc := NewQueueUseCase(repo, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	res, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-1"})
@@ -167,9 +184,32 @@ func TestForwardQueue_Edge_SameServiceStillCreatesJourney(t *testing.T) {
 
 func TestForwardQueue_Security_CrossTenantRejected(t *testing.T) {
 	repo := &stubQueueRepo{err: exception.ErrNotFound}
-	uc := NewQueueUseCase(repo)
+	uc := NewQueueUseCase(repo, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "other-tenant")
 
 	_, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2"})
 	assert.Error(t, err)
+}
+
+func TestComputeBusinessQueueDate_DefaultResetTime(t *testing.T) {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	assert.NoError(t, err)
+
+	t.Run("Edge_BeforeResetUsesPreviousDate", func(t *testing.T) {
+		now := time.Date(2026, 6, 24, 3, 59, 0, 0, loc)
+		got := computeBusinessQueueDate(now, "04:00")
+		assert.Equal(t, "2026-06-23", got)
+	})
+
+	t.Run("Positive_AfterResetUsesCurrentDate", func(t *testing.T) {
+		now := time.Date(2026, 6, 24, 4, 1, 0, 0, loc)
+		got := computeBusinessQueueDate(now, "04:00")
+		assert.Equal(t, "2026-06-24", got)
+	})
+
+	t.Run("Negative_InvalidResetFallsBackCurrentDate", func(t *testing.T) {
+		now := time.Date(2026, 6, 24, 2, 0, 0, 0, loc)
+		got := computeBusinessQueueDate(now, "bad")
+		assert.Equal(t, "2026-06-24", got)
+	})
 }

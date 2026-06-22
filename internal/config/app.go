@@ -216,7 +216,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	serviceModule := service.NewServiceModule(dbConnection, validate)
 	counterModule := counter.NewCounterModule(dbConnection, validate)
 	settingsModule := settings.NewSettingsModule(dbConnection, validate)
-	queueModule := queue.NewQueueModule(dbConnection, validate)
+	queueModule := queue.NewQueueModule(dbConnection, validate, settings.NewQueueSettingsResolver(settingsModule.SettingsUseCase))
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate)
