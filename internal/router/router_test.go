@@ -36,6 +36,7 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&access.AccessModule{},
 		&role.RoleModule{},
 		&organization.OrganizationModule{},
+		&organization.BranchModule{},
 		&audit.AuditModule{},
 		&stats.StatsModule{},
 		&project.ProjectModule{},

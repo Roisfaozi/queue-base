@@ -12,7 +12,6 @@ import (
 	auditHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization"
-	organizationBranchHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/delivery/http"
 	organizationHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission"
 	permissionHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/delivery/http"
@@ -218,7 +217,7 @@ func SetupRouter(
 	}
 	{
 		organizationHttp.RegisterTenantRoutes(tenantAuthorized, organizationModule.OrganizationController, apiKeyMiddleware)
-		organizationBranchHttp.RegisterBranchRoutes(tenantAuthorized, branchModule.BranchController, apiKeyMiddleware)
+		organizationHttp.RegisterBranchRoutes(tenantAuthorized, branchModule.BranchController, apiKeyMiddleware)
 
 		// Project Routes
 		projectGroup := tenantAuthorized.Group("/projects")
