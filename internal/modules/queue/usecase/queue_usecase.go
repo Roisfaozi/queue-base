@@ -15,6 +15,7 @@ import (
 
 type QueueUseCase interface {
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
+	ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error)
 }
 
 type queueUseCase struct {
@@ -104,5 +105,77 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		CurrentJourneyID: q.CurrentJourneyID,
 		CreatedAt:        q.CreatedAt,
 		UpdatedAt:        q.UpdatedAt,
+	}, nil
+}
+
+func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error) {
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" || queueID == "" || req == nil || req.DestinationServiceID == "" {
+		return nil, exception.ErrBadRequest
+	}
+
+	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
+	if err != nil || queue == nil {
+		return nil, exception.ErrNotFound
+	}
+
+	currentJourney, err := u.repo.FindCurrentJourney(ctx, queue.ID, queue.CurrentJourneyID)
+	if err != nil || currentJourney == nil {
+		return nil, exception.ErrNotFound
+	}
+
+	seqNo, err := u.repo.NextJourneySequence(ctx, queue.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	nowMs := time.Now().UnixMilli()
+	nextJourneyID := uuid.New().String()
+	visitID := uuid.New().String()
+
+	currentJourney.Status = entity.JourneyStatusForwarded
+	currentJourney.UpdatedAt = nowMs
+
+	nextJourney := &entity.QueueJourney{
+		ID:        nextJourneyID,
+		QueueID:   queue.ID,
+		TenantID:  tenantID,
+		ServiceID: req.DestinationServiceID,
+		CounterID: req.DestinationCounterID,
+		SeqNo:     seqNo,
+		Status:    entity.JourneyStatusPending,
+		CreatedAt: nowMs,
+		UpdatedAt: nowMs,
+	}
+
+	visit := &entity.VisitJourney{
+		ID:        visitID,
+		QueueID:   queue.ID,
+		TenantID:  tenantID,
+		EventType: "forward",
+		Payload:   fmt.Sprintf(`{"from_journey_id":"%s","to_service_id":"%s"}`, currentJourney.ID, req.DestinationServiceID),
+		CreatedAt: nowMs,
+	}
+
+	queue.CurrentJourneyID = nextJourneyID
+	queue.UpdatedAt = nowMs
+
+	if err := u.repo.CreateForwarding(ctx, queue, currentJourney, nextJourney, visit); err != nil {
+		return nil, err
+	}
+
+	return &model.QueueResponse{
+		ID:               queue.ID,
+		TenantID:         queue.TenantID,
+		BranchID:         queue.BranchID,
+		QueueDate:        queue.QueueDate,
+		TicketNo:         queue.TicketNo,
+		QueueNo:          queue.QueueNo,
+		PatientID:        queue.PatientID,
+		PatientName:      queue.PatientName,
+		Status:           queue.Status,
+		CurrentJourneyID: queue.CurrentJourneyID,
+		CreatedAt:        queue.CreatedAt,
+		UpdatedAt:        queue.UpdatedAt,
 	}, nil
 }

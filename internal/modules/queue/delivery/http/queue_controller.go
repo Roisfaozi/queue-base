@@ -36,3 +36,21 @@ func (h *QueueController) Register(c *gin.Context) {
 	}
 	response.Created(c, res)
 }
+
+func (h *QueueController) Forward(c *gin.Context) {
+	var req model.ForwardQueueRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	res, err := h.useCase.ForwardQueue(c.Request.Context(), c.Param("id"), &req)
+	if err != nil {
+		response.HandleError(c, err, "failed to forward queue")
+		return
+	}
+	response.Success(c, res)
+}

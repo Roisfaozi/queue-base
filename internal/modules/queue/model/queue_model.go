@@ -28,3 +28,8 @@ type RegisterQueueRequest struct {
 func (r *RegisterQueueRequest) Sanitize() {
 	r.PatientName = pkg.SanitizeString(r.PatientName)
 }
+
+type ForwardQueueRequest struct {
+	DestinationServiceID string `json:"destination_service_id" validate:"required,uuid4"`
+	DestinationCounterID string `json:"destination_counter_id" validate:"omitempty,uuid4"`
+}

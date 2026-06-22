@@ -15,7 +15,7 @@ type QueueModule struct {
 }
 
 func NewQueueModule(db *gorm.DB, validate *validator.Validate) *QueueModule {
-	// FIXME: using nil repo for scaffold until real implementation is ready
+	// FIXME: repository implementation will be completed with transaction-safe DB layer
 	var repo repository.QueueRepository
 	uc := usecase.NewQueueUseCase(repo)
 	ctrl := queueHttp.NewQueueController(uc, validate)
