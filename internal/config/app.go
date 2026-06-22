@@ -13,6 +13,7 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization"
 	orgRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission"
@@ -211,6 +212,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 
 	projectModule := project.NewProjectModule(dbConnection, validate)
 	serviceModule := service.NewServiceModule(dbConnection, validate)
+	counterModule := counter.NewCounterModule(dbConnection, validate)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate)
@@ -367,6 +369,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		statsModule,
 		projectModule,
 		serviceModule,
+		counterModule,
 		apiKeyModule,
 		webhookModule,
 		authMiddleware,

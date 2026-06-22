@@ -11,6 +11,8 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit"
 	auditHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth"
+	counterModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter"
+	counterHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization"
 	organizationHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission"
@@ -69,6 +71,7 @@ func SetupRouter(
 	statsModule *stats.StatsModule,
 	projectModule *project.ProjectModule,
 	serviceModule *serviceModulePkg.ServiceModule,
+	counterModule *counterModulePkg.CounterModule,
 	apiKeyModule *api_key.ApiKeyModule,
 	webhookModule *webhook.WebhookModule,
 	authMiddleware *middleware.AuthMiddleware,
@@ -222,6 +225,7 @@ func SetupRouter(
 		organizationHttp.RegisterTenantRoutes(tenantAuthorized, organizationModule.OrganizationController, apiKeyMiddleware)
 		organizationHttp.RegisterBranchRoutes(tenantAuthorized, branchModule.BranchController, apiKeyMiddleware)
 		serviceHttp.RegisterServiceRoutes(tenantAuthorized, serviceModule.ServiceController, apiKeyMiddleware)
+		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
 
 		// Project Routes
 		projectGroup := tenantAuthorized.Group("/projects")
