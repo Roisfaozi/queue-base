@@ -14,6 +14,7 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook"
@@ -40,6 +41,7 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&audit.AuditModule{},
 		&stats.StatsModule{},
 		&project.ProjectModule{},
+		&service.ServiceModule{},
 		&api_key.ApiKeyModule{},
 		&webhook.WebhookModule{},
 		&middleware.AuthMiddleware{},

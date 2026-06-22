@@ -20,6 +20,7 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role"
 	roleRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/repository"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user"
 	userUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/usecase"
@@ -209,6 +210,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	statsModule := stats.NewStatsModule(dbConnection, logger)
 
 	projectModule := project.NewProjectModule(dbConnection, validate)
+	serviceModule := service.NewServiceModule(dbConnection, validate)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate)
@@ -364,6 +366,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		auditModule,
 		statsModule,
 		projectModule,
+		serviceModule,
 		apiKeyModule,
 		webhookModule,
 		authMiddleware,

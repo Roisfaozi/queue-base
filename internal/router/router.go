@@ -18,6 +18,8 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role"
 	roleHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/delivery/http"
+	serviceModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
+	serviceHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user"
 	userHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/delivery/http"
@@ -66,6 +68,7 @@ func SetupRouter(
 	auditModule *audit.AuditModule,
 	statsModule *stats.StatsModule,
 	projectModule *project.ProjectModule,
+	serviceModule *serviceModulePkg.ServiceModule,
 	apiKeyModule *api_key.ApiKeyModule,
 	webhookModule *webhook.WebhookModule,
 	authMiddleware *middleware.AuthMiddleware,
@@ -218,6 +221,7 @@ func SetupRouter(
 	{
 		organizationHttp.RegisterTenantRoutes(tenantAuthorized, organizationModule.OrganizationController, apiKeyMiddleware)
 		organizationHttp.RegisterBranchRoutes(tenantAuthorized, branchModule.BranchController, apiKeyMiddleware)
+		serviceHttp.RegisterServiceRoutes(tenantAuthorized, serviceModule.ServiceController, apiKeyMiddleware)
 
 		// Project Routes
 		projectGroup := tenantAuthorized.Group("/projects")
