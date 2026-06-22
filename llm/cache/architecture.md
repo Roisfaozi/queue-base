@@ -101,3 +101,15 @@ When rebuilding queue app:
 2. `documentation/task-overview.md` for target product rules
 3. `documentation/project-diagram.md` for target decomposition and flow sequencing
 4. `code_context.txt` for legacy evidence only when naming or old behavior matters
+
+## QMS Rebuild Addendum
+
+When task is QMS rebuild, add these architecture constraints to the existing starter architecture:
+
+- tenant resolves before business logic
+- branch always validated under tenant
+- queue creation generates one `queues` master row and first `queue_journey`
+- forwarding appends `queue_journeys` and preserves `ticket_no` / `queue_no`
+- `visit_journeys` is internal readable event stream
+- queue counters are scoped by tenant + branch + queue_date + prefix/menu strategy
+- settings flow follows tenant -> branch -> service -> counter inheritance

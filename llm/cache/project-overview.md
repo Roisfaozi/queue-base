@@ -104,3 +104,16 @@ Backend via Makefile:
 ## Scope boundary
 
 For queue rebuild work, use `llm/research/queue-management-rebuild-brief.md` and `llm/plans/roadmap/queue-management-rebuild.md` together with live code.
+
+## QMS Rebuild Addendum
+
+For current QMS rebuild task, apply these additional target rules on top of existing starter overview:
+
+- tenant-first queue platform
+- branch under tenant
+- one queue master row per ticket/day
+- forwarding through `queue_journeys`
+- `visit_journeys` as readable internal history
+- settings inheritance: tenant -> branch -> service -> counter
+
+Use `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md` as target-product truth and keep this file's existing starter facts as runtime truth.

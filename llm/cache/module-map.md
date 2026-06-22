@@ -96,3 +96,13 @@ If future queue implementation does any of these, stop and refactor:
 - regex on menu names decides pharmacy semantics
 - notification happens before transaction commit
 - scanner middleware only checks header presence
+
+## QMS Rebuild Addendum
+
+For QMS rebuild, preserve current module-map conventions and add these target ownership rules:
+
+- `queues` owns master ticket identity and queue-level state
+- `queue_journeys` owns forward/service-step history
+- `visit_journeys` owns readable projection/history
+- `settings` owns tenant/branch/service/counter overrides
+- `scanner` only orchestrates; it does not own queue business rules

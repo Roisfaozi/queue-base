@@ -61,3 +61,15 @@ For queue rebuild, build in this dependency order:
 5. external integration and consumer sync
 
 Do not start from scanner or frontend first because they depend on queue core semantics.
+
+## QMS Rebuild Addendum
+
+Additional QMS domain rules:
+
+- every business query and mutation carries `tenant_id`
+- `branch_id` is never valid without tenant ownership validation
+- one queue record must keep one `ticket_no` and one `queue_no` per day
+- forward must append `queue_journeys`, not duplicate master queue rows
+- `visit_journeys` is internal history, not external integration logic
+- pharmacy validation may consult `queue_journeys` history
+- queue reset time may inherit from tenant and be overridden by branch

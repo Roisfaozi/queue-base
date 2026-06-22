@@ -79,3 +79,23 @@ Escalate when boundary crosses:
 
 - middleware/auth if scanner uses headers or JWT paths
 - worker/outbox if notifications or integrations become async
+
+## QMS Rebuild Addendum
+
+Target QMS modules should be mapped into this starter backend without breaking existing repo conventions.
+
+Expected domain slices to add:
+
+- tenants
+- branches
+- services
+- counters
+- queues
+- queue_journeys
+- visit_journeys
+- settings
+- scanner
+
+Critical backend rule:
+
+- forward updates journey history; it does not create another master queue row

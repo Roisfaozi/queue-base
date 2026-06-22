@@ -244,3 +244,30 @@ When editing frontend:
 ## 11. If you need more context
 
 Use the concretized starter-pack files under `llm/`. They were filled from live repo evidence and are the preferred durable handoff layer for future agent work.
+
+## QMS Rebuild Addendum
+
+For queue-management rebuild work, keep this repo's existing starter workflow and conventions intact. Do **not** replace the repo-standard flow; layer the QMS architecture on top of it.
+
+Additional read order for QMS work:
+
+- `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md`
+- `documentation/task-overview.md`
+- `code_context.txt` only as legacy evidence, never as runtime truth
+- `llm/research/queue-management-rebuild-brief.md`
+- `llm/research/queue-management-domain-map.md`
+- `llm/research/queue-management-implementation-design.md`
+- `llm/plans/roadmap/queue-management-rebuild.md`
+- `llm/plans/roadmap/queue-management-feature-map.md`
+
+QMS rebuild rules that override older queue assumptions:
+
+- tenant is first-class boundary for all business data
+- branch is child of tenant
+- `queues` is master ticket row
+- forwarding uses `queue_journeys`, not a second queue master row
+- `visit_journeys` is internal readable history/projection
+- no Medifrans/Bithealth integration scope unless user explicitly reintroduces it
+
+IMPORTANT!!
+NEVER GENERATE WITH PYTHON OR ANY SCRIPT TO UPDATE CODEBASE AND/OR FILE.
