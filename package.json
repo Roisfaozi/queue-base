@@ -1,0 +1,34 @@
+{
+  "name": "casbin-monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.8.0",
+  "scripts": {
+    "dev:web": "pnpm --filter casbin-web dev",
+    "dev:client": "pnpm --filter casbin-client dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "go:run": "make run",
+    "go:test": "make test",
+    "go:test-integration": "make test-integration",
+    "go:test-e2e": "make test-e2e",
+    "go:docs": "make docs",
+    "format": "biome format --write .",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.8",
+    "lefthook": "^1.10.7",
+    "turbo": "^2.5.0"
+  },
+  "optionalDependencies": {
+    "@biomejs/cli-linux-x64": "2.3.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3"
+    }
+  }
+}

@@ -1,0 +1,190 @@
+package usecase
+
+import (
+	"context"
+	"errors"
+
+	permissionUC "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/entity"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/model"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/model/converter"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/repository"
+	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
+	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+)
+
+type roleUseCase struct {
+	Log               *logrus.Logger
+	TM                tx.WithTransactionManager
+	RoleRepository    repository.RoleRepository
+	PermissionUseCase permissionUC.IPermissionUseCase
+}
+
+type policyReloader interface {
+	ReloadPolicy(ctx context.Context) error
+}
+
+func NewRoleUseCase(
+	log *logrus.Logger,
+	tm tx.WithTransactionManager,
+	roleRepository repository.RoleRepository,
+	permissionUseCase permissionUC.IPermissionUseCase,
+) RoleUseCase {
+	return &roleUseCase{
+		Log:               log,
+		TM:                tm,
+		RoleRepository:    roleRepository,
+		PermissionUseCase: permissionUseCase,
+	}
+}
+
+func (uc *roleUseCase) Create(ctx context.Context, request *model.CreateRoleRequest) (*model.RoleResponse, error) {
+	var response *model.RoleResponse
+	err := uc.TM.WithinTransaction(ctx, func(txCtx context.Context) error {
+		_, err := uc.RoleRepository.FindByName(txCtx, request.Name)
+		if err == nil {
+			uc.Log.WithContext(txCtx).Warnf("Role with name %s already exists", request.Name)
+			return exception.ErrConflict
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			uc.Log.WithContext(txCtx).Errorf("Failed to find role by name: %v", err)
+			return exception.ErrInternalServer
+		}
+
+		newID, err := uuid.NewV7()
+		if err != nil {
+			uc.Log.WithContext(txCtx).Errorf("Failed to generate UUID: %v", err)
+			return exception.ErrInternalServer
+		}
+
+		newRole := &entity.Role{
+			ID:          newID.String(),
+			Name:        request.Name,
+			Description: request.Description,
+		}
+
+		if err := uc.RoleRepository.Create(txCtx, newRole); err != nil {
+			uc.Log.WithContext(txCtx).Errorf("Failed to create role: %v", err)
+			return exception.ErrInternalServer
+		}
+
+		response = converter.RoleToResponse(newRole)
+		return nil
+	})
+
+	return response, err
+}
+
+func (uc *roleUseCase) Update(ctx context.Context, id string, request *model.UpdateRoleRequest) (*model.RoleResponse, error) {
+	var response *model.RoleResponse
+	err := uc.TM.WithinTransaction(ctx, func(txCtx context.Context) error {
+		role, err := uc.RoleRepository.FindByID(txCtx, id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				uc.Log.WithContext(txCtx).Warnf("Role with id %s not found for update", id)
+				return exception.ErrNotFound
+			}
+			uc.Log.WithContext(txCtx).Errorf("Failed to find role by id: %v", err)
+			return exception.ErrInternalServer
+		}
+
+		role.Description = request.Description
+
+		if err := uc.RoleRepository.Update(txCtx, role); err != nil {
+			uc.Log.WithContext(txCtx).Errorf("Failed to update role: %v", err)
+			return exception.ErrInternalServer
+		}
+
+		response = converter.RoleToResponse(role)
+		return nil
+	})
+
+	return response, err
+}
+
+func (uc *roleUseCase) GetAll(ctx context.Context) ([]model.RoleResponse, error) {
+	var roles []*entity.Role
+	err := uc.TM.WithinTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		roles, err = uc.RoleRepository.FindAll(txCtx)
+		if err != nil {
+			uc.Log.WithContext(txCtx).Errorf("Failed to get all roles: %v", err)
+			return exception.ErrInternalServer
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return converter.RolesToResponse(roles), nil
+}
+
+func (uc *roleUseCase) Delete(ctx context.Context, id string) error {
+	err := uc.TM.WithinTransaction(ctx, func(txCtx context.Context) error {
+		role, err := uc.RoleRepository.FindByID(txCtx, id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				uc.Log.WithContext(txCtx).Warnf("Role with id %s not found for deletion", id)
+				return exception.ErrNotFound
+			}
+			uc.Log.WithContext(txCtx).Errorf("Failed to find role by id: %v", err)
+			return exception.ErrInternalServer
+		}
+
+		// Prevent deleting superadmin role
+		if role.Name == "role:superadmin" {
+			uc.Log.WithContext(txCtx).Warn("Attempt to delete superadmin role blocked")
+			return exception.ErrForbidden
+		}
+
+		if err := uc.RoleRepository.Delete(txCtx, id); err != nil {
+			uc.Log.WithContext(txCtx).Errorf("Failed to delete role: %v", err)
+			return exception.ErrInternalServer
+		}
+
+		// Clean up Casbin policies for this role
+		if err := uc.PermissionUseCase.DeleteRole(txCtx, role.Name); err != nil {
+			uc.Log.WithContext(txCtx).Errorf("Failed to clean up Casbin policies for role %s: %v", role.Name, err)
+			return exception.ErrInternalServer
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if reloader, ok := uc.PermissionUseCase.(policyReloader); ok {
+		if err := reloader.ReloadPolicy(ctx); err != nil {
+			uc.Log.WithContext(ctx).Errorf("Failed to reload Casbin policy after role deletion: %v", err)
+			return exception.ErrInternalServer
+		}
+	}
+
+	return nil
+}
+
+func (uc *roleUseCase) GetAllRolesDynamic(ctx context.Context, filter *querybuilder.DynamicFilter) ([]model.RoleResponse, error) {
+	var roles []*entity.Role
+	err := uc.TM.WithinTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		roles, err = uc.RoleRepository.FindAllDynamic(txCtx, filter)
+		if err != nil {
+			uc.Log.WithContext(txCtx).Errorf("Failed to find roles dynamically: %v", err)
+			return exception.ErrInternalServer
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return converter.RolesToResponse(roles), nil
+}

@@ -1,0 +1,58 @@
+package entity
+
+import (
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"gorm.io/plugin/soft_delete"
+)
+
+type AccessRight struct {
+	ID             string                `gorm:"primaryKey;column:id"`
+	OrganizationID *string               `gorm:"column:organization_id;index:idx_access_org_deleted;index"`
+	Name           string                `gorm:"column:name;type:varchar(191);unique;not null"`
+	Description    string                `gorm:"column:description;type:text"`
+	Endpoints      []Endpoint            `gorm:"many2many:access_right_endpoints;"`
+	CreatedAt      int64                 `gorm:"column:created_at;autoCreateTime:milli"`
+	UpdatedAt      int64                 `gorm:"column:updated_at;autoCreateTime:milli;autoUpdateTime:milli"`
+	DeletedAt      soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:milli;index;index:idx_access_org_deleted"`
+}
+
+func (a *AccessRight) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == "" {
+		a.ID = uuid.NewString()
+	}
+	return nil
+}
+
+func (AccessRight) TableName() string {
+	return "access_rights"
+}
+
+type Endpoint struct {
+	ID        string                `gorm:"primaryKey;column:id"`
+	Path      string                `gorm:"column:path;type:varchar(191);not null"`
+	Method    string                `gorm:"column:method;type:varchar(10);not null"`
+	CreatedAt int64                 `gorm:"column:created_at;autoCreateTime:milli"`
+	UpdatedAt int64                 `gorm:"column:updated_at;autoCreateTime:milli;autoUpdateTime:milli"`
+	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:milli;index"`
+}
+
+func (e *Endpoint) BeforeCreate(tx *gorm.DB) error {
+	if e.ID == "" {
+		e.ID = uuid.NewString()
+	}
+	return nil
+}
+
+func (Endpoint) TableName() string {
+	return "endpoints"
+}
+
+type AccessRightEndpoint struct {
+	AccessRightID string `gorm:"primaryKey;column:access_right_id"`
+	EndpointID    string `gorm:"primaryKey;column:endpoint_id"`
+}
+
+func (AccessRightEndpoint) TableName() string {
+	return "access_right_endpoints"
+}
