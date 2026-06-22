@@ -211,6 +211,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	projectModule := project.NewProjectModule(dbConnection, validate)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
+	branchModule := organization.NewBranchModule(dbConnection, validate)
 
 	logger.Info("Application modules initialized.")
 
@@ -359,6 +360,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		accessModule,
 		roleModule,
 		organizationModule,
+		branchModule,
 		auditModule,
 		statsModule,
 		projectModule,

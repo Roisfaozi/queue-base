@@ -16,6 +16,12 @@ const (
 	// This is set by the TenantMiddleware after validating user membership.
 	OrganizationIDKey ContextKey = "organization_id"
 
+	// TenantIDKey is an alias for organization_id in queue-domain wording.
+	TenantIDKey ContextKey = OrganizationIDKey
+
+	// BranchIDKey stores active branch context when tenant-scoped routes need it.
+	BranchIDKey ContextKey = "branch_id"
+
 	// IncludeDeletedOrganizationKey allows privileged callers to opt into
 	// querying data that belongs to soft-deleted organizations.
 	IncludeDeletedOrganizationKey ContextKey = "include_deleted_organizations"
@@ -105,6 +111,26 @@ func GetOrganizationID(ctx context.Context) string {
 	}
 
 	return orgID
+}
+
+// GetTenantID returns tenant_id alias used by QMS domain wording.
+func GetTenantID(ctx context.Context) string {
+	return GetOrganizationID(ctx)
+}
+
+// SetBranchContext stores branch_id in request context.
+func SetBranchContext(ctx context.Context, branchID string) context.Context {
+	return context.WithValue(ctx, BranchIDKey, branchID)
+}
+
+// GetBranchID extracts branch_id from context.
+func GetBranchID(ctx context.Context) string {
+	branchIDValue := ctx.Value(BranchIDKey)
+	branchID, ok := branchIDValue.(string)
+	if !ok {
+		return ""
+	}
+	return branchID
 }
 
 // CanAccessDeletedOrganizations reports whether the current request context is
