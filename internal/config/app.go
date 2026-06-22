@@ -218,10 +218,10 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	counterModule := counter.NewCounterModule(dbConnection, validate)
 	settingsModule := settings.NewSettingsModule(dbConnection, validate)
 	queueModule := queue.NewQueueModule(dbConnection, validate, settings.NewQueueSettingsResolver(settingsModule.SettingsUseCase))
-	scannerModule := scanner.NewScannerModule(queueModule, validate, scanner.NoopAuthenticator{})
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate)
+	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, validate, scanner.NoopAuthenticator{})
 
 	logger.Info("Application modules initialized.")
 

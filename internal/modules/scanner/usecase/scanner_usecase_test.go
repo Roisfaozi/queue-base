@@ -44,9 +44,24 @@ func (s stubScannerAuthenticator) Authenticate(ctx context.Context, tenantID, br
 	return s.err
 }
 
+type stubRelationValidator struct {
+	err            error
+	serviceID      string
+	counterID      string
+	validateCalled bool
+}
+
+func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
+	s.validateCalled = true
+	s.serviceID = serviceID
+	s.counterID = counterID
+	return s.err
+}
+
 func TestScannerUseCase_CheckIn_RegisterSuccess(t *testing.T) {
 	queueHandler := &stubQueueHandler{registerRes: &queueModel.QueueResponse{ID: "q-1"}}
-	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{})
+	validator := &stubRelationValidator{}
+	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{}, validator)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -62,12 +77,14 @@ func TestScannerUseCase_CheckIn_RegisterSuccess(t *testing.T) {
 	assert.Equal(t, "register", res.Action)
 	assert.True(t, queueHandler.registerCalled)
 	assert.Equal(t, "service-1", queueHandler.registerReq.ServiceID)
+	assert.True(t, validator.validateCalled)
+	assert.Equal(t, "service-1", validator.serviceID)
 	assert.False(t, queueHandler.forwardCalled)
 }
 
 func TestScannerUseCase_CheckIn_NegativeInvalidCredential(t *testing.T) {
 	queueHandler := &stubQueueHandler{}
-	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{err: errors.New("invalid credential")})
+	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{err: errors.New("invalid credential")}, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -79,7 +96,8 @@ func TestScannerUseCase_CheckIn_NegativeInvalidCredential(t *testing.T) {
 
 func TestScannerUseCase_CheckIn_EdgeWhitespaceAction(t *testing.T) {
 	queueHandler := &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}}
-	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{})
+	validator := &stubRelationValidator{}
+	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{}, validator)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -96,11 +114,13 @@ func TestScannerUseCase_CheckIn_EdgeWhitespaceAction(t *testing.T) {
 	assert.Equal(t, "forward", res.Action)
 	assert.True(t, queueHandler.forwardCalled)
 	assert.Equal(t, "q-1", queueHandler.forwardQueueID)
+	assert.True(t, validator.validateCalled)
+	assert.Equal(t, "counter-2", validator.counterID)
 }
 
 func TestScannerUseCase_CheckIn_SecurityRejectsUnknownAction(t *testing.T) {
 	queueHandler := &stubQueueHandler{}
-	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{})
+	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{}, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -108,4 +128,17 @@ func TestScannerUseCase_CheckIn_SecurityRejectsUnknownAction(t *testing.T) {
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 	assert.False(t, queueHandler.registerCalled)
 	assert.False(t, queueHandler.forwardCalled)
+}
+
+func TestScannerUseCase_CheckIn_NegativeInvalidRelation(t *testing.T) {
+	queueHandler := &stubQueueHandler{}
+	validator := &stubRelationValidator{err: exception.ErrForbidden}
+	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{}, validator)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionRegister, ClientID: "client-1", APIKey: "key-1", ServiceID: "service-1", PatientName: "John Doe"})
+
+	assert.ErrorIs(t, err, exception.ErrForbidden)
+	assert.False(t, queueHandler.registerCalled)
 }

@@ -23,6 +23,10 @@ type Authenticator interface {
 	Authenticate(ctx context.Context, tenantID, branchID, clientID, apiKey string) error
 }
 
+type RelationValidator interface {
+	Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error
+}
+
 type CheckInRequest struct {
 	Action               string
 	ClientID             string
@@ -45,12 +49,13 @@ type ScannerUseCase interface {
 }
 
 type scannerUseCase struct {
-	queueHandler  QueueHandler
-	authenticator Authenticator
+	queueHandler      QueueHandler
+	authenticator     Authenticator
+	relationValidator RelationValidator
 }
 
-func NewScannerUseCase(queueHandler QueueHandler, authenticator Authenticator) ScannerUseCase {
-	return &scannerUseCase{queueHandler: queueHandler, authenticator: authenticator}
+func NewScannerUseCase(queueHandler QueueHandler, authenticator Authenticator, relationValidator RelationValidator) ScannerUseCase {
+	return &scannerUseCase{queueHandler: queueHandler, authenticator: authenticator, relationValidator: relationValidator}
 }
 
 func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*CheckInResponse, error) {
@@ -68,6 +73,17 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 	if u.authenticator != nil {
 		if err := u.authenticator.Authenticate(ctx, tenantID, branchID, req.ClientID, req.APIKey); err != nil {
 			return nil, exception.ErrUnauthorized
+		}
+	}
+
+	serviceID := req.ServiceID
+	if action == ActionForward {
+		serviceID = req.DestinationServiceID
+	}
+
+	if u.relationValidator != nil {
+		if err := u.relationValidator.Validate(ctx, tenantID, branchID, serviceID, req.DestinationCounterID); err != nil {
+			return nil, err
 		}
 	}
 
