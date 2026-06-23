@@ -181,6 +181,12 @@ func (r *queueRepository) NextJourneySequence(ctx context.Context, queueID strin
 
 func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
 	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
+		var maxSeq int
+		if err := tx.Model(&entity.QueueJourney{}).Where("queue_id = ?", queue.ID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
+			return err
+		}
+		nextJourney.SeqNo = maxSeq + 1
+
 		result := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt})
 		if result.Error != nil {
 			return result.Error

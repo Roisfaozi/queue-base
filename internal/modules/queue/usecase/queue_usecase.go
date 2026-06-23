@@ -310,11 +310,6 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		return nil, exception.ErrNotFound
 	}
 
-	seqNo, err := u.repo.NextJourneySequence(ctx, queue.ID)
-	if err != nil {
-		return nil, err
-	}
-
 	nowMs := time.Now().UnixMilli()
 	nextJourneyID := uuid.New().String()
 	visitID := uuid.New().String()
@@ -328,7 +323,6 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		TenantID:  tenantID,
 		ServiceID: req.DestinationServiceID,
 		CounterID: req.DestinationCounterID,
-		SeqNo:     seqNo,
 		Status:    entity.JourneyStatusPending,
 		CreatedAt: nowMs,
 		UpdatedAt: nowMs,

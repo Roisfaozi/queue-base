@@ -167,6 +167,26 @@ func TestQueueRepository_FindVisitJourneysByQueueID_TenantScoped(t *testing.T) {
 	assert.Equal(t, "v-2", visits[1].ID)
 }
 
+func TestQueueRepository_CreateForwarding_AutoIncrementsSequence(t *testing.T) {
+	db := newQueueTestDB(t)
+	repo := NewQueueRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", TicketNo: "A001", QueueNo: 1, CurrentJourneyID: "j-1"}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+
+	queue := &entity.Queue{ID: "q-1", CurrentJourneyID: "j-2", UpdatedAt: 123}
+	currentJourney := &entity.QueueJourney{ID: "j-1", Status: entity.JourneyStatusForwarded, UpdatedAt: 123}
+	nextJourney := &entity.QueueJourney{ID: "j-2", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "svc-2", Status: entity.JourneyStatusPending}
+	visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", EventType: "forward"}
+
+	require.NoError(t, repo.CreateForwarding(ctx, queue, currentJourney, nextJourney, visit))
+
+	var savedJourney entity.QueueJourney
+	require.NoError(t, db.First(&savedJourney, "id = ?", "j-2").Error)
+	assert.Equal(t, 2, savedJourney.SeqNo)
+}
+
 func TestQueueRepository_GetQueueStats_AggregatesCorrectly(t *testing.T) {
 	db := newQueueTestDB(t)
 	repo := NewQueueRepository(db)
