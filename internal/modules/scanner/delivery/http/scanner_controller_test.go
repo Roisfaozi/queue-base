@@ -128,3 +128,62 @@ func TestScannerController_CheckIn_PropagatesWorkflowForbidden(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, w.Code)
 	assert.True(t, uc.called)
 }
+
+func TestScannerController_CheckIn_RejectsInvalidAction(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubScannerControllerUseCase{}
+	controller := NewScannerController(uc, validator.New())
+	router := gin.New()
+	router.POST("/scanner/check-in", controller.CheckIn)
+
+	body := []byte(`{"action":"drop-table","service_id":"s-1","patient_name":"John"}`)
+	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
+	req.Header.Set("X-Client-ID", "client-1")
+	req.Header.Set("X-API-Key", "key-1")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+	assert.False(t, uc.called)
+}
+
+func TestScannerController_CheckIn_PropagatesUnauthorized(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubScannerControllerUseCase{err: exception.ErrUnauthorized}
+	controller := NewScannerController(uc, validator.New())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.POST("/scanner/check-in", controller.CheckIn)
+
+	body, _ := json.Marshal(model.CheckInRequest{Action: "register", ServiceID: "s-1", PatientName: "John"})
+	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
+	req.Header.Set("X-Client-ID", "client-1")
+	req.Header.Set("X-API-Key", "bad-key")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.True(t, uc.called)
+}
+
+func TestScannerController_CheckIn_RejectsEmptyBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubScannerControllerUseCase{}
+	controller := NewScannerController(uc, validator.New())
+	router := gin.New()
+	router.POST("/scanner/check-in", controller.CheckIn)
+
+	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer([]byte(`{}`)))
+	req.Header.Set("X-Client-ID", "client-1")
+	req.Header.Set("X-API-Key", "key-1")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+	assert.False(t, uc.called)
+}
