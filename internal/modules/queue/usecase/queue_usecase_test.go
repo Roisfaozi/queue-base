@@ -730,3 +730,12 @@ func TestGetQueueStats_NegativeNoTenantOrBranch(t *testing.T) {
 	_, err := uc.GetQueueStats(context.Background())
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 }
+
+func TestGetVisitJourneys_NegativeEmptyQueueID(t *testing.T) {
+	repo := &stubQueueRepo{}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	_, err := uc.GetVisitJourneys(ctx, "")
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}

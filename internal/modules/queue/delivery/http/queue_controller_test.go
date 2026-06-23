@@ -246,3 +246,17 @@ func TestQueueController_GetVisitJourneys(t *testing.T) {
 	assert.True(t, uc.getCalled)
 	assert.Equal(t, "q-1", uc.getID)
 }
+
+func TestQueueController_GetVisitJourneysRejectsMissingID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.GET("/queues/:id/visit-journeys", controller.GetVisitJourneys)
+
+	req, _ := http.NewRequest("GET", "/queues//visit-journeys", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}

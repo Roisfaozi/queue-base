@@ -148,7 +148,12 @@ func (h *QueueController) GetJourneysByBranchAndCounter(c *gin.Context) {
 }
 
 func (h *QueueController) GetVisitJourneys(c *gin.Context) {
-	res, err := h.useCase.GetVisitJourneys(c.Request.Context(), c.Param("id"))
+	queueID := c.Param("id")
+	if queueID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing queue id")
+		return
+	}
+	res, err := h.useCase.GetVisitJourneys(c.Request.Context(), queueID)
 	if err != nil {
 		response.HandleError(c, err, "failed to get visit journeys")
 		return

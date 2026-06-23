@@ -157,3 +157,15 @@ func TestScannerUseCase_CheckIn_ForwardPropagatesWorkflowRejection(t *testing.T)
 	assert.True(t, validator.validateCalled)
 	assert.Equal(t, "pharmacy-svc", validator.serviceID)
 }
+
+func TestScannerUseCase_CheckIn_NegativeNilRequest(t *testing.T) {
+	queueHandler := &stubQueueHandler{}
+	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{}, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.CheckIn(ctx, nil)
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+	assert.False(t, queueHandler.registerCalled)
+	assert.False(t, queueHandler.forwardCalled)
+}
