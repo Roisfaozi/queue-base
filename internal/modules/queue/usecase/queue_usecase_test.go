@@ -27,6 +27,19 @@ type stubQueueRepo struct {
 	journeyBranchID string
 }
 
+type stubSettingsResolver struct {
+	values map[string]string
+	calls  []string
+}
+
+func (s *stubSettingsResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
+	s.calls = append(s.calls, key)
+	if value, ok := s.values[key]; ok {
+		return value, nil
+	}
+	return "", exception.ErrNotFound
+}
+
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
 	s.seenNum++
 	if s.err != nil {
@@ -137,6 +150,32 @@ func TestRegisterQueue_Success(t *testing.T) {
 	assert.Equal(t, "b-1", res.BranchID)
 	assert.Equal(t, 1, res.QueueNo)
 	assert.Equal(t, entity.QueueStatusWaiting, res.Status)
+}
+
+func TestRegisterQueue_UsesQueueResetTimeKeyFirst(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"queue_reset_time": "05:00"}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	require.Len(t, resolver.calls, 1)
+	assert.Equal(t, "queue_reset_time", resolver.calls[0])
+}
+
+func TestRegisterQueue_FallbacksToLegacyResetTimeKey(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"reset_time": "05:00"}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	require.Len(t, resolver.calls, 2)
+	assert.Equal(t, []string{"queue_reset_time", "reset_time"}, resolver.calls)
 }
 
 func TestRegisterQueue_DuplicateReturnsConflict(t *testing.T) {

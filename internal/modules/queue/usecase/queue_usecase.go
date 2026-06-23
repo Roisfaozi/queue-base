@@ -107,7 +107,9 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	now := time.Now().In(loc)
 	resetTime := "04:00"
 	if u.settingsResolver != nil {
-		if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
+		if resolved, err := u.settingsResolver.Resolve(ctx, "queue_reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
+			resetTime = resolved
+		} else if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
 			resetTime = resolved
 		}
 	}
