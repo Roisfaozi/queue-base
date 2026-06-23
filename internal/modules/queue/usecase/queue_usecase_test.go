@@ -41,11 +41,20 @@ func (s *stubQueueRepo) CreateRegistration(ctx context.Context, queue *entity.Qu
 	return s.err
 }
 
-func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID string) ([]*entity.Queue, error) {
+func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID, status string) ([]*entity.Queue, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
-	return s.queues, nil
+	if status == "" {
+		return s.queues, nil
+	}
+	filtered := make([]*entity.Queue, 0)
+	for _, queue := range s.queues {
+		if queue.Status == status {
+			filtered = append(filtered, queue)
+		}
+	}
+	return filtered, nil
 }
 
 func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
@@ -277,7 +286,7 @@ func TestListQueues_Success(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
-	res, err := uc.ListQueues(ctx)
+	res, err := uc.ListQueues(ctx, "")
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, "q-1", res[0].ID)
@@ -287,8 +296,20 @@ func TestListQueues_NegativeMissingTenantOrBranch(t *testing.T) {
 	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1"}}}
 	uc := NewQueueUseCase(repo, nil)
 
-	_, err := uc.ListQueues(context.Background())
+	_, err := uc.ListQueues(context.Background(), "")
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
+func TestListQueues_EdgeStatusFilter(t *testing.T) {
+	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted}}}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.ListQueues(ctx, entity.QueueStatusCompleted)
+	assert.NoError(t, err)
+	assert.Len(t, res, 1)
+	assert.Equal(t, "q-2", res[0].ID)
 }
 
 func TestGetQueueByID_Success(t *testing.T) {

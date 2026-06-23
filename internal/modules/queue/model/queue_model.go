@@ -45,3 +45,7 @@ const (
 type QueueTransitionRequest struct {
 	Action string `json:"action" validate:"required,oneof=call serve complete skip cancel"`
 }
+
+type ListQueuesRequest struct {
+	Status string `form:"status"`
+}

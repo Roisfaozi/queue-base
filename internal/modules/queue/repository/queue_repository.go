@@ -14,7 +14,7 @@ type QueueRepository interface {
 	NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error)
 	ExistsRegistration(ctx context.Context, tenantID, branchID, queueDate, patientID, patientName string) (bool, error)
 	CreateRegistration(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error
-	ListQueues(ctx context.Context, tenantID, branchID string) ([]*entity.Queue, error)
+	ListQueues(ctx context.Context, tenantID, branchID, status string) ([]*entity.Queue, error)
 	FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
 	FindCurrentJourney(ctx context.Context, queueID, journeyID string) (*entity.QueueJourney, error)
 	NextJourneySequence(ctx context.Context, queueID string) (int, error)
@@ -109,9 +109,13 @@ func (r *queueRepository) CreateRegistration(ctx context.Context, queue *entity.
 	})
 }
 
-func (r *queueRepository) ListQueues(ctx context.Context, tenantID, branchID string) ([]*entity.Queue, error) {
+func (r *queueRepository) ListQueues(ctx context.Context, tenantID, branchID, status string) ([]*entity.Queue, error) {
 	var queues []*entity.Queue
-	if err := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ?", tenantID, branchID).Find(&queues).Error; err != nil {
+	query := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ?", tenantID, branchID)
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if err := query.Find(&queues).Error; err != nil {
 		return nil, err
 	}
 	return queues, nil

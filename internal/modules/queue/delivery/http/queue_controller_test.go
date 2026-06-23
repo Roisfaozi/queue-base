@@ -33,7 +33,7 @@ func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *mod
 	return nil, nil
 }
 
-func (s *stubQueueControllerUseCase) ListQueues(ctx context.Context) ([]model.QueueResponse, error) {
+func (s *stubQueueControllerUseCase) ListQueues(ctx context.Context, status string) ([]model.QueueResponse, error) {
 	s.listCalled = true
 	return s.listRes, nil
 }
@@ -97,4 +97,25 @@ func TestQueueController_GetByID(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, uc.getCalled)
 	assert.Equal(t, "q-1", uc.getID)
+}
+
+func TestQueueController_GetAll(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1", Status: entity.QueueStatusWaiting}}}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/queues", controller.GetAll)
+
+	req, _ := http.NewRequest("GET", "/queues?status=waiting", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, uc.listCalled)
 }

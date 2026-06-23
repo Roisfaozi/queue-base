@@ -38,7 +38,12 @@ func (h *QueueController) Register(c *gin.Context) {
 }
 
 func (h *QueueController) GetAll(c *gin.Context) {
-	res, err := h.useCase.ListQueues(c.Request.Context())
+	var req model.ListQueuesRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
+		return
+	}
+	res, err := h.useCase.ListQueues(c.Request.Context(), req.Status)
 	if err != nil {
 		response.HandleError(c, err, "failed to get queues")
 		return
