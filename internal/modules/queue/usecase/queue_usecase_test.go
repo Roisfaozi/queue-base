@@ -271,3 +271,27 @@ func TestTransitionQueue_SecurityCrossTenantRejected(t *testing.T) {
 	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCancel})
 	assert.ErrorIs(t, err, exception.ErrNotFound)
 }
+
+func TestTransitionQueue_NegativeEmptyAction(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+	}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: ""})
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
+func TestTransitionQueue_EdgeCancelTerminalStateRejected(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCanceled, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCanceled},
+	}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCancel})
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}

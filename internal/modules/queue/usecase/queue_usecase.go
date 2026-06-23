@@ -224,6 +224,9 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 	if tenantID == "" || queueID == "" || req == nil {
 		return nil, exception.ErrBadRequest
 	}
+	if strings.TrimSpace(req.Action) == "" {
+		return nil, exception.ErrBadRequest
+	}
 
 	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
 	if err != nil || queue == nil {
@@ -267,7 +270,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusSkipped
 		visit.EventType = "skip"
 	case model.QueueActionCancel:
-		if queue.Status == entity.QueueStatusCompleted {
+		if queue.Status == entity.QueueStatusCompleted || queue.Status == entity.QueueStatusCanceled {
 			return nil, exception.ErrBadRequest
 		}
 		queue.Status = entity.QueueStatusCanceled
