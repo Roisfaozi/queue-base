@@ -36,8 +36,10 @@ func (s *stubSettingsRepo) Delete(ctx context.Context, tenantID, settingID strin
 func TestResolveSettingInheritance(t *testing.T) {
 	repo := &stubSettingsRepo{
 		settings: map[string]*entity.Setting{
-			"tenant:t-1:reset_time": {ID: "1", Value: "00:00"},
-			"branch:b-1:reset_time": {ID: "2", Value: "04:00"},
+			"tenant:t-1:reset_time":        {ID: "1", Value: "00:00"},
+			"branch:b-1:reset_time":        {ID: "2", Value: "04:00"},
+			"service:svc-1:reset_time":     {ID: "3", Value: "05:00"},
+			"counter:counter-1:reset_time": {ID: "4", Value: "06:00"},
 		},
 	}
 	uc := NewSettingsUseCase(repo)
@@ -58,5 +60,26 @@ func TestResolveSettingInheritance(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, "04:00", res.Value)
+	})
+
+	t.Run("Resolves Service override before Branch", func(t *testing.T) {
+		res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+			Key:       "reset_time",
+			BranchID:  "b-1",
+			ServiceID: "svc-1",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "05:00", res.Value)
+	})
+
+	t.Run("Resolves Counter override before Service", func(t *testing.T) {
+		res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+			Key:       "reset_time",
+			BranchID:  "b-1",
+			ServiceID: "svc-1",
+			CounterID: "counter-1",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "06:00", res.Value)
 	})
 }
