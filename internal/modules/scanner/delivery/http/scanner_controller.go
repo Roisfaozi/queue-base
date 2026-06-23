@@ -25,14 +25,20 @@ func (h *ScannerController) CheckIn(c *gin.Context) {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
 		return
 	}
+	clientID := c.GetHeader("X-Client-ID")
+	apiKey := c.GetHeader("X-API-Key")
+	if clientID == "" || apiKey == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing scanner headers")
+		return
+	}
 	if err := h.validate.Struct(req); err != nil {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	res, err := h.useCase.CheckIn(c.Request.Context(), &usecase.CheckInRequest{
 		Action:               req.Action,
-		ClientID:             req.ClientID,
-		APIKey:               req.APIKey,
+		ClientID:             clientID,
+		APIKey:               apiKey,
 		ServiceID:            req.ServiceID,
 		PatientID:            req.PatientID,
 		PatientName:          req.PatientName,
