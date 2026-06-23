@@ -31,6 +31,7 @@ type QueueUseCase interface {
 	TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error)
 	ListActiveJourneys(ctx context.Context, req model.QueueJourneyListRequest) ([]model.QueueJourneyResponse, error)
 	GetVisitJourneys(ctx context.Context, queueID string) ([]model.VisitJourneyResponse, error)
+	GetQueueStats(ctx context.Context) (*model.QueueStatsResponse, error)
 }
 
 type queueUseCase struct {
@@ -58,6 +59,32 @@ func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesReque
 		res[i] = mapQueueResponse(q)
 	}
 	return res, nil
+}
+
+func (u *queueUseCase) GetQueueStats(ctx context.Context) (*model.QueueStatsResponse, error) {
+	tenantID := database.GetTenantID(ctx)
+	branchID := database.GetBranchID(ctx)
+	if tenantID == "" || branchID == "" {
+		return nil, exception.ErrBadRequest
+	}
+
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	resetTime := "04:00"
+	if u.settingsResolver != nil {
+		if resolved, err := u.settingsResolver.Resolve(ctx, "queue_reset_time", branchID, "", ""); err == nil && resolved != "" {
+			resetTime = resolved
+		} else if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, "", ""); err == nil && resolved != "" {
+			resetTime = resolved
+		}
+	}
+	queueDateStr := computeBusinessQueueDate(now, resetTime)
+
+	stats, err := u.repo.GetQueueStats(ctx, tenantID, branchID, queueDateStr)
+	if err != nil {
+		return nil, err
+	}
+	return &stats, nil
 }
 
 func (u *queueUseCase) ListActiveJourneys(ctx context.Context, req model.QueueJourneyListRequest) ([]model.QueueJourneyResponse, error) {

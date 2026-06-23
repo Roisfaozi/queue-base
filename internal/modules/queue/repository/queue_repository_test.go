@@ -166,3 +166,25 @@ func TestQueueRepository_FindVisitJourneysByQueueID_TenantScoped(t *testing.T) {
 	assert.Equal(t, "v-1", visits[0].ID)
 	assert.Equal(t, "v-2", visits[1].ID)
 }
+
+func TestQueueRepository_GetQueueStats_AggregatesCorrectly(t *testing.T) {
+	db := newQueueTestDB(t)
+	repo := NewQueueRepository(db)
+	ctx := context.Background()
+	date := "2026-06-24"
+
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", QueueDate: date, Status: entity.QueueStatusWaiting, TicketNo: "A001", QueueNo: 1}).Error)
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-2", TenantID: "t-1", BranchID: "b-1", QueueDate: date, Status: entity.QueueStatusCompleted, TicketNo: "A002", QueueNo: 2}).Error)
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-3", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-23", Status: entity.QueueStatusWaiting, TicketNo: "A003", QueueNo: 3}).Error) // Other date
+
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-2", QueueID: "q-2", TenantID: "t-1", ServiceID: "svc-2", SeqNo: 1, Status: entity.JourneyStatusCompleted}).Error)
+
+	stats, err := repo.GetQueueStats(ctx, "t-1", "b-1", date)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), stats.TotalQueuesToday)
+	assert.Equal(t, int64(1), stats.TotalActiveJourneys)
+	assert.Equal(t, int64(1), stats.TotalCompletedVisits)
+	assert.Equal(t, int64(1), stats.WaitingByService["svc-1"])
+	assert.Equal(t, int64(0), stats.WaitingByService["svc-2"])
+}

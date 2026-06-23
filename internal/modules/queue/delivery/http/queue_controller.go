@@ -155,3 +155,14 @@ func (h *QueueController) GetVisitJourneys(c *gin.Context) {
 	}
 	response.Success(c, res)
 }
+
+func (h *QueueController) GetQueueStats(c *gin.Context) {
+	branchID := c.Param("branch_id")
+	ctx := database.SetBranchContext(c.Request.Context(), branchID)
+	res, err := h.useCase.GetQueueStats(ctx)
+	if err != nil {
+		response.HandleError(c, err, "failed to get queue stats")
+		return
+	}
+	response.Success(c, res)
+}

@@ -78,3 +78,10 @@ type VisitJourneyResponse struct {
 	Payload   string `json:"payload,omitempty"`
 	CreatedAt int64  `json:"created_at"`
 }
+
+type QueueStatsResponse struct {
+	TotalQueuesToday     int64            `json:"total_queues_today"`
+	TotalActiveJourneys  int64            `json:"total_active_journeys"`
+	TotalCompletedVisits int64            `json:"total_completed_visits"`
+	WaitingByService     map[string]int64 `json:"waiting_by_service"`
+}

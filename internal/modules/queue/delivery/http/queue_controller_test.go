@@ -31,6 +31,8 @@ type stubQueueControllerUseCase struct {
 	journeyReq       model.QueueJourneyListRequest
 	journeyRes       []model.QueueJourneyResponse
 	visitRes         []model.VisitJourneyResponse
+	statsRes         *model.QueueStatsResponse
+	statsCalled      bool
 }
 
 func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error) {
@@ -69,6 +71,11 @@ func (s *stubQueueControllerUseCase) GetVisitJourneys(ctx context.Context, queue
 	s.getCalled = true
 	s.getID = queueID
 	return s.visitRes, nil
+}
+
+func (s *stubQueueControllerUseCase) GetQueueStats(ctx context.Context) (*model.QueueStatsResponse, error) {
+	s.statsCalled = true
+	return s.statsRes, nil
 }
 
 func TestQueueController_Transition(t *testing.T) {
@@ -113,6 +120,26 @@ func TestQueueController_GetByID(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, uc.getCalled)
 	assert.Equal(t, "q-1", uc.getID)
+}
+
+func TestQueueController_GetQueueStats(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{statsRes: &model.QueueStatsResponse{TotalQueuesToday: 10}}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/branches/:branch_id/queue-stats", controller.GetQueueStats)
+
+	req, _ := http.NewRequest("GET", "/branches/branch-1/queue-stats", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, uc.statsCalled)
 }
 
 func TestQueueController_GetAll(t *testing.T) {

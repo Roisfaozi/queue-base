@@ -27,6 +27,7 @@ type stubQueueRepo struct {
 	journeyBranchID string
 	lastPrefix      string
 	visits          []*entity.VisitJourney
+	statsRes        model.QueueStatsResponse
 }
 
 type stubSettingsResolver struct {
@@ -109,6 +110,13 @@ func (s *stubQueueRepo) FindVisitJourneysByQueueID(ctx context.Context, tenantID
 		return nil, s.err
 	}
 	return s.visits, nil
+}
+
+func (s *stubQueueRepo) GetQueueStats(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error) {
+	if s.err != nil {
+		return s.statsRes, s.err
+	}
+	return s.statsRes, nil
 }
 
 func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
@@ -659,5 +667,27 @@ func TestTransitionQueue_EdgeCancelTerminalStateRejected(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCancel})
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
+func TestGetQueueStats_Success(t *testing.T) {
+	repo := &stubQueueRepo{
+		statsRes: model.QueueStatsResponse{TotalQueuesToday: 5, TotalActiveJourneys: 3},
+	}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.GetQueueStats(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(5), res.TotalQueuesToday)
+	assert.Equal(t, int64(3), res.TotalActiveJourneys)
+}
+
+func TestGetQueueStats_NegativeNoTenantOrBranch(t *testing.T) {
+	repo := &stubQueueRepo{}
+	uc := NewQueueUseCase(repo, nil, nil)
+
+	_, err := uc.GetQueueStats(context.Background())
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 }

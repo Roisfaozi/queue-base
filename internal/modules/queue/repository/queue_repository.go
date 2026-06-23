@@ -23,6 +23,7 @@ type QueueRepository interface {
 	CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	FindVisitJourneysByQueueID(ctx context.Context, tenantID, queueID string) ([]*entity.VisitJourney, error)
+	GetQueueStats(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error)
 }
 
 type queueRepository struct {
@@ -223,4 +224,51 @@ func (r *queueRepository) FindVisitJourneysByQueueID(ctx context.Context, tenant
 		return nil, err
 	}
 	return visits, nil
+}
+
+func (r *queueRepository) GetQueueStats(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error) {
+	var stats model.QueueStatsResponse
+	db := r.getDB(ctx)
+
+	// 1. Total queues today
+	if err := db.Model(&entity.Queue{}).Where("tenant_id = ? AND branch_id = ? AND queue_date = ?", tenantID, branchID, queueDate).Count(&stats.TotalQueuesToday).Error; err != nil {
+		return stats, err
+	}
+
+	// 2. Total active journeys
+	if err := db.Model(&entity.QueueJourney{}).
+		Joins("JOIN queues ON queues.id = queue_journeys.queue_id").
+		Where("queues.tenant_id = ? AND queues.branch_id = ? AND queues.queue_date = ? AND queue_journeys.status IN ?", tenantID, branchID, queueDate, []string{entity.JourneyStatusPending, entity.JourneyStatusCalling, entity.JourneyStatusServing, entity.JourneyStatusSkipped}).
+		Count(&stats.TotalActiveJourneys).Error; err != nil {
+		return stats, err
+	}
+
+	// 3. Total completed visits
+	if err := db.Model(&entity.Queue{}).
+		Where("tenant_id = ? AND branch_id = ? AND queue_date = ? AND status = ?", tenantID, branchID, queueDate, entity.QueueStatusCompleted).
+		Count(&stats.TotalCompletedVisits).Error; err != nil {
+		return stats, err
+	}
+
+	// 4. Waiting by service
+	type svcCount struct {
+		ServiceID string `gorm:"column:service_id"`
+		Count     int64  `gorm:"column:cnt"`
+	}
+	var counts []svcCount
+	if err := db.Model(&entity.QueueJourney{}).
+		Select("queue_journeys.service_id, COUNT(*) as cnt").
+		Joins("JOIN queues ON queues.id = queue_journeys.queue_id").
+		Where("queues.tenant_id = ? AND queues.branch_id = ? AND queues.queue_date = ? AND queue_journeys.status = ?", tenantID, branchID, queueDate, entity.JourneyStatusPending).
+		Group("queue_journeys.service_id").
+		Scan(&counts).Error; err != nil {
+		return stats, err
+	}
+
+	stats.WaitingByService = make(map[string]int64)
+	for _, c := range counts {
+		stats.WaitingByService[c.ServiceID] = c.Count
+	}
+
+	return stats, nil
 }
