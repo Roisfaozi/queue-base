@@ -142,3 +142,18 @@ func TestScannerUseCase_CheckIn_NegativeInvalidRelation(t *testing.T) {
 	assert.ErrorIs(t, err, exception.ErrForbidden)
 	assert.False(t, queueHandler.registerCalled)
 }
+
+func TestScannerUseCase_CheckIn_ForwardPropagatesWorkflowRejection(t *testing.T) {
+	queueHandler := &stubQueueHandler{}
+	validator := &stubRelationValidator{err: exception.ErrForbidden}
+	uc := NewScannerUseCase(queueHandler, stubScannerAuthenticator{}, validator)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionForward, ClientID: "client-1", APIKey: "key-1", QueueID: "q-1", DestinationServiceID: "pharmacy-svc", DestinationCounterID: "counter-1"})
+
+	assert.ErrorIs(t, err, exception.ErrForbidden)
+	assert.False(t, queueHandler.forwardCalled)
+	assert.True(t, validator.validateCalled)
+	assert.Equal(t, "pharmacy-svc", validator.serviceID)
+}
