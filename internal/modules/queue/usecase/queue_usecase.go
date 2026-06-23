@@ -115,6 +115,7 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	}
 	queueDateStr := computeBusinessQueueDate(now, resetTime)
 	prefix := resolveTicketPrefix(ctx, u.settingsResolver, branchID, req.ServiceID)
+	_ = resolveNumberingStrategy(ctx, u.settingsResolver, branchID, req.ServiceID)
 
 	exists, err := u.repo.ExistsRegistration(ctx, tenantID, branchID, queueDateStr, req.PatientID, req.PatientName)
 	if err != nil {
@@ -190,6 +191,24 @@ func resolveTicketPrefix(ctx context.Context, resolver SettingsResolver, branchI
 		return resolved
 	}
 	return "A"
+}
+
+func resolveNumberingStrategy(ctx context.Context, resolver SettingsResolver, branchID, serviceID string) string {
+	if resolver == nil {
+		return "sequential"
+	}
+	if resolved, err := resolver.Resolve(ctx, "numbering_strategy", branchID, serviceID, ""); err == nil && resolved != "" {
+		if resolved == "sequential" {
+			return resolved
+		}
+		return "sequential"
+	}
+	if resolved, err := resolver.Resolve(ctx, "numbering", branchID, serviceID, ""); err == nil && resolved != "" {
+		if resolved == "sequential" {
+			return resolved
+		}
+	}
+	return "sequential"
 }
 
 func computeBusinessQueueDate(now time.Time, resetTime string) string {

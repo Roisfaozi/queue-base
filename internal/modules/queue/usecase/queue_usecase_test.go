@@ -220,6 +220,54 @@ func TestRegisterQueue_DefaultsPrefixToA(t *testing.T) {
 	assert.Equal(t, "A001", res.TicketNo)
 }
 
+func TestRegisterQueue_UsesNumberingStrategySettingFirst(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"numbering_strategy": "sequential"}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.QueueNo)
+	assert.Contains(t, resolver.calls, "numbering_strategy")
+}
+
+func TestRegisterQueue_FallbacksToLegacyNumberingKey(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"numbering": "sequential"}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	assert.Contains(t, resolver.calls, "numbering_strategy")
+	assert.Contains(t, resolver.calls, "numbering")
+}
+
+func TestRegisterQueue_EdgeInvalidNumberingStrategyFallsBackToSequential(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"numbering_strategy": "random"}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.QueueNo)
+	assert.Equal(t, "A001", res.TicketNo)
+}
+
+func TestRegisterQueue_SecurityNumberingStrategyDoesNotBypassTenantBranchScope(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"numbering_strategy": "sequential"}}
+	uc := NewQueueUseCase(repo, resolver)
+
+	_, err := uc.RegisterQueue(context.Background(), &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
 func TestRegisterQueue_DuplicateReturnsConflict(t *testing.T) {
 	repo := &stubQueueRepo{exists: true}
 	uc := NewQueueUseCase(repo, nil)
