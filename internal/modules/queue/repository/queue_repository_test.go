@@ -61,3 +61,52 @@ func TestQueueRepository_CreateRegistration_WritesQueueAndJourney(t *testing.T) 
 	require.NoError(t, db.First(&saved, "id = ?", "q-1").Error)
 	require.Equal(t, "j-1", saved.CurrentJourneyID)
 }
+
+func TestQueueRepository_UpdateQueueState_WritesStateAndVisit(t *testing.T) {
+	db := newQueueTestDB(t)
+	repo := NewQueueRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", TicketNo: "A001", QueueNo: 1, Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusCalling}).Error)
+
+	visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", EventType: "call"}
+	queue := &entity.Queue{ID: "q-1", Status: entity.QueueStatusServing, UpdatedAt: 123}
+	journey := &entity.QueueJourney{ID: "j-1", Status: entity.JourneyStatusServing, UpdatedAt: 123}
+
+	require.NoError(t, repo.UpdateQueueState(ctx, queue, journey, visit))
+
+	var savedQueue entity.Queue
+	require.NoError(t, db.First(&savedQueue, "id = ?", "q-1").Error)
+	require.Equal(t, entity.QueueStatusServing, savedQueue.Status)
+
+	var savedJourney entity.QueueJourney
+	require.NoError(t, db.First(&savedJourney, "id = ?", "j-1").Error)
+	require.Equal(t, entity.JourneyStatusServing, savedJourney.Status)
+
+	var savedVisit entity.VisitJourney
+	require.NoError(t, db.First(&savedVisit, "id = ?", "v-1").Error)
+	require.Equal(t, "call", savedVisit.EventType)
+}
+
+func TestQueueRepository_UpdateQueueState_RollsBackOnJourneyError(t *testing.T) {
+	db := newQueueTestDB(t)
+	repo := NewQueueRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", TicketNo: "A001", QueueNo: 1, Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"}).Error)
+
+	visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", EventType: "call"}
+	queue := &entity.Queue{ID: "q-1", Status: entity.QueueStatusServing, UpdatedAt: 123}
+	journey := &entity.QueueJourney{ID: "missing", Status: entity.JourneyStatusServing, UpdatedAt: 123}
+
+	err := repo.UpdateQueueState(ctx, queue, journey, visit)
+	require.Error(t, err)
+
+	var savedQueue entity.Queue
+	require.NoError(t, db.First(&savedQueue, "id = ?", "q-1").Error)
+	require.Equal(t, entity.QueueStatusCalling, savedQueue.Status)
+
+	var savedVisit entity.VisitJourney
+	require.Error(t, db.First(&savedVisit, "id = ?", "v-1").Error)
+}
