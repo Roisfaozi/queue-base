@@ -57,11 +57,13 @@ func (r *serviceRepository) Update(ctx context.Context, service *entity.Service)
 		Model(&entity.Service{}).
 		Where("tenant_id = ? AND id = ?", service.TenantID, service.ID).
 		Updates(map[string]interface{}{
-			"code":       service.Code,
-			"name":       service.Name,
-			"status":     service.Status,
-			"settings":   service.Settings,
-			"updated_at": service.UpdatedAt,
+			"code":                  service.Code,
+			"name":                  service.Name,
+			"status":                service.Status,
+			"is_pharmacy":           service.IsPharmacy,
+			"is_pharmacy_reception": service.IsPharmacyReception,
+			"settings":              service.Settings,
+			"updated_at":            service.UpdatedAt,
 		})
 	if res.Error != nil {
 		return res.Error

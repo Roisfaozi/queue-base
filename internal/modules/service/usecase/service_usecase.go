@@ -36,13 +36,15 @@ func (u *serviceUseCase) CreateService(ctx context.Context, req *model.CreateSer
 	req.Sanitize()
 	now := time.Now().UnixMilli()
 	service := &entity.Service{
-		ID:        uuid.New().String(),
-		TenantID:  tenantID,
-		Code:      req.Code,
-		Name:      req.Name,
-		Status:    entity.ServiceStatusActive,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:                  uuid.New().String(),
+		TenantID:            tenantID,
+		Code:                req.Code,
+		Name:                req.Name,
+		Status:              entity.ServiceStatusActive,
+		IsPharmacy:          req.IsPharmacy,
+		IsPharmacyReception: req.IsPharmacyReception,
+		CreatedAt:           now,
+		UpdatedAt:           now,
 	}
 	if err := u.repo.Create(ctx, service); err != nil {
 		return nil, err
@@ -97,6 +99,12 @@ func (u *serviceUseCase) UpdateService(ctx context.Context, serviceID string, re
 	if req.Status != nil {
 		service.Status = *req.Status
 	}
+	if req.IsPharmacy != nil {
+		service.IsPharmacy = *req.IsPharmacy
+	}
+	if req.IsPharmacyReception != nil {
+		service.IsPharmacyReception = *req.IsPharmacyReception
+	}
 	service.UpdatedAt = time.Now().UnixMilli()
 	if err := u.repo.Update(ctx, service); err != nil {
 		return nil, err
@@ -114,12 +122,14 @@ func (u *serviceUseCase) DeleteService(ctx context.Context, serviceID string) er
 
 func (u *serviceUseCase) mapToResponse(service *entity.Service) *model.ServiceResponse {
 	return &model.ServiceResponse{
-		ID:        service.ID,
-		TenantID:  service.TenantID,
-		Code:      service.Code,
-		Name:      service.Name,
-		Status:    service.Status,
-		CreatedAt: service.CreatedAt,
-		UpdatedAt: service.UpdatedAt,
+		ID:                  service.ID,
+		TenantID:            service.TenantID,
+		Code:                service.Code,
+		Name:                service.Name,
+		Status:              service.Status,
+		IsPharmacy:          service.IsPharmacy,
+		IsPharmacyReception: service.IsPharmacyReception,
+		CreatedAt:           service.CreatedAt,
+		UpdatedAt:           service.UpdatedAt,
 	}
 }

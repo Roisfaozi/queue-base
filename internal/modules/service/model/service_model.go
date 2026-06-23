@@ -7,18 +7,22 @@ import (
 )
 
 type ServiceResponse struct {
-	ID        string `json:"id"`
-	TenantID  string `json:"tenant_id"`
-	Code      string `json:"code"`
-	Name      string `json:"name"`
-	Status    string `json:"status"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	ID                  string `json:"id"`
+	TenantID            string `json:"tenant_id"`
+	Code                string `json:"code"`
+	Name                string `json:"name"`
+	Status              string `json:"status"`
+	IsPharmacy          bool   `json:"is_pharmacy"`
+	IsPharmacyReception bool   `json:"is_pharmacy_reception"`
+	CreatedAt           int64  `json:"created_at"`
+	UpdatedAt           int64  `json:"updated_at"`
 }
 
 type CreateServiceRequest struct {
-	Code string `json:"code" validate:"required,min=2,max=50,xss"`
-	Name string `json:"name" validate:"required,min=3,max=255,xss"`
+	Code                string `json:"code" validate:"required,min=2,max=50,xss"`
+	Name                string `json:"name" validate:"required,min=3,max=255,xss"`
+	IsPharmacy          bool   `json:"is_pharmacy"`
+	IsPharmacyReception bool   `json:"is_pharmacy_reception"`
 }
 
 func (r *CreateServiceRequest) Sanitize() {
@@ -27,9 +31,11 @@ func (r *CreateServiceRequest) Sanitize() {
 }
 
 type UpdateServiceRequest struct {
-	Code   *string `json:"code" validate:"omitempty,min=2,max=50,xss"`
-	Name   *string `json:"name" validate:"omitempty,min=3,max=255,xss"`
-	Status *string `json:"status" validate:"omitempty,oneof=active inactive"`
+	Code                *string `json:"code" validate:"omitempty,min=2,max=50,xss"`
+	Name                *string `json:"name" validate:"omitempty,min=3,max=255,xss"`
+	Status              *string `json:"status" validate:"omitempty,oneof=active inactive"`
+	IsPharmacy          *bool   `json:"is_pharmacy"`
+	IsPharmacyReception *bool   `json:"is_pharmacy_reception"`
 }
 
 func (r *UpdateServiceRequest) Sanitize() {
