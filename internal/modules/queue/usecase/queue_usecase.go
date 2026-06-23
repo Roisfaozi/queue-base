@@ -30,6 +30,7 @@ type QueueUseCase interface {
 	ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error)
 	TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error)
 	ListActiveJourneys(ctx context.Context, req model.QueueJourneyListRequest) ([]model.QueueJourneyResponse, error)
+	GetVisitJourneys(ctx context.Context, queueID string) ([]model.VisitJourneyResponse, error)
 }
 
 type queueUseCase struct {
@@ -80,6 +81,33 @@ func (u *queueUseCase) ListActiveJourneys(ctx context.Context, req model.QueueJo
 			Status:    journey.Status,
 			CreatedAt: journey.CreatedAt,
 			UpdatedAt: journey.UpdatedAt,
+		}
+	}
+	return res, nil
+}
+
+func (u *queueUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]model.VisitJourneyResponse, error) {
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" || queueID == "" {
+		return nil, exception.ErrBadRequest
+	}
+	// Ensure queue exists and belongs to tenant
+	if _, err := u.repo.FindQueueByID(ctx, tenantID, queueID); err != nil {
+		return nil, exception.ErrNotFound
+	}
+	visits, err := u.repo.FindVisitJourneysByQueueID(ctx, tenantID, queueID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]model.VisitJourneyResponse, len(visits))
+	for i, v := range visits {
+		res[i] = model.VisitJourneyResponse{
+			ID:        v.ID,
+			QueueID:   v.QueueID,
+			TenantID:  v.TenantID,
+			EventType: v.EventType,
+			Payload:   v.Payload,
+			CreatedAt: v.CreatedAt,
 		}
 	}
 	return res, nil

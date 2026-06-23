@@ -30,6 +30,7 @@ type stubQueueControllerUseCase struct {
 	transitionErr    error
 	journeyReq       model.QueueJourneyListRequest
 	journeyRes       []model.QueueJourneyResponse
+	visitRes         []model.VisitJourneyResponse
 }
 
 func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error) {
@@ -62,6 +63,12 @@ func (s *stubQueueControllerUseCase) TransitionQueue(ctx context.Context, queueI
 func (s *stubQueueControllerUseCase) ListActiveJourneys(ctx context.Context, req model.QueueJourneyListRequest) ([]model.QueueJourneyResponse, error) {
 	s.journeyReq = req
 	return s.journeyRes, nil
+}
+
+func (s *stubQueueControllerUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]model.VisitJourneyResponse, error) {
+	s.getCalled = true
+	s.getID = queueID
+	return s.visitRes, nil
 }
 
 func TestQueueController_Transition(t *testing.T) {
@@ -190,4 +197,25 @@ func TestQueueController_GetJourneysByBranchAndCounter(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", Status: "calling"}, uc.journeyReq)
+}
+
+func TestQueueController_GetVisitJourneys(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{visitRes: []model.VisitJourneyResponse{{ID: "v-1", EventType: "registration"}}}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/queues/:id/visit-journeys", controller.GetVisitJourneys)
+
+	req, _ := http.NewRequest("GET", "/queues/q-1/visit-journeys", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, uc.getCalled)
+	assert.Equal(t, "q-1", uc.getID)
 }

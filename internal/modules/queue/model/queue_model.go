@@ -69,3 +69,12 @@ type QueueJourneyResponse struct {
 	CreatedAt int64  `json:"created_at"`
 	UpdatedAt int64  `json:"updated_at"`
 }
+
+type VisitJourneyResponse struct {
+	ID        string `json:"id"`
+	QueueID   string `json:"queue_id"`
+	TenantID  string `json:"tenant_id"`
+	EventType string `json:"event_type"`
+	Payload   string `json:"payload,omitempty"`
+	CreatedAt int64  `json:"created_at"`
+}

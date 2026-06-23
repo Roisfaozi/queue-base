@@ -146,3 +146,12 @@ func (h *QueueController) GetJourneysByBranchAndCounter(c *gin.Context) {
 	}
 	response.Success(c, res)
 }
+
+func (h *QueueController) GetVisitJourneys(c *gin.Context) {
+	res, err := h.useCase.GetVisitJourneys(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		response.HandleError(c, err, "failed to get visit journeys")
+		return
+	}
+	response.Success(c, res)
+}

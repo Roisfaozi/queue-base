@@ -149,3 +149,20 @@ func TestQueueRepository_ListActiveJourneys_FiltersByTenantBranchServiceCounter(
 	require.Len(t, journeys, 1)
 	assert.Equal(t, "j-1", journeys[0].ID)
 }
+
+func TestQueueRepository_FindVisitJourneysByQueueID_TenantScoped(t *testing.T) {
+	db := newQueueTestDB(t)
+	repo := NewQueueRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A001", QueueNo: 1}).Error)
+	require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", EventType: "registration", CreatedAt: 100}).Error)
+	require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-2", QueueID: "q-1", TenantID: "tenant-1", EventType: "call", CreatedAt: 200}).Error)
+	require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-3", QueueID: "q-1", TenantID: "tenant-2", EventType: "registration", CreatedAt: 50}).Error)
+
+	visits, err := repo.FindVisitJourneysByQueueID(ctx, "tenant-1", "q-1")
+	require.NoError(t, err)
+	require.Len(t, visits, 2)
+	assert.Equal(t, "v-1", visits[0].ID)
+	assert.Equal(t, "v-2", visits[1].ID)
+}

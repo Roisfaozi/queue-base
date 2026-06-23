@@ -22,6 +22,7 @@ type QueueRepository interface {
 	NextJourneySequence(ctx context.Context, queueID string) (int, error)
 	CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error
+	FindVisitJourneysByQueueID(ctx context.Context, tenantID, queueID string) ([]*entity.VisitJourney, error)
 }
 
 type queueRepository struct {
@@ -214,4 +215,12 @@ func (r *queueRepository) UpdateQueueState(ctx context.Context, queue *entity.Qu
 		}
 		return tx.Create(visit).Error
 	})
+}
+
+func (r *queueRepository) FindVisitJourneysByQueueID(ctx context.Context, tenantID, queueID string) ([]*entity.VisitJourney, error) {
+	var visits []*entity.VisitJourney
+	if err := r.getDB(ctx).Where("tenant_id = ? AND queue_id = ?", tenantID, queueID).Order("created_at ASC").Find(&visits).Error; err != nil {
+		return nil, err
+	}
+	return visits, nil
 }

@@ -26,6 +26,7 @@ type stubQueueRepo struct {
 	journeyTenantID string
 	journeyBranchID string
 	lastPrefix      string
+	visits          []*entity.VisitJourney
 }
 
 type stubSettingsResolver struct {
@@ -101,6 +102,13 @@ func (s *stubQueueRepo) ListActiveJourneys(ctx context.Context, tenantID, branch
 	s.journeyTenantID = tenantID
 	s.journeyBranchID = branchID
 	return []*entity.QueueJourney{{ID: "j-1", QueueID: "q-1", TenantID: tenantID, ServiceID: req.ServiceID, CounterID: req.CounterID, SeqNo: 1, Status: entity.JourneyStatusCalling}}, nil
+}
+
+func (s *stubQueueRepo) FindVisitJourneysByQueueID(ctx context.Context, tenantID, queueID string) ([]*entity.VisitJourney, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.visits, nil
 }
 
 func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
@@ -565,6 +573,51 @@ func TestGetQueueByID_Success(t *testing.T) {
 	res, err := uc.GetQueueByID(ctx, "q-1")
 	assert.NoError(t, err)
 	assert.Equal(t, "q-1", res.ID)
+}
+
+func TestGetVisitJourneys_Success(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1"},
+		visits: []*entity.VisitJourney{
+			{ID: "v-1", QueueID: "q-1", TenantID: "t-1", EventType: "registration", CreatedAt: 100},
+			{ID: "v-2", QueueID: "q-1", TenantID: "t-1", EventType: "call", CreatedAt: 200},
+		},
+	}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.GetVisitJourneys(ctx, "q-1")
+	assert.NoError(t, err)
+	require.Len(t, res, 2)
+	assert.Equal(t, "v-1", res[0].ID)
+	assert.Equal(t, "v-2", res[1].ID)
+}
+
+func TestGetVisitJourneys_NegativeMissingTenant(t *testing.T) {
+	repo := &stubQueueRepo{}
+	uc := NewQueueUseCase(repo, nil, nil)
+
+	_, err := uc.GetVisitJourneys(context.Background(), "q-1")
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
+func TestGetVisitJourneys_EdgeEmptyList(t *testing.T) {
+	repo := &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1"}}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.GetVisitJourneys(ctx, "q-1")
+	assert.NoError(t, err)
+	assert.Empty(t, res)
+}
+
+func TestGetVisitJourneys_SecurityCrossTenantRejected(t *testing.T) {
+	repo := &stubQueueRepo{err: exception.ErrNotFound}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "other-tenant")
+
+	_, err := uc.GetVisitJourneys(ctx, "q-1")
+	assert.ErrorIs(t, err, exception.ErrNotFound)
 }
 
 func TestGetQueueByID_NegativeCrossTenantRejected(t *testing.T) {
