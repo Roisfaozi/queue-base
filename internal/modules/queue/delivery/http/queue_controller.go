@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/usecase"
+	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
 	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
 	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
 	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
@@ -112,14 +113,16 @@ func (h *QueueController) Transition(c *gin.Context) {
 	response.Success(c, res)
 }
 
-func (h *QueueController) GetJourneysByService(c *gin.Context) {
+func (h *QueueController) GetJourneysByBranchAndService(c *gin.Context) {
 	var req model.QueueJourneyListRequest
 	req.ServiceID = c.Param("service_id")
+	branchID := c.Param("branch_id")
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
 	}
-	res, err := h.useCase.ListActiveJourneys(c.Request.Context(), req)
+	ctx := database.SetBranchContext(c.Request.Context(), branchID)
+	res, err := h.useCase.ListActiveJourneys(ctx, req)
 	if err != nil {
 		response.HandleError(c, err, "failed to get queue journeys")
 		return
@@ -127,14 +130,16 @@ func (h *QueueController) GetJourneysByService(c *gin.Context) {
 	response.Success(c, res)
 }
 
-func (h *QueueController) GetJourneysByCounter(c *gin.Context) {
+func (h *QueueController) GetJourneysByBranchAndCounter(c *gin.Context) {
 	var req model.QueueJourneyListRequest
 	req.CounterID = c.Param("counter_id")
+	branchID := c.Param("branch_id")
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
 	}
-	res, err := h.useCase.ListActiveJourneys(c.Request.Context(), req)
+	ctx := database.SetBranchContext(c.Request.Context(), branchID)
+	res, err := h.useCase.ListActiveJourneys(ctx, req)
 	if err != nil {
 		response.HandleError(c, err, "failed to get queue journeys")
 		return

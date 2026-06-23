@@ -152,20 +152,19 @@ func TestQueueController_GetAll_WithFilters(t *testing.T) {
 	assert.Equal(t, model.ListQueuesRequest{Status: "waiting", QueueDate: "2026-06-24", ServiceID: "s-1"}, uc.listReq)
 }
 
-func TestQueueController_GetJourneysByService(t *testing.T) {
+func TestQueueController_GetJourneysByBranchAndService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	uc := &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1", Status: entity.JourneyStatusCalling}}}
+	uc := &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1"}}}
 	controller := NewQueueController(uc, validator.New())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
-		ctx = database.SetBranchContext(ctx, "b-1")
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.GET("/queues/services/:service_id/queue-journeys", controller.GetJourneysByService)
+	router.GET("/branches/:branch_id/services/:service_id/queue-journeys", controller.GetJourneysByBranchAndService)
 
-	req, _ := http.NewRequest("GET", "/queues/services/svc-1/queue-journeys?queue_date=2026-06-24", nil)
+	req, _ := http.NewRequest("GET", "/branches/branch-1/services/svc-1/queue-journeys?queue_date=2026-06-24", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -173,20 +172,19 @@ func TestQueueController_GetJourneysByService(t *testing.T) {
 	assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: "2026-06-24"}, uc.journeyReq)
 }
 
-func TestQueueController_GetJourneysByCounter(t *testing.T) {
+func TestQueueController_GetJourneysByBranchAndCounter(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	uc := &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1", Status: entity.JourneyStatusCalling}}}
+	uc := &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1"}}}
 	controller := NewQueueController(uc, validator.New())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
-		ctx = database.SetBranchContext(ctx, "b-1")
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.GET("/queues/counters/:counter_id/queue-journeys", controller.GetJourneysByCounter)
+	router.GET("/branches/:branch_id/counters/:counter_id/queue-journeys", controller.GetJourneysByBranchAndCounter)
 
-	req, _ := http.NewRequest("GET", "/queues/counters/c-1/queue-journeys?status=calling", nil)
+	req, _ := http.NewRequest("GET", "/branches/branch-1/counters/c-1/queue-journeys?status=calling", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
