@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 )

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 	"github.com/glebarez/sqlite" // Pure Go SQLite
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

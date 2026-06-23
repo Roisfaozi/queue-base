@@ -8,14 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	roleHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation" // Import validation pkg
+	roleHttp "github.com/Roisfaozi/queue-base/internal/modules/role/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/validation" // Import validation pkg
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
@@ -366,15 +366,15 @@ func TestRoleHandler_HandleError_Variants(t *testing.T) {
 	roleID := "test-uuid"
 
 	tests := []struct {
-		err          error
-		expectedCode int
+		err                  error
+		expectedCode         int
 		expectedBodyContains string
 	}{
-		{exception.ErrBadRequest, http.StatusBadRequest,"failed to delete role"},
-		{exception.ErrUnauthorized, http.StatusUnauthorized,"failed to delete role"},
-		{exception.ErrForbidden, http.StatusForbidden,"failed to delete role"},
-		{exception.ErrNotFound, http.StatusNotFound,"failed to delete role"},
-		{exception.ErrConflict, http.StatusConflict,"failed to delete role"},
+		{exception.ErrBadRequest, http.StatusBadRequest, "failed to delete role"},
+		{exception.ErrUnauthorized, http.StatusUnauthorized, "failed to delete role"},
+		{exception.ErrForbidden, http.StatusForbidden, "failed to delete role"},
+		{exception.ErrNotFound, http.StatusNotFound, "failed to delete role"},
+		{exception.ErrConflict, http.StatusConflict, "failed to delete role"},
 		{errors.New("unknown error"), http.StatusInternalServerError, "something went wrong"},
 	}
 
@@ -387,6 +387,6 @@ func TestRoleHandler_HandleError_Variants(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, tt.expectedCode, w.Code, "Expected code %d for error %v", tt.expectedCode, tt.err)
-		assert.Contains(t, w.Body.String(), tt.expectedBodyContains)  
+		assert.Contains(t, w.Body.String(), tt.expectedBodyContains)
 	}
 }

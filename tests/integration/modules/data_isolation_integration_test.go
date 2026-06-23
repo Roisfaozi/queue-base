@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 )
 

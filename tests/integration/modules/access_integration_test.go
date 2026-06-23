@@ -7,12 +7,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	"github.com/Roisfaozi/queue-base/internal/modules/access/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/access/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/access/usecase"
+	"github.com/Roisfaozi/queue-base/pkg"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

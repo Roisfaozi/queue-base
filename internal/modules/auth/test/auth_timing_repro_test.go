@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	auditModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

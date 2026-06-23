@@ -1,12 +1,12 @@
 package permission
 
 import (
-	accessRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
-	roleRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/repository"
-	userRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
+	accessRepository "github.com/Roisfaozi/queue-base/internal/modules/access/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
+	roleRepository "github.com/Roisfaozi/queue-base/internal/modules/role/repository"
+	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 )

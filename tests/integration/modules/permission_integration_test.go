@@ -7,11 +7,11 @@ import (
 	"context"
 	"testing"
 
-	accessRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
-	roleRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/repository"
-	userRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	accessRepo "github.com/Roisfaozi/queue-base/internal/modules/access/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
+	roleRepo "github.com/Roisfaozi/queue-base/internal/modules/role/repository"
+	userRepo "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	auditModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/jwt"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/telemetry"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/auth/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/pkg"
+	"github.com/Roisfaozi/queue-base/pkg/jwt"
+	"github.com/Roisfaozi/queue-base/pkg/telemetry"
 	"github.com/google/uuid"
 )
 

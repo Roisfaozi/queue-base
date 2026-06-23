@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/test/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

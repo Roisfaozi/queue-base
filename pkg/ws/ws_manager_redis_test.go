@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"

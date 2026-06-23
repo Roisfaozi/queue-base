@@ -3,8 +3,8 @@ package model
 import (
 	"strings"
 
-	userModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg"
+	userModel "github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/pkg"
 )
 
 // OrganizationResponse represents the response for organization operations

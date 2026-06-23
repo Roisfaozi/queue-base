@@ -5,8 +5,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/repository"
 	"github.com/glebarez/sqlite"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

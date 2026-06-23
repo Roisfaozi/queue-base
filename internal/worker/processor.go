@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	auditUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/handlers"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	auditUseCase "github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
+	"github.com/Roisfaozi/queue-base/internal/worker/handlers"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 )

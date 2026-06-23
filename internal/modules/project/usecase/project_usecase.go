@@ -3,10 +3,10 @@ package usecase
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/repository"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 )
 
 type ProjectUseCase interface {

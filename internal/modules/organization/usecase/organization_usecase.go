@@ -3,14 +3,14 @@ package usecase
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model/converter"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	permissionUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/model/converter"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	permissionUseCase "github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )

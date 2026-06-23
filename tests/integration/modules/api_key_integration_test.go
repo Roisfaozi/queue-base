@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/usecase"
-	orgRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	userRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	"github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/api_key/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/api_key/usecase"
+	orgRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

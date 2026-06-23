@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/entity"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

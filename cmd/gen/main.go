@@ -36,7 +36,7 @@ func main() {
 	moduleNameCamel := toCamelCase(moduleName)
 
 	// Hardcoded for this project, ideally read from go.mod
-	projectModule := "github.com/Roisfaozi/go-clean-boilerplate"
+	projectModule := "github.com/Roisfaozi/queue-base"
 
 	config := Config{
 		ModuleName:      moduleName,
@@ -422,12 +422,12 @@ func (uc *{{.ModuleNameCamel}}UseCase) GetAllDynamic(ctx context.Context, filter
 const controllerTemplate = `package http
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/{{.ModuleName}}/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/{{.ModuleName}}/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/internal/modules/{{.ModuleName}}/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/{{.ModuleName}}/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"

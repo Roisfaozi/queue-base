@@ -3,7 +3,7 @@ package middleware
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/constants"
+	"github.com/Roisfaozi/queue-base/pkg/constants"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

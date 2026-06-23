@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	auditModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	auditUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/usecase"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	auditUseCase "github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 )

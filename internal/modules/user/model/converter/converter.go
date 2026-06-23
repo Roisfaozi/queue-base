@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/model"
 )
 
 func UserToResponse(user *entity.User) *model.UserResponse {

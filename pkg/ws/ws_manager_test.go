@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

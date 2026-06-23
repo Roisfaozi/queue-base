@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 )
 
 type UserUseCase interface {

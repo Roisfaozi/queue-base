@@ -1,18 +1,18 @@
 package http
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	net_http "net/http"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"

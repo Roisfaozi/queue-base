@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )

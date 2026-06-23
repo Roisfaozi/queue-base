@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	"github.com/Roisfaozi/queue-base/internal/worker"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/hibiken/asynq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

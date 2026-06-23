@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

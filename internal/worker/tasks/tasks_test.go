@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/stretchr/testify/assert"
 )
 

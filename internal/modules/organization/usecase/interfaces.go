@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 )
 
 // OrganizationUseCase defines the interface for organization business logic

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/gin-gonic/gin"
 )
 

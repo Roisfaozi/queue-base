@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/entity"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 	"gorm.io/gorm"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/storage/s3"
+	"github.com/Roisfaozi/queue-base/pkg/storage/s3"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 )

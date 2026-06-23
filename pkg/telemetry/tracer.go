@@ -56,7 +56,7 @@ func InitTracer(serviceName, collectorURL string) (func(context.Context) error, 
 
 // StartSpan creates a new span from context.
 func StartSpan(ctx context.Context, name string) (context.Context, func()) {
-	tracer := otel.Tracer("github.com/Roisfaozi/go-clean-boilerplate")
+	tracer := otel.Tracer("github.com/Roisfaozi/queue-base")
 	ctx, span := tracer.Start(ctx, name)
 	return ctx, func() {
 		span.End()

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/usecase"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
 	"github.com/go-redis/redismock/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

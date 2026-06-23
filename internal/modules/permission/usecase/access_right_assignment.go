@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	auditModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/model"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 )
 
 func (uc *PermissionUseCase) GetRoleAccessRights(ctx context.Context, role, domain string) ([]model.RoleAccessRightStatus, error) {

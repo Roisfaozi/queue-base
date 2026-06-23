@@ -3,8 +3,8 @@ package model_test
 import (
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/model"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -1,12 +1,12 @@
 package http
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )

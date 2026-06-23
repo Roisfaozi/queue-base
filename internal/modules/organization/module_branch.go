@@ -1,9 +1,9 @@
 package organization
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/usecase"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )

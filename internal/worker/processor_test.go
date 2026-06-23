@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	auditMocks "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/handlers"
-	workerMocks "github.com/Roisfaozi/go-clean-boilerplate/internal/worker/test/mocks"
+	auditMocks "github.com/Roisfaozi/queue-base/internal/modules/audit/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/worker"
+	"github.com/Roisfaozi/queue-base/internal/worker/handlers"
+	workerMocks "github.com/Roisfaozi/queue-base/internal/worker/test/mocks"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
@@ -70,6 +70,7 @@ func setupProcessorTest(t *testing.T) (*processorTestDeps, func()) {
 }
 
 type mockWriter struct{}
+
 func (m *mockWriter) Write(p []byte) (n int, err error) { return len(p), nil }
 
 func TestRedisTaskProcessor_Lifecycle(t *testing.T) {

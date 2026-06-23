@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
 )
 

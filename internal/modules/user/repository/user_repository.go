@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	querybuilder2 "github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	querybuilder2 "github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )

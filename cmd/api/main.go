@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/Roisfaozi/go-clean-boilerplate/docs"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/config"
+	_ "github.com/Roisfaozi/queue-base/docs"
+	"github.com/Roisfaozi/queue-base/internal/config"
 )
 
 // @title           Go Clean Boilerplate API

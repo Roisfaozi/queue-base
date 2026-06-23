@@ -3,7 +3,7 @@ package worker_test
 import (
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker"
+	"github.com/Roisfaozi/queue-base/internal/worker"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"

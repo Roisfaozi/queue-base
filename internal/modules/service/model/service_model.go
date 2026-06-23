@@ -3,7 +3,7 @@ package model
 import (
 	"strings"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg"
+	"github.com/Roisfaozi/queue-base/pkg"
 )
 
 type ServiceResponse struct {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

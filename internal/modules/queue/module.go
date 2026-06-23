@@ -3,13 +3,13 @@ package queue
 import (
 	"context"
 
-	counterRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/repository"
-	branchRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	queueHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/usecase"
-	serviceRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	counterRepo "github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	branchRepo "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	queueHttp "github.com/Roisfaozi/queue-base/internal/modules/queue/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
+	serviceRepo "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )

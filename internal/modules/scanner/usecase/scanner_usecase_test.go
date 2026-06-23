@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	queueModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
 )
 

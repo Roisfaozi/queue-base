@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	mock "github.com/stretchr/testify/mock"
 )
 

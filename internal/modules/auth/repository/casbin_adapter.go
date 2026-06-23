@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	permissionUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
+	permissionUseCase "github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
 )
 
 type casbinAdapter struct {

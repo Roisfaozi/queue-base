@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/auth/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

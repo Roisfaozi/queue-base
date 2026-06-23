@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	_ "github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
+	_ "github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )

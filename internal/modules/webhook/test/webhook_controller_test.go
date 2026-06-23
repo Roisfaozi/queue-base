@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	webhookHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/test/mocks"
+	webhookHttp "github.com/Roisfaozi/queue-base/internal/modules/webhook/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/test/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

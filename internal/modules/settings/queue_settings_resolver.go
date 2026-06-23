@@ -3,8 +3,8 @@ package settings
 import (
 	"context"
 
-	settingsModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/model"
-	settingsUsecase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/usecase"
+	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
+	settingsUsecase "github.com/Roisfaozi/queue-base/internal/modules/settings/usecase"
 )
 
 type QueueSettingsResolver struct {

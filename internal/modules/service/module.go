@@ -1,9 +1,9 @@
 package service
 
 import (
-	serviceHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/usecase"
+	serviceHttp "github.com/Roisfaozi/queue-base/internal/modules/service/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/service/usecase"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )

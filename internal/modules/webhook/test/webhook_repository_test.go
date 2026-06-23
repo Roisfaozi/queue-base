@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/repository"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"

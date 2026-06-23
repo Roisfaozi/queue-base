@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/config"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
+	"github.com/Roisfaozi/queue-base/internal/config"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"

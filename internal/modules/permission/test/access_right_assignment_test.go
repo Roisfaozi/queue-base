@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	accessEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	accessEntity "github.com/Roisfaozi/queue-base/internal/modules/access/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/model"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/internal/modules/access/entity"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 )
 
 type AccessRepository interface {

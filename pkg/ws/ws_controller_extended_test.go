@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/test/mocks"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"

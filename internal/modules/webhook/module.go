@@ -1,10 +1,10 @@
 package webhook
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/usecase"
+	"github.com/Roisfaozi/queue-base/internal/worker"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"

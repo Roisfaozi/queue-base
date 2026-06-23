@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
-	txpkg "github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	txpkg "github.com/Roisfaozi/queue-base/pkg/tx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

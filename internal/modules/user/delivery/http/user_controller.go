@@ -3,12 +3,12 @@ package http
 import (
 	"errors"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
@@ -47,7 +47,7 @@ func (h *UserController) RegisterUser(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.Log.WithError(err).Error("failed to bind request body")
- 		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
+		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
 		return
 	}
 

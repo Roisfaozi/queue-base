@@ -1,9 +1,9 @@
 package settings
 
 import (
-	settingsHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/usecase"
+	settingsHttp "github.com/Roisfaozi/queue-base/internal/modules/settings/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/settings/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/settings/usecase"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )

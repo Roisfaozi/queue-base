@@ -6,10 +6,10 @@ import (
 
 	"io"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/repository"
-	orgEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/internal/modules/access/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/access/repository"
+	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 	"github.com/glebarez/sqlite"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

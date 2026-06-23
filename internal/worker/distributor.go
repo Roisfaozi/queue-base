@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	auditModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/hibiken/asynq"
 )
 

@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/circuitbreaker"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/telemetry"
+	"github.com/Roisfaozi/queue-base/pkg/circuitbreaker"
+	"github.com/Roisfaozi/queue-base/pkg/telemetry"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"

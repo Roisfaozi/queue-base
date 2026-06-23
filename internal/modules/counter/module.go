@@ -1,9 +1,9 @@
 package counter
 
 import (
-	counterHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/usecase"
+	counterHttp "github.com/Roisfaozi/queue-base/internal/modules/counter/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/counter/usecase"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )

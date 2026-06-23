@@ -4,10 +4,10 @@ import (
 	"errors"
 	"strings"
 
-	apiKeyUsecase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/usecase"
-	userRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
+	apiKeyUsecase "github.com/Roisfaozi/queue-base/internal/modules/api_key/usecase"
+	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )

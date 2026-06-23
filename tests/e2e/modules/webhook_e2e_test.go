@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/e2e/setup"
-	integrationSetup "github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/model"
+	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
+	integrationSetup "github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

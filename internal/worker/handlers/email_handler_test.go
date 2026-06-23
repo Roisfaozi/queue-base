@@ -6,8 +6,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/handlers"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	"github.com/Roisfaozi/queue-base/internal/worker/handlers"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

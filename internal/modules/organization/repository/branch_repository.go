@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
-	txpkg "github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	txpkg "github.com/Roisfaozi/queue-base/pkg/tx"
 	"gorm.io/gorm"
 )
 

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	auditModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/hibiken/asynq"
 )
 

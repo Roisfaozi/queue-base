@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )

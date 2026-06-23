@@ -8,8 +8,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/auth/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/auth/model"
 	mock "github.com/stretchr/testify/mock"
 )
 

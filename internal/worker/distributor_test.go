@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	"github.com/Roisfaozi/queue-base/internal/worker"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/hibiken/asynq"
 	"github.com/stretchr/testify/assert"
@@ -207,7 +207,7 @@ func TestRedisTaskDistributor_DistributeTaskAuditLogExport(t *testing.T) {
 		defer cleanup()
 		payload := model.AuditLogExportPayload{
 			UserID:   "user_123",
-			FromDate: time.Now().Add(-24*time.Hour).Format("2006-01-02"),
+			FromDate: time.Now().Add(-24 * time.Hour).Format("2006-01-02"),
 			ToDate:   time.Now().Format("2006-01-02"),
 		}
 

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	auditUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/usecase"
-	authRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/repository"
-	userRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/telemetry"
+	auditUseCase "github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
+	authRepo "github.com/Roisfaozi/queue-base/internal/modules/auth/repository"
+	userRepo "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
+	"github.com/Roisfaozi/queue-base/pkg/telemetry"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 )

@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/repository"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"

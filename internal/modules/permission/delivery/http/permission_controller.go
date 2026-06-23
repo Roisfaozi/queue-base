@@ -2,12 +2,12 @@ package http
 
 import (
 	"errors"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"

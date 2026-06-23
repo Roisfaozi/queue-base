@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg"
+	"github.com/Roisfaozi/queue-base/pkg"
 )
 
 type SettingResponse struct {

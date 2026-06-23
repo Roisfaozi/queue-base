@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"

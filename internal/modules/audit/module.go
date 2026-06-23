@@ -1,11 +1,11 @@
 package audit
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
+	"github.com/Roisfaozi/queue-base/internal/worker"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"

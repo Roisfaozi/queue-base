@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/model"
 )
 
 // GetInheritanceTree builds a role inheritance tree with permissions

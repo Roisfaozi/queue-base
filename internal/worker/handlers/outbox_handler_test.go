@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	auditEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/test/mocks"
+	auditEntity "github.com/Roisfaozi/queue-base/internal/modules/audit/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/test/mocks"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

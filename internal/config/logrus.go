@@ -5,7 +5,7 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/constants"
+	"github.com/Roisfaozi/queue-base/pkg/constants"
 	"github.com/sirupsen/logrus"
 )
 

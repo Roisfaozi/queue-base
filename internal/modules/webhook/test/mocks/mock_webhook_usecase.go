@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/model"
 	"github.com/stretchr/testify/mock"
 )
 

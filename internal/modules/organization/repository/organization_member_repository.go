@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"gorm.io/gorm"
 )
 

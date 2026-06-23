@@ -10,23 +10,23 @@ import (
 	"testing"
 	"time"
 
-	auditRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/repository"
-	auditUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/usecase"
-	authModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/model"
-	authRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/repository"
-	authUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/usecase"
-	orgRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	userRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/jwt"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/sso"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/util"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	auditRepository "github.com/Roisfaozi/queue-base/internal/modules/audit/repository"
+	auditUseCase "github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
+	authModel "github.com/Roisfaozi/queue-base/internal/modules/auth/model"
+	authRepository "github.com/Roisfaozi/queue-base/internal/modules/auth/repository"
+	authUseCase "github.com/Roisfaozi/queue-base/internal/modules/auth/usecase"
+	orgRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/usecase"
+	"github.com/Roisfaozi/queue-base/pkg"
+	"github.com/Roisfaozi/queue-base/pkg/jwt"
+	"github.com/Roisfaozi/queue-base/pkg/sso"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
+	"github.com/Roisfaozi/queue-base/pkg/util"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -533,7 +533,6 @@ func TestUserRepository_Integration(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, users, 1)
 		assert.Equal(t, user.ID, users[0].ID)
-
 
 	})
 

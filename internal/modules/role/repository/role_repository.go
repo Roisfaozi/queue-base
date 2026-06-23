@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	querybuilder2 "github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/entity"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	querybuilder2 "github.com/Roisfaozi/queue-base/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )

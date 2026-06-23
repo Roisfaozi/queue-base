@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/validation"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/go-playground/validator/v10"
 )
 

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
+	"github.com/Roisfaozi/queue-base/internal/modules/stats/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/stats/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/glebarez/sqlite"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

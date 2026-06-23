@@ -1,8 +1,8 @@
 package stats
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats/usecase"
+	"github.com/Roisfaozi/queue-base/internal/modules/stats/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/stats/usecase"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )

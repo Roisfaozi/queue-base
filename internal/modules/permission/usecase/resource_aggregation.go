@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/model"
 )
 
 // GetResourceAggregation aggregates permissions by resource with CRUD mapping

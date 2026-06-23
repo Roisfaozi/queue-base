@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tus"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/tus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

@@ -7,8 +7,8 @@ package mocks
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
 	mock "github.com/stretchr/testify/mock"
 )
 

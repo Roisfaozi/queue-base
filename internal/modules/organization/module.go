@@ -1,13 +1,13 @@
 package organization
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/usecase"
-	permissionUseCase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
-	userRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
+	permissionUseCase "github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
+	userRepo "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/internal/worker"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 	"github.com/go-playground/validator/v10"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"

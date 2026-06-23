@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"

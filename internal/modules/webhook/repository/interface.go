@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/webhook/entity"
 )
 
 type WebhookRepository interface {

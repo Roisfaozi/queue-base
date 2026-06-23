@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/storage/local"
+	"github.com/Roisfaozi/queue-base/pkg/storage/local"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/config"
-	roleEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/entity"
-	userEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/config"
+	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
+	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"

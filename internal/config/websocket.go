@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	wsPkg "github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	wsPkg "github.com/Roisfaozi/queue-base/pkg/ws"
 )
 
 type WebSocketConfig struct {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	apiKeyModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
 )
 

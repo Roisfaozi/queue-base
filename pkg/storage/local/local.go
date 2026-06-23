@@ -3,7 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/telemetry"
+	"github.com/Roisfaozi/queue-base/pkg/telemetry"
 	"io"
 	"os"
 	"path/filepath"

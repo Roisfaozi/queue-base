@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	auditEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/usecase"
+	auditEntity "github.com/Roisfaozi/queue-base/internal/modules/audit/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 )

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 )
 
 type stubBranchRepo struct {

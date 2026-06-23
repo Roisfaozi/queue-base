@@ -4,10 +4,10 @@ import (
 	"errors"
 	"strings"
 
-	authUsecase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/authcontext"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	authUsecase "github.com/Roisfaozi/queue-base/internal/modules/auth/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
+	"github.com/Roisfaozi/queue-base/pkg/response"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )

@@ -1,9 +1,9 @@
 package converter
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model"
-	userModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	userModel "github.com/Roisfaozi/queue-base/internal/modules/user/model"
 )
 
 // OrganizationToResponse converts an Organization entity to a response DTO

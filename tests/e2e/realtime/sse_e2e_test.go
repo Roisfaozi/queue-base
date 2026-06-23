@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	userEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/e2e/setup"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/fixtures"
+	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
+	"github.com/Roisfaozi/queue-base/tests/fixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"

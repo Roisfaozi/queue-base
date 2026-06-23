@@ -3,9 +3,9 @@ package middleware
 import (
 	"errors"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	userRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )

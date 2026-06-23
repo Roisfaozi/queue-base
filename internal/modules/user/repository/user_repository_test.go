@@ -1,9 +1,9 @@
 package repository_test
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 
 	"context"
 	"fmt"
@@ -12,10 +12,10 @@ import (
 
 	"io"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"

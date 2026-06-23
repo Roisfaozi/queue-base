@@ -3,9 +3,9 @@ package config
 import (
 	"fmt"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/storage"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/storage/local"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/storage/s3"
+	"github.com/Roisfaozi/queue-base/pkg/storage"
+	"github.com/Roisfaozi/queue-base/pkg/storage/local"
+	"github.com/Roisfaozi/queue-base/pkg/storage/s3"
 )
 
 func NewStorageProvider(cfg *AppConfig) (storage.Provider, error) {

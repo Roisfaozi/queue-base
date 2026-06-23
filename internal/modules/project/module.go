@@ -1,9 +1,9 @@
 package project
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/usecase"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/usecase"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )

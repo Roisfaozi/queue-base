@@ -3,8 +3,8 @@ package usecase
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
-	"github.com/casbin/casbin/v2"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
+	"github.com/casbin/casbin/v3"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 )
 

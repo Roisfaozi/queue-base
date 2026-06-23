@@ -3,10 +3,10 @@ package usecase
 import (
 	"context"
 
-	counterRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/repository"
-	branchRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	serviceRepository "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	counterRepository "github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	serviceRepository "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 )
 
 type relationValidator struct {

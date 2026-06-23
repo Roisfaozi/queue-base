@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	counterEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/entity"
-	branchEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	serviceEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
 )
 

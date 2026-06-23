@@ -5,11 +5,11 @@ import (
 	"errors"
 	"strings"
 
-	orgEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
+	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )

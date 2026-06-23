@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/telemetry"
+	"github.com/Roisfaozi/queue-base/pkg/telemetry"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )

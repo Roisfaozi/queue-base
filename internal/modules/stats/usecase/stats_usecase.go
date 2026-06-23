@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
+	"github.com/Roisfaozi/queue-base/internal/modules/stats/model"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )

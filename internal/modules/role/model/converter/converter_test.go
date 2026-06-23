@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/model/converter"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/model/converter"
 	"github.com/stretchr/testify/assert"
 )
 

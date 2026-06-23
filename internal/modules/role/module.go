@@ -1,11 +1,11 @@
 package role
 
 import (
-	permissionUC "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
+	permissionUC "github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/repository"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"

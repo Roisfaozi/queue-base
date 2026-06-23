@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	apiKeyHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/delivery/http"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/test/mocks"
+	apiKeyHttp "github.com/Roisfaozi/queue-base/internal/modules/api_key/delivery/http"
+	"github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/api_key/test/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"

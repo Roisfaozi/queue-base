@@ -6,14 +6,14 @@ import (
 	"io"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/mocking"
-	permMocks "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/querybuilder"
+	"github.com/Roisfaozi/queue-base/internal/mocking"
+	permMocks "github.com/Roisfaozi/queue-base/internal/modules/permission/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/role/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,8 +21,8 @@ import (
 )
 
 type roleTestDeps struct {
-	Repo        *mocks.MockRoleRepository
-	TM          *mocking.MockWithTransactionManager
+	Repo         *mocks.MockRoleRepository
+	TM           *mocking.MockWithTransactionManager
 	PermissionUC *permMocks.MockIPermissionUseCase
 }
 

@@ -3,15 +3,15 @@ package scanner
 import (
 	"context"
 
-	apiKeyModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/model"
+	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
 
-	counterModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter"
-	branchModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization"
-	queueModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue"
-	scannerHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/scanner/delivery/http"
-	scannerUsecase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/scanner/usecase"
-	serviceModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	counterModulePkg "github.com/Roisfaozi/queue-base/internal/modules/counter"
+	branchModulePkg "github.com/Roisfaozi/queue-base/internal/modules/organization"
+	queueModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue"
+	scannerHttp "github.com/Roisfaozi/queue-base/internal/modules/scanner/delivery/http"
+	scannerUsecase "github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
+	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/go-playground/validator/v10"
 )
 

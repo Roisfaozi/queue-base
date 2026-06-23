@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/access/entity"
 )
 
 type CreateAccessRightRequest struct {

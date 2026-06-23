@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	orgEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/entity"
-	orgRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	orgRepo "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -3,9 +3,9 @@ package http
 import (
 	"strconv"
 
-	_ "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/stats/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
+	_ "github.com/Roisfaozi/queue-base/internal/modules/stats/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/stats/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 

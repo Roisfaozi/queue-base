@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"testing"
 
-	apiKeyModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/e2e/setup"
-	integrationSetup "github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
+	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
+	integrationSetup "github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

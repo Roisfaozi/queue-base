@@ -1,7 +1,7 @@
 package http
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/middleware"
+	"github.com/Roisfaozi/queue-base/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 

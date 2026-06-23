@@ -8,10 +8,10 @@ import (
 	"os"
 	"testing"
 
-	auditModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/audit/test/mocks"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/handlers"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/worker/tasks"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/audit/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/worker/handlers"
+	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -141,7 +141,7 @@ func TestAuditTaskHandler_ProcessTaskAuditLogExport(t *testing.T) {
 		uc, handler := setupAuditHandlerTest()
 
 		payload := auditModel.AuditLogExportPayload{
-			UserID:   "user123",
+			UserID: "user123",
 		}
 		b, _ := json.Marshal(payload)
 		task := asynq.NewTask(tasks.TypeAuditLogExport, b)

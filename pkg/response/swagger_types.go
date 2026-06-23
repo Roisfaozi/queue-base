@@ -1,13 +1,13 @@
 package response
 
 import (
-	accessModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/access/model"
-	apiKeyModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/model"
-	authModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/model"
-	orgModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model"
-	roleModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/model"
-	userModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/model"
-	webhookModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/webhook/model"
+	accessModel "github.com/Roisfaozi/queue-base/internal/modules/access/model"
+	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
+	authModel "github.com/Roisfaozi/queue-base/internal/modules/auth/model"
+	orgModel "github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	roleModel "github.com/Roisfaozi/queue-base/internal/modules/role/model"
+	userModel "github.com/Roisfaozi/queue-base/internal/modules/user/model"
+	webhookModel "github.com/Roisfaozi/queue-base/internal/modules/webhook/model"
 )
 
 // SwaggerSuccessResponseWrapper is a generic success response wrapper for Swagger documentation

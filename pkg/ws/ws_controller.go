@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	userRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/user/repository"
-	_ "github.com/Roisfaozi/go-clean-boilerplate/pkg/response"
+	userRepo "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
+	_ "github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"

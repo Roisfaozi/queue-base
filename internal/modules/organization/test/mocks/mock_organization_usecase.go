@@ -7,8 +7,8 @@ package mocks
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	mock "github.com/stretchr/testify/mock"
 )
 

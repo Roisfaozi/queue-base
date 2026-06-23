@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/settings/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
+	"github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )

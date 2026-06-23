@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/project/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/project/entity"
 	"github.com/stretchr/testify/mock"
 )
 

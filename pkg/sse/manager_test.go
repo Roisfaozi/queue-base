@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/sse"
+	"github.com/Roisfaozi/queue-base/pkg/sse"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

@@ -7,12 +7,12 @@ import (
 	"context"
 	"testing"
 
-	orgModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/model"
-	orgRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
-	orgUsecase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/usecase"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
-	e2eSetup "github.com/Roisfaozi/go-clean-boilerplate/tests/e2e/setup"
-	"github.com/Roisfaozi/go-clean-boilerplate/tests/integration/setup"
+	orgModel "github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	orgRepo "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	orgUsecase "github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/tx"
+	e2eSetup "github.com/Roisfaozi/queue-base/tests/e2e/setup"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

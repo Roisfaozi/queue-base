@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/permission/model"
-	roleEntity "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/role/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/permission/model"
+	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

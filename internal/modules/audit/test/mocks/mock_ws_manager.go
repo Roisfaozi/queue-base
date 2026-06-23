@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/stretchr/testify/mock"
 )
 

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/auth/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/sse"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/ws"
+	"github.com/Roisfaozi/queue-base/internal/modules/auth/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/auth/repository"
+	"github.com/Roisfaozi/queue-base/pkg/sse"
+	"github.com/Roisfaozi/queue-base/pkg/ws"
 	"github.com/sirupsen/logrus"
 )
 

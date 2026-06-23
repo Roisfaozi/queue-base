@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/entity"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
-	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/repository"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
-	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/repository"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
 )
 
