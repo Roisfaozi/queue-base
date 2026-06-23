@@ -7,6 +7,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
@@ -21,17 +22,27 @@ type CounterUseCase interface {
 }
 
 type counterUseCase struct {
-	repo repository.CounterRepository
+	repo       repository.CounterRepository
+	branchRepo branchRepository.BranchRepository
 }
 
-func NewCounterUseCase(repo repository.CounterRepository) CounterUseCase {
-	return &counterUseCase{repo: repo}
+func NewCounterUseCase(repo repository.CounterRepository, branchRepo branchRepository.BranchRepository) CounterUseCase {
+	return &counterUseCase{repo: repo, branchRepo: branchRepo}
 }
 
 func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCounterRequest) (*model.CounterResponse, error) {
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" {
 		return nil, exception.ErrBadRequest
+	}
+	if req == nil || req.BranchID == "" {
+		return nil, exception.ErrBadRequest
+	}
+	if u.branchRepo == nil {
+		return nil, exception.ErrForbidden
+	}
+	if _, err := u.branchRepo.FindByID(ctx, tenantID, req.BranchID); err != nil {
+		return nil, exception.ErrForbidden
 	}
 	req.Sanitize()
 	now := time.Now().UnixMilli()
@@ -82,6 +93,9 @@ func (u *counterUseCase) ListCounters(ctx context.Context) ([]model.CounterRespo
 func (u *counterUseCase) UpdateCounter(ctx context.Context, counterID string, req *model.UpdateCounterRequest) (*model.CounterResponse, error) {
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || counterID == "" {
+		return nil, exception.ErrBadRequest
+	}
+	if req == nil {
 		return nil, exception.ErrBadRequest
 	}
 	req.Sanitize()
