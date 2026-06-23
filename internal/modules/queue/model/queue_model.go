@@ -47,5 +47,7 @@ type QueueTransitionRequest struct {
 }
 
 type ListQueuesRequest struct {
-	Status string `form:"status"`
+	Status    string `form:"status"`
+	QueueDate string `form:"queue_date"`
+	ServiceID string `form:"service_id"`
 }

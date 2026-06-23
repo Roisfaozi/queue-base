@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/entity"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
 	"github.com/glebarez/sqlite"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -109,4 +111,23 @@ func TestQueueRepository_UpdateQueueState_RollsBackOnJourneyError(t *testing.T) 
 
 	var savedVisit entity.VisitJourney
 	require.Error(t, db.First(&savedVisit, "id = ?", "v-1").Error)
+}
+
+func TestQueueRepository_ListQueues_FiltersByDateAndTenantBranch(t *testing.T) {
+	db := newQueueTestDB(t)
+	repo := NewQueueRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A001", QueueNo: 1, CurrentJourneyID: "j-1"}).Error)
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-2", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A002", QueueNo: 2, CurrentJourneyID: "j-2"}).Error)
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-3", TenantID: "tenant-2", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A003", QueueNo: 3, CurrentJourneyID: "j-3"}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-2", QueueID: "q-2", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-3", QueueID: "q-3", TenantID: "tenant-2", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+
+	queues, err := repo.ListQueues(ctx, "tenant-1", "branch-1", model.ListQueuesRequest{Status: entity.QueueStatusWaiting, QueueDate: "2026-06-24", ServiceID: "svc-1"})
+	require.NoError(t, err)
+	require.Len(t, queues, 2)
+	assert.Contains(t, []string{queues[0].ID, queues[1].ID}, "q-1")
+	assert.Contains(t, []string{queues[0].ID, queues[1].ID}, "q-2")
 }

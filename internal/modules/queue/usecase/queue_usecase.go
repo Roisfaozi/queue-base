@@ -21,7 +21,7 @@ type SettingsResolver interface {
 
 type QueueUseCase interface {
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
-	ListQueues(ctx context.Context, status string) ([]model.QueueResponse, error)
+	ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error)
 	GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error)
 	ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error)
 	TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error)
@@ -36,13 +36,13 @@ func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsR
 	return &queueUseCase{repo: repo, settingsResolver: settingsResolver}
 }
 
-func (u *queueUseCase) ListQueues(ctx context.Context, status string) ([]model.QueueResponse, error) {
+func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
 	tenantID := database.GetTenantID(ctx)
 	branchID := database.GetBranchID(ctx)
 	if tenantID == "" || branchID == "" {
 		return nil, exception.ErrBadRequest
 	}
-	queues, err := u.repo.ListQueues(ctx, tenantID, branchID, status)
+	queues, err := u.repo.ListQueues(ctx, tenantID, branchID, req)
 	if err != nil {
 		return nil, err
 	}

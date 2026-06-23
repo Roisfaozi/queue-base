@@ -18,6 +18,7 @@ import (
 
 type stubQueueControllerUseCase struct {
 	listCalled       bool
+	listReq          model.ListQueuesRequest
 	getCalled        bool
 	getID            string
 	listRes          []model.QueueResponse
@@ -33,8 +34,9 @@ func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *mod
 	return nil, nil
 }
 
-func (s *stubQueueControllerUseCase) ListQueues(ctx context.Context, status string) ([]model.QueueResponse, error) {
+func (s *stubQueueControllerUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
 	s.listCalled = true
+	s.listReq = req
 	return s.listRes, nil
 }
 
@@ -118,4 +120,27 @@ func TestQueueController_GetAll(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.True(t, uc.listCalled)
+	assert.Equal(t, model.ListQueuesRequest{Status: "waiting"}, uc.listReq)
+}
+
+func TestQueueController_GetAll_WithFilters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1", QueueDate: "2026-06-24"}}}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/queues", controller.GetAll)
+
+	req, _ := http.NewRequest("GET", "/queues?status=waiting&queue_date=2026-06-24&service_id=s-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, uc.listCalled)
+	assert.Equal(t, model.ListQueuesRequest{Status: "waiting", QueueDate: "2026-06-24", ServiceID: "s-1"}, uc.listReq)
 }

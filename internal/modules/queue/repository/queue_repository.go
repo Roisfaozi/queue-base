@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/entity"
+	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/model"
 	txpkg "github.com/Roisfaozi/go-clean-boilerplate/pkg/tx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -14,7 +15,7 @@ type QueueRepository interface {
 	NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error)
 	ExistsRegistration(ctx context.Context, tenantID, branchID, queueDate, patientID, patientName string) (bool, error)
 	CreateRegistration(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error
-	ListQueues(ctx context.Context, tenantID, branchID, status string) ([]*entity.Queue, error)
+	ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error)
 	FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
 	FindCurrentJourney(ctx context.Context, queueID, journeyID string) (*entity.QueueJourney, error)
 	NextJourneySequence(ctx context.Context, queueID string) (int, error)
@@ -109,11 +110,17 @@ func (r *queueRepository) CreateRegistration(ctx context.Context, queue *entity.
 	})
 }
 
-func (r *queueRepository) ListQueues(ctx context.Context, tenantID, branchID, status string) ([]*entity.Queue, error) {
+func (r *queueRepository) ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error) {
 	var queues []*entity.Queue
-	query := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ?", tenantID, branchID)
-	if status != "" {
-		query = query.Where("status = ?", status)
+	query := r.getDB(ctx).Model(&entity.Queue{}).Where("queues.tenant_id = ? AND queues.branch_id = ?", tenantID, branchID)
+	if req.Status != "" {
+		query = query.Where("queues.status = ?", req.Status)
+	}
+	if req.QueueDate != "" {
+		query = query.Where("queues.queue_date = ?", req.QueueDate)
+	}
+	if req.ServiceID != "" {
+		query = query.Joins("JOIN queue_journeys ON queue_journeys.queue_id = queues.id").Where("queue_journeys.service_id = ?", req.ServiceID)
 	}
 	if err := query.Find(&queues).Error; err != nil {
 		return nil, err
@@ -147,8 +154,12 @@ func (r *queueRepository) NextJourneySequence(ctx context.Context, queueID strin
 
 func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
 	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt}).Error; err != nil {
-			return err
+		result := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
 		}
 		if err := tx.Create(nextJourney).Error; err != nil {
 			return err
@@ -162,11 +173,19 @@ func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Qu
 
 func (r *queueRepository) UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
 	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&entity.Queue{}).Where("id = ?", queue.ID).Updates(map[string]any{"status": queue.Status, "updated_at": queue.UpdatedAt}).Error; err != nil {
-			return err
+		queueResult := tx.Model(&entity.Queue{}).Where("id = ?", queue.ID).Updates(map[string]any{"status": queue.Status, "updated_at": queue.UpdatedAt})
+		if queueResult.Error != nil {
+			return queueResult.Error
 		}
-		if err := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt}).Error; err != nil {
-			return err
+		if queueResult.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		journeyResult := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt})
+		if journeyResult.Error != nil {
+			return journeyResult.Error
+		}
+		if journeyResult.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
 		}
 		return tx.Create(visit).Error
 	})

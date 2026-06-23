@@ -20,6 +20,7 @@ type stubQueueRepo struct {
 	err     error
 	seenNum int
 	exists  bool
+	listReq model.ListQueuesRequest
 }
 
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
@@ -41,18 +42,26 @@ func (s *stubQueueRepo) CreateRegistration(ctx context.Context, queue *entity.Qu
 	return s.err
 }
 
-func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID, status string) ([]*entity.Queue, error) {
+func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error) {
+	s.listReq = req
 	if s.err != nil {
 		return nil, s.err
 	}
-	if status == "" {
+	if req.Status == "" && req.QueueDate == "" && req.ServiceID == "" {
 		return s.queues, nil
 	}
 	filtered := make([]*entity.Queue, 0)
 	for _, queue := range s.queues {
-		if queue.Status == status {
-			filtered = append(filtered, queue)
+		if req.Status != "" && queue.Status != req.Status {
+			continue
 		}
+		if req.QueueDate != "" && queue.QueueDate != req.QueueDate {
+			continue
+		}
+		if req.ServiceID != "" && queue.CurrentJourneyID != req.ServiceID {
+			continue
+		}
+		filtered = append(filtered, queue)
 	}
 	return filtered, nil
 }
@@ -286,7 +295,7 @@ func TestListQueues_Success(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
-	res, err := uc.ListQueues(ctx, "")
+	res, err := uc.ListQueues(ctx, model.ListQueuesRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, "q-1", res[0].ID)
@@ -296,7 +305,7 @@ func TestListQueues_NegativeMissingTenantOrBranch(t *testing.T) {
 	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1"}}}
 	uc := NewQueueUseCase(repo, nil)
 
-	_, err := uc.ListQueues(context.Background(), "")
+	_, err := uc.ListQueues(context.Background(), model.ListQueuesRequest{})
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 }
 
@@ -306,10 +315,34 @@ func TestListQueues_EdgeStatusFilter(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
-	res, err := uc.ListQueues(ctx, entity.QueueStatusCompleted)
+	res, err := uc.ListQueues(ctx, model.ListQueuesRequest{Status: entity.QueueStatusCompleted})
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, "q-2", res[0].ID)
+}
+
+func TestListQueues_PositiveQueueDateFilter(t *testing.T) {
+	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-23", Status: entity.QueueStatusWaiting}}}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.ListQueues(ctx, model.ListQueuesRequest{QueueDate: "2026-06-24"})
+	assert.NoError(t, err)
+	assert.Len(t, res, 1)
+	assert.Equal(t, "q-1", res[0].ID)
+}
+
+func TestListQueues_VulnerabilityPassesScopedFiltersOnly(t *testing.T) {
+	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-safe")
+	ctx = database.SetBranchContext(ctx, "branch-safe")
+	req := model.ListQueuesRequest{Status: entity.QueueStatusWaiting, QueueDate: "2026-06-24", ServiceID: "svc-1"}
+
+	_, err := uc.ListQueues(ctx, req)
+	assert.NoError(t, err)
+	assert.Equal(t, req, repo.listReq)
 }
 
 func TestGetQueueByID_Success(t *testing.T) {

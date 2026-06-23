@@ -43,7 +43,7 @@ func (h *QueueController) GetAll(c *gin.Context) {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
 	}
-	res, err := h.useCase.ListQueues(c.Request.Context(), req.Status)
+	res, err := h.useCase.ListQueues(c.Request.Context(), req)
 	if err != nil {
 		response.HandleError(c, err, "failed to get queues")
 		return
