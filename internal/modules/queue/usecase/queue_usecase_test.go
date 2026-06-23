@@ -15,6 +15,7 @@ import (
 type stubQueueRepo struct {
 	q       *entity.Queue
 	j       *entity.QueueJourney
+	visit   *entity.VisitJourney
 	err     error
 	seenNum int
 	exists  bool
@@ -66,6 +67,14 @@ func (s *stubQueueRepo) NextJourneySequence(ctx context.Context, queueID string)
 func (s *stubQueueRepo) CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
 	s.q = queue
 	s.j = nextJourney
+	s.visit = visit
+	return s.err
+}
+
+func (s *stubQueueRepo) UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
+	s.q = queue
+	s.j = currentJourney
+	s.visit = visit
 	return s.err
 }
 
@@ -212,4 +221,53 @@ func TestComputeBusinessQueueDate_DefaultResetTime(t *testing.T) {
 		got := computeBusinessQueueDate(now, "bad")
 		assert.Equal(t, "2026-06-24", got)
 	})
+}
+
+func TestTransitionQueue_SuccessCalling(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+	}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCall})
+	assert.NoError(t, err)
+	assert.Equal(t, entity.QueueStatusCalling, res.Status)
+	assert.Equal(t, entity.JourneyStatusCalling, repo.j.Status)
+	assert.Equal(t, "call", repo.visit.EventType)
+}
+
+func TestTransitionQueue_NegativeInvalidStateChange(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCompleted},
+	}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCall})
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
+func TestTransitionQueue_EdgeServingFromCalling(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCalling},
+	}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionServe})
+	assert.NoError(t, err)
+	assert.Equal(t, entity.QueueStatusServing, res.Status)
+}
+
+func TestTransitionQueue_SecurityCrossTenantRejected(t *testing.T) {
+	repo := &stubQueueRepo{err: exception.ErrNotFound}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "other-tenant")
+
+	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCancel})
+	assert.ErrorIs(t, err, exception.ErrNotFound)
 }

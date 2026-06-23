@@ -33,3 +33,15 @@ type ForwardQueueRequest struct {
 	DestinationServiceID string `json:"destination_service_id" validate:"required,uuid4"`
 	DestinationCounterID string `json:"destination_counter_id" validate:"omitempty,uuid4"`
 }
+
+const (
+	QueueActionCall     = "call"
+	QueueActionServe    = "serve"
+	QueueActionComplete = "complete"
+	QueueActionSkip     = "skip"
+	QueueActionCancel   = "cancel"
+)
+
+type QueueTransitionRequest struct {
+	Action string `json:"action" validate:"required,oneof=call serve complete skip cancel"`
+}

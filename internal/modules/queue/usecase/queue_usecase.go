@@ -22,6 +22,7 @@ type SettingsResolver interface {
 type QueueUseCase interface {
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
 	ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error)
+	TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error)
 }
 
 type queueUseCase struct {
@@ -216,4 +217,72 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		CreatedAt:        queue.CreatedAt,
 		UpdatedAt:        queue.UpdatedAt,
 	}, nil
+}
+
+func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error) {
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" || queueID == "" || req == nil {
+		return nil, exception.ErrBadRequest
+	}
+
+	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
+	if err != nil || queue == nil {
+		return nil, exception.ErrNotFound
+	}
+	currentJourney, err := u.repo.FindCurrentJourney(ctx, queue.ID, queue.CurrentJourneyID)
+	if err != nil || currentJourney == nil {
+		return nil, exception.ErrNotFound
+	}
+
+	nowMs := time.Now().UnixMilli()
+	visit := &entity.VisitJourney{ID: uuid.New().String(), QueueID: queue.ID, TenantID: tenantID, CreatedAt: nowMs}
+
+	switch req.Action {
+	case model.QueueActionCall:
+		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusSkipped {
+			return nil, exception.ErrBadRequest
+		}
+		queue.Status = entity.QueueStatusCalling
+		currentJourney.Status = entity.JourneyStatusCalling
+		visit.EventType = "call"
+	case model.QueueActionServe:
+		if queue.Status != entity.QueueStatusCalling {
+			return nil, exception.ErrBadRequest
+		}
+		queue.Status = entity.QueueStatusServing
+		currentJourney.Status = entity.JourneyStatusServing
+		visit.EventType = "serve"
+	case model.QueueActionComplete:
+		if queue.Status != entity.QueueStatusServing {
+			return nil, exception.ErrBadRequest
+		}
+		queue.Status = entity.QueueStatusCompleted
+		currentJourney.Status = entity.JourneyStatusCompleted
+		visit.EventType = "complete"
+	case model.QueueActionSkip:
+		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusCalling {
+			return nil, exception.ErrBadRequest
+		}
+		queue.Status = entity.QueueStatusSkipped
+		currentJourney.Status = entity.JourneyStatusSkipped
+		visit.EventType = "skip"
+	case model.QueueActionCancel:
+		if queue.Status == entity.QueueStatusCompleted {
+			return nil, exception.ErrBadRequest
+		}
+		queue.Status = entity.QueueStatusCanceled
+		currentJourney.Status = entity.JourneyStatusCanceled
+		visit.EventType = "cancel"
+	default:
+		return nil, exception.ErrBadRequest
+	}
+
+	queue.UpdatedAt = nowMs
+	currentJourney.UpdatedAt = nowMs
+
+	if err := u.repo.UpdateQueueState(ctx, queue, currentJourney, visit); err != nil {
+		return nil, err
+	}
+
+	return &model.QueueResponse{ID: queue.ID, TenantID: queue.TenantID, BranchID: queue.BranchID, QueueDate: queue.QueueDate, TicketNo: queue.TicketNo, QueueNo: queue.QueueNo, PatientID: queue.PatientID, PatientName: queue.PatientName, Status: queue.Status, CurrentJourneyID: queue.CurrentJourneyID, CreatedAt: queue.CreatedAt, UpdatedAt: queue.UpdatedAt}, nil
 }

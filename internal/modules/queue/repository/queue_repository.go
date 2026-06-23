@@ -18,6 +18,7 @@ type QueueRepository interface {
 	FindCurrentJourney(ctx context.Context, queueID, journeyID string) (*entity.QueueJourney, error)
 	NextJourneySequence(ctx context.Context, queueID string) (int, error)
 	CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error
+	UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 }
 
 type queueRepository struct {
@@ -143,5 +144,17 @@ func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Qu
 			return err
 		}
 		return tx.Model(&entity.Queue{}).Where("id = ?", queue.ID).Updates(map[string]any{"current_journey_id": queue.CurrentJourneyID, "updated_at": queue.UpdatedAt}).Error
+	})
+}
+
+func (r *queueRepository) UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
+	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&entity.Queue{}).Where("id = ?", queue.ID).Updates(map[string]any{"status": queue.Status, "updated_at": queue.UpdatedAt}).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt}).Error; err != nil {
+			return err
+		}
+		return tx.Create(visit).Error
 	})
 }
