@@ -22,7 +22,7 @@ Important distinction:
 - Root workspace package name: `casbin-monorepo` from `package.json`.
 - Root package manager: `pnpm@10.8.0` from `package.json`.
 - Root build orchestrator: `turbo` from root scripts in `package.json`.
-- Primary backend module: Go module `github.com/Roisfaozi/go-clean-boilerplate` from `go.mod`.
+- Primary backend module: Go module `github.com/Roisfaozi/queue-base` from `go.mod`.
 - Backend entrypoint: `cmd/api/main.go`.
 - Secondary Go entrypoint: `cmd/gen/main.go` for module scaffolding.
 - Frontend app packages present:
