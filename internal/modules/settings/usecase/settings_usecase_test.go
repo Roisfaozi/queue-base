@@ -83,3 +83,45 @@ func TestResolveSettingInheritance(t *testing.T) {
 		assert.Equal(t, "06:00", res.Value)
 	})
 }
+
+func TestResolveWorkflowSettingInheritance(t *testing.T) {
+	repo := &stubSettingsRepo{
+		settings: map[string]*entity.Setting{
+			"tenant:t-1:pharmacy_flow_enabled":              {ID: "1", Value: "false"},
+			"branch:b-1:pharmacy_flow_enabled":              {ID: "2", Value: "true"},
+			"service:svc-1:require_counter_for_service":     {ID: "3", Value: "true"},
+			"tenant:t-1:require_counter_for_service":        {ID: "4", Value: "false"},
+			"counter:counter-1:require_counter_for_service": {ID: "5", Value: "false"},
+		},
+	}
+	uc := NewSettingsUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	t.Run("Branch overrides tenant for pharmacy flow", func(t *testing.T) {
+		res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+			Key:      model.SettingKeyPharmacyFlowEnabled,
+			BranchID: "b-1",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "true", res.Value)
+	})
+
+	t.Run("Service overrides tenant for require counter", func(t *testing.T) {
+		res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+			Key:       model.SettingKeyRequireCounterForService,
+			ServiceID: "svc-1",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "true", res.Value)
+	})
+
+	t.Run("Counter overrides service for require counter", func(t *testing.T) {
+		res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+			Key:       model.SettingKeyRequireCounterForService,
+			ServiceID: "svc-1",
+			CounterID: "counter-1",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "false", res.Value)
+	})
+}
