@@ -54,3 +54,21 @@ func (h *QueueController) Forward(c *gin.Context) {
 	}
 	response.Success(c, res)
 }
+
+func (h *QueueController) Transition(c *gin.Context) {
+	var req model.QueueTransitionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	res, err := h.useCase.TransitionQueue(c.Request.Context(), c.Param("id"), &req)
+	if err != nil {
+		response.HandleError(c, err, "failed to transition queue")
+		return
+	}
+	response.Success(c, res)
+}

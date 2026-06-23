@@ -10,5 +10,6 @@ func RegisterQueueRoutes(router *gin.RouterGroup, controller *QueueController, a
 	{
 		queueGroup.POST("", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Register)
 		queueGroup.POST("/:id/forward", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Forward)
+		queueGroup.POST("/:id/transition", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Transition)
 	}
 }
