@@ -55,6 +55,22 @@ func (h *QueueController) Forward(c *gin.Context) {
 	response.Success(c, res)
 }
 
+// Transition godoc
+// @Summary      Transition queue state
+// @Description  Moves queue state through call, serve, complete, skip, or cancel under tenant scope.
+// @Tags         queues
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Queue ID"
+// @Param        X-Organization-ID header string true "Tenant ID"
+// @Param        body body model.QueueTransitionRequest true "Transition request"
+// @Success      200  {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      404  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /queues/{id}/transition [post]
+
 func (h *QueueController) Transition(c *gin.Context) {
 	var req model.QueueTransitionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

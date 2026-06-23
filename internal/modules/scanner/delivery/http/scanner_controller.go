@@ -52,3 +52,20 @@ func (h *ScannerController) CheckIn(c *gin.Context) {
 	}
 	response.Success(c, res)
 }
+
+// CheckIn godoc
+// @Summary      Scanner check-in
+// @Description  Scanner entrypoint for queue registration or forward transition using client headers.
+// @Tags         scanner
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        X-Client-ID header string true "Scanner client ID"
+// @Param        X-API-Key header string true "Scanner API key"
+// @Param        body body model.CheckInRequest true "Scanner payload"
+// @Success      200  {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      401  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      404  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /scanner/check-in [post]
