@@ -739,3 +739,42 @@ func TestGetVisitJourneys_NegativeEmptyQueueID(t *testing.T) {
 	_, err := uc.GetVisitJourneys(ctx, "")
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 }
+
+func TestTransitionQueue_SuccessCancel(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCalling},
+	}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCancel})
+	assert.NoError(t, err)
+	assert.Equal(t, entity.QueueStatusCanceled, res.Status)
+}
+
+func TestTransitionQueue_SuccessSkip(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+	}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionSkip})
+	assert.NoError(t, err)
+	assert.Equal(t, entity.QueueStatusSkipped, res.Status)
+}
+
+func TestTransitionQueue_EdgeCompleteAfterServing(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusServing, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusServing},
+	}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionComplete})
+	assert.NoError(t, err)
+	assert.Equal(t, entity.QueueStatusCompleted, res.Status)
+}

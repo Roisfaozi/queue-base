@@ -260,3 +260,19 @@ func TestQueueController_GetVisitJourneysRejectsMissingID(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestQueueController_TransitionRejectsMissingID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.POST("/queues/:id/transition", controller.Transition)
+
+	body, _ := json.Marshal(model.QueueTransitionRequest{Action: model.QueueActionCall})
+	req, _ := http.NewRequest("POST", "/queues//transition", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.False(t, uc.transitionCalled)
+}

@@ -101,6 +101,10 @@ func (h *QueueController) Transition(c *gin.Context) {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
 		return
 	}
+	if c.Param("id") == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing queue id")
+		return
+	}
 	if err := h.validate.Struct(req); err != nil {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
