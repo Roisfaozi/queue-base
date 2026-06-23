@@ -11,6 +11,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
@@ -102,4 +103,28 @@ func TestScannerController_CheckIn_ForwardsPharmacyPayload(t *testing.T) {
 	assert.Equal(t, "forward", uc.last.Action)
 	assert.Equal(t, "pharmacy-svc", uc.last.DestinationServiceID)
 	assert.Equal(t, "counter-1", uc.last.DestinationCounterID)
+}
+
+func TestScannerController_CheckIn_PropagatesWorkflowForbidden(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubScannerControllerUseCase{err: exception.ErrForbidden}
+	controller := NewScannerController(uc, validator.New())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.POST("/scanner/check-in", controller.CheckIn)
+
+	body, _ := json.Marshal(model.CheckInRequest{Action: "forward", QueueID: "q-1", DestinationServiceID: "pharmacy-svc", DestinationCounterID: "counter-1"})
+	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
+	req.Header.Set("X-Client-ID", "client-1")
+	req.Header.Set("X-API-Key", "key-1")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.True(t, uc.called)
 }

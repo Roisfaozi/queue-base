@@ -68,6 +68,7 @@ func (s *stubQueueRepo) ExistsRegistration(ctx context.Context, tenantID, branch
 func (s *stubQueueRepo) CreateRegistration(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error {
 	s.q = queue
 	s.j = journey
+	s.visit = visit
 	return s.err
 }
 
@@ -422,6 +423,27 @@ func TestForwardQueue_PharmacyFlowKeepsSingleQueueRecord(t *testing.T) {
 	assert.NotEmpty(t, repo.q)
 	assert.NotEqual(t, "j-1", repo.j.ID)
 	assert.NotEmpty(t, repo.visit)
+}
+
+func TestRegisterQueue_PharmacyServiceStillCreatesSingleMasterQueue(t *testing.T) {
+	repo := &stubQueueRepo{}
+	settings := &stubSettingsResolver{values: map[string]string{
+		"queue_reset_time": "04:00",
+		"ticket_prefix":    "P",
+	}}
+	uc := NewQueueUseCase(repo, settings, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	req := &model.RegisterQueueRequest{ServiceID: "pharmacy-svc", PatientName: "John Doe"}
+
+	res, err := uc.RegisterQueue(ctx, req)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.NotEmpty(t, repo.q)
+	assert.NotEmpty(t, repo.j)
+	assert.NotEmpty(t, repo.visit)
+	assert.Equal(t, "P", repo.lastPrefix)
 }
 
 func TestComputeBusinessQueueDate_DefaultResetTime(t *testing.T) {
