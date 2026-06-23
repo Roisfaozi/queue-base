@@ -125,3 +125,74 @@ func TestResolveWorkflowSettingInheritance(t *testing.T) {
 		assert.Equal(t, "false", res.Value)
 	})
 }
+
+func TestResolveSettingMissingTenantReturnsError(t *testing.T) {
+	repo := &stubSettingsRepo{settings: map[string]*entity.Setting{}}
+	uc := NewSettingsUseCase(repo)
+
+	_, err := uc.ResolveSetting(context.Background(), &model.ResolveSettingRequest{Key: "reset_time"})
+	assert.Error(t, err)
+}
+
+func TestResolveSettingKeyNotFoundReturnsError(t *testing.T) {
+	repo := &stubSettingsRepo{settings: map[string]*entity.Setting{}}
+	uc := NewSettingsUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	_, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{Key: "nonexistent_key"})
+	assert.Error(t, err)
+}
+
+func TestResolveSettingFallsBackFromCounterToService(t *testing.T) {
+	repo := &stubSettingsRepo{
+		settings: map[string]*entity.Setting{
+			"service:svc-1:reset_time": {ID: "1", Value: "05:00"},
+		},
+	}
+	uc := NewSettingsUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+		Key:       "reset_time",
+		ServiceID: "svc-1",
+		CounterID: "no-counter-override",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "05:00", res.Value)
+}
+
+func TestResolveSettingFallsBackFromServiceToBranch(t *testing.T) {
+	repo := &stubSettingsRepo{
+		settings: map[string]*entity.Setting{
+			"branch:b-1:reset_time": {ID: "1", Value: "04:00"},
+		},
+	}
+	uc := NewSettingsUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+		Key:       "reset_time",
+		BranchID:  "b-1",
+		ServiceID: "no-svc-override",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "04:00", res.Value)
+}
+
+func TestResolveSettingPharmacyFlowFallsBackToTenant(t *testing.T) {
+	repo := &stubSettingsRepo{
+		settings: map[string]*entity.Setting{
+			"tenant:t-1:pharmacy_flow_enabled": {ID: "1", Value: "false"},
+		},
+	}
+	uc := NewSettingsUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.ResolveSetting(ctx, &model.ResolveSettingRequest{
+		Key:       model.SettingKeyPharmacyFlowEnabled,
+		BranchID:  "b-no-override",
+		ServiceID: "svc-no-override",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "false", res.Value)
+}

@@ -126,3 +126,62 @@ func TestCreateServiceRequiresTenantContextForPharmacyFlags(t *testing.T) {
 		t.Fatalf("expected ErrBadRequest, got %v", err)
 	}
 }
+
+func TestListServicesRequiresTenant(t *testing.T) {
+	uc := NewServiceUseCase(&stubServiceRepo{})
+	_, err := uc.ListServices(context.Background())
+	if !errors.Is(err, exception.ErrBadRequest) {
+		t.Fatalf("expected ErrBadRequest, got %v", err)
+	}
+}
+
+func TestDeleteServiceRequiresTenantAndID(t *testing.T) {
+	uc := NewServiceUseCase(&stubServiceRepo{})
+	err := uc.DeleteService(context.Background(), "svc-1")
+	if !errors.Is(err, exception.ErrBadRequest) {
+		t.Fatalf("expected ErrBadRequest no tenant, got %v", err)
+	}
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	err = uc.DeleteService(ctx, "")
+	if !errors.Is(err, exception.ErrBadRequest) {
+		t.Fatalf("expected ErrBadRequest empty id, got %v", err)
+	}
+}
+
+func TestUpdateServiceNotFoundReturnsError(t *testing.T) {
+	repo := &stubServiceRepo{err: errors.New("not found")}
+	uc := NewServiceUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	_, err := uc.UpdateService(ctx, "svc-1", &model.UpdateServiceRequest{})
+	if !errors.Is(err, exception.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestCreateServiceSanitizesCodeAndName(t *testing.T) {
+	repo := &stubServiceRepo{}
+	uc := NewServiceUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	_, err := uc.CreateService(ctx, &model.CreateServiceRequest{Code: " reg ", Name: " Registration "})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if repo.service == nil || repo.service.Code != "REG" {
+		t.Fatalf("expected sanitized code REG, got %v", repo.service)
+	}
+}
+
+func TestUpdateServiceSanitizesCode(t *testing.T) {
+	existing := &entity.Service{ID: "svc-1", TenantID: "tenant-1", Code: "OLD", Name: "Old", Status: entity.ServiceStatusActive}
+	repo := &stubServiceRepo{service: existing}
+	uc := NewServiceUseCase(repo)
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	code := " new "
+	res, err := uc.UpdateService(ctx, "svc-1", &model.UpdateServiceRequest{Code: &code})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if res.Code != "NEW" {
+		t.Fatalf("expected sanitized code NEW, got %s", res.Code)
+	}
+}
