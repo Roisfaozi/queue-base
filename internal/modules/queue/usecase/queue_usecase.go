@@ -114,7 +114,7 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		}
 	}
 	queueDateStr := computeBusinessQueueDate(now, resetTime)
-	prefix := "A" // FIXME: dynamic by service
+	prefix := resolveTicketPrefix(ctx, u.settingsResolver, branchID, req.ServiceID)
 
 	exists, err := u.repo.ExistsRegistration(ctx, tenantID, branchID, queueDateStr, req.PatientID, req.PatientName)
 	if err != nil {
@@ -177,6 +177,19 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 
 	res := mapQueueResponse(q)
 	return &res, nil
+}
+
+func resolveTicketPrefix(ctx context.Context, resolver SettingsResolver, branchID, serviceID string) string {
+	if resolver == nil {
+		return "A"
+	}
+	if resolved, err := resolver.Resolve(ctx, "ticket_prefix", branchID, serviceID, ""); err == nil && resolved != "" {
+		return resolved
+	}
+	if resolved, err := resolver.Resolve(ctx, "prefix", branchID, serviceID, ""); err == nil && resolved != "" {
+		return resolved
+	}
+	return "A"
 }
 
 func computeBusinessQueueDate(now time.Time, resetTime string) string {

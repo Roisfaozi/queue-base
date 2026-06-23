@@ -25,6 +25,7 @@ type stubQueueRepo struct {
 	journeyReq      model.QueueJourneyListRequest
 	journeyTenantID string
 	journeyBranchID string
+	lastPrefix      string
 }
 
 type stubSettingsResolver struct {
@@ -42,6 +43,7 @@ func (s *stubSettingsResolver) Resolve(ctx context.Context, key string, branchID
 
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
 	s.seenNum++
+	s.lastPrefix = prefix
 	if s.err != nil {
 		return 0, s.err
 	}
@@ -161,7 +163,6 @@ func TestRegisterQueue_UsesQueueResetTimeKeyFirst(t *testing.T) {
 
 	_, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
 	require.NoError(t, err)
-	require.Len(t, resolver.calls, 1)
 	assert.Equal(t, "queue_reset_time", resolver.calls[0])
 }
 
@@ -174,8 +175,49 @@ func TestRegisterQueue_FallbacksToLegacyResetTimeKey(t *testing.T) {
 
 	_, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
 	require.NoError(t, err)
-	require.Len(t, resolver.calls, 2)
-	assert.Equal(t, []string{"queue_reset_time", "reset_time"}, resolver.calls)
+	assert.Equal(t, []string{"queue_reset_time", "reset_time"}, resolver.calls[:2])
+}
+
+func TestRegisterQueue_UsesTicketPrefixSettingFirst(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"ticket_prefix": "JS"}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	assert.Equal(t, "JS", repo.lastPrefix)
+	assert.Equal(t, "JS001", res.TicketNo)
+	assert.Contains(t, resolver.calls, "ticket_prefix")
+}
+
+func TestRegisterQueue_FallbacksToLegacyPrefixKey(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{"prefix": "RX"}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	assert.Equal(t, "RX", repo.lastPrefix)
+	assert.Equal(t, "RX001", res.TicketNo)
+	assert.Contains(t, resolver.calls, "ticket_prefix")
+	assert.Contains(t, resolver.calls, "prefix")
+}
+
+func TestRegisterQueue_DefaultsPrefixToA(t *testing.T) {
+	repo := &stubQueueRepo{}
+	resolver := &stubSettingsResolver{values: map[string]string{}}
+	uc := NewQueueUseCase(repo, resolver)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
+	require.NoError(t, err)
+	assert.Equal(t, "A", repo.lastPrefix)
+	assert.Equal(t, "A001", res.TicketNo)
 }
 
 func TestRegisterQueue_DuplicateReturnsConflict(t *testing.T) {
