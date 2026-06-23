@@ -13,5 +13,7 @@ func RegisterQueueRoutes(router *gin.RouterGroup, controller *QueueController, a
 		queueGroup.GET("/:id", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetByID)
 		queueGroup.POST("/:id/forward", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Forward)
 		queueGroup.POST("/:id/transition", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Transition)
+		queueGroup.GET("/services/:service_id/queue-journeys", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetJourneysByService)
+		queueGroup.GET("/counters/:counter_id/queue-journeys", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetJourneysByCounter)
 	}
 }

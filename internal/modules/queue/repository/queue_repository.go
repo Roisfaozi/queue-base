@@ -16,6 +16,7 @@ type QueueRepository interface {
 	ExistsRegistration(ctx context.Context, tenantID, branchID, queueDate, patientID, patientName string) (bool, error)
 	CreateRegistration(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error
 	ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error)
+	ListActiveJourneys(ctx context.Context, tenantID, branchID string, req model.QueueJourneyListRequest) ([]*entity.QueueJourney, error)
 	FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
 	FindCurrentJourney(ctx context.Context, queueID, journeyID string) (*entity.QueueJourney, error)
 	NextJourneySequence(ctx context.Context, queueID string) (int, error)
@@ -126,6 +127,30 @@ func (r *queueRepository) ListQueues(ctx context.Context, tenantID, branchID str
 		return nil, err
 	}
 	return queues, nil
+}
+
+func (r *queueRepository) ListActiveJourneys(ctx context.Context, tenantID, branchID string, req model.QueueJourneyListRequest) ([]*entity.QueueJourney, error) {
+	var journeys []*entity.QueueJourney
+	query := r.getDB(ctx).Model(&entity.QueueJourney{}).
+		Joins("JOIN queues ON queues.id = queue_journeys.queue_id").
+		Where("queues.tenant_id = ? AND queues.branch_id = ?", tenantID, branchID).
+		Where("queue_journeys.status IN ?", []string{entity.JourneyStatusPending, entity.JourneyStatusCalling, entity.JourneyStatusServing, entity.JourneyStatusSkipped})
+	if req.QueueDate != "" {
+		query = query.Where("queues.queue_date = ?", req.QueueDate)
+	}
+	if req.Status != "" {
+		query = query.Where("queue_journeys.status = ?", req.Status)
+	}
+	if req.ServiceID != "" {
+		query = query.Where("queue_journeys.service_id = ?", req.ServiceID)
+	}
+	if req.CounterID != "" {
+		query = query.Where("queue_journeys.counter_id = ?", req.CounterID)
+	}
+	if err := query.Find(&journeys).Error; err != nil {
+		return nil, err
+	}
+	return journeys, nil
 }
 
 func (r *queueRepository) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {

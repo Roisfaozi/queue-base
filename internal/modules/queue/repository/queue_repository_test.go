@@ -131,3 +131,21 @@ func TestQueueRepository_ListQueues_FiltersByDateAndTenantBranch(t *testing.T) {
 	assert.Contains(t, []string{queues[0].ID, queues[1].ID}, "q-1")
 	assert.Contains(t, []string{queues[0].ID, queues[1].ID}, "q-2")
 }
+
+func TestQueueRepository_ListActiveJourneys_FiltersByTenantBranchServiceCounter(t *testing.T) {
+	db := newQueueTestDB(t)
+	repo := NewQueueRepository(db)
+	ctx := context.Background()
+
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A001", QueueNo: 1}).Error)
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-2", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A002", QueueNo: 2}).Error)
+	require.NoError(t, db.Create(&entity.Queue{ID: "q-3", TenantID: "tenant-2", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A003", QueueNo: 3}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "svc-1", CounterID: "counter-1", SeqNo: 1, Status: entity.JourneyStatusCalling}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-2", QueueID: "q-2", TenantID: "tenant-1", ServiceID: "svc-1", CounterID: "counter-2", SeqNo: 1, Status: entity.JourneyStatusCompleted}).Error)
+	require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-3", QueueID: "q-3", TenantID: "tenant-2", ServiceID: "svc-1", CounterID: "counter-1", SeqNo: 1, Status: entity.JourneyStatusCalling}).Error)
+
+	journeys, err := repo.ListActiveJourneys(ctx, "tenant-1", "branch-1", model.QueueJourneyListRequest{QueueDate: "2026-06-24", ServiceID: "svc-1", CounterID: "counter-1"})
+	require.NoError(t, err)
+	require.Len(t, journeys, 1)
+	assert.Equal(t, "j-1", journeys[0].ID)
+}

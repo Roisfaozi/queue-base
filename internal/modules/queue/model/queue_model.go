@@ -51,3 +51,21 @@ type ListQueuesRequest struct {
 	QueueDate string `form:"queue_date"`
 	ServiceID string `form:"service_id"`
 }
+
+type QueueJourneyListRequest struct {
+	QueueDate string `form:"queue_date"`
+	Status    string `form:"status"`
+	ServiceID string `form:"service_id"`
+	CounterID string `form:"counter_id"`
+}
+
+type QueueJourneyResponse struct {
+	ID        string `json:"id"`
+	QueueID   string `json:"queue_id"`
+	ServiceID string `json:"service_id"`
+	CounterID string `json:"counter_id,omitempty"`
+	SeqNo     int    `json:"seq_no"`
+	Status    string `json:"status"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
+}

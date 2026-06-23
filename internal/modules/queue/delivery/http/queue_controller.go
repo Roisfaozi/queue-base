@@ -111,3 +111,33 @@ func (h *QueueController) Transition(c *gin.Context) {
 	}
 	response.Success(c, res)
 }
+
+func (h *QueueController) GetJourneysByService(c *gin.Context) {
+	var req model.QueueJourneyListRequest
+	req.ServiceID = c.Param("service_id")
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
+		return
+	}
+	res, err := h.useCase.ListActiveJourneys(c.Request.Context(), req)
+	if err != nil {
+		response.HandleError(c, err, "failed to get queue journeys")
+		return
+	}
+	response.Success(c, res)
+}
+
+func (h *QueueController) GetJourneysByCounter(c *gin.Context) {
+	var req model.QueueJourneyListRequest
+	req.CounterID = c.Param("counter_id")
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
+		return
+	}
+	res, err := h.useCase.ListActiveJourneys(c.Request.Context(), req)
+	if err != nil {
+		response.HandleError(c, err, "failed to get queue journeys")
+		return
+	}
+	response.Success(c, res)
+}

@@ -10,17 +10,21 @@ import (
 	"github.com/Roisfaozi/go-clean-boilerplate/pkg/database"
 	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type stubQueueRepo struct {
-	q       *entity.Queue
-	queues  []*entity.Queue
-	j       *entity.QueueJourney
-	visit   *entity.VisitJourney
-	err     error
-	seenNum int
-	exists  bool
-	listReq model.ListQueuesRequest
+	q               *entity.Queue
+	queues          []*entity.Queue
+	j               *entity.QueueJourney
+	visit           *entity.VisitJourney
+	err             error
+	seenNum         int
+	exists          bool
+	listReq         model.ListQueuesRequest
+	journeyReq      model.QueueJourneyListRequest
+	journeyTenantID string
+	journeyBranchID string
 }
 
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
@@ -64,6 +68,16 @@ func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID strin
 		filtered = append(filtered, queue)
 	}
 	return filtered, nil
+}
+
+func (s *stubQueueRepo) ListActiveJourneys(ctx context.Context, tenantID, branchID string, req model.QueueJourneyListRequest) ([]*entity.QueueJourney, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	s.journeyReq = req
+	s.journeyTenantID = tenantID
+	s.journeyBranchID = branchID
+	return []*entity.QueueJourney{{ID: "j-1", QueueID: "q-1", TenantID: tenantID, ServiceID: req.ServiceID, CounterID: req.CounterID, SeqNo: 1, Status: entity.JourneyStatusCalling}}, nil
 }
 
 func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
@@ -343,6 +357,53 @@ func TestListQueues_VulnerabilityPassesScopedFiltersOnly(t *testing.T) {
 	_, err := uc.ListQueues(ctx, req)
 	assert.NoError(t, err)
 	assert.Equal(t, req, repo.listReq)
+}
+
+func TestListActiveJourneys_Success(t *testing.T) {
+	repo := &stubQueueRepo{}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.ListActiveJourneys(ctx, model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: "2026-06-24"})
+	assert.NoError(t, err)
+	require.Len(t, res, 1)
+	assert.Equal(t, "svc-1", res[0].ServiceID)
+	assert.Equal(t, entity.JourneyStatusCalling, res[0].Status)
+}
+
+func TestListActiveJourneys_NegativeMissingTenantOrBranch(t *testing.T) {
+	repo := &stubQueueRepo{}
+	uc := NewQueueUseCase(repo, nil)
+
+	_, err := uc.ListActiveJourneys(context.Background(), model.QueueJourneyListRequest{ServiceID: "svc-1"})
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
+func TestListActiveJourneys_EdgeCounterFilter(t *testing.T) {
+	repo := &stubQueueRepo{}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.ListActiveJourneys(ctx, model.QueueJourneyListRequest{CounterID: "counter-1"})
+	assert.NoError(t, err)
+	require.Len(t, res, 1)
+	assert.Equal(t, "counter-1", res[0].CounterID)
+}
+
+func TestListActiveJourneys_SecurityScopedTenantPassThrough(t *testing.T) {
+	repo := &stubQueueRepo{}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-safe")
+	ctx = database.SetBranchContext(ctx, "branch-safe")
+
+	res, err := uc.ListActiveJourneys(ctx, model.QueueJourneyListRequest{ServiceID: "svc-1"})
+	assert.NoError(t, err)
+	require.Len(t, res, 1)
+	assert.Equal(t, "tenant-safe", repo.journeyTenantID)
+	assert.Equal(t, "branch-safe", repo.journeyBranchID)
+	assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1"}, repo.journeyReq)
 }
 
 func TestGetQueueByID_Success(t *testing.T) {

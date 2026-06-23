@@ -25,6 +25,7 @@ type QueueUseCase interface {
 	GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error)
 	ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error)
 	TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error)
+	ListActiveJourneys(ctx context.Context, req model.QueueJourneyListRequest) ([]model.QueueJourneyResponse, error)
 }
 
 type queueUseCase struct {
@@ -49,6 +50,32 @@ func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesReque
 	res := make([]model.QueueResponse, len(queues))
 	for i, q := range queues {
 		res[i] = mapQueueResponse(q)
+	}
+	return res, nil
+}
+
+func (u *queueUseCase) ListActiveJourneys(ctx context.Context, req model.QueueJourneyListRequest) ([]model.QueueJourneyResponse, error) {
+	tenantID := database.GetTenantID(ctx)
+	branchID := database.GetBranchID(ctx)
+	if tenantID == "" || branchID == "" {
+		return nil, exception.ErrBadRequest
+	}
+	journeys, err := u.repo.ListActiveJourneys(ctx, tenantID, branchID, req)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]model.QueueJourneyResponse, len(journeys))
+	for i, journey := range journeys {
+		res[i] = model.QueueJourneyResponse{
+			ID:        journey.ID,
+			QueueID:   journey.QueueID,
+			ServiceID: journey.ServiceID,
+			CounterID: journey.CounterID,
+			SeqNo:     journey.SeqNo,
+			Status:    journey.Status,
+			CreatedAt: journey.CreatedAt,
+			UpdatedAt: journey.UpdatedAt,
+		}
 	}
 	return res, nil
 }
