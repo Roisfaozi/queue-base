@@ -136,3 +136,32 @@ func TestBranchController_UpdateSanitizesFields(t *testing.T) {
 	require.NotNil(t, uc.updateReq.Name)
 	assert.Equal(t, " Main Office ", *uc.updateReq.Name)
 }
+
+func TestBranchController_GetAllReturnsBranches(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubBranchControllerUseCase{listRes: []model.BranchResponse{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}}
+	controller := NewBranchController(uc, newBranchTestValidator(t))
+	router := gin.New()
+	router.GET("/branches", controller.GetAll)
+
+	req, _ := http.NewRequest("GET", "/branches", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"branch-1"`)
+}
+
+func TestBranchController_DeleteReturnsNoContent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubBranchControllerUseCase{}
+	controller := NewBranchController(uc, newBranchTestValidator(t))
+	router := gin.New()
+	router.DELETE("/branches/:id", controller.Delete)
+
+	req, _ := http.NewRequest("DELETE", "/branches/branch-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}

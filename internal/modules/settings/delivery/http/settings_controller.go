@@ -5,6 +5,7 @@ import (
 
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/Roisfaozi/queue-base/pkg/validation"
@@ -52,6 +53,10 @@ func (h *SettingsController) Resolve(c *gin.Context) {
 	var req model.ResolveSettingRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query parameters")
+		return
+	}
+	if database.GetTenantID(c.Request.Context()) == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {

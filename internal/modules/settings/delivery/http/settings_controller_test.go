@@ -106,6 +106,11 @@ func TestSettingsController_ResolveRejectsInvalidWorkflowScopeIDs(t *testing.T) 
 	uc := &stubSettingsControllerUseCase{}
 	controller := NewSettingsController(uc, newSettingsTestValidator(t))
 	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
 	router.GET("/settings/resolve", controller.Resolve)
 
 	req, _ := http.NewRequest("GET", "/settings/resolve?Key=pharmacy_flow_enabled&ServiceID=bad-id", nil)
@@ -114,4 +119,32 @@ func TestSettingsController_ResolveRejectsInvalidWorkflowScopeIDs(t *testing.T) 
 
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 	assert.Nil(t, uc.resolveReq)
+}
+
+func TestSettingsController_DeleteReturnsNoContent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubSettingsControllerUseCase{}
+	controller := NewSettingsController(uc, newSettingsTestValidator(t))
+	router := gin.New()
+	router.DELETE("/settings/:id", controller.Delete)
+
+	req, _ := http.NewRequest("DELETE", "/settings/set-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}
+
+func TestSettingsController_ResolveRejectsMissingTenantContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubSettingsControllerUseCase{}
+	controller := NewSettingsController(uc, newSettingsTestValidator(t))
+	router := gin.New()
+	router.GET("/settings/resolve", controller.Resolve)
+
+	req, _ := http.NewRequest("GET", "/settings/resolve?Key=reset_time", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

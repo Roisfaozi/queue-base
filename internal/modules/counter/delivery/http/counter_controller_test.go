@@ -137,3 +137,32 @@ func TestCounterController_UpdateCanToggleStatus(t *testing.T) {
 	require.NotNil(t, uc.updateReq.Status)
 	assert.Equal(t, "inactive", *uc.updateReq.Status)
 }
+
+func TestCounterController_GetAllReturnsCounters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubCounterControllerUseCase{listRes: []model.CounterResponse{{ID: "counter-1", BranchID: "b-1", Code: "A1"}}}
+	controller := NewCounterController(uc, newCounterTestValidator(t))
+	router := gin.New()
+	router.GET("/counters", controller.GetAll)
+
+	req, _ := http.NewRequest("GET", "/counters", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"counter-1"`)
+}
+
+func TestCounterController_DeleteReturnsNoContent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubCounterControllerUseCase{}
+	controller := NewCounterController(uc, newCounterTestValidator(t))
+	router := gin.New()
+	router.DELETE("/counters/:id", controller.Delete)
+
+	req, _ := http.NewRequest("DELETE", "/counters/counter-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}

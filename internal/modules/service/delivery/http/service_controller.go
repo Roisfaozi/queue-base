@@ -5,6 +5,7 @@ import (
 
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/Roisfaozi/queue-base/pkg/validation"
@@ -40,6 +41,10 @@ func (h *ServiceController) Create(c *gin.Context) {
 }
 
 func (h *ServiceController) GetAll(c *gin.Context) {
+	if database.GetTenantID(c.Request.Context()) == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
 	res, err := h.useCase.ListServices(c.Request.Context())
 	if err != nil {
 		response.HandleError(c, err, "failed to get services")

@@ -154,3 +154,31 @@ func TestServiceController_GetAllReturnsPharmacyFlags(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"is_pharmacy":true`)
 	assert.Contains(t, w.Body.String(), `"is_pharmacy_reception":false`)
 }
+
+func TestServiceController_DeleteReturnsNoContent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubServiceControllerUseCase{}
+	controller := NewServiceController(uc, newTestValidator(t))
+	router := gin.New()
+	router.DELETE("/services/:id", controller.Delete)
+
+	req, _ := http.NewRequest("DELETE", "/services/svc-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}
+
+func TestServiceController_GetAllRejectsMissingTenantContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubServiceControllerUseCase{}
+	controller := NewServiceController(uc, newTestValidator(t))
+	router := gin.New()
+	router.GET("/services", controller.GetAll)
+
+	req, _ := http.NewRequest("GET", "/services", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
