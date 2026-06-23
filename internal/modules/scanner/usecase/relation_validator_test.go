@@ -27,7 +27,10 @@ func (s stubBranchRepo) FindAll(ctx context.Context, tenantID string) ([]*branch
 func (s stubBranchRepo) Update(ctx context.Context, branch *branchEntity.Branch) error { return nil }
 func (s stubBranchRepo) Delete(ctx context.Context, tenantID, branchID string) error   { return nil }
 
-type stubServiceRepo struct{ err error }
+type stubServiceRepo struct {
+	err     error
+	service *serviceEntity.Service
+}
 
 func (s stubServiceRepo) Create(ctx context.Context, service *serviceEntity.Service) error {
 	return nil
@@ -35,6 +38,9 @@ func (s stubServiceRepo) Create(ctx context.Context, service *serviceEntity.Serv
 func (s stubServiceRepo) FindByID(ctx context.Context, tenantID, serviceID string) (*serviceEntity.Service, error) {
 	if s.err != nil {
 		return nil, s.err
+	}
+	if s.service != nil {
+		return s.service, nil
 	}
 	return &serviceEntity.Service{ID: serviceID, TenantID: tenantID}, nil
 }
@@ -109,5 +115,12 @@ func TestRelationValidator_ValidateNegativeRequireCounterSetting(t *testing.T) {
 	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"})
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "")
+	assert.ErrorIs(t, err, exception.ErrForbidden)
+}
+
+func TestRelationValidator_ValidateNegativePharmacyFlowDisabledForForward(t *testing.T) {
+	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "false"})
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
 	assert.ErrorIs(t, err, exception.ErrForbidden)
 }

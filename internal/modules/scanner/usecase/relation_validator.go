@@ -35,10 +35,17 @@ func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, se
 			return exception.ErrForbidden
 		}
 		requireCounter := service.IsPharmacy
+		pharmacyFlowEnabled := service.IsPharmacy
 		if v.settings != nil {
+			if value, resolveErr := v.settings.Resolve(ctx, settingsModel.SettingKeyPharmacyFlowEnabled, branchID, serviceID, counterID); resolveErr == nil {
+				pharmacyFlowEnabled = value == "true"
+			}
 			if value, resolveErr := v.settings.Resolve(ctx, settingsModel.SettingKeyRequireCounterForService, branchID, serviceID, counterID); resolveErr == nil {
 				requireCounter = value == "true"
 			}
+		}
+		if service.IsPharmacy && !pharmacyFlowEnabled {
+			return exception.ErrForbidden
 		}
 		if requireCounter && counterID == "" {
 			return exception.ErrForbidden
