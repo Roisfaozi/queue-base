@@ -19,6 +19,10 @@ type SettingsResolver interface {
 	Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error)
 }
 
+type RelationValidator interface {
+	Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error
+}
+
 type QueueUseCase interface {
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
 	ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error)
@@ -31,10 +35,11 @@ type QueueUseCase interface {
 type queueUseCase struct {
 	repo             repository.QueueRepository
 	settingsResolver SettingsResolver
+	validator        RelationValidator
 }
 
-func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver) QueueUseCase {
-	return &queueUseCase{repo: repo, settingsResolver: settingsResolver}
+func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver, validator RelationValidator) QueueUseCase {
+	return &queueUseCase{repo: repo, settingsResolver: settingsResolver, validator: validator}
 }
 
 func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
@@ -237,6 +242,12 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
 	if err != nil || queue == nil {
 		return nil, exception.ErrNotFound
+	}
+
+	if u.validator != nil {
+		if err := u.validator.Validate(ctx, tenantID, queue.BranchID, req.DestinationServiceID, req.DestinationCounterID); err != nil {
+			return nil, err
+		}
 	}
 
 	currentJourney, err := u.repo.FindCurrentJourney(ctx, queue.ID, queue.CurrentJourneyID)

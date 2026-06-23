@@ -1,9 +1,15 @@
 package queue
 
 import (
+	"context"
+
+	counterRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter/repository"
+	branchRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization/repository"
 	queueHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/delivery/http"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/repository"
 	"github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue/usecase"
+	serviceRepo "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service/repository"
+	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
@@ -14,9 +20,45 @@ type QueueModule struct {
 	QueueUseCase    usecase.QueueUseCase
 }
 
+type defaultRelationValidator struct {
+	branchRepo  branchRepo.BranchRepository
+	serviceRepo serviceRepo.ServiceRepository
+	counterRepo counterRepo.CounterRepository
+}
+
+func NewDefaultRelationValidator(db *gorm.DB) usecase.RelationValidator {
+	return &defaultRelationValidator{
+		branchRepo:  branchRepo.NewBranchRepository(db),
+		serviceRepo: serviceRepo.NewServiceRepository(db),
+		counterRepo: counterRepo.NewCounterRepository(db),
+	}
+}
+
+func (v *defaultRelationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
+	if _, err := v.branchRepo.FindByID(ctx, tenantID, branchID); err != nil {
+		return exception.ErrForbidden
+	}
+	if serviceID != "" {
+		if _, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID); err != nil {
+			return exception.ErrForbidden
+		}
+	}
+	if counterID != "" {
+		counter, err := v.counterRepo.FindByID(ctx, tenantID, counterID)
+		if err != nil {
+			return exception.ErrForbidden
+		}
+		if counter.BranchID != branchID {
+			return exception.ErrForbidden
+		}
+	}
+	return nil
+}
+
 func NewQueueModule(db *gorm.DB, validate *validator.Validate, settingsResolver usecase.SettingsResolver) *QueueModule {
 	repo := repository.NewQueueRepository(db)
-	uc := usecase.NewQueueUseCase(repo, settingsResolver)
+	relationValidator := NewDefaultRelationValidator(db)
+	uc := usecase.NewQueueUseCase(repo, settingsResolver, relationValidator)
 	ctrl := queueHttp.NewQueueController(uc, validate)
 	return &QueueModule{QueueController: ctrl, QueueRepo: repo, QueueUseCase: uc}
 }

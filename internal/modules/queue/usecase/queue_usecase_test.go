@@ -41,6 +41,14 @@ func (s *stubSettingsResolver) Resolve(ctx context.Context, key string, branchID
 	return "", exception.ErrNotFound
 }
 
+type stubRelationValidator struct {
+	err error
+}
+
+func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
+	return s.err
+}
+
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
 	s.seenNum++
 	s.lastPrefix = prefix
@@ -135,7 +143,7 @@ func (s *stubQueueRepo) UpdateQueueState(ctx context.Context, queue *entity.Queu
 
 func TestRegisterQueue_Success(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -157,7 +165,7 @@ func TestRegisterQueue_Success(t *testing.T) {
 func TestRegisterQueue_UsesQueueResetTimeKeyFirst(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"queue_reset_time": "05:00"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -169,7 +177,7 @@ func TestRegisterQueue_UsesQueueResetTimeKeyFirst(t *testing.T) {
 func TestRegisterQueue_FallbacksToLegacyResetTimeKey(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"reset_time": "05:00"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -181,7 +189,7 @@ func TestRegisterQueue_FallbacksToLegacyResetTimeKey(t *testing.T) {
 func TestRegisterQueue_UsesTicketPrefixSettingFirst(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"ticket_prefix": "JS"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -195,7 +203,7 @@ func TestRegisterQueue_UsesTicketPrefixSettingFirst(t *testing.T) {
 func TestRegisterQueue_FallbacksToLegacyPrefixKey(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"prefix": "RX"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -210,7 +218,7 @@ func TestRegisterQueue_FallbacksToLegacyPrefixKey(t *testing.T) {
 func TestRegisterQueue_DefaultsPrefixToA(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -223,7 +231,7 @@ func TestRegisterQueue_DefaultsPrefixToA(t *testing.T) {
 func TestRegisterQueue_UsesNumberingStrategySettingFirst(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"numbering_strategy": "sequential"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -236,7 +244,7 @@ func TestRegisterQueue_UsesNumberingStrategySettingFirst(t *testing.T) {
 func TestRegisterQueue_FallbacksToLegacyNumberingKey(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"numbering": "sequential"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -249,7 +257,7 @@ func TestRegisterQueue_FallbacksToLegacyNumberingKey(t *testing.T) {
 func TestRegisterQueue_EdgeInvalidNumberingStrategyFallsBackToSequential(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"numbering_strategy": "random"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -262,7 +270,7 @@ func TestRegisterQueue_EdgeInvalidNumberingStrategyFallsBackToSequential(t *test
 func TestRegisterQueue_SecurityNumberingStrategyDoesNotBypassTenantBranchScope(t *testing.T) {
 	repo := &stubQueueRepo{}
 	resolver := &stubSettingsResolver{values: map[string]string{"numbering_strategy": "sequential"}}
-	uc := NewQueueUseCase(repo, resolver)
+	uc := NewQueueUseCase(repo, resolver, nil)
 
 	_, err := uc.RegisterQueue(context.Background(), &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"})
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
@@ -270,7 +278,7 @@ func TestRegisterQueue_SecurityNumberingStrategyDoesNotBypassTenantBranchScope(t
 
 func TestRegisterQueue_DuplicateReturnsConflict(t *testing.T) {
 	repo := &stubQueueRepo{exists: true}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -280,7 +288,7 @@ func TestRegisterQueue_DuplicateReturnsConflict(t *testing.T) {
 
 func TestRegisterQueue_NoTenantOrBranch(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 
 	// Test no tenant
 	ctx := database.SetBranchContext(context.Background(), "b-1")
@@ -296,7 +304,7 @@ func TestRegisterQueue_NoTenantOrBranch(t *testing.T) {
 
 func TestRegisterQueue_Security_VulnerabilitySQLInjection(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -332,7 +340,7 @@ func TestForwardQueue_Success(t *testing.T) {
 			Status:    entity.JourneyStatusPending,
 		},
 	}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	res, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2"})
@@ -342,7 +350,7 @@ func TestForwardQueue_Success(t *testing.T) {
 }
 
 func TestForwardQueue_Negative_NoTenant(t *testing.T) {
-	uc := NewQueueUseCase(&stubQueueRepo{}, nil)
+	uc := NewQueueUseCase(&stubQueueRepo{}, nil, nil)
 	_, err := uc.ForwardQueue(context.Background(), "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2"})
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 }
@@ -352,7 +360,7 @@ func TestForwardQueue_Edge_SameServiceStillCreatesJourney(t *testing.T) {
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
 	}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	res, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-1"})
@@ -362,11 +370,25 @@ func TestForwardQueue_Edge_SameServiceStillCreatesJourney(t *testing.T) {
 
 func TestForwardQueue_Security_CrossTenantRejected(t *testing.T) {
 	repo := &stubQueueRepo{err: exception.ErrNotFound}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "other-tenant")
 
 	_, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2"})
 	assert.Error(t, err)
+}
+
+func TestForwardQueue_NegativeInvalidDestinationRelationRejected(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+	}
+	validator := &stubRelationValidator{err: exception.ErrForbidden}
+	uc := NewQueueUseCase(repo, nil, validator)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2", DestinationCounterID: "c-2"})
+	assert.ErrorIs(t, err, exception.ErrForbidden)
 }
 
 func TestComputeBusinessQueueDate_DefaultResetTime(t *testing.T) {
@@ -397,7 +419,7 @@ func TestTransitionQueue_SuccessCalling(t *testing.T) {
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
 	}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCall})
@@ -412,7 +434,7 @@ func TestTransitionQueue_NegativeInvalidStateChange(t *testing.T) {
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted, CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCompleted},
 	}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCall})
@@ -424,7 +446,7 @@ func TestTransitionQueue_EdgeServingFromCalling(t *testing.T) {
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCalling},
 	}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionServe})
@@ -434,7 +456,7 @@ func TestTransitionQueue_EdgeServingFromCalling(t *testing.T) {
 
 func TestListQueues_Success(t *testing.T) {
 	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -446,7 +468,7 @@ func TestListQueues_Success(t *testing.T) {
 
 func TestListQueues_NegativeMissingTenantOrBranch(t *testing.T) {
 	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1"}}}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 
 	_, err := uc.ListQueues(context.Background(), model.ListQueuesRequest{})
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
@@ -454,7 +476,7 @@ func TestListQueues_NegativeMissingTenantOrBranch(t *testing.T) {
 
 func TestListQueues_EdgeStatusFilter(t *testing.T) {
 	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted}}}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -466,7 +488,7 @@ func TestListQueues_EdgeStatusFilter(t *testing.T) {
 
 func TestListQueues_PositiveQueueDateFilter(t *testing.T) {
 	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-23", Status: entity.QueueStatusWaiting}}}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -478,7 +500,7 @@ func TestListQueues_PositiveQueueDateFilter(t *testing.T) {
 
 func TestListQueues_VulnerabilityPassesScopedFiltersOnly(t *testing.T) {
 	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-safe")
 	ctx = database.SetBranchContext(ctx, "branch-safe")
 	req := model.ListQueuesRequest{Status: entity.QueueStatusWaiting, QueueDate: "2026-06-24", ServiceID: "svc-1"}
@@ -490,7 +512,7 @@ func TestListQueues_VulnerabilityPassesScopedFiltersOnly(t *testing.T) {
 
 func TestListActiveJourneys_Success(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -503,7 +525,7 @@ func TestListActiveJourneys_Success(t *testing.T) {
 
 func TestListActiveJourneys_NegativeMissingTenantOrBranch(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 
 	_, err := uc.ListActiveJourneys(context.Background(), model.QueueJourneyListRequest{ServiceID: "svc-1"})
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
@@ -511,7 +533,7 @@ func TestListActiveJourneys_NegativeMissingTenantOrBranch(t *testing.T) {
 
 func TestListActiveJourneys_EdgeCounterFilter(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -523,7 +545,7 @@ func TestListActiveJourneys_EdgeCounterFilter(t *testing.T) {
 
 func TestListActiveJourneys_SecurityScopedTenantPassThrough(t *testing.T) {
 	repo := &stubQueueRepo{}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-safe")
 	ctx = database.SetBranchContext(ctx, "branch-safe")
 
@@ -537,7 +559,7 @@ func TestListActiveJourneys_SecurityScopedTenantPassThrough(t *testing.T) {
 
 func TestGetQueueByID_Success(t *testing.T) {
 	repo := &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	res, err := uc.GetQueueByID(ctx, "q-1")
@@ -547,7 +569,7 @@ func TestGetQueueByID_Success(t *testing.T) {
 
 func TestGetQueueByID_NegativeCrossTenantRejected(t *testing.T) {
 	repo := &stubQueueRepo{err: exception.ErrNotFound}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "other-tenant")
 
 	_, err := uc.GetQueueByID(ctx, "q-1")
@@ -556,7 +578,7 @@ func TestGetQueueByID_NegativeCrossTenantRejected(t *testing.T) {
 
 func TestTransitionQueue_SecurityCrossTenantRejected(t *testing.T) {
 	repo := &stubQueueRepo{err: exception.ErrNotFound}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "other-tenant")
 
 	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCancel})
@@ -568,7 +590,7 @@ func TestTransitionQueue_NegativeEmptyAction(t *testing.T) {
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
 	}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: ""})
@@ -580,7 +602,7 @@ func TestTransitionQueue_EdgeCancelTerminalStateRejected(t *testing.T) {
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCanceled, CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCanceled},
 	}
-	uc := NewQueueUseCase(repo, nil)
+	uc := NewQueueUseCase(repo, nil, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 
 	_, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCancel})
