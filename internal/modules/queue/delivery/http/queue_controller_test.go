@@ -132,7 +132,7 @@ func TestQueueController_GetQueueStats(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.GET("/branches/:branch_id/queue-stats", controller.GetQueueStats)
+	router.GET("/branches/:id/queue-stats", controller.GetQueueStats)
 
 	req, _ := http.NewRequest("GET", "/branches/branch-1/queue-stats", nil)
 	w := httptest.NewRecorder()
@@ -196,7 +196,7 @@ func TestQueueController_GetJourneysByBranchAndService(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.GET("/branches/:branch_id/services/:service_id/queue-journeys", controller.GetJourneysByBranchAndService)
+	router.GET("/branches/:id/services/:service_id/queue-journeys", controller.GetJourneysByBranchAndService)
 
 	req, _ := http.NewRequest("GET", "/branches/branch-1/services/svc-1/queue-journeys?queue_date=2026-06-24", nil)
 	w := httptest.NewRecorder()
@@ -216,7 +216,7 @@ func TestQueueController_GetJourneysByBranchAndCounter(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.GET("/branches/:branch_id/counters/:counter_id/queue-journeys", controller.GetJourneysByBranchAndCounter)
+	router.GET("/branches/:id/counters/:counter_id/queue-journeys", controller.GetJourneysByBranchAndCounter)
 
 	req, _ := http.NewRequest("GET", "/branches/branch-1/counters/c-1/queue-journeys?status=calling", nil)
 	w := httptest.NewRecorder()

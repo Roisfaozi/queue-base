@@ -18,8 +18,8 @@ func RegisterQueueRoutes(router *gin.RouterGroup, controller *QueueController, a
 
 	branchGroup := router.Group("/branches")
 	{
-		branchGroup.GET("/:branch_id/queue-stats", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetQueueStats)
-		branchGroup.GET("/:branch_id/services/:service_id/queue-journeys", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetJourneysByBranchAndService)
-		branchGroup.GET("/:branch_id/counters/:counter_id/queue-journeys", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetJourneysByBranchAndCounter)
+		branchGroup.GET("/:id/queue-stats", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetQueueStats)
+		branchGroup.GET("/:id/services/:service_id/queue-journeys", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetJourneysByBranchAndService)
+		branchGroup.GET("/:id/counters/:counter_id/queue-journeys", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetJourneysByBranchAndCounter)
 	}
 }

@@ -116,7 +116,7 @@ func (h *QueueController) Transition(c *gin.Context) {
 func (h *QueueController) GetJourneysByBranchAndService(c *gin.Context) {
 	var req model.QueueJourneyListRequest
 	req.ServiceID = c.Param("service_id")
-	branchID := c.Param("branch_id")
+	branchID := c.Param("id")
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
@@ -133,7 +133,7 @@ func (h *QueueController) GetJourneysByBranchAndService(c *gin.Context) {
 func (h *QueueController) GetJourneysByBranchAndCounter(c *gin.Context) {
 	var req model.QueueJourneyListRequest
 	req.CounterID = c.Param("counter_id")
-	branchID := c.Param("branch_id")
+	branchID := c.Param("id")
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
@@ -157,7 +157,7 @@ func (h *QueueController) GetVisitJourneys(c *gin.Context) {
 }
 
 func (h *QueueController) GetQueueStats(c *gin.Context) {
-	branchID := c.Param("branch_id")
+	branchID := c.Param("id")
 	ctx := database.SetBranchContext(c.Request.Context(), branchID)
 	res, err := h.useCase.GetQueueStats(ctx)
 	if err != nil {
