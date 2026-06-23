@@ -248,6 +248,18 @@ func (ctrl *OrganizationController) DeleteOrganization(c *gin.Context) {
 }
 
 // RestoreOrganization restores a soft-deleted organization.
+// @Summary      Restore organization
+// @Description  Restores a soft-deleted organization.
+// @Tags         organizations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Organization ID"
+// @Success      200 {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      401 {object}  response.SwaggerErrorResponseWrapper  "Unauthorized"
+// @Failure      403 {object}  response.SwaggerErrorResponseWrapper  "Forbidden"
+// @Failure      404 {object}  response.SwaggerErrorResponseWrapper  "Organization not found"
+// @Failure      500 {object}  response.SwaggerErrorResponseWrapper  "Internal server error"
+// @Router       /organizations/{id}/restore [post]
 func (ctrl *OrganizationController) RestoreOrganization(c *gin.Context) {
 	orgID := c.Param("id")
 	userID, exists := c.Get("user_id")
@@ -278,6 +290,19 @@ func (ctrl *OrganizationController) RestoreOrganization(c *gin.Context) {
 }
 
 // HardDeleteOrganization permanently deletes a previously soft-deleted organization.
+// @Summary      Hard delete organization
+// @Description  Permanently deletes a previously soft-deleted organization.
+// @Tags         organizations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id  path      string  true  "Organization ID"
+// @Success      200 {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400 {object}  response.SwaggerErrorResponseWrapper  "Bad request"
+// @Failure      401 {object}  response.SwaggerErrorResponseWrapper  "Unauthorized"
+// @Failure      403 {object}  response.SwaggerErrorResponseWrapper  "Forbidden"
+// @Failure      404 {object}  response.SwaggerErrorResponseWrapper  "Organization not found"
+// @Failure      500 {object}  response.SwaggerErrorResponseWrapper  "Internal server error"
+// @Router       /organizations/{id}/hard [delete]
 func (ctrl *OrganizationController) HardDeleteOrganization(c *gin.Context) {
 	orgID := c.Param("id")
 	userID, exists := c.Get("user_id")

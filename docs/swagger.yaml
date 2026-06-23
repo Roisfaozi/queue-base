@@ -249,6 +249,39 @@ definitions:
     required:
     - token
     type: object
+  github_com_Roisfaozi_queue-base_internal_modules_counter_model.CreateCounterRequest:
+    properties:
+      branch_id:
+        type: string
+      code:
+        maxLength: 50
+        minLength: 2
+        type: string
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - branch_id
+    - code
+    - name
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_counter_model.UpdateCounterRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 2
+        type: string
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+      status:
+        enum:
+        - active
+        - inactive
+        type: string
+    type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.AcceptInvitationRequest:
     properties:
       name:
@@ -261,6 +294,20 @@ definitions:
         type: string
     required:
     - token
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_organization_model.CreateBranchRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 2
+        type: string
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - code
+    - name
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.CreateOrganizationRequest:
     properties:
@@ -324,6 +371,22 @@ definitions:
         type: string
       updated_at:
         type: integer
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateBranchRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 2
+        type: string
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+      status:
+        enum:
+        - active
+        - inactive
+        type: string
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateMemberRequest:
     properties:
@@ -594,6 +657,29 @@ definitions:
         maxLength: 100
         type: string
     type: object
+  github_com_Roisfaozi_queue-base_internal_modules_queue_model.ForwardQueueRequest:
+    properties:
+      destination_counter_id:
+        type: string
+      destination_service_id:
+        type: string
+    required:
+    - destination_service_id
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_queue_model.RegisterQueueRequest:
+    properties:
+      patient_id:
+        type: string
+      patient_name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      service_id:
+        type: string
+    required:
+    - patient_name
+    - service_id
+    type: object
   github_com_Roisfaozi_queue-base_internal_modules_role_model.CreateRoleRequest:
     properties:
       description:
@@ -619,6 +705,103 @@ definitions:
         type: string
     required:
     - description
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_scanner_model.CheckInRequest:
+    properties:
+      action:
+        enum:
+        - register
+        - forward
+        type: string
+      destination_counter_id:
+        type: string
+      destination_service_id:
+        type: string
+      patient_id:
+        type: string
+      patient_name:
+        type: string
+      queue_id:
+        type: string
+      service_id:
+        type: string
+    required:
+    - action
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_service_model.CreateServiceRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 2
+        type: string
+      is_pharmacy:
+        type: boolean
+      is_pharmacy_reception:
+        type: boolean
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - code
+    - name
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_service_model.UpdateServiceRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 2
+        type: string
+      is_pharmacy:
+        type: boolean
+      is_pharmacy_reception:
+        type: boolean
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+      status:
+        enum:
+        - active
+        - inactive
+        type: string
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_settings_model.CreateSettingRequest:
+    properties:
+      key:
+        maxLength: 100
+        minLength: 1
+        type: string
+      scope_id:
+        type: string
+      scope_type:
+        enum:
+        - tenant
+        - branch
+        - service
+        - counter
+        type: string
+      value:
+        type: string
+      value_type:
+        enum:
+        - string
+        - number
+        - boolean
+        - json
+        type: string
+    required:
+    - key
+    - scope_id
+    - scope_type
+    - value
+    type: object
+  github_com_Roisfaozi_queue-base_internal_modules_settings_model.UpdateSettingRequest:
+    properties:
+      is_active:
+        type: boolean
+      value:
+        type: string
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_stats_model.ActivityPoint:
     properties:
@@ -1783,7 +1966,107 @@ paths:
       summary: Verify email address
       tags:
       - auth
+  /branches:
+    get:
+      description: Returns all branches under active tenant context.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: List branches
+      tags:
+      - branches
+    post:
+      consumes:
+      - application/json
+      description: Creates branch under active tenant context.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Create Branch Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_organization_model.CreateBranchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Create branch
+      tags:
+      - branches
   /branches/{id}:
+    delete:
+      description: Deletes branch under active tenant context.
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Delete branch
+      tags:
+      - branches
     get:
       description: Returns a branch only when it belongs to active tenant context.
       parameters:
@@ -1817,6 +2100,368 @@ paths:
       summary: Get branch by ID
       tags:
       - branches
+    put:
+      consumes:
+      - application/json
+      description: Updates branch under active tenant context.
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Update Branch Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateBranchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Update branch
+      tags:
+      - branches
+  /branches/{id}/counters/{counter_id}/queue-journeys:
+    get:
+      description: Returns active queue journeys filtered by branch and counter under
+        active tenant scope.
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Counter ID
+        in: path
+        name: counter_id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Queue date
+        in: query
+        name: queue_date
+        type: string
+      - description: Journey status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: List active journeys by branch and counter
+      tags:
+      - queues
+  /branches/{id}/queue-stats:
+    get:
+      description: Returns queue statistics for a branch under active tenant scope.
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Get queue stats by branch
+      tags:
+      - queues
+  /branches/{id}/services/{service_id}/queue-journeys:
+    get:
+      description: Returns active queue journeys filtered by branch and service under
+        active tenant scope.
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service ID
+        in: path
+        name: service_id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Queue date
+        in: query
+        name: queue_date
+        type: string
+      - description: Journey status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: List active journeys by branch and service
+      tags:
+      - queues
+  /counters:
+    get:
+      description: Returns all counters under active tenant scope.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: List counters
+      tags:
+      - counters
+    post:
+      consumes:
+      - application/json
+      description: Creates a new counter under active tenant scope.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Create Counter Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_counter_model.CreateCounterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Create counter
+      tags:
+      - counters
+  /counters/{id}:
+    delete:
+      description: Deletes counter under active tenant scope.
+      parameters:
+      - description: Counter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Delete counter
+      tags:
+      - counters
+    get:
+      description: Returns counter details under active tenant scope.
+      parameters:
+      - description: Counter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Get counter by ID
+      tags:
+      - counters
+    put:
+      consumes:
+      - application/json
+      description: Updates counter fields under active tenant scope.
+      parameters:
+      - description: Counter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Update Counter Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_counter_model.UpdateCounterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Update counter
+      tags:
+      - counters
   /endpoints:
     post:
       consumes:
@@ -2111,6 +2756,47 @@ paths:
       summary: Update organization
       tags:
       - organizations
+  /organizations/{id}/hard:
+    delete:
+      description: Permanently deletes a previously soft-deleted organization.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Organization not found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Hard delete organization
+      tags:
+      - organizations
   /organizations/{id}/members:
     get:
       description: Retrieves all members of an organization
@@ -2347,6 +3033,43 @@ paths:
       security:
       - BearerAuth: []
       summary: Get online members
+      tags:
+      - organizations
+  /organizations/{id}/restore:
+    post:
+      description: Restores a soft-deleted organization.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Organization not found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Restore organization
       tags:
       - organizations
   /organizations/invitations/accept:
@@ -3309,6 +4032,216 @@ paths:
       summary: Update project
       tags:
       - projects
+  /queues:
+    get:
+      description: Returns queues under active tenant and branch scope.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Queue status
+        in: query
+        name: status
+        type: string
+      - description: Queue date
+        in: query
+        name: queue_date
+        type: string
+      - description: Service ID
+        in: query
+        name: service_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: List queues
+      tags:
+      - queues
+    post:
+      consumes:
+      - application/json
+      description: Creates one queue master row and first queue journey under tenant
+        and branch scope.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Register Queue Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_queue_model.RegisterQueueRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Register queue
+      tags:
+      - queues
+  /queues/{id}:
+    get:
+      description: Returns queue details under active tenant scope.
+      parameters:
+      - description: Queue ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Get queue by ID
+      tags:
+      - queues
+  /queues/{id}/forward:
+    post:
+      consumes:
+      - application/json
+      description: Forwards queue by appending queue journey and preserving master
+        queue row.
+      parameters:
+      - description: Queue ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Forward Queue Request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_queue_model.ForwardQueueRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Forward queue
+      tags:
+      - queues
+  /queues/{id}/visit-journeys:
+    get:
+      description: Returns readable visit history for a queue under active tenant
+        scope.
+      parameters:
+      - description: Queue ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Get visit journeys by queue
+      tags:
+      - queues
   /roles:
     get:
       description: Get a list of all available roles.
@@ -3483,6 +4416,446 @@ paths:
       summary: Get roles with dynamic filters
       tags:
       - roles
+  /scanner/check-in:
+    post:
+      consumes:
+      - application/json
+      description: Scanner entrypoint for queue registration or forward transition
+        using client headers.
+      parameters:
+      - description: Scanner client ID
+        in: header
+        name: X-Client-ID
+        required: true
+        type: string
+      - description: Scanner API key
+        in: header
+        name: X-API-Key
+        required: true
+        type: string
+      - description: Scanner payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_scanner_model.CheckInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Scanner check-in
+      tags:
+      - scanner
+  /services:
+    get:
+      description: Returns all services under active tenant scope.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: List services
+      tags:
+      - services
+    post:
+      consumes:
+      - application/json
+      description: Creates a new service under active tenant scope.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Create Service Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_service_model.CreateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Create service
+      tags:
+      - services
+  /services/{id}:
+    delete:
+      description: Deletes service under active tenant scope.
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Delete service
+      tags:
+      - services
+    get:
+      description: Returns service details under active tenant scope.
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Get service by ID
+      tags:
+      - services
+    put:
+      consumes:
+      - application/json
+      description: Updates service fields under active tenant scope.
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Update Service Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_service_model.UpdateServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Update service
+      tags:
+      - services
+  /settings:
+    post:
+      consumes:
+      - application/json
+      description: Creates tenant, branch, service, or counter scoped setting override.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Create Setting Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_settings_model.CreateSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Create setting
+      tags:
+      - settings
+  /settings/{id}:
+    delete:
+      description: Deletes scoped setting override under active tenant scope.
+      parameters:
+      - description: Setting ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Delete setting
+      tags:
+      - settings
+    get:
+      description: Returns setting details under active tenant scope.
+      parameters:
+      - description: Setting ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Get setting by ID
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: Updates scoped setting override under active tenant scope.
+      parameters:
+      - description: Setting ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Update Setting Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_settings_model.UpdateSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Update setting
+      tags:
+      - settings
+  /settings/resolve:
+    get:
+      description: Resolves setting value using tenant -> branch -> service -> counter
+        inheritance.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Setting key
+        in: query
+        name: Key
+        required: true
+        type: string
+      - description: Branch ID
+        in: query
+        name: BranchID
+        type: string
+      - description: Service ID
+        in: query
+        name: ServiceID
+        type: string
+      - description: Counter ID
+        in: query
+        name: CounterID
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Resolve effective setting
+      tags:
+      - settings
   /stats/activity:
     get:
       description: Returns daily activity metrics (logins, audit events) for a given

@@ -42,6 +42,20 @@ func (h *BranchController) GetByID(c *gin.Context) {
 	response.Success(c, res)
 }
 
+// Create godoc
+// @Summary      Create branch
+// @Description  Creates branch under active tenant context.
+// @Tags         branches
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        X-Organization-ID header string true "Tenant ID"
+// @Param        request body model.CreateBranchRequest true "Create Branch Request"
+// @Success      201  {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      422  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /branches [post]
 func (h *BranchController) Create(c *gin.Context) {
 	var req model.CreateBranchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -60,6 +74,17 @@ func (h *BranchController) Create(c *gin.Context) {
 	response.Created(c, res)
 }
 
+// GetAll godoc
+// @Summary      List branches
+// @Description  Returns all branches under active tenant context.
+// @Tags         branches
+// @Security     BearerAuth
+// @Produce      json
+// @Param        X-Organization-ID header string true "Tenant ID"
+// @Success      200  {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /branches [get]
 func (h *BranchController) GetAll(c *gin.Context) {
 	res, err := h.useCase.ListBranches(c.Request.Context())
 	if err != nil {
@@ -69,6 +94,22 @@ func (h *BranchController) GetAll(c *gin.Context) {
 	response.Success(c, res)
 }
 
+// Update godoc
+// @Summary      Update branch
+// @Description  Updates branch under active tenant context.
+// @Tags         branches
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Branch ID"
+// @Param        X-Organization-ID header string true "Tenant ID"
+// @Param        request body model.UpdateBranchRequest true "Update Branch Request"
+// @Success      200  {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      422  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      404  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /branches/{id} [put]
 func (h *BranchController) Update(c *gin.Context) {
 	var req model.UpdateBranchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -87,6 +128,18 @@ func (h *BranchController) Update(c *gin.Context) {
 	response.Success(c, res)
 }
 
+// Delete godoc
+// @Summary      Delete branch
+// @Description  Deletes branch under active tenant context.
+// @Tags         branches
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path string true "Branch ID"
+// @Param        X-Organization-ID header string true "Tenant ID"
+// @Success      204  {object}  nil
+// @Failure      404  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /branches/{id} [delete]
 func (h *BranchController) Delete(c *gin.Context) {
 	if err := h.useCase.DeleteBranch(c.Request.Context(), c.Param("id")); err != nil {
 		response.HandleError(c, err, "failed to delete branch")
