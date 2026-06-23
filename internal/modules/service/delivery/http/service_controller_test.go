@@ -38,6 +38,8 @@ type stubServiceControllerUseCase struct {
 	updateReq *model.UpdateServiceRequest
 	createRes *model.ServiceResponse
 	updateRes *model.ServiceResponse
+	getRes    *model.ServiceResponse
+	listRes   []model.ServiceResponse
 }
 
 func (s *stubServiceControllerUseCase) CreateService(ctx context.Context, req *model.CreateServiceRequest) (*model.ServiceResponse, error) {
@@ -46,11 +48,11 @@ func (s *stubServiceControllerUseCase) CreateService(ctx context.Context, req *m
 }
 
 func (s *stubServiceControllerUseCase) GetService(ctx context.Context, serviceID string) (*model.ServiceResponse, error) {
-	return nil, nil
+	return s.getRes, nil
 }
 
 func (s *stubServiceControllerUseCase) ListServices(ctx context.Context) ([]model.ServiceResponse, error) {
-	return nil, nil
+	return s.listRes, nil
 }
 
 func (s *stubServiceControllerUseCase) UpdateService(ctx context.Context, serviceID string, req *model.UpdateServiceRequest) (*model.ServiceResponse, error) {
@@ -109,4 +111,46 @@ func TestServiceController_UpdateCanTogglePharmacyFlags(t *testing.T) {
 	require.NotNil(t, uc.updateReq)
 	require.NotNil(t, uc.updateReq.IsPharmacyReception)
 	assert.False(t, *uc.updateReq.IsPharmacyReception)
+}
+
+func TestServiceController_GetByIDReturnsPharmacyFlags(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubServiceControllerUseCase{getRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}}
+	controller := NewServiceController(uc, newTestValidator(t))
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/services/:id", controller.GetByID)
+
+	req, _ := http.NewRequest("GET", "/services/svc-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"is_pharmacy":true`)
+	assert.Contains(t, w.Body.String(), `"is_pharmacy_reception":true`)
+}
+
+func TestServiceController_GetAllReturnsPharmacyFlags(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubServiceControllerUseCase{listRes: []model.ServiceResponse{{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}}
+	controller := NewServiceController(uc, newTestValidator(t))
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/services", controller.GetAll)
+
+	req, _ := http.NewRequest("GET", "/services", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"is_pharmacy":true`)
+	assert.Contains(t, w.Body.String(), `"is_pharmacy_reception":false`)
 }
