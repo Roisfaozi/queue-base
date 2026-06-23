@@ -14,6 +14,7 @@ import (
 
 type stubQueueRepo struct {
 	q       *entity.Queue
+	queues  []*entity.Queue
 	j       *entity.QueueJourney
 	visit   *entity.VisitJourney
 	err     error
@@ -38,6 +39,13 @@ func (s *stubQueueRepo) CreateRegistration(ctx context.Context, queue *entity.Qu
 	s.q = queue
 	s.j = journey
 	return s.err
+}
+
+func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID string) ([]*entity.Queue, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.queues, nil
 }
 
 func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
@@ -261,6 +269,45 @@ func TestTransitionQueue_EdgeServingFromCalling(t *testing.T) {
 	res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionServe})
 	assert.NoError(t, err)
 	assert.Equal(t, entity.QueueStatusServing, res.Status)
+}
+
+func TestListQueues_Success(t *testing.T) {
+	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.ListQueues(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, res, 1)
+	assert.Equal(t, "q-1", res[0].ID)
+}
+
+func TestListQueues_NegativeMissingTenantOrBranch(t *testing.T) {
+	repo := &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1"}}}
+	uc := NewQueueUseCase(repo, nil)
+
+	_, err := uc.ListQueues(context.Background())
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
+}
+
+func TestGetQueueByID_Success(t *testing.T) {
+	repo := &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.GetQueueByID(ctx, "q-1")
+	assert.NoError(t, err)
+	assert.Equal(t, "q-1", res.ID)
+}
+
+func TestGetQueueByID_NegativeCrossTenantRejected(t *testing.T) {
+	repo := &stubQueueRepo{err: exception.ErrNotFound}
+	uc := NewQueueUseCase(repo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "other-tenant")
+
+	_, err := uc.GetQueueByID(ctx, "q-1")
+	assert.ErrorIs(t, err, exception.ErrNotFound)
 }
 
 func TestTransitionQueue_SecurityCrossTenantRejected(t *testing.T) {

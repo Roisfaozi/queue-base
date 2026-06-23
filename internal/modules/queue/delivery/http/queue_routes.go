@@ -9,6 +9,8 @@ func RegisterQueueRoutes(router *gin.RouterGroup, controller *QueueController, a
 	queueGroup := router.Group("/queues")
 	{
 		queueGroup.POST("", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Register)
+		queueGroup.GET("", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetAll)
+		queueGroup.GET("/:id", apiKeyMiddleware.RequireScopes("queue:view", "queue:manage"), controller.GetByID)
 		queueGroup.POST("/:id/forward", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Forward)
 		queueGroup.POST("/:id/transition", apiKeyMiddleware.RequireScopes("queue:manage"), controller.Transition)
 	}

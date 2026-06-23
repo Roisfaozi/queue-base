@@ -21,6 +21,8 @@ type SettingsResolver interface {
 
 type QueueUseCase interface {
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
+	ListQueues(ctx context.Context) ([]model.QueueResponse, error)
+	GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error)
 	ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error)
 	TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error)
 }
@@ -32,6 +34,36 @@ type queueUseCase struct {
 
 func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver) QueueUseCase {
 	return &queueUseCase{repo: repo, settingsResolver: settingsResolver}
+}
+
+func (u *queueUseCase) ListQueues(ctx context.Context) ([]model.QueueResponse, error) {
+	tenantID := database.GetTenantID(ctx)
+	branchID := database.GetBranchID(ctx)
+	if tenantID == "" || branchID == "" {
+		return nil, exception.ErrBadRequest
+	}
+	queues, err := u.repo.ListQueues(ctx, tenantID, branchID)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]model.QueueResponse, len(queues))
+	for i, q := range queues {
+		res[i] = mapQueueResponse(q)
+	}
+	return res, nil
+}
+
+func (u *queueUseCase) GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error) {
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" || queueID == "" {
+		return nil, exception.ErrBadRequest
+	}
+	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
+	if err != nil {
+		return nil, exception.ErrNotFound
+	}
+	res := mapQueueResponse(queue)
+	return &res, nil
 }
 
 func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error) {
@@ -114,20 +146,8 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		return nil, err
 	}
 
-	return &model.QueueResponse{
-		ID:               q.ID,
-		TenantID:         q.TenantID,
-		BranchID:         q.BranchID,
-		QueueDate:        q.QueueDate,
-		TicketNo:         q.TicketNo,
-		QueueNo:          q.QueueNo,
-		PatientID:        q.PatientID,
-		PatientName:      q.PatientName,
-		Status:           q.Status,
-		CurrentJourneyID: q.CurrentJourneyID,
-		CreatedAt:        q.CreatedAt,
-		UpdatedAt:        q.UpdatedAt,
-	}, nil
+	res := mapQueueResponse(q)
+	return &res, nil
 }
 
 func computeBusinessQueueDate(now time.Time, resetTime string) string {
@@ -203,20 +223,8 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		return nil, err
 	}
 
-	return &model.QueueResponse{
-		ID:               queue.ID,
-		TenantID:         queue.TenantID,
-		BranchID:         queue.BranchID,
-		QueueDate:        queue.QueueDate,
-		TicketNo:         queue.TicketNo,
-		QueueNo:          queue.QueueNo,
-		PatientID:        queue.PatientID,
-		PatientName:      queue.PatientName,
-		Status:           queue.Status,
-		CurrentJourneyID: queue.CurrentJourneyID,
-		CreatedAt:        queue.CreatedAt,
-		UpdatedAt:        queue.UpdatedAt,
-	}, nil
+	res := mapQueueResponse(queue)
+	return &res, nil
 }
 
 func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error) {
@@ -287,5 +295,23 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		return nil, err
 	}
 
-	return &model.QueueResponse{ID: queue.ID, TenantID: queue.TenantID, BranchID: queue.BranchID, QueueDate: queue.QueueDate, TicketNo: queue.TicketNo, QueueNo: queue.QueueNo, PatientID: queue.PatientID, PatientName: queue.PatientName, Status: queue.Status, CurrentJourneyID: queue.CurrentJourneyID, CreatedAt: queue.CreatedAt, UpdatedAt: queue.UpdatedAt}, nil
+	res := mapQueueResponse(queue)
+	return &res, nil
+}
+
+func mapQueueResponse(queue *entity.Queue) model.QueueResponse {
+	return model.QueueResponse{
+		ID:               queue.ID,
+		TenantID:         queue.TenantID,
+		BranchID:         queue.BranchID,
+		QueueDate:        queue.QueueDate,
+		TicketNo:         queue.TicketNo,
+		QueueNo:          queue.QueueNo,
+		PatientID:        queue.PatientID,
+		PatientName:      queue.PatientName,
+		Status:           queue.Status,
+		CurrentJourneyID: queue.CurrentJourneyID,
+		CreatedAt:        queue.CreatedAt,
+		UpdatedAt:        queue.UpdatedAt,
+	}
 }

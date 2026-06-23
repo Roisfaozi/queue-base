@@ -37,6 +37,24 @@ func (h *QueueController) Register(c *gin.Context) {
 	response.Created(c, res)
 }
 
+func (h *QueueController) GetAll(c *gin.Context) {
+	res, err := h.useCase.ListQueues(c.Request.Context())
+	if err != nil {
+		response.HandleError(c, err, "failed to get queues")
+		return
+	}
+	response.Success(c, res)
+}
+
+func (h *QueueController) GetByID(c *gin.Context) {
+	res, err := h.useCase.GetQueueByID(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		response.HandleError(c, err, "failed to get queue")
+		return
+	}
+	response.Success(c, res)
+}
+
 func (h *QueueController) Forward(c *gin.Context) {
 	var req model.ForwardQueueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
