@@ -9,14 +9,16 @@ import (
 )
 
 type SettingsModule struct {
-	SettingsController *settingsHttp.SettingsController
-	SettingsRepo       repository.SettingsRepository
-	SettingsUseCase    usecase.SettingsUseCase
+	SettingsController    *settingsHttp.SettingsController
+	SettingsRepo          repository.SettingsRepository
+	SettingsUseCase       usecase.SettingsUseCase
+	QueueSettingsResolver *QueueSettingsResolver
 }
 
 func NewSettingsModule(db *gorm.DB, validate *validator.Validate) *SettingsModule {
 	repo := repository.NewSettingsRepository(db)
 	uc := usecase.NewSettingsUseCase(repo)
 	ctrl := settingsHttp.NewSettingsController(uc, validate)
-	return &SettingsModule{SettingsController: ctrl, SettingsRepo: repo, SettingsUseCase: uc}
+	resolver := NewQueueSettingsResolver(uc)
+	return &SettingsModule{SettingsController: ctrl, SettingsRepo: repo, SettingsUseCase: uc, QueueSettingsResolver: resolver}
 }

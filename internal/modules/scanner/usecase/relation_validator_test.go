@@ -51,6 +51,15 @@ type stubCounterRepo struct {
 	branchID string
 }
 
+type stubSettingsResolver struct {
+	value string
+	err   error
+}
+
+func (s stubSettingsResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
+	return s.value, s.err
+}
+
 func (s stubCounterRepo) Create(ctx context.Context, counter *counterEntity.Counter) error {
 	return nil
 }
@@ -69,29 +78,36 @@ func (s stubCounterRepo) Update(ctx context.Context, counter *counterEntity.Coun
 func (s stubCounterRepo) Delete(ctx context.Context, tenantID, counterID string) error { return nil }
 
 func TestRelationValidator_ValidateSuccess(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"})
+	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
 	assert.NoError(t, err)
 }
 
 func TestRelationValidator_ValidateNegativeMissingBranch(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"})
+	validator := NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
 	assert.ErrorIs(t, err, exception.ErrForbidden)
 }
 
 func TestRelationValidator_ValidateEdgeNoCounter(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"})
+	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "")
 	assert.NoError(t, err)
 }
 
 func TestRelationValidator_ValidateSecurityCrossBranchCounter(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "other-branch"})
+	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "other-branch"}, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
+	assert.ErrorIs(t, err, exception.ErrForbidden)
+}
+
+func TestRelationValidator_ValidateNegativeRequireCounterSetting(t *testing.T) {
+	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"})
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "")
 	assert.ErrorIs(t, err, exception.ErrForbidden)
 }
