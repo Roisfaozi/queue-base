@@ -146,8 +146,8 @@ SERVER_TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12  # IPs of your LB/Ingress
 
 1.  **Clone & Configure**:
     ```bash
-    git clone https://github.com/Roisfaozi/go-clean-boilerplate.git
-    cd go-clean-boilerplate
+    git clone https://github.com/Roisfaozi/queue-base.git
+    cd queue-base
     cp .env.example .env
     ```
 2.  **Start Infrastructure**:

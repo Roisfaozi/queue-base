@@ -41,7 +41,7 @@ Open **[http://localhost:16686](http://localhost:16686)** in your browser.
 To add custom spans within your business logic (UseCase):
 
 ```go
-import "github.com/Roisfaozi/go-clean-boilerplate/pkg/telemetry"
+import "github.com/Roisfaozi/queue-base/pkg/telemetry"
 
 func (u *myUseCase) ComplexOperation(ctx context.Context) error {
     ctx, span := telemetry.StartSpan(ctx, "MyUseCase.ComplexOperation")

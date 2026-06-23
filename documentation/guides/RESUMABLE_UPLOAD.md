@@ -36,7 +36,7 @@ package usecase
 
 import (
     "context"
-    "github.com/Roisfaozi/go-clean-boilerplate/pkg/tus"
+    "github.com/Roisfaozi/queue-base/pkg/tus"
 )
 
 type ProjectDocHook struct {
