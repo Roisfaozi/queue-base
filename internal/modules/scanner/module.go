@@ -3,17 +3,24 @@ package scanner
 import (
 	"context"
 
+	apiKeyModel "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/api_key/model"
+
 	counterModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/counter"
 	branchModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/organization"
 	queueModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/queue"
 	scannerHttp "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/scanner/delivery/http"
 	scannerUsecase "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/scanner/usecase"
 	serviceModulePkg "github.com/Roisfaozi/go-clean-boilerplate/internal/modules/service"
+	"github.com/Roisfaozi/go-clean-boilerplate/pkg/exception"
 	"github.com/go-playground/validator/v10"
 )
 
 type ScannerAuthenticator interface {
 	Authenticate(ctx context.Context, tenantID, branchID, clientID, apiKey string) error
+}
+
+type apiKeyAuthenticator interface {
+	Authenticate(ctx context.Context, key string) (*apiKeyModel.ApiKeyIdentity, error)
 }
 
 type ScannerModule struct {
@@ -24,6 +31,31 @@ type ScannerModule struct {
 type NoopAuthenticator struct{}
 
 func (NoopAuthenticator) Authenticate(ctx context.Context, tenantID, branchID, clientID, apiKey string) error {
+	return nil
+}
+
+type APIKeyAuthenticator struct {
+	apiKeyUseCase apiKeyAuthenticator
+}
+
+func NewAPIKeyAuthenticator(apiKeyUseCase apiKeyAuthenticator) APIKeyAuthenticator {
+	return APIKeyAuthenticator{apiKeyUseCase: apiKeyUseCase}
+}
+
+func (a APIKeyAuthenticator) Authenticate(ctx context.Context, tenantID, branchID, clientID, apiKey string) error {
+	if a.apiKeyUseCase == nil {
+		return nil
+	}
+	identity, err := a.apiKeyUseCase.Authenticate(ctx, apiKey)
+	if err != nil {
+		return err
+	}
+	if identity.OrganizationID != tenantID {
+		return exception.ErrUnauthorized
+	}
+	if clientID != "" && identity.UserID != clientID {
+		return exception.ErrUnauthorized
+	}
 	return nil
 }
 

@@ -221,7 +221,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate)
-	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, validate, scanner.NoopAuthenticator{})
+	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, validate, scanner.NewAPIKeyAuthenticator(apiKeyModule.UseCase))
 
 	logger.Info("Application modules initialized.")
 
