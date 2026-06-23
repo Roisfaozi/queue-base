@@ -407,6 +407,23 @@ func TestForwardQueue_NegativeInvalidDestinationRelationRejected(t *testing.T) {
 	assert.ErrorIs(t, err, exception.ErrForbidden)
 }
 
+func TestForwardQueue_PharmacyFlowKeepsSingleQueueRecord(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+	}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "pharmacy-svc"})
+	assert.NoError(t, err)
+	assert.Equal(t, "q-1", res.ID)
+	assert.NotEmpty(t, repo.q)
+	assert.NotEqual(t, "j-1", repo.j.ID)
+	assert.NotEmpty(t, repo.visit)
+}
+
 func TestComputeBusinessQueueDate_DefaultResetTime(t *testing.T) {
 	loc, err := time.LoadLocation("Asia/Jakarta")
 	assert.NoError(t, err)
