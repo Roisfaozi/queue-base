@@ -105,6 +105,7 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 
 	listByServiceResp := server.Client.GET("/api/v1/branches/"+branchData.Data.ID+"/services/"+regServiceData.Data.ID+"/queue-journeys", setup.WithAuth(token), setup.WithOrg(orgID))
 	require.Equal(t, http.StatusOK, listByServiceResp.StatusCode, listByServiceResp.String())
+	assert.Contains(t, listByServiceResp.String(), "queue_id")
 
 	forwardResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/forward", map[string]any{"destination_service_id": pharmacyData.Data.ID, "destination_counter_id": counterData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID))
 	require.Equal(t, http.StatusOK, forwardResp.StatusCode, forwardResp.String())
@@ -118,6 +119,12 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 
 	transitionResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/transition", map[string]any{"action": "call"}, setup.WithAuth(token), setup.WithOrg(orgID))
 	require.Equal(t, http.StatusOK, transitionResp.StatusCode, transitionResp.String())
+
+	repeatedTransitionResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/transition", map[string]any{"action": "call"}, setup.WithAuth(token), setup.WithOrg(orgID))
+	require.Equal(t, http.StatusBadRequest, repeatedTransitionResp.StatusCode, repeatedTransitionResp.String())
+
+	invalidTransitionResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/transition", map[string]any{"action": "drop-table"}, setup.WithAuth(token), setup.WithOrg(orgID))
+	require.Equal(t, http.StatusUnprocessableEntity, invalidTransitionResp.StatusCode, invalidTransitionResp.String())
 
 	visitResp := server.Client.GET("/api/v1/queues/"+queueData.Data.ID+"/visit-journeys", setup.WithAuth(token), setup.WithOrg(orgID))
 	require.Equal(t, http.StatusOK, visitResp.StatusCode, visitResp.String())
@@ -135,6 +142,16 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 		Data apiKeyModel.CreateApiKeyResponse `json:"data"`
 	}
 	require.NoError(t, createAPIKeyResp.JSON(&apiKeyData))
+
+	createReadOnlyQueueKeyResp := server.Client.POST("/api/v1/api-keys", apiKeyModel.CreateApiKeyRequest{Name: "queue-view-key", Scopes: []string{"queue:view"}}, setup.WithAuth(token), setup.WithOrg(orgID))
+	require.Equal(t, http.StatusCreated, createReadOnlyQueueKeyResp.StatusCode, createReadOnlyQueueKeyResp.String())
+	var queueViewKeyData struct {
+		Data apiKeyModel.CreateApiKeyResponse `json:"data"`
+	}
+	require.NoError(t, createReadOnlyQueueKeyResp.JSON(&queueViewKeyData))
+
+	queueCreateBlockedResp := server.Client.POST("/api/v1/queues", map[string]any{"service_id": regServiceData.Data.ID, "patient_name": "Blocked Patient"}, setup.WithOrg(orgID), setup.WithHeader("X-API-Key", queueViewKeyData.Data.Key))
+	require.Equal(t, http.StatusForbidden, queueCreateBlockedResp.StatusCode, queueCreateBlockedResp.String())
 
 	scannerForbiddenResp := server.Client.POST("/api/v1/scanner/check-in", map[string]any{"action": "forward", "queue_id": queueData.Data.ID, "destination_service_id": pharmacyData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID), setup.WithHeader("X-Client-ID", userID), setup.WithHeader("X-API-Key", apiKeyData.Data.Key))
 	require.Equal(t, http.StatusForbidden, scannerForbiddenResp.StatusCode, scannerForbiddenResp.String())

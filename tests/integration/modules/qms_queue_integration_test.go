@@ -51,6 +51,10 @@ func TestQMSQueueIntegration_LifecycleAndSettingsGuard(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), tenantID)
 	ctx = database.SetBranchContext(ctx, branchID)
 
+	emptyJourneys, err := queueMod.QueueUseCase.ListActiveJourneys(ctx, queueModel.QueueJourneyListRequest{ServiceID: regServiceID})
+	require.NoError(t, err)
+	assert.Empty(t, emptyJourneys)
+
 	queueRes, err := queueMod.QueueUseCase.RegisterQueue(ctx, &queueModel.RegisterQueueRequest{ServiceID: regServiceID, PatientName: "John Queue"})
 	require.NoError(t, err)
 	require.NotNil(t, queueRes)
@@ -63,6 +67,9 @@ func TestQMSQueueIntegration_LifecycleAndSettingsGuard(t *testing.T) {
 	serving, err := queueMod.QueueUseCase.TransitionQueue(ctx, queueRes.ID, &queueModel.QueueTransitionRequest{Action: queueModel.QueueActionCall})
 	require.NoError(t, err)
 	assert.Equal(t, queueEntity.QueueStatusCalling, serving.Status)
+
+	_, err = queueMod.QueueUseCase.TransitionQueue(ctx, queueRes.ID, &queueModel.QueueTransitionRequest{Action: queueModel.QueueActionCall})
+	assert.ErrorIs(t, err, exception.ErrBadRequest)
 
 	visits, err := queueMod.QueueUseCase.GetVisitJourneys(ctx, queueRes.ID)
 	require.NoError(t, err)
