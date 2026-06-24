@@ -109,6 +109,30 @@ func TestQueueController_Transition(t *testing.T) {
 	assert.Equal(t, model.QueueActionCall, uc.transitionReq.Action)
 }
 
+func TestQueueController_Forward(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{forwardRes: &model.QueueResponse{ID: "q-1", CurrentJourneyID: "j-2"}}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.POST("/queues/:id/forward", controller.Forward)
+
+	body, _ := json.Marshal(model.ForwardQueueRequest{DestinationServiceID: "550e8400-e29b-41d4-a716-446655440000", DestinationCounterID: "550e8400-e29b-41d4-a716-446655440001"})
+	req, _ := http.NewRequest("POST", "/queues/q-1/forward", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, uc.forwardCalled)
+	assert.Equal(t, "q-1", uc.forwardID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.forwardReq.DestinationServiceID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440001", uc.forwardReq.DestinationCounterID)
+}
+
 func TestQueueController_GetByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{getRes: &model.QueueResponse{ID: "q-1"}}

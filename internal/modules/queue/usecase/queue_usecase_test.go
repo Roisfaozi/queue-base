@@ -25,6 +25,7 @@ type stubQueueRepo struct {
 	journeyReq      model.QueueJourneyListRequest
 	journeyTenantID string
 	journeyBranchID string
+	journeyList     []*entity.QueueJourney
 	lastPrefix      string
 	visits          []*entity.VisitJourney
 	statsRes        model.QueueStatsResponse
@@ -103,6 +104,9 @@ func (s *stubQueueRepo) ListActiveJourneys(ctx context.Context, tenantID, branch
 	s.journeyReq = req
 	s.journeyTenantID = tenantID
 	s.journeyBranchID = branchID
+	if s.journeyList != nil {
+		return s.journeyList, nil
+	}
 	return []*entity.QueueJourney{{ID: "j-1", QueueID: "q-1", TenantID: tenantID, ServiceID: req.ServiceID, CounterID: req.CounterID, SeqNo: 1, Status: entity.JourneyStatusCalling}}, nil
 }
 
@@ -385,6 +389,17 @@ func TestForwardQueue_Edge_SameServiceStillCreatesJourney(t *testing.T) {
 	assert.NotEmpty(t, res.CurrentJourneyID)
 }
 
+func TestForwardQueue_EdgeMissingActiveJourneyRejected(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-missing"},
+	}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	_, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "s-2"})
+	assert.ErrorIs(t, err, exception.ErrNotFound)
+}
+
 func TestForwardQueue_Security_CrossTenantRejected(t *testing.T) {
 	repo := &stubQueueRepo{err: exception.ErrNotFound}
 	uc := NewQueueUseCase(repo, nil, nil)
@@ -607,6 +622,17 @@ func TestListActiveJourneys_EdgeCounterFilter(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, res, 1)
 	assert.Equal(t, "counter-1", res[0].CounterID)
+}
+
+func TestListActiveJourneys_EdgeEmptyList(t *testing.T) {
+	repo := &stubQueueRepo{journeyList: []*entity.QueueJourney{}}
+	uc := NewQueueUseCase(repo, nil, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	res, err := uc.ListActiveJourneys(ctx, model.QueueJourneyListRequest{ServiceID: "svc-1"})
+	assert.NoError(t, err)
+	assert.Empty(t, res)
 }
 
 func TestListActiveJourneys_NegativeInvalidCounterRelationRejected(t *testing.T) {

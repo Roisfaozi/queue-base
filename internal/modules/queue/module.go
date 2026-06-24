@@ -9,6 +9,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
 	serviceRepo "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
@@ -24,13 +25,15 @@ type defaultRelationValidator struct {
 	branchRepo  branchRepo.BranchRepository
 	serviceRepo serviceRepo.ServiceRepository
 	counterRepo counterRepo.CounterRepository
+	settings    usecase.SettingsResolver
 }
 
-func NewDefaultRelationValidator(db *gorm.DB) usecase.RelationValidator {
+func NewDefaultRelationValidator(db *gorm.DB, settingsResolver usecase.SettingsResolver) usecase.RelationValidator {
 	return &defaultRelationValidator{
 		branchRepo:  branchRepo.NewBranchRepository(db),
 		serviceRepo: serviceRepo.NewServiceRepository(db),
 		counterRepo: counterRepo.NewCounterRepository(db),
+		settings:    settingsResolver,
 	}
 }
 
@@ -39,7 +42,24 @@ func (v *defaultRelationValidator) Validate(ctx context.Context, tenantID, branc
 		return exception.ErrForbidden
 	}
 	if serviceID != "" {
-		if _, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID); err != nil {
+		service, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID)
+		if err != nil {
+			return exception.ErrForbidden
+		}
+		requireCounter := service.IsPharmacy
+		pharmacyFlowEnabled := service.IsPharmacy
+		if v.settings != nil {
+			if value, resolveErr := v.settings.Resolve(ctx, settingsModel.SettingKeyPharmacyFlowEnabled, branchID, serviceID, counterID); resolveErr == nil {
+				pharmacyFlowEnabled = value == "true"
+			}
+			if value, resolveErr := v.settings.Resolve(ctx, settingsModel.SettingKeyRequireCounterForService, branchID, serviceID, counterID); resolveErr == nil {
+				requireCounter = value == "true"
+			}
+		}
+		if service.IsPharmacy && !pharmacyFlowEnabled {
+			return exception.ErrForbidden
+		}
+		if requireCounter && counterID == "" {
 			return exception.ErrForbidden
 		}
 	}
@@ -57,7 +77,7 @@ func (v *defaultRelationValidator) Validate(ctx context.Context, tenantID, branc
 
 func NewQueueModule(db *gorm.DB, validate *validator.Validate, settingsResolver usecase.SettingsResolver) *QueueModule {
 	repo := repository.NewQueueRepository(db)
-	relationValidator := NewDefaultRelationValidator(db)
+	relationValidator := NewDefaultRelationValidator(db, settingsResolver)
 	uc := usecase.NewQueueUseCase(repo, settingsResolver, relationValidator)
 	ctrl := queueHttp.NewQueueController(uc, validate)
 	return &QueueModule{QueueController: ctrl, QueueRepo: repo, QueueUseCase: uc}
