@@ -14,18 +14,18 @@ import { AiChatWidget } from "~/components/dashboard/ai-chat/ai-chat-widget";
  * Follows the composition pattern to keep layout.tsx clean.
  */
 export function GlobalProviders({ children }: { children: ReactNode }) {
-  return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <DensityProvider>
-        <AuthProvider>
-          <WebSocketProvider>
-            {children}
-            <AiChatWidget />
-            <Toaster position="top-right" richColors closeButton />
-            <LegacyToaster />
-          </WebSocketProvider>
-        </AuthProvider>
-      </DensityProvider>
-    </ThemeProvider>
-  );
+	return (
+		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+			<DensityProvider>
+				<AuthProvider>
+					<WebSocketProvider>
+						{children}
+						<AiChatWidget />
+						<Toaster position="top-right" richColors closeButton />
+						<LegacyToaster />
+					</WebSocketProvider>
+				</AuthProvider>
+			</DensityProvider>
+		</ThemeProvider>
+	);
 }

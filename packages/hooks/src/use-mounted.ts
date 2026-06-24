@@ -7,10 +7,10 @@ const emptySubscribe = () => () => undefined;
  * Useful for avoiding SSR hydration mismatches when using client-only APIs.
  */
 export function useMounted() {
-  const isMounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
-  return isMounted;
+	const isMounted = useSyncExternalStore(
+		emptySubscribe,
+		() => true,
+		() => false,
+	);
+	return isMounted;
 }
