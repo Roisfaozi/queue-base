@@ -2,6 +2,8 @@
 
 import { format } from "date-fns";
 import Image from "next/image";
+import { memo } from "react";
+import { EmptyState } from "~/components/shared/empty-state";
 import { Icon } from "~/components/shared/icon";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -20,8 +22,6 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import type { User } from "~/lib/api/users";
-import { memo } from "react";
-import { EmptyState } from "~/components/shared/empty-state";
 
 interface UserTableProps {
 	users: User[];
@@ -181,7 +181,7 @@ const MemoizedUserTableRow = memo(function UserTableRow({
 				</Badge>
 			</TableCell>
 			<TableCell className="text-muted-foreground text-right">
-				{format(new Date(user.created_at * 1000), "MMM dd, yyyy")}
+				{format(new Date((user.created_at ?? 0) * 1000), "MMM dd, yyyy")}
 			</TableCell>
 			{(canUpdate || canDelete) && (
 				<TableCell>

@@ -1,17 +1,17 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
 	createContext,
+	type ReactNode,
+	useCallback,
 	useContext,
 	useState,
-	useCallback,
-	type ReactNode,
 } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import useSWR, { type KeyedMutator } from "swr";
-import { type User, usersApi, type UserListResponse } from "~/lib/api/users";
 import { toast } from "sonner";
+import useSWR, { type KeyedMutator } from "swr";
 import { usePermission } from "~/hooks/use-permission";
+import { type User, type UserListResponse, usersApi } from "~/lib/api/users";
 
 interface UsersContextType {
 	users: User[];
