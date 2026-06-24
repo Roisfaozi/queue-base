@@ -34,7 +34,7 @@ type AppConfig struct {
 
 	Telemetry struct {
 		Enabled      bool   `env:"OTEL_ENABLED" envDefault:"false"`
-		ServiceName  string `env:"OTEL_SERVICE_NAME" envDefault:"go-clean-api"`
+		ServiceName  string `env:"OTEL_SERVICE_NAME" envDefault:"queue-base-api"`
 		CollectorURL string `env:"OTEL_COLLECTOR_URL" envDefault:"localhost:4317"`
 	}
 	Tus   TusConfig   `mapstructure:"tus"`
@@ -210,8 +210,8 @@ func NewConfig() (*AppConfig, error) {
 	v.SetDefault("smtp.port", 1025)
 	v.SetDefault("smtp.username", "")
 	v.SetDefault("smtp.password", "")
-	v.SetDefault("smtp.from_sender", "NexusOS Admin")
-	v.SetDefault("smtp.from_email", "no-reply@nexusos.dev")
+	v.SetDefault("smtp.from_sender", "Queue Base Admin")
+	v.SetDefault("smtp.from_email", "no-reply@queue-base.local")
 	v.SetDefault("circuit_breaker.enabled", true)
 	v.SetDefault("circuit_breaker.max_requests", 5)
 	v.SetDefault("circuit_breaker.interval", "60s")

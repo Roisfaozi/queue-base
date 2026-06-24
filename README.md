@@ -60,7 +60,7 @@ This project is designed with high flexibility. Many core features can be enable
 | Configuration     | Env Variable         |     Default      | Description                                 |
 | :---------------- | :------------------- | :--------------: | :------------------------------------------ |
 | **OTEL Tracing**  | `OTEL_ENABLED`       |     `false`      | Enables OpenTelemetry tracing.              |
-| **OTEL Service**  | `OTEL_SERVICE_NAME`  |  `go-clean-api`  | Service name shown in Jaeger/Tempo.         |
+| **OTEL Service**  | `OTEL_SERVICE_NAME`  |  `queue-base-api`  | Service name shown in Jaeger/Tempo.         |
 | **Collector URL** | `OTEL_COLLECTOR_URL` | `localhost:4317` | OTLP gRPC collector endpoint (e.g. Jaeger). |
 
 ### Storage
@@ -274,7 +274,7 @@ make dev-up
 To use sibling worktree root instead of `.worktrees/`:
 
 ```bash
-make wt-new feat/frontend-dashboard WORKTREE_ROOT=../queue-base-worktrees
+make wt-new feat/frontend-dashboard
 ```
 
 ---
