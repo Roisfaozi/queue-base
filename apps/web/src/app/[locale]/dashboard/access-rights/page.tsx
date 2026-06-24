@@ -1,13 +1,41 @@
 "use client";
 
-import { AccessRightsProvider } from "./_components/access-rights-context";
-import { CreateArDialog } from "./_components/create-ar-dialog";
-import { RegisterEpDialog } from "./_components/register-ep-dialog";
-import { AccessRightsList } from "./_components/access-rights-list";
-import { EndpointsList } from "./_components/endpoints-list";
+import { Icon } from "~/components/shared/icon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useDashboardShell } from "../_components/dashboard-shell-context";
+import { AccessRightsProvider } from "./_components/access-rights-context";
+import { AccessRightsList } from "./_components/access-rights-list";
+import { CreateArDialog } from "./_components/create-ar-dialog";
+import { EndpointsList } from "./_components/endpoints-list";
+import { RegisterEpDialog } from "./_components/register-ep-dialog";
 
 export default function AccessRightsPage() {
+	const { currentOrganization, isLoading } = useDashboardShell();
+
+	if (isLoading) {
+		return (
+			<div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
+				<p className="text-muted-foreground">Loading organization context...</p>
+			</div>
+		);
+	}
+
+	if (!currentOrganization) {
+		return (
+			<div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
+				<div className="text-center">
+					<Icon
+						name="Building2"
+						className="text-muted-foreground/50 mx-auto h-8 w-8"
+					/>
+					<p className="text-muted-foreground mt-2">
+						Please select an organization first.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<AccessRightsProvider>
 			<div className="space-y-6">
