@@ -192,7 +192,7 @@ wt-rm:
 		docker compose --env-file "$$path/$(ENV_LOCAL_FILE)" -f "$$path/docker-compose.dev.yml" down >/dev/null 2>&1 || true; \
 	fi; \
 	echo "Removing worktree $$branch at $$path"; \
-	git worktree remove "$$path"
+	git worktree remove --force "$$path" 2>/dev/null; rm -rf "$$path" 2>/dev/null || true
 
 .PHONY: wt-enter
 wt-enter:
