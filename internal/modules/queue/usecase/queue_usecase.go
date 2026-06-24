@@ -67,6 +67,11 @@ func (u *queueUseCase) GetQueueStats(ctx context.Context) (*model.QueueStatsResp
 	if tenantID == "" || branchID == "" {
 		return nil, exception.ErrBadRequest
 	}
+	if u.validator != nil {
+		if err := u.validator.Validate(ctx, tenantID, branchID, "", ""); err != nil {
+			return nil, err
+		}
+	}
 
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	now := time.Now().In(loc)
@@ -92,6 +97,11 @@ func (u *queueUseCase) ListActiveJourneys(ctx context.Context, req model.QueueJo
 	branchID := database.GetBranchID(ctx)
 	if tenantID == "" || branchID == "" {
 		return nil, exception.ErrBadRequest
+	}
+	if u.validator != nil {
+		if err := u.validator.Validate(ctx, tenantID, branchID, req.ServiceID, req.CounterID); err != nil {
+			return nil, err
+		}
 	}
 	journeys, err := u.repo.ListActiveJourneys(ctx, tenantID, branchID, req)
 	if err != nil {

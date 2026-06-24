@@ -586,6 +586,17 @@ func TestListActiveJourneys_NegativeMissingTenantOrBranch(t *testing.T) {
 	assert.ErrorIs(t, err, exception.ErrBadRequest)
 }
 
+func TestListActiveJourneys_NegativeInvalidServiceRelationRejected(t *testing.T) {
+	repo := &stubQueueRepo{}
+	validator := &stubRelationValidator{err: exception.ErrForbidden}
+	uc := NewQueueUseCase(repo, nil, validator)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.ListActiveJourneys(ctx, model.QueueJourneyListRequest{ServiceID: "svc-foreign"})
+	assert.ErrorIs(t, err, exception.ErrForbidden)
+}
+
 func TestListActiveJourneys_EdgeCounterFilter(t *testing.T) {
 	repo := &stubQueueRepo{}
 	uc := NewQueueUseCase(repo, nil, nil)
@@ -596,6 +607,17 @@ func TestListActiveJourneys_EdgeCounterFilter(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, res, 1)
 	assert.Equal(t, "counter-1", res[0].CounterID)
+}
+
+func TestListActiveJourneys_NegativeInvalidCounterRelationRejected(t *testing.T) {
+	repo := &stubQueueRepo{}
+	validator := &stubRelationValidator{err: exception.ErrForbidden}
+	uc := NewQueueUseCase(repo, nil, validator)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	_, err := uc.ListActiveJourneys(ctx, model.QueueJourneyListRequest{CounterID: "counter-foreign"})
+	assert.ErrorIs(t, err, exception.ErrForbidden)
 }
 
 func TestListActiveJourneys_SecurityScopedTenantPassThrough(t *testing.T) {
@@ -721,6 +743,17 @@ func TestGetQueueStats_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(5), res.TotalQueuesToday)
 	assert.Equal(t, int64(3), res.TotalActiveJourneys)
+}
+
+func TestGetQueueStats_NegativeInvalidBranchRelationRejected(t *testing.T) {
+	repo := &stubQueueRepo{}
+	validator := &stubRelationValidator{err: exception.ErrForbidden}
+	uc := NewQueueUseCase(repo, nil, validator)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "branch-foreign")
+
+	_, err := uc.GetQueueStats(ctx)
+	assert.ErrorIs(t, err, exception.ErrForbidden)
 }
 
 func TestGetQueueStats_NegativeNoTenantOrBranch(t *testing.T) {
