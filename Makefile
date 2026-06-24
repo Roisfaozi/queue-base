@@ -12,10 +12,11 @@ BENCHTIME=1s
 BENCHMEM=true
 
 # Worktree / local env
-REPO_NAME := $(notdir $(CURDIR))
-WORKTREE_ROOT ?= $(abspath $(CURDIR)/.worktrees)
-WORKTREE_ROOT_FALLBACK ?= $(abspath $(CURDIR)/.worktrees)
-WORKTREE_ROOT_SIBLING ?= $(abspath $(CURDIR)/../$(REPO_NAME)-worktrees)
+REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
+REPO_NAME := $(notdir $(REPO_ROOT))
+WORKTREE_ROOT ?= $(abspath $(REPO_ROOT)/.worktrees)
+WORKTREE_ROOT_FALLBACK ?= $(abspath $(REPO_ROOT)/.worktrees)
+WORKTREE_ROOT_SIBLING ?= $(abspath $(REPO_ROOT)/../$(REPO_NAME)-worktrees)
 WORKTREE_BRANCH_ARG ?= $(word 1,$(filter-out $@,$(MAKECMDGOALS)))
 WORKTREE_BASE_ARG ?= $(word 2,$(filter-out $@,$(MAKECMDGOALS)))
 ENV_LOCAL_FILE ?= .env.local
@@ -135,11 +136,11 @@ wt-new:
 	fi; \
 	$(MAKE) -C "$$path" env-init >/dev/null; \
 	$(MAKE) -C "$$path" env-sync >/dev/null; \
+	rel_path=".worktrees/$$slug"; \
 	echo "Worktree ready: $$path"; \
 	echo "Next:"; \
-	echo "  cd $$path"; \
-	echo "  make dev-up"; \
-	printf "%s\n" "$$path"
+	echo "  cd $$rel_path"; \
+	echo "  make dev-up"
 
 WORKTREE_COMMANDS := wt-new wt-path wt-enter wt-rm
 WORKTREE_EXTRA_GOALS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
@@ -280,7 +281,7 @@ dev-up:
 		echo "$(ENV_LOCAL_FILE) missing, auto-initializing..."; \
 		$(MAKE) env-init >/dev/null; \
 	fi
-	@$(MAKE) env-sync >/dev/null; \
+	@$(MAKE) env-sync >/dev/null
 	@docker compose --env-file "$(ENV_LOCAL_FILE)" -f docker-compose.dev.yml up -d --build
 
 .PHONY: dev-down
@@ -325,6 +326,15 @@ migrate-up-local:
 	fi
 	@set -a; source "$(ENV_LOCAL_FILE)"; set +a; \
 	dsn="mysql://$$MYSQL_USER:$$MYSQL_PASSWORD@tcp(localhost:$$MYSQL_PORT)/$$MYSQL_DBNAME"; \
+	echo "Waiting for MySQL at localhost:$$MYSQL_PORT..."; \
+	for i in $$(seq 1 30); do \
+		if timeout 1 bash -c "echo >/dev/tcp/localhost/$$MYSQL_PORT" 2>/dev/null; then \
+			echo "MySQL ready."; \
+			break; \
+		fi; \
+		if [ $$i -eq 30 ]; then echo "MySQL not ready after 30s."; exit 1; fi; \
+		sleep 1; \
+	done; \
 	migrate -path $(MIGRATIONS_DIR) -database "$$dsn" -verbose up
 
 .PHONY: migrate-down-local
