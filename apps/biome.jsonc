@@ -9,10 +9,16 @@
   },
   "files": {
     "includes": [
+      "./**/*.{json,js,ts,jsx,tsx,css}",
       "./**/src/**/*.{ts,tsx,js,jsx}",
       "./**/app/**/*.{ts,tsx,js,jsx}",
       "!**/.next/**",
       "!**/.react-router/**"
     ]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   }
 }

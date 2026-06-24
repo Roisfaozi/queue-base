@@ -4,20 +4,12 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
 	plugins: [tailwindcss(), reactRouter()],
-	resolve: {
-		tsconfigPaths: true,
-	},
+	resolve: { tsconfigPaths: true },
 	server: {
 		port: 3001,
 		proxy: {
-			"/api": {
-				target: "http://127.0.0.1:8080",
-				changeOrigin: true,
-			},
-			"/ws": {
-				target: "http://127.0.0.1:8080",
-				ws: true,
-			},
+			"/api": { target: "http://127.0.0.1:8080", changeOrigin: true },
+			"/ws": { target: "http://127.0.0.1:8080", ws: true },
 		},
 	},
 });
