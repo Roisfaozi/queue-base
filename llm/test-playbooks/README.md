@@ -28,6 +28,7 @@ Contoh kuat di repo ini:
 - `llm/test-playbooks/security-boundary-regression-playbook.md`: quick checklist for security-sensitive regression planning.
 - `llm/test-playbooks/security-boundary-change-types.md`: command-level playbooks by change type, including auth/session, tenant/Casbin/API key, upload/storage, worker/audit/webhook, realtime, and frontend contract.
 - `llm/test-playbooks/qms-integration-e2e-parallel-plan.md`: parallel-safe integration and E2E plan for QMS rebuild slices.
+- `llm/test-playbooks/qms-frontend-dashboard-handoff.md`: dashboard-first frontend AI workflow and E2E handoff for `apps/web` and `apps/client`.
 - `llm/test-playbooks/benchmark-before-after.md`: before/after benchmark discipline for performance-sensitive work.
 
 ## Struktur Minimal Dokumen
