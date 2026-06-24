@@ -42,8 +42,8 @@ Useful targets:
 
 - `make wt-new feat/name`
 - `make wt-list`
-- `make wt-path BRANCH=feat/name`
-- `make wt-rm BRANCH=feat/name`
+- `make wt-path feat/name`
+- `make wt-rm feat/name`
 - `make wt-prune`
 - `make env-init`
 - `make env-sync`
@@ -63,7 +63,7 @@ See also:
 Auto behavior currently implemented:
 
 - `make wt-new` creates worktree and bootstraps `.env.local`
-- `make wt-enter` ensures `env-init` and `env-sync` for target worktree
+- `make wt-enter feat/name` ensures `env-init` and `env-sync` for target worktree
 - `make dev-up` auto-initializes `.env.local` when missing and runs `env-sync`
 - `make dev-status` auto-initializes `.env.local` when missing
 

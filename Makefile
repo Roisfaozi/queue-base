@@ -16,8 +16,6 @@ REPO_NAME := $(notdir $(CURDIR))
 WORKTREE_ROOT ?= $(abspath $(CURDIR)/.worktrees)
 WORKTREE_ROOT_FALLBACK ?= $(abspath $(CURDIR)/.worktrees)
 WORKTREE_ROOT_SIBLING ?= $(abspath $(CURDIR)/../$(REPO_NAME)-worktrees)
-WORKTREE_BRANCH ?= $(BRANCH)
-WORKTREE_BASE ?= $(BASE)
 WORKTREE_BRANCH_ARG ?= $(word 1,$(filter-out $@,$(MAKECMDGOALS)))
 WORKTREE_BASE_ARG ?= $(word 2,$(filter-out $@,$(MAKECMDGOALS)))
 ENV_LOCAL_FILE ?= .env.local
@@ -77,10 +75,10 @@ help:
 	@echo "  docker-dev        - Start the development environment with Docker Compose."
 	@echo "  wt-new            - Create new git worktree from branch name, optional base."
 	@echo "  wt-list           - List git worktrees."
-	@echo "  wt-path           - Print worktree path for BRANCH=..."
-	@echo "  wt-rm             - Remove worktree for BRANCH=..."
+	@echo "  wt-path           - Print worktree path for branch name."
+	@echo "  wt-rm             - Remove worktree for branch name."
 	@echo "  wt-prune          - Prune stale git worktree metadata."
-	@echo "  wt-enter          - Print worktree path and ensure env is initialized."
+	@echo "  wt-enter          - Ensure env and print worktree path for branch name."
 	@echo "  env-init          - Create worktree-local .env.local with isolated ports."
 	@echo "  env-sync          - Add missing keys from .env.example into .env.local."
 	@echo "  dev-up            - Start worktree-local docker compose stack."
@@ -95,8 +93,8 @@ help:
 
 .PHONY: wt-new
 wt-new:
-	@branch_input="$(strip $(WORKTREE_BRANCH)$(WORKTREE_BRANCH_ARG))"; \
-	base_input="$(strip $(WORKTREE_BASE)$(WORKTREE_BASE_ARG))"; \
+	@branch_input="$(strip $(WORKTREE_BRANCH_ARG))"; \
+	base_input="$(strip $(WORKTREE_BASE_ARG))"; \
 	if [ -z "$$branch_input" ]; then \
 		echo "Branch is required. Example: make wt-new feat/frontend-dashboard [dev|staging]"; \
 		exit 1; \
@@ -127,7 +125,14 @@ wt-new:
 		exit 1; \
 	fi; \
 	echo "Creating worktree $$branch from $$base at $$path"; \
-	git worktree add -b "$$branch" "$$path" "$$base"; \
+	if ! git worktree add -b "$$branch" "$$path" "$$base"; then \
+		echo "Worktree create failed for branch '$$branch' from base '$$base'"; \
+		exit 1; \
+	fi; \
+	if [ ! -d "$$path" ]; then \
+		echo "Worktree path missing after create: $$path"; \
+		exit 1; \
+	fi; \
 	$(MAKE) -C "$$path" env-init >/dev/null; \
 	$(MAKE) -C "$$path" env-sync >/dev/null; \
 	echo "Worktree ready: $$path"; \
@@ -136,8 +141,13 @@ wt-new:
 	echo "  make dev-up"; \
 	printf "%s\n" "$$path"
 
-%:
+WORKTREE_COMMANDS := wt-new wt-path wt-enter wt-rm
+WORKTREE_EXTRA_GOALS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+
+ifneq ($(filter $(WORKTREE_COMMANDS),$(firstword $(MAKECMDGOALS))),)
+$(WORKTREE_EXTRA_GOALS):
 	@:
+endif
 
 .PHONY: wt-list
 wt-list:
@@ -145,11 +155,12 @@ wt-list:
 
 .PHONY: wt-path
 wt-path:
-	@if [ -z "$(WORKTREE_BRANCH)" ]; then \
-		echo "BRANCH is required. Example: make wt-path BRANCH=feat/frontend-dashboard"; \
+	@branch_input="$(strip $(WORKTREE_BRANCH_ARG))"; \
+	if [ -z "$$branch_input" ]; then \
+		echo "Branch is required. Example: make wt-path feat/frontend-dashboard"; \
 		exit 1; \
-	fi
-	@branch="$(WORKTREE_BRANCH)"; \
+	fi; \
+	branch="$$branch_input"; \
 	path="$$(git worktree list --porcelain | awk -v branch="refs/heads/$$branch" 'BEGIN{p=""} /^worktree /{p=substr($$0,10)} /^branch / && $$2==branch {print p; exit}')"; \
 	if [ -z "$$path" ]; then \
 		echo "Worktree not found for branch '$$branch'"; \
@@ -159,11 +170,12 @@ wt-path:
 
 .PHONY: wt-rm
 wt-rm:
-	@if [ -z "$(WORKTREE_BRANCH)" ]; then \
-		echo "BRANCH is required. Example: make wt-rm BRANCH=feat/frontend-dashboard"; \
+	@branch_input="$(strip $(WORKTREE_BRANCH_ARG))"; \
+	if [ -z "$$branch_input" ]; then \
+		echo "Branch is required. Example: make wt-rm feat/frontend-dashboard"; \
 		exit 1; \
-	fi
-	@branch="$(WORKTREE_BRANCH)"; \
+	fi; \
+	branch="$$branch_input"; \
 	current_branch="$$(git rev-parse --abbrev-ref HEAD)"; \
 	if [ "$$current_branch" = "$$branch" ]; then \
 		echo "Cannot remove current active branch worktree: $$branch"; \
@@ -183,13 +195,14 @@ wt-rm:
 
 .PHONY: wt-enter
 wt-enter:
-	@if [ -z "$(WORKTREE_BRANCH)" ]; then \
-		echo "BRANCH is required. Example: make wt-enter BRANCH=feat/frontend-dashboard"; \
+	@branch_input="$(strip $(WORKTREE_BRANCH_ARG))"; \
+	if [ -z "$$branch_input" ]; then \
+		echo "Branch is required. Example: make wt-enter feat/frontend-dashboard"; \
 		exit 1; \
-	fi
-	@path="$$(git worktree list --porcelain | awk -v branch="refs/heads/$(WORKTREE_BRANCH)" 'BEGIN{p=""} /^worktree /{p=substr($$0,10)} /^branch / && $$2==branch {print p; exit}')"; \
+	fi; \
+	path="$$(git worktree list --porcelain | awk -v branch="refs/heads/$$branch_input" 'BEGIN{p=""} /^worktree /{p=substr($$0,10)} /^branch / && $$2==branch {print p; exit}')"; \
 	if [ -z "$$path" ]; then \
-		echo "Worktree not found for branch '$(WORKTREE_BRANCH)'"; \
+		echo "Worktree not found for branch '$$branch_input'"; \
 		exit 1; \
 	fi; \
 	$(MAKE) -C "$$path" env-init >/dev/null; \

@@ -221,9 +221,9 @@ Primary use cases:
 | :------ | :------- | :------- |
 | `make wt-new feat/x [base]` | Create new git worktree and bootstrap env | Start new feature stream from current branch or explicit base |
 | `make wt-list` | List all git worktrees | Inspect active worktrees |
-| `make wt-path BRANCH=feat/x` | Print worktree path for branch | Quick path lookup |
-| `make wt-enter BRANCH=feat/x` | Ensure env for target worktree and print path | Re-open existing worktree safely |
-| `make wt-rm BRANCH=feat/x` | Stop local stack if needed and remove worktree | Clean finished feature stream |
+| `make wt-path feat/x` | Print worktree path for branch | Quick path lookup |
+| `make wt-enter feat/x` | Ensure env for target worktree and print path | Re-open existing worktree safely |
+| `make wt-rm feat/x` | Stop local stack if needed and remove worktree | Clean finished feature stream |
 | `make wt-prune` | Prune stale worktree metadata | Cleanup broken or removed entries |
 | `make env-init` | Create `.env.local` and assign isolated ports | Bootstrap env in current worktree |
 | `make env-sync` | Append missing keys from `.env.example` | Keep local env aligned after template changes |
@@ -249,7 +249,7 @@ Primary use cases:
 
 ```bash
 make wt-new feat/frontend-dashboard
-cd "$(make wt-path BRANCH=feat/frontend-dashboard)"
+cd .worktrees/feat-frontend-dashboard
 make dev-up
 make migrate-up-local
 make test-local
@@ -259,14 +259,14 @@ Override base branch:
 
 ```bash
 make wt-new feat/caller-runtime staging
-cd "$(make wt-path BRANCH=feat/caller-runtime)"
+cd .worktrees/feat-caller-runtime
 make dev-up
 ```
 
 For existing worktree:
 
 ```bash
-make wt-enter BRANCH=feat/frontend-dashboard
+make wt-enter feat/frontend-dashboard
 cd .worktrees/feat-frontend-dashboard
 make dev-up
 ```

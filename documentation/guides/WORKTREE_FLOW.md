@@ -65,13 +65,11 @@ make wt-new feat/caller-runtime
 Then move into each worktree and initialize local env:
 
 ```bash
-make wt-new feat/frontend-dashboard
 cd .worktrees/feat-frontend-dashboard
 make dev-up
 ```
 
 ```bash
-make wt-new feat/caller-runtime
 cd .worktrees/feat-caller-runtime
 make dev-up
 ```
@@ -88,13 +86,13 @@ cd .worktrees/feat-caller-runtime
 For existing worktrees, ensure env and local file state with:
 
 ```bash
-make wt-enter BRANCH=feat/frontend-dashboard
+make wt-enter feat/frontend-dashboard
 ```
 
 To jump into worktree directly from current shell:
 
 ```bash
-cd "$(make wt-path BRANCH=feat/frontend-dashboard)"
+cd "$(make wt-path feat/frontend-dashboard)"
 ```
 
 ## 5. Daily Commands
@@ -137,7 +135,7 @@ make dev-down
 When feature work is merged or no longer needed:
 
 ```bash
-make wt-rm BRANCH=feat/frontend-dashboard
+make wt-rm feat/frontend-dashboard
 ```
 
 Current behavior:
