@@ -21,6 +21,11 @@ type stubQueueControllerUseCase struct {
 	listReq          model.ListQueuesRequest
 	getCalled        bool
 	getID            string
+	forwardCalled    bool
+	forwardReq       *model.ForwardQueueRequest
+	forwardID        string
+	forwardRes       *model.QueueResponse
+	forwardErr       error
 	listRes          []model.QueueResponse
 	getRes           *model.QueueResponse
 	transitionCalled bool
@@ -52,7 +57,10 @@ func (s *stubQueueControllerUseCase) GetQueueByID(ctx context.Context, queueID s
 }
 
 func (s *stubQueueControllerUseCase) ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error) {
-	return nil, nil
+	s.forwardCalled = true
+	s.forwardID = queueID
+	s.forwardReq = req
+	return s.forwardRes, s.forwardErr
 }
 
 func (s *stubQueueControllerUseCase) TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error) {
@@ -275,4 +283,65 @@ func TestQueueController_TransitionRejectsMissingID(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.False(t, uc.transitionCalled)
+}
+
+func TestQueueController_ForwardRejectsMissingID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.POST("/queues/:id/forward", controller.Forward)
+
+	body, _ := json.Marshal(model.ForwardQueueRequest{DestinationServiceID: "550e8400-e29b-41d4-a716-446655440000"})
+	req, _ := http.NewRequest("POST", "/queues//forward", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.False(t, uc.forwardCalled)
+}
+
+func TestQueueController_GetQueueStatsRejectsMissingBranchID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.GET("/branches/:id/queue-stats", controller.GetQueueStats)
+
+	req, _ := http.NewRequest("GET", "/branches//queue-stats", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.False(t, uc.statsCalled)
+}
+
+func TestQueueController_GetJourneysByBranchAndServiceRejectsMissingPathIDs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.GET("/branches/:id/services/:service_id/queue-journeys", controller.GetJourneysByBranchAndService)
+
+	req, _ := http.NewRequest("GET", "/branches//services//queue-journeys", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
+}
+
+func TestQueueController_GetJourneysByBranchAndCounterRejectsMissingPathIDs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{}
+	controller := NewQueueController(uc, validator.New())
+	router := gin.New()
+	router.GET("/branches/:id/counters/:counter_id/queue-journeys", controller.GetJourneysByBranchAndCounter)
+
+	req, _ := http.NewRequest("GET", "/branches//counters//queue-journeys", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
 }

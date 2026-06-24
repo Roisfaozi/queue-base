@@ -124,6 +124,10 @@ func (h *QueueController) Forward(c *gin.Context) {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
 		return
 	}
+	if c.Param("id") == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing queue id")
+		return
+	}
 	if err := h.validate.Struct(req); err != nil {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
@@ -193,6 +197,10 @@ func (h *QueueController) GetJourneysByBranchAndService(c *gin.Context) {
 	var req model.QueueJourneyListRequest
 	req.ServiceID = c.Param("service_id")
 	branchID := c.Param("id")
+	if branchID == "" || req.ServiceID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing branch or service id")
+		return
+	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
@@ -225,6 +233,10 @@ func (h *QueueController) GetJourneysByBranchAndCounter(c *gin.Context) {
 	var req model.QueueJourneyListRequest
 	req.CounterID = c.Param("counter_id")
 	branchID := c.Param("id")
+	if branchID == "" || req.CounterID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing branch or counter id")
+		return
+	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
@@ -279,6 +291,10 @@ func (h *QueueController) GetVisitJourneys(c *gin.Context) {
 // @Router       /branches/{id}/queue-stats [get]
 func (h *QueueController) GetQueueStats(c *gin.Context) {
 	branchID := c.Param("id")
+	if branchID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing branch id")
+		return
+	}
 	ctx := database.SetBranchContext(c.Request.Context(), branchID)
 	res, err := h.useCase.GetQueueStats(ctx)
 	if err != nil {
