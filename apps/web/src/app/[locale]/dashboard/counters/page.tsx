@@ -2,7 +2,7 @@
 
 import { Icon } from "~/components/shared/icon";
 import { useDashboardShell } from "../_components/dashboard-shell-context";
-import { Button } from "~/components/ui/button";
+import { CountersContent } from "./_components/counters-content";
 
 export default function CountersPage() {
 	const { currentOrganization, isLoading } = useDashboardShell();
@@ -33,24 +33,7 @@ export default function CountersPage() {
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h2 className="text-2xl font-bold tracking-tight">Counters</h2>
-					<p className="text-muted-foreground">
-						Manage counters across branches for this organization.
-					</p>
-				</div>
-				<Button>
-					<Icon name="Plus" className="mr-2 h-4 w-4" />
-					Add Counter
-				</Button>
-			</div>
-
-			<div className="rounded-md border">
-				<div className="p-4 text-center text-sm text-muted-foreground">
-					Counters table will go here.
-				</div>
-			</div>
+			<CountersContent />
 		</div>
 	);
 }
