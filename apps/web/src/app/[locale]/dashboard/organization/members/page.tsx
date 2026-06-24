@@ -1,5 +1,6 @@
 "use client";
 
+import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { useOrganizationStore } from "~/stores/use-organization-store";
 import { Icon } from "~/components/shared/icon";
 import { MembersProvider } from "./_components/members-context";
@@ -7,7 +8,16 @@ import { MemberInviteDialog } from "./_components/member-invite-dialog";
 import { MemberTable } from "./_components/member-list";
 
 export default function OrganizationMembersPage() {
+	const { isLoading } = useDashboardShell();
 	const { currentOrganization } = useOrganizationStore();
+
+	if (isLoading) {
+		return (
+			<div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
+				<p className="text-muted-foreground">Loading organization context...</p>
+			</div>
+		);
+	}
 
 	if (!currentOrganization) {
 		return (

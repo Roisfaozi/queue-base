@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { DashboardShellProvider } from "./_components/dashboard-shell-context";
 import { organizationsApi } from "~/lib/api/organizations";
 
@@ -10,6 +11,10 @@ export default async function DashboardLayout({
 }: {
 	children: React.ReactNode;
 }) {
+	const cookieStore = await cookies();
+	const initialSelectedOrganizationId =
+		cookieStore.get("organization_id")?.value || null;
+
 	// 1. Fetch organizations on Server (Critical for Navigation/Switcher)
 	let initialOrgs = undefined;
 	try {
@@ -20,7 +25,10 @@ export default async function DashboardLayout({
 	}
 
 	return (
-		<DashboardShellProvider initialData={initialOrgs}>
+		<DashboardShellProvider
+			initialData={initialOrgs}
+			initialSelectedOrganizationId={initialSelectedOrganizationId}
+		>
 			<DashboardLayoutClient>{children}</DashboardLayoutClient>
 		</DashboardShellProvider>
 	);
