@@ -9,9 +9,13 @@ import (
 	apiKeyEntity "github.com/Roisfaozi/queue-base/internal/modules/api_key/entity"
 	auditEntity "github.com/Roisfaozi/queue-base/internal/modules/audit/entity"
 	authEntity "github.com/Roisfaozi/queue-base/internal/modules/auth/entity"
+	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	projectEntity "github.com/Roisfaozi/queue-base/internal/modules/project/entity"
+	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
+	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	webhookEntity "github.com/Roisfaozi/queue-base/internal/modules/webhook/entity"
 	"github.com/google/uuid"
@@ -32,9 +36,16 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		&authEntity.EmailVerificationToken{},
 		&orgEntity.Organization{},
 		&orgEntity.OrganizationMember{},
+		&orgEntity.Branch{},
+		&serviceEntity.Service{},
+		&counterEntity.Counter{},
+		&settingsEntity.Setting{},
 		&userEntity.UserSSOIdentity{},
 		&orgEntity.InvitationToken{},
 		&projectEntity.Project{},
+		&queueEntity.Queue{},
+		&queueEntity.QueueJourney{},
+		&queueEntity.VisitJourney{},
 		&apiKeyEntity.ApiKey{},
 		&webhookEntity.Webhook{},
 		&webhookEntity.WebhookLog{},
@@ -56,6 +67,17 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		v5 varchar(100) DEFAULT NULL,
 		PRIMARY KEY (id),
 		UNIQUE KEY idx_casbin_rule (ptype,v0,v1,v2,v3,v4,v5)
+	)`)
+
+	db.Exec(`CREATE TABLE IF NOT EXISTS queue_counters (
+		tenant_id VARCHAR(36) NOT NULL,
+		branch_id VARCHAR(36) NOT NULL,
+		queue_date DATE NOT NULL,
+		prefix VARCHAR(10) NOT NULL,
+		last_value INT NOT NULL DEFAULT 0,
+		created_at BIGINT,
+		updated_at BIGINT,
+		PRIMARY KEY (tenant_id, branch_id, queue_date, prefix)
 	)`)
 }
 
@@ -126,6 +148,14 @@ func SeedTestData(t *testing.T, db *gorm.DB) {
 
 func CleanupDatabase(t *testing.T, db *gorm.DB) {
 	tables := []string{
+		"queue_journeys",
+		"visit_journeys",
+		"queues",
+		"queue_counters",
+		"settings",
+		"counters",
+		"services",
+		"branches",
 		"projects",
 		"organization_members",
 		"organizations",
