@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
+import { useCallback, useEffect, useState } from "react";
+import { EmptyState } from "~/components/shared/empty-state";
 import { Icon } from "~/components/shared/icon";
 import { Badge } from "~/components/ui/badge";
+import { ScrollArea } from "~/components/ui/scroll-area";
 import {
 	Sheet,
 	SheetContent,
@@ -11,9 +13,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "~/components/ui/sheet";
-import { ScrollArea } from "~/components/ui/scroll-area";
-import { queuesApi, type Queue, type VisitJourney } from "~/lib/api/qms";
-import { EmptyState } from "~/components/shared/empty-state";
+import { type Queue, queuesApi, type VisitJourney } from "~/lib/api/qms";
 
 interface QueueDetailSheetProps {
 	queue?: Queue | null;
@@ -92,7 +92,7 @@ export function QueueDetailSheet({
 														{j.event_type}
 													</span>
 													<span className="text-xs text-muted-foreground">
-														{format(new Date(j.created_at), "HH:mm:ss")}
+														{format(new Date(j.created_at * 1000), "HH:mm:ss")}
 													</span>
 												</div>
 												{j.payload && (
