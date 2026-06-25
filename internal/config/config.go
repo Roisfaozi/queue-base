@@ -177,7 +177,7 @@ type WatcherConfig struct {
 
 func NewConfig() (*AppConfig, error) {
 	if err := godotenv.Load(); err != nil {
-		log.Fatalf("No .env file found, reading configuration from environment variables")
+		log.Printf("No .env file found, reading configuration from environment variables")
 	}
 
 	v := viper.New()
