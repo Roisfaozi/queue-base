@@ -42,7 +42,7 @@ DB_URL_STAG = "$(DB_DRIVER)://$(DB_USER):$(DB_PASSWORD_PROD)@tcp($(DB_HOST_PROD)
 
 
 # Swagger CLI (pin to module version to ensure consistent generated output)
-SWAG_CLI=go run github.com/swaggo/swag/cmd/swag@v1.8.12
+SWAG_CLI=go run github.com/swaggo/swag/cmd/swag@latest
 
 # Binary name
 BINARY_NAME=main

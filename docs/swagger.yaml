@@ -3018,8 +3018,7 @@ paths:
             - $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
             - properties:
                 data:
-                  items:
-                    type: object
+                  items: {}
                   type: array
               type: object
         "401":

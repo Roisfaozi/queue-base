@@ -74,16 +74,16 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		panic("Failed to create casbin_rule table: " + err.Error())
 	}
 
-	err = db.Exec(`CREATE TABLE IF NOT EXISTS queue_counters (
-		tenant_id VARCHAR(36) NOT NULL,
-		branch_id VARCHAR(36) NOT NULL,
-		queue_date DATE NOT NULL,
-		prefix VARCHAR(10) NOT NULL,
-		last_value INT NOT NULL DEFAULT 0,
-		created_at BIGINT,
-		updated_at BIGINT,
-		PRIMARY KEY (tenant_id, branch_id, queue_date, prefix)
-	)`).Error
+	err = db.Exec("CREATE TABLE IF NOT EXISTS queue_counters (" +
+		"tenant_id VARCHAR(36) NOT NULL," +
+		"branch_id VARCHAR(36) NOT NULL," +
+		"queue_date DATE NOT NULL," +
+		"prefix VARCHAR(10) NOT NULL," +
+		"`last_value` INT NOT NULL DEFAULT 0," +
+		"created_at BIGINT," +
+		"updated_at BIGINT," +
+		"PRIMARY KEY (tenant_id, branch_id, queue_date, prefix)" +
+		")").Error
 	if t != nil {
 		require.NoError(t, err, "Failed to create queue_counters table")
 	} else if err != nil {
