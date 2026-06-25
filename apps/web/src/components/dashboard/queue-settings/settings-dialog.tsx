@@ -43,6 +43,7 @@ import {
 	type Setting,
 	settingsApi,
 } from "~/lib/api/qms";
+import { useOrganizationStore } from "~/stores/use-organization-store";
 
 const SCOPE_TYPES = ["tenant", "branch", "service", "counter"] as const;
 
@@ -70,6 +71,7 @@ export function SettingsDialog({
 	setting,
 	onSuccess,
 }: SettingsDialogProps) {
+	const { currentOrganization } = useOrganizationStore();
 	const [isLoading, setIsLoading] = useState(false);
 	const [branches, setBranches] = useState<Branch[]>([]);
 	const [services, setServices] = useState<Service[]>([]);
@@ -141,7 +143,10 @@ export function SettingsDialog({
 			} else {
 				await settingsApi.create({
 					scope_type: data.scope_type,
-					scope_id: data.scope_id,
+					scope_id:
+						data.scope_type === "tenant"
+							? currentOrganization?.id || ""
+							: data.scope_id || "",
 					key: data.key,
 					value: data.value,
 					value_type: data.value_type,
