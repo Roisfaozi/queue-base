@@ -141,11 +141,13 @@ export const countersApi = {
 // -----------------------------------------------------------------------------
 export const queuesApi = {
 	getAll: (params?: {
+		branch_id?: string;
 		status?: string;
 		queue_date?: string;
 		service_id?: string;
 	}) => {
 		const searchParams = new URLSearchParams();
+		if (params?.branch_id) searchParams.append("branch_id", params.branch_id);
 		if (params?.status) searchParams.append("status", params.status);
 		if (params?.queue_date)
 			searchParams.append("queue_date", params.queue_date);
@@ -157,6 +159,7 @@ export const queuesApi = {
 	},
 	getById: (id: string) => api.get<{ data: Queue }>(`/queues/${id}`),
 	register: (data: {
+		branch_id: string;
 		service_id: string;
 		patient_name: string;
 		patient_id?: string;

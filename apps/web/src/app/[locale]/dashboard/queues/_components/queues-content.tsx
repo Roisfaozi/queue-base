@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select";
+import {
 	QueueTable,
 	QueueRegisterDialog,
 	QueueDetailSheet,
@@ -11,11 +18,13 @@ import {
 } from "~/components/dashboard/queues";
 import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
-import { queuesApi, type Queue } from "~/lib/api/qms";
+import { branchesApi, queuesApi, type Branch, type Queue } from "~/lib/api/qms";
 
 export function QueuesContent() {
 	const { currentOrganization } = useDashboardShell();
 	const [queues, setQueues] = useState<Queue[]>([]);
+	const [branches, setBranches] = useState<Branch[]>([]);
+	const [selectedBranchId, setSelectedBranchId] = useState<string>("");
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<any>(null);
 
@@ -25,19 +34,44 @@ export function QueuesContent() {
 
 	const [selectedQueue, setSelectedQueue] = useState<Queue | null>(null);
 
-	const fetchQueues = useCallback(async () => {
+	const fetchBranches = useCallback(async () => {
 		if (!currentOrganization) return;
+		try {
+			const resp = await branchesApi.getAll();
+			const nextBranches = resp.data || [];
+			setBranches(nextBranches);
+			setSelectedBranchId((current) => {
+				if (current && nextBranches.some((branch) => branch.id === current)) {
+					return current;
+				}
+				return nextBranches[0]?.id || "";
+			});
+		} catch (err: any) {
+			setError(err);
+		}
+	}, [currentOrganization]);
+
+	const fetchQueues = useCallback(async () => {
+		if (!currentOrganization || !selectedBranchId) {
+			setQueues([]);
+			setIsLoading(false);
+			return;
+		}
 		setIsLoading(true);
 		setError(null);
 		try {
-			const resp = await queuesApi.getAll();
+			const resp = await queuesApi.getAll({ branch_id: selectedBranchId });
 			setQueues(resp.data || []);
 		} catch (err: any) {
 			setError(err);
 		} finally {
 			setIsLoading(false);
 		}
-	}, [currentOrganization]);
+	}, [currentOrganization, selectedBranchId]);
+
+	useEffect(() => {
+		fetchBranches();
+	}, [fetchBranches]);
 
 	useEffect(() => {
 		fetchQueues();
@@ -83,10 +117,35 @@ export function QueuesContent() {
 						Live monitoring and management of branch queues.
 					</p>
 				</div>
-				<Button onClick={handleRegister}>
-					<Icon name="Plus" className="mr-2 h-4 w-4" />
-					Register Queue
-				</Button>
+				<div className="flex items-center gap-3">
+					<div className="min-w-[220px]">
+						<Select
+							value={selectedBranchId}
+							onValueChange={setSelectedBranchId}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Select branch" />
+							</SelectTrigger>
+							<SelectContent>
+								{branches.length === 0 ? (
+									<SelectItem value="" disabled>
+										No branches available
+									</SelectItem>
+								) : (
+									branches.map((branch) => (
+										<SelectItem key={branch.id} value={branch.id}>
+											{branch.code} — {branch.name}
+										</SelectItem>
+									))
+								)}
+							</SelectContent>
+						</Select>
+					</div>
+					<Button onClick={handleRegister} disabled={!selectedBranchId}>
+						<Icon name="Plus" className="mr-2 h-4 w-4" />
+						Register Queue
+					</Button>
+				</div>
 			</div>
 
 			<QueueTable
@@ -104,6 +163,8 @@ export function QueuesContent() {
 			<QueueRegisterDialog
 				open={registerOpen}
 				onOpenChange={setRegisterOpen}
+				branches={branches}
+				defaultBranchId={selectedBranchId}
 				onSuccess={fetchQueues}
 			/>
 

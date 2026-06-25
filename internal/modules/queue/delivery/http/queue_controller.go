@@ -74,7 +74,15 @@ func (h *QueueController) GetAll(c *gin.Context) {
 		response.BadRequest(c, exception.ErrBadRequest, "invalid query params")
 		return
 	}
-	res, err := h.useCase.ListQueues(c.Request.Context(), req)
+	if err := h.validate.Struct(req); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	ctx := c.Request.Context()
+	if req.BranchID != "" {
+		ctx = database.SetBranchContext(ctx, req.BranchID)
+	}
+	res, err := h.useCase.ListQueues(ctx, req)
 	if err != nil {
 		response.HandleError(c, err, "failed to get queues")
 		return

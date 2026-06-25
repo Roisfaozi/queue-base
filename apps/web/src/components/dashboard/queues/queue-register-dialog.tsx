@@ -29,9 +29,15 @@ import {
 } from "~/components/ui/select";
 import { toast } from "sonner";
 import { Icon } from "~/components/shared/icon";
-import { queuesApi, servicesApi, type Service } from "~/lib/api/qms";
+import {
+	queuesApi,
+	servicesApi,
+	type Service,
+	type Branch,
+} from "~/lib/api/qms";
 
 const registerSchema = z.object({
+	branch_id: z.string().min(1, "Branch is required."),
 	service_id: z.string().min(1, "Service is required."),
 	patient_name: z.string().min(2, "Name must be at least 2 characters."),
 });
@@ -41,12 +47,16 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 interface QueueRegisterDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	branches: Branch[];
+	defaultBranchId?: string;
 	onSuccess: () => void;
 }
 
 export function QueueRegisterDialog({
 	open,
 	onOpenChange,
+	branches,
+	defaultBranchId,
 	onSuccess,
 }: QueueRegisterDialogProps) {
 	const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +65,7 @@ export function QueueRegisterDialog({
 	const form = useForm<RegisterFormValues>({
 		resolver: zodResolver(registerSchema),
 		defaultValues: {
+			branch_id: "",
 			service_id: "",
 			patient_name: "",
 		},
@@ -71,15 +82,20 @@ export function QueueRegisterDialog({
 
 	useEffect(() => {
 		if (open) {
-			form.reset({ service_id: "", patient_name: "" });
+			form.reset({
+				branch_id: defaultBranchId || "",
+				service_id: "",
+				patient_name: "",
+			});
 			fetchServices();
 		}
-	}, [open, form, fetchServices]);
+	}, [open, form, fetchServices, defaultBranchId]);
 
 	async function onSubmit(data: RegisterFormValues) {
 		setIsLoading(true);
 		try {
 			await queuesApi.register({
+				branch_id: data.branch_id,
 				service_id: data.service_id,
 				patient_name: data.patient_name,
 			});
@@ -101,6 +117,39 @@ export function QueueRegisterDialog({
 				</DialogHeader>
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+						<FormField
+							control={form.control}
+							name="branch_id"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Branch</FormLabel>
+									<Select
+										onValueChange={field.onChange}
+										defaultValue={field.value}
+									>
+										<FormControl>
+											<SelectTrigger>
+												<SelectValue placeholder="Select a branch" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											{branches.length === 0 ? (
+												<SelectItem value="" disabled>
+													No branches available
+												</SelectItem>
+											) : (
+												branches.map((branch) => (
+													<SelectItem key={branch.id} value={branch.id}>
+														{branch.code} — {branch.name}
+													</SelectItem>
+												))
+											)}
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
 						<FormField
 							control={form.control}
 							name="service_id"

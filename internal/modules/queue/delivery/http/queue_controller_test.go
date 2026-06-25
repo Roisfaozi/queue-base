@@ -40,6 +40,7 @@ type stubQueueControllerUseCase struct {
 	registerBranchID string
 	listCalled       bool
 	listReq          model.ListQueuesRequest
+	listBranchID     string
 	getCalled        bool
 	getID            string
 	forwardCalled    bool
@@ -97,7 +98,30 @@ func TestQueueController_Register(t *testing.T) {
 func (s *stubQueueControllerUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
 	s.listCalled = true
 	s.listReq = req
+	s.listBranchID = database.GetBranchID(ctx)
 	return s.listRes, nil
+}
+
+func TestQueueController_GetAllSetsBranchContextFromQuery(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1"}}}
+	controller := NewQueueController(uc, newQueueTestValidator())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/queues", controller.GetAll)
+
+	req, _ := http.NewRequest("GET", "/queues?branch_id=550e8400-e29b-41d4-a716-446655440000&status=waiting", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, uc.listCalled)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.listBranchID)
+	assert.Equal(t, model.ListQueuesRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Status: "waiting"}, uc.listReq)
 }
 
 func (s *stubQueueControllerUseCase) GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error) {

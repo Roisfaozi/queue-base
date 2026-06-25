@@ -48,6 +48,7 @@ type QueueTransitionRequest struct {
 }
 
 type ListQueuesRequest struct {
+	BranchID  string `form:"branch_id" validate:"omitempty,uuid4"`
 	Status    string `form:"status"`
 	QueueDate string `form:"queue_date"`
 	ServiceID string `form:"service_id"`
