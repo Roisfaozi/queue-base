@@ -2,7 +2,6 @@ package ws_test
 
 import (
 	"errors"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -28,6 +27,9 @@ func TestWebSocketController_HandleWebSocket_WithUser(t *testing.T) {
 
 	// Use setupTestServer to get a manager (and server, which we won't use directly for routing)
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -45,7 +47,8 @@ func TestWebSocketController_HandleWebSocket_WithUser(t *testing.T) {
 	})
 
 	// Create Server
-	ts := httptest.NewServer(r)
+	ts, err := newPermissiveWSServer(r)
+	skipIfSocketBlocked(t, err)
 	defer ts.Close()
 
 	// Connect
@@ -72,6 +75,9 @@ func TestWebSocketController_HandleWebSocket_UserNotFound(t *testing.T) {
 	mockUserRepo.On("FindByID", mock.Anything, "u1").Return(nil, errors.New("not found"))
 
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -87,7 +93,8 @@ func TestWebSocketController_HandleWebSocket_UserNotFound(t *testing.T) {
 		controller.HandleWebSocket(c)
 	})
 
-	ts := httptest.NewServer(r)
+	ts, err := newPermissiveWSServer(r)
+	skipIfSocketBlocked(t, err)
 	defer ts.Close()
 
 	wsURL := "ws" + ts.URL[4:] + "/ws"

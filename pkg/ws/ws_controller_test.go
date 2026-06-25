@@ -161,7 +161,7 @@ func TestWebSocketOrigin(t *testing.T) {
 				engine.ServeHTTP(w, r)
 			})
 
-			server, err := newPermissiveWSServer(t, r.ServeHTTP)
+			server, err := newPermissiveWSServer(t, http.HandlerFunc(r.ServeHTTP))
 			if err != nil {
 				return
 			}

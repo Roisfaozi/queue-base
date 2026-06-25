@@ -2,6 +2,7 @@ package ws_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +15,9 @@ import (
 
 func setupTicketManager(t *testing.T) (*ws.RedisTicketManager, *miniredis.Miniredis) {
 	mr, err := miniredis.Run()
+	if err != nil && strings.Contains(err.Error(), "operation not permitted") {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	require.NoError(t, err)
 
 	rdb := redis.NewClient(&redis.Options{
@@ -58,8 +62,11 @@ func TestRedisTicketManager_CreateAndValidate(t *testing.T) {
 
 func TestRedisTicketManager_BadData(t *testing.T) {
 	mr, err := miniredis.Run()
+	if err != nil && strings.Contains(err.Error(), "operation not permitted") {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	require.NoError(t, err)
-
+	defer mr.Close()
 	rdb := redis.NewClient(&redis.Options{
 		Addr:            mr.Addr(),
 		DisableIdentity: true,

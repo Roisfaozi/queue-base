@@ -1,6 +1,7 @@
 package worker_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,9 @@ type processorTestDeps struct {
 
 func setupProcessorTest(t *testing.T) (*processorTestDeps, func()) {
 	mr, err := miniredis.Run()
+	if err != nil && strings.Contains(err.Error(), "operation not permitted") {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	require.NoError(t, err)
 
 	redisOpt := asynq.RedisClientOpt{

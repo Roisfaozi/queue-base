@@ -92,7 +92,10 @@ func setupTestServer() (*ws.WebSocketManager, *httptest.Server) {
 		go client.ReadPump()
 	})
 
-	server := httptest.NewServer(handler)
+	server, err := newPermissiveWSServer(handler)
+	if err != nil {
+		return manager, nil
+	}
 	return manager, server
 }
 

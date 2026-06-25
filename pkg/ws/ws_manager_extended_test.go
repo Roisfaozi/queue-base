@@ -15,6 +15,9 @@ import (
 // TestWebSocketManager_MultipleSubscriptions verifies a client can subscribe to multiple channels
 func TestWebSocketManager_MultipleSubscriptions(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -61,6 +64,9 @@ func TestWebSocketManager_MultipleSubscriptions(t *testing.T) {
 // TestWebSocketManager_Unsubscribe verifies client unsubscribe works
 func TestWebSocketManager_Unsubscribe(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -103,6 +109,9 @@ func TestWebSocketManager_Unsubscribe(t *testing.T) {
 // TestWebSocketManager_ClientDisconnect verifies cleanup after client disconnects
 func TestWebSocketManager_ClientDisconnect(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -134,6 +143,9 @@ func TestWebSocketManager_ClientDisconnect(t *testing.T) {
 // TestWebSocketManager_MultipleClientsIndependent verifies separate clients work independently
 func TestWebSocketManager_MultipleClientsIndependent(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -163,6 +175,9 @@ func TestWebSocketManager_MultipleClientsIndependent(t *testing.T) {
 // TestWebSocketManager_GetChannelClients counts clients in a channel
 func TestWebSocketManager_GetChannelClients(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -196,6 +211,9 @@ func TestWebSocketManager_GetChannelClients(t *testing.T) {
 // TestWebSocketManager_BroadcastToEmptyChannel verifies no panic on empty channel
 func TestWebSocketManager_BroadcastToEmptyChannel(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -208,6 +226,9 @@ func TestWebSocketManager_BroadcastToEmptyChannel(t *testing.T) {
 // TestWebSocketManager_InvalidMessageType verifies unknown message type handling
 func TestWebSocketManager_InvalidMessageType(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 	defer manager.Stop()
 
@@ -241,6 +262,9 @@ func TestWebSocketManager_InvalidMessageType(t *testing.T) {
 // TestWebSocketManager_StopCleanup verifies manager Stop cleans up
 func TestWebSocketManager_StopCleanup(t *testing.T) {
 	manager, server := setupTestServer()
+	if server == nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 
 	conn, err := connectClient(server.URL)
