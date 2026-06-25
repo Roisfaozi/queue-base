@@ -45,7 +45,8 @@ func (h *QueueController) Register(c *gin.Context) {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
-	res, err := h.useCase.RegisterQueue(c.Request.Context(), &req)
+	ctx := database.SetBranchContext(c.Request.Context(), req.BranchID)
+	res, err := h.useCase.RegisterQueue(ctx, &req)
 	if err != nil {
 		response.HandleError(c, err, "failed to register queue")
 		return

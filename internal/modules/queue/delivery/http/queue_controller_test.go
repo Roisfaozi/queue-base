@@ -6,17 +6,38 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 )
 
+func newQueueTestValidator() *validator.Validate {
+	v := validator.New()
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+	if err := validation.RegisterCustomValidations(v); err != nil {
+		panic(err)
+	}
+	return v
+}
+
 type stubQueueControllerUseCase struct {
+	registerCalled   bool
+	registerReq      *model.RegisterQueueRequest
+	registerBranchID string
 	listCalled       bool
 	listReq          model.ListQueuesRequest
 	getCalled        bool
@@ -41,7 +62,36 @@ type stubQueueControllerUseCase struct {
 }
 
 func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error) {
-	return nil, nil
+	s.registerCalled = true
+	s.registerReq = req
+	s.registerBranchID = database.GetBranchID(ctx)
+	return &model.QueueResponse{ID: "q-1", BranchID: s.registerBranchID}, nil
+}
+
+func TestQueueController_Register(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	uc := &stubQueueControllerUseCase{}
+	controller := NewQueueController(uc, newQueueTestValidator())
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.POST("/queues", controller.Register)
+
+	body, _ := json.Marshal(model.RegisterQueueRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "550e8400-e29b-41d4-a716-446655440001", PatientName: "John Queue"})
+	req, _ := http.NewRequest("POST", "/queues", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.True(t, uc.registerCalled)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.registerBranchID)
+	if assert.NotNil(t, uc.registerReq) {
+		assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.registerReq.BranchID)
+	}
 }
 
 func (s *stubQueueControllerUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
@@ -89,7 +139,7 @@ func (s *stubQueueControllerUseCase) GetQueueStats(ctx context.Context) (*model.
 func TestQueueController_Transition(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{transitionRes: &model.QueueResponse{ID: "q-1", Status: entity.QueueStatusCalling}}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, newQueueTestValidator())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -112,7 +162,7 @@ func TestQueueController_Transition(t *testing.T) {
 func TestQueueController_Forward(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{forwardRes: &model.QueueResponse{ID: "q-1", CurrentJourneyID: "j-2"}}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, newQueueTestValidator())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -136,7 +186,7 @@ func TestQueueController_Forward(t *testing.T) {
 func TestQueueController_GetByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{getRes: &model.QueueResponse{ID: "q-1"}}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, newQueueTestValidator())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -157,7 +207,7 @@ func TestQueueController_GetByID(t *testing.T) {
 func TestQueueController_GetQueueStats(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{statsRes: &model.QueueStatsResponse{TotalQueuesToday: 10}}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, newQueueTestValidator())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -177,7 +227,7 @@ func TestQueueController_GetQueueStats(t *testing.T) {
 func TestQueueController_GetAll(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1", Status: entity.QueueStatusWaiting}}}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, newQueueTestValidator())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -199,7 +249,7 @@ func TestQueueController_GetAll(t *testing.T) {
 func TestQueueController_GetAll_WithFilters(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1", QueueDate: "2026-06-24"}}}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, newQueueTestValidator())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -221,7 +271,7 @@ func TestQueueController_GetAll_WithFilters(t *testing.T) {
 func TestQueueController_GetJourneysByBranchAndService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1"}}}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, newQueueTestValidator())
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")

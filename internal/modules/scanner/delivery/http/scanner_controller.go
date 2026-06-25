@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/Roisfaozi/queue-base/pkg/validation"
@@ -51,8 +52,10 @@ func (h *ScannerController) CheckIn(c *gin.Context) {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
-	res, err := h.useCase.CheckIn(c.Request.Context(), &usecase.CheckInRequest{
+	ctx := database.SetBranchContext(c.Request.Context(), req.BranchID)
+	res, err := h.useCase.CheckIn(ctx, &usecase.CheckInRequest{
 		Action:               req.Action,
+		BranchID:             req.BranchID,
 		ClientID:             clientID,
 		APIKey:               apiKey,
 		ServiceID:            req.ServiceID,

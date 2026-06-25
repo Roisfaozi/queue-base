@@ -93,7 +93,7 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 		require.Equal(t, http.StatusCreated, resp.StatusCode, resp.String())
 	}
 
-	queueResp := server.Client.POST("/api/v1/queues", map[string]any{"service_id": regServiceData.Data.ID, "patient_name": "Queue Patient"}, setup.WithAuth(token), setup.WithOrg(orgID))
+	queueResp := server.Client.POST("/api/v1/queues", map[string]any{"branch_id": branchData.Data.ID, "service_id": regServiceData.Data.ID, "patient_name": "Queue Patient"}, setup.WithAuth(token), setup.WithOrg(orgID))
 	require.Equal(t, http.StatusCreated, queueResp.StatusCode, queueResp.String())
 	var queueData struct {
 		Data struct {
@@ -150,13 +150,13 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 	}
 	require.NoError(t, createReadOnlyQueueKeyResp.JSON(&queueViewKeyData))
 
-	queueCreateBlockedResp := server.Client.POST("/api/v1/queues", map[string]any{"service_id": regServiceData.Data.ID, "patient_name": "Blocked Patient"}, setup.WithOrg(orgID), setup.WithHeader("X-API-Key", queueViewKeyData.Data.Key))
+	queueCreateBlockedResp := server.Client.POST("/api/v1/queues", map[string]any{"branch_id": branchData.Data.ID, "service_id": regServiceData.Data.ID, "patient_name": "Blocked Patient"}, setup.WithOrg(orgID), setup.WithHeader("X-API-Key", queueViewKeyData.Data.Key))
 	require.Equal(t, http.StatusForbidden, queueCreateBlockedResp.StatusCode, queueCreateBlockedResp.String())
 
-	scannerForbiddenResp := server.Client.POST("/api/v1/scanner/check-in", map[string]any{"action": "forward", "queue_id": queueData.Data.ID, "destination_service_id": pharmacyData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID), setup.WithHeader("X-Client-ID", userID), setup.WithHeader("X-API-Key", apiKeyData.Data.Key))
+	scannerForbiddenResp := server.Client.POST("/api/v1/scanner/check-in", map[string]any{"action": "forward", "branch_id": branchData.Data.ID, "queue_id": queueData.Data.ID, "destination_service_id": pharmacyData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID), setup.WithHeader("X-Client-ID", userID), setup.WithHeader("X-API-Key", apiKeyData.Data.Key))
 	require.Equal(t, http.StatusForbidden, scannerForbiddenResp.StatusCode, scannerForbiddenResp.String())
 
-	scannerOKResp := server.Client.POST("/api/v1/scanner/check-in", map[string]any{"action": "forward", "queue_id": queueData.Data.ID, "destination_service_id": pharmacyData.Data.ID, "destination_counter_id": counterData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID), setup.WithHeader("X-Client-ID", userID), setup.WithHeader("X-API-Key", apiKeyData.Data.Key))
+	scannerOKResp := server.Client.POST("/api/v1/scanner/check-in", map[string]any{"action": "forward", "branch_id": branchData.Data.ID, "queue_id": queueData.Data.ID, "destination_service_id": pharmacyData.Data.ID, "destination_counter_id": counterData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID), setup.WithHeader("X-Client-ID", userID), setup.WithHeader("X-API-Key", apiKeyData.Data.Key))
 	require.Equal(t, http.StatusOK, scannerOKResp.StatusCode, scannerOKResp.String())
 
 	foreignBranch := &branchEntity.Branch{ID: uuid.New().String(), TenantID: uuid.New().String(), Code: "FX", Name: "Foreign", Status: branchEntity.BranchStatusActive}

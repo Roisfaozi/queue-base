@@ -20,6 +20,7 @@ type QueueResponse struct {
 }
 
 type RegisterQueueRequest struct {
+	BranchID    string `json:"branch_id" validate:"required,uuid4"`
 	ServiceID   string `json:"service_id" validate:"required,uuid4"`
 	PatientID   string `json:"patient_id" validate:"omitempty,uuid4"`
 	PatientName string `json:"patient_name" validate:"required,min=2,max=255,xss"`

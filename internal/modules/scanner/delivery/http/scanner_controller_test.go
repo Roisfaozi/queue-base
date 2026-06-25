@@ -43,7 +43,7 @@ func TestScannerController_CheckIn_UsesHeaders(t *testing.T) {
 	})
 	router.POST("/scanner/check-in", controller.CheckIn)
 
-	body, _ := json.Marshal(model.CheckInRequest{Action: model.CheckInRequest{Action: "register"}.Action, ServiceID: "service-1", PatientName: "John Doe"})
+	body, _ := json.Marshal(model.CheckInRequest{Action: model.CheckInRequest{Action: "register"}.Action, BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "service-1", PatientName: "John Doe"})
 	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 	req.Header.Set("X-Client-ID", "client-1")
 	req.Header.Set("X-API-Key", "key-1")
@@ -54,6 +54,7 @@ func TestScannerController_CheckIn_UsesHeaders(t *testing.T) {
 	assert.True(t, uc.called)
 	assert.Equal(t, "client-1", uc.last.ClientID)
 	assert.Equal(t, "key-1", uc.last.APIKey)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.last.BranchID)
 }
 
 func TestScannerController_CheckIn_RejectsMissingHeaders(t *testing.T) {
@@ -69,7 +70,7 @@ func TestScannerController_CheckIn_RejectsMissingHeaders(t *testing.T) {
 	})
 	router.POST("/scanner/check-in", controller.CheckIn)
 
-	body, _ := json.Marshal(model.CheckInRequest{Action: "register", ServiceID: "service-1", PatientName: "John Doe"})
+	body, _ := json.Marshal(model.CheckInRequest{Action: "register", BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "service-1", PatientName: "John Doe"})
 	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -91,7 +92,7 @@ func TestScannerController_CheckIn_ForwardsPharmacyPayload(t *testing.T) {
 	})
 	router.POST("/scanner/check-in", controller.CheckIn)
 
-	body, _ := json.Marshal(model.CheckInRequest{Action: "forward", QueueID: "q-1", DestinationServiceID: "pharmacy-svc", DestinationCounterID: "counter-1"})
+	body, _ := json.Marshal(model.CheckInRequest{Action: "forward", BranchID: "550e8400-e29b-41d4-a716-446655440000", QueueID: "q-1", DestinationServiceID: "pharmacy-svc", DestinationCounterID: "counter-1"})
 	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 	req.Header.Set("X-Client-ID", "client-1")
 	req.Header.Set("X-API-Key", "key-1")
@@ -118,7 +119,7 @@ func TestScannerController_CheckIn_PropagatesWorkflowForbidden(t *testing.T) {
 	})
 	router.POST("/scanner/check-in", controller.CheckIn)
 
-	body, _ := json.Marshal(model.CheckInRequest{Action: "forward", QueueID: "q-1", DestinationServiceID: "pharmacy-svc", DestinationCounterID: "counter-1"})
+	body, _ := json.Marshal(model.CheckInRequest{Action: "forward", BranchID: "550e8400-e29b-41d4-a716-446655440000", QueueID: "q-1", DestinationServiceID: "pharmacy-svc", DestinationCounterID: "counter-1"})
 	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 	req.Header.Set("X-Client-ID", "client-1")
 	req.Header.Set("X-API-Key", "key-1")
@@ -136,7 +137,7 @@ func TestScannerController_CheckIn_RejectsInvalidAction(t *testing.T) {
 	router := gin.New()
 	router.POST("/scanner/check-in", controller.CheckIn)
 
-	body := []byte(`{"action":"drop-table","service_id":"s-1","patient_name":"John"}`)
+	body := []byte(`{"action":"drop-table","branch_id":"550e8400-e29b-41d4-a716-446655440000","service_id":"s-1","patient_name":"John"}`)
 	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 	req.Header.Set("X-Client-ID", "client-1")
 	req.Header.Set("X-API-Key", "key-1")
@@ -160,7 +161,7 @@ func TestScannerController_CheckIn_PropagatesUnauthorized(t *testing.T) {
 	})
 	router.POST("/scanner/check-in", controller.CheckIn)
 
-	body, _ := json.Marshal(model.CheckInRequest{Action: "register", ServiceID: "s-1", PatientName: "John"})
+	body, _ := json.Marshal(model.CheckInRequest{Action: "register", BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "s-1", PatientName: "John"})
 	req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 	req.Header.Set("X-Client-ID", "client-1")
 	req.Header.Set("X-API-Key", "bad-key")

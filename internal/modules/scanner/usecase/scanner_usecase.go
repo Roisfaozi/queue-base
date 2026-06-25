@@ -29,6 +29,7 @@ type RelationValidator interface {
 
 type CheckInRequest struct {
 	Action               string
+	BranchID             string
 	ClientID             string
 	APIKey               string
 	ServiceID            string
@@ -90,6 +91,7 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 	switch action {
 	case ActionRegister:
 		queueRes, err := u.queueHandler.RegisterQueue(ctx, &queueModel.RegisterQueueRequest{
+			BranchID:    req.BranchID,
 			ServiceID:   req.ServiceID,
 			PatientID:   req.PatientID,
 			PatientName: req.PatientName,
