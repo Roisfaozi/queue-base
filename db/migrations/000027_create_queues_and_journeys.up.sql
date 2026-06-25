@@ -4,7 +4,7 @@ CREATE TABLE queue_counters (
     branch_id VARCHAR(36) NOT NULL,
     queue_date DATE NOT NULL,
     prefix VARCHAR(10) NOT NULL,
-    last_value INT NOT NULL DEFAULT 0,
+    `last_value` INT NOT NULL DEFAULT 0,
     created_at BIGINT,
     updated_at BIGINT,
     PRIMARY KEY (tenant_id, branch_id, queue_date, prefix)
