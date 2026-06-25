@@ -5,8 +5,7 @@ export const getCurrentSession = async () => {
 	const accessToken = cookieStore.get("access_token")?.value;
 	const refreshToken = cookieStore.get("refresh_token")?.value;
 
-	// DEV MODE: Always return a valid mock user for now so UI is accessible
-	if (!accessToken && !refreshToken && process.env.NODE_ENV === "production") {
+	if (!accessToken && !refreshToken) {
 		return { session: null, user: null };
 	}
 
@@ -14,10 +13,10 @@ export const getCurrentSession = async () => {
 		session: { id: "cookie-session" },
 		user: {
 			id: "current-user",
-			email: "dev@example.com",
-			name: "Developer",
-			role: "superadmin",
-			emailVerifiedAt: new Date(),
+			email: "",
+			name: "",
+			role: "user",
+			emailVerifiedAt: null,
 		},
 	};
 };

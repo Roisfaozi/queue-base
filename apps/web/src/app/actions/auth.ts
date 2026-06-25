@@ -25,34 +25,6 @@ export const loginAction = actionClient
 	.metadata({ actionName: "login" })
 	.action(async ({ parsedInput: { username, password } }) => {
 		try {
-			// DEV MODE MOCK LOGIN
-			const mockUser = {
-				id: "current-user",
-				email: "dev@example.com",
-				name: "Developer",
-				role: "superadmin",
-			};
-
-			const cookieStore = await cookies();
-
-			cookieStore.set("access_token", "DEV_MODE_TOKEN", {
-				httpOnly: true,
-				secure: isSecure,
-				sameSite: "lax",
-				path: "/",
-				maxAge: ACCESS_TOKEN_MAX_AGE,
-			});
-
-			cookieStore.set("refresh_token", "DEV_MODE_TOKEN_REFRESH", {
-				httpOnly: true,
-				secure: isSecure,
-				sameSite: "lax",
-				path: "/",
-				maxAge: REFRESH_TOKEN_MAX_AGE,
-			});
-
-			return { success: true, user: mockUser as any };
-			/*
 			let response: Response;
 			try {
 				response = await fetch(`${BACKEND_URL}/auth/login`, {
@@ -103,7 +75,6 @@ export const loginAction = actionClient
 			}
 
 			return { success: true, user: data.user };
-			*/
 		} catch (error: any) {
 			return { success: false, message: error.message };
 		}

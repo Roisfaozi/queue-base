@@ -1,5 +1,5 @@
 import { createI18nMiddleware } from "next-international/middleware";
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 const I18nMiddleware = createI18nMiddleware({
 	locales: ["en", "fr"],
@@ -15,11 +15,7 @@ export function proxy(request: NextRequest) {
 		return I18nMiddleware(request);
 	}
 
-	// DEV MODE fallback token ONLY when process.env.NODE_ENV !== "production"
-	let token = request.cookies.get("access_token")?.value;
-	if (!token && process.env.NODE_ENV !== "production") {
-		token = "DEV_MODE_TOKEN";
-	}
+	const token = request.cookies.get("access_token")?.value;
 
 	// Helper to extract locale from path safely
 	const localeMatch = pathname.match(/^\/([a-z]{2})(?:\/|$)/);

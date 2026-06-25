@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import type React from "react";
 import { useEffect } from "react";
 import { accessApi } from "~/lib/api/access";
+import { authApi } from "~/lib/api/auth";
 import { useAuthStore } from "~/stores/use-auth-store";
 import { usePermissionStore } from "~/stores/use-permission-store";
 
@@ -34,26 +35,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 		async function syncAuth() {
 			try {
-				// DEV MODE: Always set a mock user locally
-				setUser({
-					id: "current-user",
-					email: "dev@example.com",
-					name: "Developer",
-					role: "superadmin",
-					emailVerifiedAt: new Date().toISOString(),
-				} as any);
-
-				try {
-					const permsResp = await accessApi.getPermissionsForRole("superadmin");
-					if (permsResp.data) {
-						setPermissions(permsResp.data);
-					}
-				} catch (permError) {
-					// Fallback to empty if backend is completely down
-					setPermissions([]);
-				}
-
-				/*
 				const userResp = await authApi.getCurrentUser();
 				if (userResp.user) {
 					setUser(userResp.user);
@@ -71,14 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					// Redirect ke login hanya dari area dashboard
 					// (redirect dari public page ditangani oleh proxy.ts middleware)
 				}
-				*/
 			} catch (error) {
 				// Jika gagal (misal: 401 dari public page), bersihkan state saja
 				// tanpa redirect — redirect dari public pages hanya terjadi jika
 				// user secara aktif mencoba akses area yang protected (/dashboard)
 				console.log("Auth Error", error);
-				// logout();
-				// clearPermissions();
+				logout();
+				clearPermissions();
 			}
 		}
 
