@@ -2,12 +2,9 @@
 
 import { Icon } from "~/components/shared/icon";
 import { useDashboardShell } from "../_components/dashboard-shell-context";
-import { AuditProvider } from "./_components/audit-context";
-import { AuditPagination } from "./_components/audit-pagination";
-import { AuditTable } from "./_components/audit-table";
-import { AuditToolbar } from "./_components/audit-toolbar";
+import { QueuesContent } from "./_components/queues-content";
 
-export default function AuditPage() {
+export default function QueuesPage() {
 	const { currentOrganization, isLoading } = useDashboardShell();
 
 	if (isLoading) {
@@ -35,12 +32,8 @@ export default function AuditPage() {
 	}
 
 	return (
-		<AuditProvider>
-			<div className="space-y-4">
-				<AuditToolbar />
-				<AuditTable />
-				<AuditPagination />
-			</div>
-		</AuditProvider>
+		<div className="space-y-6">
+			<QueuesContent />
+		</div>
 	);
 }

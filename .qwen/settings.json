@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir *)",
+      "Bash(pnpm *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push)",
+      "Bash(npx *)",
+      "Bash(pre-commit *)",
+      "Bash(true)"
+    ]
+  },
+  "$version": 4
+}

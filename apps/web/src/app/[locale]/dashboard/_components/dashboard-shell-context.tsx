@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useCallback, type ReactNode } from "react";
+import {
+	createContext,
+	useContext,
+	useCallback,
+	useEffect,
+	type ReactNode,
+} from "react";
 import { type Organization, organizationsApi } from "~/lib/api/organizations";
 import { useOrganizationStore } from "~/stores/use-organization-store";
 import { toast } from "sonner";
@@ -21,12 +27,34 @@ const DashboardShellContext = createContext<
 export function DashboardShellProvider({
 	children,
 	initialData,
+	initialSelectedOrganizationId,
 }: {
 	children: ReactNode;
 	initialData?: Organization[];
+	initialSelectedOrganizationId?: string | null;
 }) {
 	const { currentOrganization, setCurrentOrganization } =
 		useOrganizationStore();
+
+	const syncSelectedOrganization = useCallback(
+		async (organization: Organization | null) => {
+			const method = organization ? "PATCH" : "DELETE";
+			const body = organization
+				? JSON.stringify({
+						organizationId: organization.id,
+						organizationSlug: organization.slug,
+					})
+				: undefined;
+
+			await fetch("/api/organizations/current", {
+				method,
+				headers: body ? { "Content-Type": "application/json" } : undefined,
+				body,
+				credentials: "include",
+			});
+		},
+		[],
+	);
 
 	const {
 		data: organizations = [],
@@ -41,14 +69,51 @@ export function DashboardShellProvider({
 		{
 			fallbackData: initialData,
 			keepPreviousData: true,
-			onSuccess: (data) => {
-				// Auto-select first org if none selected and we have data
-				if (!currentOrganization && data.length > 0) {
-					setCurrentOrganization(data[0]);
-				}
-			},
 		},
 	);
+
+	useEffect(() => {
+		if (isLoading) return;
+
+		if (organizations.length === 0) {
+			if (currentOrganization) {
+				setCurrentOrganization(null);
+				void syncSelectedOrganization(null);
+			}
+			return;
+		}
+
+		const selectedFromStore = currentOrganization
+			? organizations.find((org) => org.id === currentOrganization.id) || null
+			: null;
+
+		const selectedFromCookie = initialSelectedOrganizationId
+			? organizations.find((org) => org.id === initialSelectedOrganizationId) ||
+				null
+			: null;
+
+		const nextOrganization =
+			selectedFromStore || selectedFromCookie || organizations[0] || null;
+
+		if (!nextOrganization) {
+			return;
+		}
+
+		if (currentOrganization?.id !== nextOrganization.id) {
+			setCurrentOrganization(nextOrganization);
+		}
+
+		if (initialSelectedOrganizationId !== nextOrganization.id) {
+			void syncSelectedOrganization(nextOrganization);
+		}
+	}, [
+		currentOrganization,
+		initialSelectedOrganizationId,
+		isLoading,
+		organizations,
+		setCurrentOrganization,
+		syncSelectedOrganization,
+	]);
 
 	const fetchOrgs = useCallback(async () => {
 		await mutate();
@@ -57,9 +122,10 @@ export function DashboardShellProvider({
 	const setOrganization = useCallback(
 		(org: Organization) => {
 			setCurrentOrganization(org);
+			void syncSelectedOrganization(org);
 			toast.success(`Switched to ${org.name}`);
 		},
-		[setCurrentOrganization],
+		[setCurrentOrganization, syncSelectedOrganization],
 	);
 
 	return (

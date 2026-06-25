@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import Image from "next/image";
 import { memo } from "react";
 import { EmptyState } from "~/components/shared/empty-state";
 import { Icon } from "~/components/shared/icon";
@@ -21,60 +20,46 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
-import type { User } from "~/lib/api/users";
+import type { Service } from "~/lib/api/qms";
 
-interface UserTableProps {
-	users: User[];
+interface ServiceTableProps {
+	services: Service[];
 	isLoading: boolean;
 	error: any;
 	canUpdate: boolean;
 	canDelete: boolean;
-	onEdit: (user: User) => void;
-	onDelete: (user: User) => void;
-	searchTerm?: string;
-	onClearSearch?: () => void;
-	onCreateUser?: () => void;
+	onEdit: (service: Service) => void;
+	onDelete: (service: Service) => void;
+	onCreateService?: () => void;
 }
 
-export function UserTable({
-	users,
+export function ServiceTable({
+	services,
 	isLoading,
 	error,
 	canUpdate,
 	canDelete,
 	onEdit,
 	onDelete,
-	searchTerm,
-	onClearSearch,
-	onCreateUser,
-}: UserTableProps) {
-	if (!isLoading && !error && users.length === 0) {
+	onCreateService,
+}: ServiceTableProps) {
+	if (!isLoading && !error && services.length === 0) {
 		return (
 			<div className="bg-muted/5 rounded-md border border-dashed">
-				{searchTerm ? (
-					<EmptyState
-						case="search"
-						searchTerm={searchTerm}
-						action={
-							onClearSearch
-								? { label: "Clear search", onClick: onClearSearch }
-								: undefined
-						}
-					/>
-				) : (
-					<EmptyState
-						case="users"
-						action={
-							onCreateUser
-								? {
-										label: "Add Your First User",
-										onClick: onCreateUser,
-										icon: "UserPlus",
-									}
-								: undefined
-						}
-					/>
-				)}
+				<EmptyState
+					case="generic"
+					title="No services found"
+					description="Get started by creating your first queue service."
+					action={
+						onCreateService
+							? {
+									label: "Add Service",
+									onClick: onCreateService,
+									icon: "Plus",
+								}
+							: undefined
+					}
+				/>
 			</div>
 		);
 	}
@@ -84,12 +69,11 @@ export function UserTable({
 			<Table>
 				<TableHeader>
 					<TableRow>
-						<TableHead className="w-[50px]"></TableHead>
+						<TableHead>Code</TableHead>
 						<TableHead>Name</TableHead>
-						<TableHead>Email</TableHead>
-						<TableHead>Username</TableHead>
+						<TableHead>Pharmacy Logic</TableHead>
 						<TableHead>Status</TableHead>
-						<TableHead className="text-right">Joined</TableHead>
+						<TableHead className="text-right">Created</TableHead>
 						{(canUpdate || canDelete) && (
 							<TableHead className="w-[50px]"></TableHead>
 						)}
@@ -98,16 +82,16 @@ export function UserTable({
 				<TableBody>
 					{isLoading ? (
 						<TableRow>
-							<TableCell colSpan={7} className="h-24 text-center">
+							<TableCell colSpan={6} className="h-24 text-center">
 								<div className="flex items-center justify-center gap-2">
 									<Icon name="Loader" className="h-4 w-4 animate-spin" />
-									Loading...
+									Loading services...
 								</div>
 							</TableCell>
 						</TableRow>
 					) : error ? (
 						<TableRow>
-							<TableCell colSpan={7} className="h-24 text-center">
+							<TableCell colSpan={6} className="h-24 text-center">
 								<EmptyState
 									case="error"
 									action={{
@@ -118,10 +102,10 @@ export function UserTable({
 							</TableCell>
 						</TableRow>
 					) : (
-						users.map((user) => (
-							<MemoizedUserTableRow
-								key={user.id}
-								user={user}
+						services.map((service) => (
+							<MemoizedServiceTableRow
+								key={service.id}
+								service={service}
 								canUpdate={canUpdate}
 								canDelete={canDelete}
 								onEdit={onEdit}
@@ -135,53 +119,56 @@ export function UserTable({
 	);
 }
 
-const MemoizedUserTableRow = memo(function UserTableRow({
-	user,
+const MemoizedServiceTableRow = memo(function ServiceTableRow({
+	service,
 	canUpdate,
 	canDelete,
 	onEdit,
 	onDelete,
 }: {
-	user: User;
+	service: Service;
 	canUpdate: boolean;
 	canDelete: boolean;
-	onEdit: (user: User) => void;
-	onDelete: (user: User) => void;
+	onEdit: (service: Service) => void;
+	onDelete: (service: Service) => void;
 }) {
 	return (
 		<TableRow>
+			<TableCell className="font-medium">
+				<Badge variant="outline" className="font-mono">
+					{service.code}
+				</Badge>
+			</TableCell>
+			<TableCell className="font-medium">{service.name}</TableCell>
 			<TableCell>
-				<div className="bg-muted flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-xs font-medium">
-					{user.avatar_url ? (
-						<Image
-							src={user.avatar_url}
-							alt={user.name}
-							width={32}
-							height={32}
-							className="h-full w-full object-cover"
-						/>
-					) : (
-						user.name.charAt(0).toUpperCase()
+				<div className="flex flex-col gap-1 text-xs text-muted-foreground">
+					{service.is_pharmacy && (
+						<span className="flex items-center gap-1">
+							<Icon name="Pill" className="h-3 w-3" /> Pharmacy Flow
+						</span>
 					)}
+					{service.is_pharmacy_reception && (
+						<span className="flex items-center gap-1">
+							<Icon name="Inbox" className="h-3 w-3" /> Rx Reception
+						</span>
+					)}
+					{!service.is_pharmacy && !service.is_pharmacy_reception && "-"}
 				</div>
 			</TableCell>
-			<TableCell className="font-medium">{user.name}</TableCell>
-			<TableCell>{user.email}</TableCell>
-			<TableCell>{user.username}</TableCell>
 			<TableCell>
 				<Badge
-					variant={user.status === "active" ? "default" : "secondary"}
+					variant={service.status === "active" ? "default" : "secondary"}
 					className={
-						user.status === "active"
+						service.status === "active"
 							? "bg-emerald-500 hover:bg-emerald-600"
 							: ""
 					}
 				>
-					{user.status || "Unknown"}
+					{service.status || "Unknown"}
 				</Badge>
 			</TableCell>
-			<TableCell className="text-muted-foreground text-right">
-				{format(new Date((user.created_at ?? 0) * 1000), "MMM dd, yyyy")}
+			<TableCell className="text-right text-muted-foreground">
+				{format(new Date(service.created_at * 1000), "MMM dd, yyyy")}
 			</TableCell>
 			{(canUpdate || canDelete) && (
 				<TableCell>
@@ -194,14 +181,14 @@ const MemoizedUserTableRow = memo(function UserTableRow({
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							{canUpdate && (
-								<DropdownMenuItem onClick={() => onEdit(user)}>
+								<DropdownMenuItem onClick={() => onEdit(service)}>
 									<Icon name="Pencil" className="mr-2 h-4 w-4" />
 									Edit
 								</DropdownMenuItem>
 							)}
 							{canDelete && (
 								<DropdownMenuItem
-									onClick={() => onDelete(user)}
+									onClick={() => onDelete(service)}
 									className="text-destructive"
 								>
 									<Icon name="Trash" className="mr-2 h-4 w-4" />

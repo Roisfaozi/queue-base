@@ -108,7 +108,7 @@ export function RoleDetailSheet({
 			const resp = await usersApi.getAll(1, 10, query);
 			if (resp.data) {
 				const memberIds = new Set(members.map((m) => m.id));
-				setSearchResults(resp.data.filter((u) => !memberIds.has(u.id)));
+				setSearchResults(resp.data.filter((u: User) => !memberIds.has(u.id)));
 			}
 		} catch (error) {
 			console.error("Search failed", error);
@@ -492,7 +492,9 @@ const SearchUserItem = React.memo(function SearchUserItem({
 		>
 			<Avatar className="h-6 w-6">
 				<AvatarImage src={user.avatar_url} />
-				<AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+				<AvatarFallback>
+					{(user.username?.[0] ?? "").toUpperCase()}
+				</AvatarFallback>
 			</Avatar>
 			<div className="flex flex-col">
 				<span className="text-sm font-medium">{user.username}</span>
@@ -516,7 +518,9 @@ const RoleMemberItem = React.memo(function RoleMemberItem({
 		<div className="hover:bg-muted/50 group flex items-center gap-3 rounded-md p-2 transition-colors">
 			<Avatar className="h-9 w-9 border">
 				<AvatarImage src={member.avatar_url} />
-				<AvatarFallback>{member.username[0].toUpperCase()}</AvatarFallback>
+				<AvatarFallback>
+					{(member.username?.[0] ?? "").toUpperCase()}
+				</AvatarFallback>
 			</Avatar>
 			<div className="min-w-0 flex-1">
 				<div className="mb-1 text-sm leading-none font-medium">
@@ -531,7 +535,7 @@ const RoleMemberItem = React.memo(function RoleMemberItem({
 				size="icon"
 				className="text-destructive hover:bg-destructive/10 h-8 w-8 opacity-0 group-hover:opacity-100"
 				disabled={isProcessing}
-				onClick={() => onRemove(member.id, member.username)}
+				onClick={() => onRemove(member.id, member.username ?? "")}
 			>
 				{isProcessing ? (
 					<Icon name="Loader" className="h-4 w-4 animate-spin" />

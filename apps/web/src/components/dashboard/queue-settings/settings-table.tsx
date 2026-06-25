@@ -1,8 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
-import Image from "next/image";
 import { memo } from "react";
+import { format } from "date-fns";
 import { EmptyState } from "~/components/shared/empty-state";
 import { Icon } from "~/components/shared/icon";
 import { Badge } from "~/components/ui/badge";
@@ -21,60 +20,55 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
-import type { User } from "~/lib/api/users";
+import type { Setting } from "~/lib/api/qms";
 
-interface UserTableProps {
-	users: User[];
+interface SettingsTableProps {
+	settings: Setting[];
 	isLoading: boolean;
 	error: any;
 	canUpdate: boolean;
 	canDelete: boolean;
-	onEdit: (user: User) => void;
-	onDelete: (user: User) => void;
-	searchTerm?: string;
-	onClearSearch?: () => void;
-	onCreateUser?: () => void;
+	onEdit: (setting: Setting) => void;
+	onDelete: (setting: Setting) => void;
+	onCreateSetting?: () => void;
 }
 
-export function UserTable({
-	users,
+const SCOPE_COLORS: Record<string, string> = {
+	tenant: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+	branch:
+		"bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+	service: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+	counter:
+		"bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+};
+
+export function SettingsTable({
+	settings,
 	isLoading,
 	error,
 	canUpdate,
 	canDelete,
 	onEdit,
 	onDelete,
-	searchTerm,
-	onClearSearch,
-	onCreateUser,
-}: UserTableProps) {
-	if (!isLoading && !error && users.length === 0) {
+	onCreateSetting,
+}: SettingsTableProps) {
+	if (!isLoading && !error && settings.length === 0) {
 		return (
 			<div className="bg-muted/5 rounded-md border border-dashed">
-				{searchTerm ? (
-					<EmptyState
-						case="search"
-						searchTerm={searchTerm}
-						action={
-							onClearSearch
-								? { label: "Clear search", onClick: onClearSearch }
-								: undefined
-						}
-					/>
-				) : (
-					<EmptyState
-						case="users"
-						action={
-							onCreateUser
-								? {
-										label: "Add Your First User",
-										onClick: onCreateUser,
-										icon: "UserPlus",
-									}
-								: undefined
-						}
-					/>
-				)}
+				<EmptyState
+					case="generic"
+					title="No settings found"
+					description="Add your first queue setting override."
+					action={
+						onCreateSetting
+							? {
+									label: "Add Setting",
+									onClick: onCreateSetting,
+									icon: "Plus",
+								}
+							: undefined
+					}
+				/>
 			</div>
 		);
 	}
@@ -84,12 +78,12 @@ export function UserTable({
 			<Table>
 				<TableHeader>
 					<TableRow>
-						<TableHead className="w-[50px]"></TableHead>
-						<TableHead>Name</TableHead>
-						<TableHead>Email</TableHead>
-						<TableHead>Username</TableHead>
+						<TableHead>Key</TableHead>
+						<TableHead>Value</TableHead>
+						<TableHead>Scope</TableHead>
+						<TableHead>Scope ID</TableHead>
 						<TableHead>Status</TableHead>
-						<TableHead className="text-right">Joined</TableHead>
+						<TableHead className="text-right">Updated</TableHead>
 						{(canUpdate || canDelete) && (
 							<TableHead className="w-[50px]"></TableHead>
 						)}
@@ -101,7 +95,7 @@ export function UserTable({
 							<TableCell colSpan={7} className="h-24 text-center">
 								<div className="flex items-center justify-center gap-2">
 									<Icon name="Loader" className="h-4 w-4 animate-spin" />
-									Loading...
+									Loading settings...
 								</div>
 							</TableCell>
 						</TableRow>
@@ -118,10 +112,10 @@ export function UserTable({
 							</TableCell>
 						</TableRow>
 					) : (
-						users.map((user) => (
-							<MemoizedUserTableRow
-								key={user.id}
-								user={user}
+						settings.map((setting) => (
+							<MemoizedSettingsTableRow
+								key={setting.id}
+								setting={setting}
 								canUpdate={canUpdate}
 								canDelete={canDelete}
 								onEdit={onEdit}
@@ -135,53 +129,50 @@ export function UserTable({
 	);
 }
 
-const MemoizedUserTableRow = memo(function UserTableRow({
-	user,
+const MemoizedSettingsTableRow = memo(function SettingsTableRow({
+	setting,
 	canUpdate,
 	canDelete,
 	onEdit,
 	onDelete,
 }: {
-	user: User;
+	setting: Setting;
 	canUpdate: boolean;
 	canDelete: boolean;
-	onEdit: (user: User) => void;
-	onDelete: (user: User) => void;
+	onEdit: (setting: Setting) => void;
+	onDelete: (setting: Setting) => void;
 }) {
 	return (
 		<TableRow>
-			<TableCell>
-				<div className="bg-muted flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-xs font-medium">
-					{user.avatar_url ? (
-						<Image
-							src={user.avatar_url}
-							alt={user.name}
-							width={32}
-							height={32}
-							className="h-full w-full object-cover"
-						/>
-					) : (
-						user.name.charAt(0).toUpperCase()
-					)}
-				</div>
+			<TableCell className="font-mono text-xs font-medium">
+				{setting.key}
 			</TableCell>
-			<TableCell className="font-medium">{user.name}</TableCell>
-			<TableCell>{user.email}</TableCell>
-			<TableCell>{user.username}</TableCell>
+			<TableCell className="max-w-[200px] truncate font-medium">
+				{setting.value}
+			</TableCell>
 			<TableCell>
 				<Badge
-					variant={user.status === "active" ? "default" : "secondary"}
-					className={
-						user.status === "active"
-							? "bg-emerald-500 hover:bg-emerald-600"
-							: ""
-					}
+					variant="outline"
+					className={SCOPE_COLORS[setting.scope_type] || ""}
 				>
-					{user.status || "Unknown"}
+					{setting.scope_type}
 				</Badge>
 			</TableCell>
-			<TableCell className="text-muted-foreground text-right">
-				{format(new Date((user.created_at ?? 0) * 1000), "MMM dd, yyyy")}
+			<TableCell className="text-xs text-muted-foreground font-mono">
+				{setting.scope_id ? setting.scope_id.substring(0, 12) + "..." : "-"}
+			</TableCell>
+			<TableCell>
+				<Badge
+					variant={setting.is_active ? "default" : "secondary"}
+					className={
+						setting.is_active ? "bg-emerald-500 hover:bg-emerald-600" : ""
+					}
+				>
+					{setting.is_active ? "Active" : "Inactive"}
+				</Badge>
+			</TableCell>
+			<TableCell className="text-right text-muted-foreground">
+				{format(new Date(setting.updated_at * 1000), "MMM dd, yyyy")}
 			</TableCell>
 			{(canUpdate || canDelete) && (
 				<TableCell>
@@ -194,14 +185,14 @@ const MemoizedUserTableRow = memo(function UserTableRow({
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							{canUpdate && (
-								<DropdownMenuItem onClick={() => onEdit(user)}>
+								<DropdownMenuItem onClick={() => onEdit(setting)}>
 									<Icon name="Pencil" className="mr-2 h-4 w-4" />
 									Edit
 								</DropdownMenuItem>
 							)}
 							{canDelete && (
 								<DropdownMenuItem
-									onClick={() => onDelete(user)}
+									onClick={() => onDelete(setting)}
 									className="text-destructive"
 								>
 									<Icon name="Trash" className="mr-2 h-4 w-4" />

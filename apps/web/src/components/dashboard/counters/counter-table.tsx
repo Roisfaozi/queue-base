@@ -1,8 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
-import Image from "next/image";
 import { memo } from "react";
+import { format } from "date-fns";
 import { EmptyState } from "~/components/shared/empty-state";
 import { Icon } from "~/components/shared/icon";
 import { Badge } from "~/components/ui/badge";
@@ -21,60 +20,46 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
-import type { User } from "~/lib/api/users";
+import type { Counter } from "~/lib/api/qms";
 
-interface UserTableProps {
-	users: User[];
+interface CounterTableProps {
+	counters: Counter[];
 	isLoading: boolean;
 	error: any;
 	canUpdate: boolean;
 	canDelete: boolean;
-	onEdit: (user: User) => void;
-	onDelete: (user: User) => void;
-	searchTerm?: string;
-	onClearSearch?: () => void;
-	onCreateUser?: () => void;
+	onEdit: (counter: Counter) => void;
+	onDelete: (counter: Counter) => void;
+	onCreateCounter?: () => void;
 }
 
-export function UserTable({
-	users,
+export function CounterTable({
+	counters,
 	isLoading,
 	error,
 	canUpdate,
 	canDelete,
 	onEdit,
 	onDelete,
-	searchTerm,
-	onClearSearch,
-	onCreateUser,
-}: UserTableProps) {
-	if (!isLoading && !error && users.length === 0) {
+	onCreateCounter,
+}: CounterTableProps) {
+	if (!isLoading && !error && counters.length === 0) {
 		return (
 			<div className="bg-muted/5 rounded-md border border-dashed">
-				{searchTerm ? (
-					<EmptyState
-						case="search"
-						searchTerm={searchTerm}
-						action={
-							onClearSearch
-								? { label: "Clear search", onClick: onClearSearch }
-								: undefined
-						}
-					/>
-				) : (
-					<EmptyState
-						case="users"
-						action={
-							onCreateUser
-								? {
-										label: "Add Your First User",
-										onClick: onCreateUser,
-										icon: "UserPlus",
-									}
-								: undefined
-						}
-					/>
-				)}
+				<EmptyState
+					case="generic"
+					title="No counters found"
+					description="Create your first counter for a branch."
+					action={
+						onCreateCounter
+							? {
+									label: "Add Counter",
+									onClick: onCreateCounter,
+									icon: "Plus",
+								}
+							: undefined
+					}
+				/>
 			</div>
 		);
 	}
@@ -84,12 +69,11 @@ export function UserTable({
 			<Table>
 				<TableHeader>
 					<TableRow>
-						<TableHead className="w-[50px]"></TableHead>
+						<TableHead>Code</TableHead>
 						<TableHead>Name</TableHead>
-						<TableHead>Email</TableHead>
-						<TableHead>Username</TableHead>
+						<TableHead>Branch ID</TableHead>
 						<TableHead>Status</TableHead>
-						<TableHead className="text-right">Joined</TableHead>
+						<TableHead className="text-right">Created</TableHead>
 						{(canUpdate || canDelete) && (
 							<TableHead className="w-[50px]"></TableHead>
 						)}
@@ -98,16 +82,16 @@ export function UserTable({
 				<TableBody>
 					{isLoading ? (
 						<TableRow>
-							<TableCell colSpan={7} className="h-24 text-center">
+							<TableCell colSpan={6} className="h-24 text-center">
 								<div className="flex items-center justify-center gap-2">
 									<Icon name="Loader" className="h-4 w-4 animate-spin" />
-									Loading...
+									Loading counters...
 								</div>
 							</TableCell>
 						</TableRow>
 					) : error ? (
 						<TableRow>
-							<TableCell colSpan={7} className="h-24 text-center">
+							<TableCell colSpan={6} className="h-24 text-center">
 								<EmptyState
 									case="error"
 									action={{
@@ -118,10 +102,10 @@ export function UserTable({
 							</TableCell>
 						</TableRow>
 					) : (
-						users.map((user) => (
-							<MemoizedUserTableRow
-								key={user.id}
-								user={user}
+						counters.map((counter) => (
+							<MemoizedCounterTableRow
+								key={counter.id}
+								counter={counter}
 								canUpdate={canUpdate}
 								canDelete={canDelete}
 								onEdit={onEdit}
@@ -135,53 +119,44 @@ export function UserTable({
 	);
 }
 
-const MemoizedUserTableRow = memo(function UserTableRow({
-	user,
+const MemoizedCounterTableRow = memo(function CounterTableRow({
+	counter,
 	canUpdate,
 	canDelete,
 	onEdit,
 	onDelete,
 }: {
-	user: User;
+	counter: Counter;
 	canUpdate: boolean;
 	canDelete: boolean;
-	onEdit: (user: User) => void;
-	onDelete: (user: User) => void;
+	onEdit: (counter: Counter) => void;
+	onDelete: (counter: Counter) => void;
 }) {
 	return (
 		<TableRow>
-			<TableCell>
-				<div className="bg-muted flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-xs font-medium">
-					{user.avatar_url ? (
-						<Image
-							src={user.avatar_url}
-							alt={user.name}
-							width={32}
-							height={32}
-							className="h-full w-full object-cover"
-						/>
-					) : (
-						user.name.charAt(0).toUpperCase()
-					)}
-				</div>
+			<TableCell className="font-medium">
+				<Badge variant="outline" className="font-mono">
+					{counter.code}
+				</Badge>
 			</TableCell>
-			<TableCell className="font-medium">{user.name}</TableCell>
-			<TableCell>{user.email}</TableCell>
-			<TableCell>{user.username}</TableCell>
+			<TableCell className="font-medium">{counter.name}</TableCell>
+			<TableCell className="text-xs text-muted-foreground font-mono">
+				{counter.branch_id}
+			</TableCell>
 			<TableCell>
 				<Badge
-					variant={user.status === "active" ? "default" : "secondary"}
+					variant={counter.status === "active" ? "default" : "secondary"}
 					className={
-						user.status === "active"
+						counter.status === "active"
 							? "bg-emerald-500 hover:bg-emerald-600"
 							: ""
 					}
 				>
-					{user.status || "Unknown"}
+					{counter.status || "Unknown"}
 				</Badge>
 			</TableCell>
-			<TableCell className="text-muted-foreground text-right">
-				{format(new Date((user.created_at ?? 0) * 1000), "MMM dd, yyyy")}
+			<TableCell className="text-right text-muted-foreground">
+				{format(new Date(counter.created_at * 1000), "MMM dd, yyyy")}
 			</TableCell>
 			{(canUpdate || canDelete) && (
 				<TableCell>
@@ -194,14 +169,14 @@ const MemoizedUserTableRow = memo(function UserTableRow({
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							{canUpdate && (
-								<DropdownMenuItem onClick={() => onEdit(user)}>
+								<DropdownMenuItem onClick={() => onEdit(counter)}>
 									<Icon name="Pencil" className="mr-2 h-4 w-4" />
 									Edit
 								</DropdownMenuItem>
 							)}
 							{canDelete && (
 								<DropdownMenuItem
-									onClick={() => onDelete(user)}
+									onClick={() => onDelete(counter)}
 									className="text-destructive"
 								>
 									<Icon name="Trash" className="mr-2 h-4 w-4" />
