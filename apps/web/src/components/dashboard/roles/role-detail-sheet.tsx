@@ -493,7 +493,7 @@ const SearchUserItem = React.memo(function SearchUserItem({
 			<Avatar className="h-6 w-6">
 				<AvatarImage src={user.avatar_url} />
 				<AvatarFallback>
-					{(user.username ?? "")[0].toUpperCase()}
+					{(user.username?.[0] ?? "").toUpperCase()}
 				</AvatarFallback>
 			</Avatar>
 			<div className="flex flex-col">
@@ -519,7 +519,7 @@ const RoleMemberItem = React.memo(function RoleMemberItem({
 			<Avatar className="h-9 w-9 border">
 				<AvatarImage src={member.avatar_url} />
 				<AvatarFallback>
-					{(member.username ?? "")[0].toUpperCase()}
+					{(member.username?.[0] ?? "").toUpperCase()}
 				</AvatarFallback>
 			</Avatar>
 			<div className="min-w-0 flex-1">
