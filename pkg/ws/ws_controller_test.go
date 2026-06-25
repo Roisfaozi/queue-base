@@ -3,7 +3,6 @@ package ws
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -162,7 +161,10 @@ func TestWebSocketOrigin(t *testing.T) {
 				engine.ServeHTTP(w, r)
 			})
 
-			server := httptest.NewServer(r)
+			server, err := newPermissiveWSServer(t, r.ServeHTTP)
+			if err != nil {
+				return
+			}
 			defer server.Close()
 
 			// Build WebSocket URL

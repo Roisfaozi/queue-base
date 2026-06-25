@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -90,7 +91,10 @@ func TestManager_ServeHTTP(t *testing.T) {
 	r := gin.New()
 	r.GET("/events", manager.ServeHTTP())
 
-	server := httptest.NewServer(r)
+	server, err := newPermissiveHTTPServer(r)
+	if err != nil {
+		t.Skip("socket listeners not permitted in this environment")
+	}
 	defer server.Close()
 
 	// Connect to the server
@@ -154,6 +158,26 @@ func TestManager_ServeHTTP(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	assert.Equal(t, 0, manager.ClientCount())
+}
+
+func newPermissiveHTTPServer(handler http.Handler) (server *httptest.Server, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			msg := ""
+			switch value := recovered.(type) {
+			case string:
+				msg = value
+			case error:
+				msg = value.Error()
+			}
+			if strings.Contains(msg, "operation not permitted") {
+				err = http.ErrServerClosed
+				return
+			}
+			panic(recovered)
+		}
+	}()
+	return httptest.NewServer(handler), nil
 }
 
 func TestManager_SlowClient(t *testing.T) {
