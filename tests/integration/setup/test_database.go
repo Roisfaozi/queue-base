@@ -56,7 +56,7 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		panic("Failed to run migrations: " + err.Error())
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS casbin_rule (
+	err = db.Exec(`CREATE TABLE IF NOT EXISTS casbin_rule (
 		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 		ptype varchar(100) DEFAULT NULL,
 		v0 varchar(100) DEFAULT NULL,
@@ -67,9 +67,14 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		v5 varchar(100) DEFAULT NULL,
 		PRIMARY KEY (id),
 		UNIQUE KEY idx_casbin_rule (ptype,v0,v1,v2,v3,v4,v5)
-	)`)
+	)`).Error
+	if t != nil {
+		require.NoError(t, err, "Failed to create casbin_rule table")
+	} else if err != nil {
+		panic("Failed to create casbin_rule table: " + err.Error())
+	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS queue_counters (
+	err = db.Exec(`CREATE TABLE IF NOT EXISTS queue_counters (
 		tenant_id VARCHAR(36) NOT NULL,
 		branch_id VARCHAR(36) NOT NULL,
 		queue_date DATE NOT NULL,
@@ -78,7 +83,12 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		created_at BIGINT,
 		updated_at BIGINT,
 		PRIMARY KEY (tenant_id, branch_id, queue_date, prefix)
-	)`)
+	)`).Error
+	if t != nil {
+		require.NoError(t, err, "Failed to create queue_counters table")
+	} else if err != nil {
+		panic("Failed to create queue_counters table: " + err.Error())
+	}
 }
 
 func SeedTestData(t *testing.T, db *gorm.DB) {
