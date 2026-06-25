@@ -2,7 +2,7 @@
 
 import { Icon } from "~/components/shared/icon";
 import { useDashboardShell } from "../_components/dashboard-shell-context";
-import { Button } from "~/components/ui/button";
+import { QueueSettingsContent } from "./_components/queue-settings-content";
 
 export default function QueueSettingsPage() {
 	const { currentOrganization, isLoading } = useDashboardShell();
@@ -33,25 +33,7 @@ export default function QueueSettingsPage() {
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h2 className="text-2xl font-bold tracking-tight">Queue Settings</h2>
-					<p className="text-muted-foreground">
-						Manage hierarchical settings (Tenant &gt; Branch &gt; Service &gt;
-						Counter).
-					</p>
-				</div>
-				<Button>
-					<Icon name="Plus" className="mr-2 h-4 w-4" />
-					Add Override
-				</Button>
-			</div>
-
-			<div className="rounded-md border">
-				<div className="p-4 text-center text-sm text-muted-foreground">
-					Inheritance matrix and settings overrides will go here.
-				</div>
-			</div>
+			<QueueSettingsContent />
 		</div>
 	);
 }
