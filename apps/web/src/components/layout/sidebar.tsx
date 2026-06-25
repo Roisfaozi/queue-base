@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { memo } from "react";
+import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { buttonVariants } from "~/components/ui/button";
 import {
 	Tooltip,
@@ -12,60 +14,89 @@ import {
 import { cn } from "~/lib/utils";
 import { OrganizationSwitcher } from "../dashboard/organization-switcher";
 import { Icon } from "../shared/icon";
-import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
-import { memo } from "react";
 
-// Define Navigation Items (Could be moved to a separate config file)
-const navItems = [
+// Define Navigation Items
+type NavItem = {
+	type?: "link";
+	title: string;
+	href: string;
+	iconName: string;
+};
+type NavSeparator = { type: "separator" };
+type NavEntry = NavItem | NavSeparator;
+
+const navItems: NavEntry[] = [
 	{
 		title: "Dashboard",
 		href: "/dashboard",
-		iconName: "LayoutDashboard" as const,
+		iconName: "LayoutDashboard",
 	},
 	{
 		title: "Projects",
 		href: "/dashboard/projects",
-		iconName: "Folder" as const,
+		iconName: "Folder",
 	},
 	{
 		title: "Users",
 		href: "/dashboard/users",
-		iconName: "UserSearch" as const,
+		iconName: "UserSearch",
 	},
 	{
 		title: "Team Members",
 		href: "/dashboard/organization/members",
-		iconName: "Users" as const,
+		iconName: "Users",
 	},
 	{
 		title: "Org Settings",
 		href: "/dashboard/organization/settings",
-		iconName: "Building" as const,
+		iconName: "Building",
 	},
 	{
 		title: "Roles",
 		href: "/dashboard/roles",
-		iconName: "Shield" as const,
+		iconName: "Shield",
 	},
 	{
 		title: "Access Matrix",
 		href: "/dashboard/access",
-		iconName: "Grid3X3" as const,
+		iconName: "Grid3X3",
 	},
 	{
 		title: "Access Rights",
 		href: "/dashboard/access-rights",
-		iconName: "Key" as const,
+		iconName: "Key",
 	},
 	{
 		title: "Audit Logs",
 		href: "/dashboard/audit",
-		iconName: "FileText" as const,
+		iconName: "FileText",
 	},
+	{ type: "separator" },
+	{
+		title: "Services",
+		href: "/dashboard/services",
+		iconName: "Globe",
+	},
+	{
+		title: "Counters",
+		href: "/dashboard/counters",
+		iconName: "Monitor",
+	},
+	{
+		title: "Queues",
+		href: "/dashboard/queues",
+		iconName: "ListOrdered",
+	},
+	{
+		title: "Queue Settings",
+		href: "/dashboard/queue-settings",
+		iconName: "Settings2",
+	},
+	{ type: "separator" },
 	{
 		title: "Settings",
 		href: "/dashboard/settings",
-		iconName: "Settings" as const,
+		iconName: "Settings",
 	},
 ];
 
@@ -98,7 +129,16 @@ export const Sidebar = memo(function Sidebar({
 
 			{/* Navigation */}
 			<nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-				{navItems.map((item) => {
+				{navItems.map((item, index) => {
+					if (item.type === "separator") {
+						return (
+							<div
+								key={`sep-${index}`}
+								className="bg-border my-2 h-px w-full"
+							/>
+						);
+					}
+
 					const isActive =
 						pathname === item.href || pathname.startsWith(`${item.href}/`);
 

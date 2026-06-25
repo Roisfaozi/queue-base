@@ -11,6 +11,7 @@ import {
 import { statsApi, type SystemInsights } from "~/lib/api/stats";
 import { auditApi, type AuditLog } from "~/lib/api/audit";
 import { toast } from "sonner";
+import { useDashboardShell } from "./dashboard-shell-context";
 
 interface DashboardContextType {
 	stats: {
@@ -21,6 +22,7 @@ interface DashboardContextType {
 	insights: SystemInsights | null;
 	recentLogs: AuditLog[];
 	isLoading: boolean;
+	hasOrganization: boolean;
 	refresh: () => Promise<void>;
 }
 
@@ -29,6 +31,8 @@ const DashboardContext = createContext<DashboardContextType | undefined>(
 );
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
+	const { currentOrganization, isLoading: isShellLoading } =
+		useDashboardShell();
 	const [stats, setStats] = useState({
 		users: 0,
 		roles: 0,
@@ -39,6 +43,18 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 	const [isLoading, setIsLoading] = useState(true);
 
 	const fetchData = useCallback(async () => {
+		if (isShellLoading) {
+			return;
+		}
+
+		if (!currentOrganization) {
+			setStats({ users: 0, roles: 0, auditLogs: 0 });
+			setInsights(null);
+			setRecentLogs([]);
+			setIsLoading(false);
+			return;
+		}
+
 		setIsLoading(true);
 		try {
 			const [summaryResp, insightsResp, recentLogsResp] = await Promise.all([
@@ -72,11 +88,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 		} finally {
 			setIsLoading(false);
 		}
-	}, []);
+	}, [currentOrganization, isShellLoading]);
 
 	useEffect(() => {
+		if (isShellLoading) {
+			setIsLoading(true);
+			return;
+		}
+
 		fetchData();
-	}, [fetchData]);
+	}, [fetchData, isShellLoading]);
 
 	return (
 		<DashboardContext.Provider
@@ -85,6 +106,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 				insights,
 				recentLogs,
 				isLoading,
+				hasOrganization: !!currentOrganization,
 				refresh: fetchData,
 			}}
 		>

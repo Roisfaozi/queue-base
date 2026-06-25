@@ -12,30 +12,35 @@ This note tracks the current QMS rebuild direction while leaving starter repo wo
 
 ## Execution slices
 
-1. tenant and branch foundation
+1. tenant and branch foundation (Completed)
    - owner: `internal/modules/organization`, `internal/middleware/tenant_middleware.go`, `internal/config/app.go`, `internal/router/router.go`
    - outcome: tenant context first, branch always validated under tenant, repo queries stay scoped
    - verify: module wiring review + targeted tenant/organization tests
 
-2. queue master and journey model
+2. queue master and journey model (Completed)
    - owner: new `internal/modules/queue` package, plus `queue_journeys` and `visit_journeys` subpackages
    - outcome: normalized queue aggregate, one queue row per ticket/day, forward appends journey only
    - verify: unit tests for numbering, duplicate guard, and forward transition
 
-3. settings inheritance
+3. settings inheritance (Completed)
    - owner: new `internal/modules/settings` package and queue-domain consumers
    - outcome: tenant -> branch -> service -> counter override resolution with one helper
    - verify: resolver tests for precedence and fallback
 
-4. scanner orchestration and route exposure
+4. scanner orchestration and route exposure (Completed)
    - owner: `internal/router/router.go`, scanner controller/usecase, queue route groups
    - outcome: thin handlers, domain logic in usecase, route contract ready for consumers
    - verify: route-level tests and request flow tests
 
-5. migration and persistence alignment
+5. migration and persistence alignment (Completed)
    - owner: `db/migrations/*`, queue repositories, module wiring
    - outcome: schema matches normalized queue design and transaction boundaries
    - verify: migration review + repository tests with transaction coverage
+
+6. frontend dashboard integration (Completed)
+   - owner: `apps/web/src/app/[locale]/dashboard/*`
+   - outcome: UI for Services, Counters, Queue Settings, and Queues live board under tenant scope.
+   - verify: typecheck, biome lint, and component functionality.
 
 ## QMS TDD Reminder
 

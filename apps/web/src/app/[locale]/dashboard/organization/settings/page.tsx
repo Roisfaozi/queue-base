@@ -1,5 +1,6 @@
 "use client";
 
+import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { useOrganizationStore } from "~/stores/use-organization-store";
 import { Button } from "~/components/ui/button";
 import { Icon } from "~/components/shared/icon";
@@ -9,7 +10,16 @@ import { PreferencesSettingsCard } from "./_components/preferences-settings-card
 import { DangerZoneCard } from "./_components/danger-zone-card";
 
 export default function OrganizationSettingsPage() {
+	const { isLoading } = useDashboardShell();
 	const { currentOrganization } = useOrganizationStore();
+
+	if (isLoading) {
+		return (
+			<div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
+				<p className="text-muted-foreground">Loading organization context...</p>
+			</div>
+		);
+	}
 
 	if (!currentOrganization) {
 		return (
