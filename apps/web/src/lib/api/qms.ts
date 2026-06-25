@@ -46,6 +46,41 @@ export interface Setting {
 	updated_at: number;
 }
 
+export interface Queue {
+	id: string;
+	tenant_id: string;
+	branch_id: string;
+	queue_date: string;
+	ticket_no: string;
+	queue_no: number;
+	patient_id?: string;
+	patient_name?: string;
+	status: string;
+	current_journey_id?: string;
+	created_at: number;
+	updated_at: number;
+}
+
+export interface QueueJourney {
+	id: string;
+	queue_id: string;
+	service_id: string;
+	counter_id?: string;
+	seq_no: number;
+	status: string;
+	created_at: number;
+	updated_at: number;
+}
+
+export interface VisitJourney {
+	id: string;
+	queue_id: string;
+	tenant_id: string;
+	event_type: string;
+	payload?: string;
+	created_at: number;
+}
+
 // -----------------------------------------------------------------------------
 // BRANCHES API
 // -----------------------------------------------------------------------------
@@ -99,6 +134,45 @@ export const countersApi = {
 		data: { code?: string; name?: string; status?: "active" | "inactive" },
 	) => api.put<{ data: Counter }>(`/counters/${id}`, data),
 	delete: (id: string) => api.delete(`/counters/${id}`),
+};
+
+// -----------------------------------------------------------------------------
+// QUEUES API
+// -----------------------------------------------------------------------------
+export const queuesApi = {
+	getAll: (params?: {
+		status?: string;
+		queue_date?: string;
+		service_id?: string;
+	}) => {
+		const searchParams = new URLSearchParams();
+		if (params?.status) searchParams.append("status", params.status);
+		if (params?.queue_date)
+			searchParams.append("queue_date", params.queue_date);
+		if (params?.service_id)
+			searchParams.append("service_id", params.service_id);
+
+		const query = searchParams.toString();
+		return api.get<{ data: Queue[] }>(`/queues${query ? `?${query}` : ""}`);
+	},
+	getById: (id: string) => api.get<{ data: Queue }>(`/queues/${id}`),
+	register: (data: {
+		service_id: string;
+		patient_name: string;
+		patient_id?: string;
+	}) => api.post<{ data: Queue }>("/queues", data),
+	transition: (
+		id: string,
+		data: { action: "call" | "serve" | "complete" | "skip" | "cancel" },
+	) => api.post<{ data: Queue }>(`/queues/${id}/transition`, data),
+	forward: (
+		id: string,
+		data: { destination_service_id: string; destination_counter_id?: string },
+	) => api.post<{ data: Queue }>(`/queues/${id}/forward`, data),
+	getVisitJourneys: (id: string) =>
+		api.get<{ data: VisitJourney[] }>(`/queues/${id}/visit-journeys`),
+	getQueueStats: (branchId: string) =>
+		api.get<{ data: any }>(`/branches/${branchId}/queue-stats`),
 };
 
 // -----------------------------------------------------------------------------

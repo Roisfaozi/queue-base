@@ -83,6 +83,11 @@ const navItems: NavEntry[] = [
 		iconName: "Monitor",
 	},
 	{
+		title: "Queues",
+		href: "/dashboard/queues",
+		iconName: "ListOrdered",
+	},
+	{
 		title: "Queue Settings",
 		href: "/dashboard/queue-settings",
 		iconName: "Settings2",
