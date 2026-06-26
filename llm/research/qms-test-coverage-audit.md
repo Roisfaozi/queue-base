@@ -27,19 +27,19 @@ Based on the QMS architecture domain rules (Queue Master, Scanner, Settings Inhe
 
 ### Counter (`internal/modules/counter`)
 
-- **Usecase:** ⚠️ Legacy format (no table, no vuln/edge coverage)
+- **Usecase:** ✅ Table-driven (`counter_usecase_test.go` — full category coverage)
 - **Repository:** ❌ Missing
 - **Handler:** ❌ Missing
 
 ### Service (`internal/modules/service`)
 
-- **Usecase:** ⚠️ Legacy format (6 single-case functions, no vuln/edge coverage)
+- **Usecase:** ✅ Table-driven (`service_usecase_test.go` — full category coverage)
 - **Repository:** ❌ Missing
 - **Handler:** ❌ Missing
 
 ### Organization / Branch (`internal/modules/organization`)
 
-- **Branch Usecase:** ⚠️ Legacy format
+- **Branch Usecase:** ✅ Table-driven (`branch_usecase_test.go` — full category coverage)
 - **Branch Repository:** ❌ Missing
 - **Branch Handler:** ❌ Missing
 
@@ -47,9 +47,6 @@ Based on the QMS architecture domain rules (Queue Master, Scanner, Settings Inhe
 
 ## Priority Matrix
 
-| Priority | Package         | Gap             | Reason                                                               |
-| -------- | --------------- | --------------- | -------------------------------------------------------------------- |
-| **P2**   | Counter Usecase | Old-style tests | Needs table-driven rewrite + category coverage.                      |
-| **P2**   | Service Usecase | Old-style tests | Needs table-driven rewrite + category coverage.                      |
-| **P2**   | Branch Usecase  | Old-style tests | Needs table-driven rewrite + category coverage.                      |
-| **P3**   | Repositories    | No tests        | Queue, Scanner, Settings repo queries warrant unit-style repo tests. |
+| Priority | Package      | Gap      | Reason                                                               |
+| -------- | ------------ | -------- | -------------------------------------------------------------------- |
+| **P3**   | Repositories | No tests | Queue, Scanner, Settings repo queries warrant unit-style repo tests. |
