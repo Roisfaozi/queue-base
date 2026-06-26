@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
@@ -73,7 +74,7 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 
 	if u.authenticator != nil {
 		if err := u.authenticator.Authenticate(ctx, tenantID, branchID, req.ClientID, req.APIKey); err != nil {
-			return nil, exception.ErrUnauthorized
+			return nil, fmt.Errorf("authenticator failed: %w", err)
 		}
 	}
 
@@ -84,7 +85,7 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 
 	if u.relationValidator != nil {
 		if err := u.relationValidator.Validate(ctx, tenantID, branchID, serviceID, req.DestinationCounterID); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("relation validator failed: %w", err)
 		}
 	}
 

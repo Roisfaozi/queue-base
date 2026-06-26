@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 
 	counterRepository "github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
@@ -27,12 +28,12 @@ func NewRelationValidator(branchRepo branchRepository.BranchRepository, serviceR
 
 func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
 	if _, err := v.branchRepo.FindByID(ctx, tenantID, branchID); err != nil {
-		return exception.ErrForbidden
+		return fmt.Errorf("branchRepo.FindByID failed: %w", err)
 	}
 	if serviceID != "" {
 		service, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID)
 		if err != nil {
-			return exception.ErrForbidden
+			return fmt.Errorf("serviceRepo.FindByID failed: %w", err)
 		}
 		requireCounter := service.IsPharmacy
 		pharmacyFlowEnabled := service.IsPharmacy
@@ -45,19 +46,19 @@ func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, se
 			}
 		}
 		if service.IsPharmacy && !pharmacyFlowEnabled {
-			return exception.ErrForbidden
+			return fmt.Errorf("pharmacy flow disabled: %w", exception.ErrForbidden)
 		}
 		if requireCounter && counterID == "" {
-			return exception.ErrForbidden
+			return fmt.Errorf("counter required: %w", exception.ErrForbidden)
 		}
 	}
 	if counterID != "" {
 		counter, err := v.counterRepo.FindByID(ctx, tenantID, counterID)
 		if err != nil {
-			return exception.ErrForbidden
+			return fmt.Errorf("counterRepo.FindByID failed: %w", err)
 		}
 		if counter.BranchID != branchID {
-			return exception.ErrForbidden
+			return fmt.Errorf("counter branch mismatch: %w", exception.ErrForbidden)
 		}
 	}
 	return nil

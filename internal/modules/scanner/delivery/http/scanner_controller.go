@@ -1,6 +1,8 @@
 package http
 
 import (
+	"fmt"
+
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -66,6 +68,7 @@ func (h *ScannerController) CheckIn(c *gin.Context) {
 		DestinationCounterID: req.DestinationCounterID,
 	})
 	if err != nil {
+		fmt.Printf("Scanner CheckIn failed: %v\n", err)
 		response.HandleError(c, err, "failed to process scanner check-in")
 		return
 	}

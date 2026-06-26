@@ -4,6 +4,7 @@ import (
 	"context"
 
 	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 
 	counterModulePkg "github.com/Roisfaozi/queue-base/internal/modules/counter"
 	branchModulePkg "github.com/Roisfaozi/queue-base/internal/modules/organization"
@@ -12,7 +13,6 @@ import (
 	scannerUsecase "github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
 	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/go-playground/validator/v10"
 )
 
