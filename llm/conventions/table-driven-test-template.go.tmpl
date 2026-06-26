@@ -1,0 +1,99 @@
+{{- /*
+Table-Driven Test Template — QMS Project
+Gunakan template ini untuk setiap usecase method.
+
+Aturan:
+1. Satu fungsi Test<NamaMethod> per method.
+2. Setiap entri tabel wajib punya kolom `category`.
+3. Gunakan `t.Run(tt.name, ...)` untuk setiap entri.
+4. Setup stub/resolver dibungkus dalam loop, bukan di luar.
+5. Stub zero-value aman (field = nil/empty) — hanya isi yang relevan per test case.
+*/ -}}
+package {{ .PackageName }}
+
+import (
+	"context"
+	"testing"
+
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// =============================================================================
+// Template: Test<NamaMethod>
+// =============================================================================
+
+func Test{{ .MethodName }}(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string // positive | negative | edge | vulnerability
+		// Input —  isi hanya yang berbeda dari default
+		req      {{ .RequestType }}
+		// Stub config — isi hanya field yang perlu mocking
+		stubRepo struct {
+			err    error
+			exists bool
+		}
+		stubSettings map[string]string
+		// Context config
+		tenantID string
+		branchID string
+		// Expected
+		wantErr error
+		wantRes func(t *testing.T, res {{ .ResponseType }})
+	}{
+		{
+			name:     "Positive_Creates{{ .MethodName }}WithDefaults",
+			category: "positive",
+			req:      {{ .RequestType }}{ /* Fill valid default fields */ },
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantRes: func(t *testing.T, res {{ .ResponseType }}) {
+				// assert.Equal(t, "expected", res.Field)
+			},
+		},
+		{
+			name:     "Negative_MissingTenant",
+			category: "negative",
+			req:      {{ .RequestType }}{ /* Fill request */ },
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup stub
+			repo := &stub{{ .EntityName }}Repo{
+				err:    tt.stubRepo.err,
+				exists: tt.stubRepo.exists,
+			}
+			resolver := &stubSettingsResolver{values: tt.stubSettings}
+			uc := New{{ .EntityName }}UseCase(repo, resolver, nil)
+
+			// Setup context
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
+			}
+
+			// Execute
+			res, err := uc.{{ .MethodName }}(ctx, &tt.req)
+
+			// Assert
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res)
+			}
+		})
+	}
+}

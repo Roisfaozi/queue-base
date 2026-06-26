@@ -17,11 +17,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWebSocketE2E_NotificationFlow(t *testing.T) {
+func timestamp() string {
+	return strconv.FormatInt(time.Now().UnixNano(), 10)
+}
 
+func TestWebSocketE2E_NotificationFlow(t *testing.T) {
 	server := setup.SetupTestServer(t)
 	defer server.Cleanup()
 
+	// Initial shared context
 	registerPayload := map[string]any{
 		"name":     "WS Test User",
 		"username": "wstestuser_" + timestamp(),
@@ -29,123 +33,150 @@ func TestWebSocketE2E_NotificationFlow(t *testing.T) {
 		"password": "password123",
 	}
 
-	w := server.Client.POST("/api/v1/auth/register", registerPayload)
-	require.Equal(t, 201, w.StatusCode)
+	var accessToken string
+	var userID string
+	var orgID string
+	var ticket string
+	var conn *websocket.Conn
 
-	var registerResp struct {
-		Data struct {
-			AccessToken string `json:"access_token"`
-			User        struct {
-				ID string `json:"id"`
-			} `json:"user"`
-		} `json:"data"`
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_RegisterUserAndGetToken",
+			category: "positive",
+			run: func(t *testing.T) {
+				w := server.Client.POST("/api/v1/auth/register", registerPayload)
+				require.Equal(t, 201, w.StatusCode)
+
+				var registerResp struct {
+					Data struct {
+						AccessToken string `json:"access_token"`
+						User        struct {
+							ID string `json:"id"`
+						} `json:"user"`
+					} `json:"data"`
+				}
+				err := json.Unmarshal(w.BodyBytes, &registerResp)
+				require.NoError(t, err)
+				accessToken = registerResp.Data.AccessToken
+				userID = registerResp.Data.User.ID
+			},
+		},
+		{
+			name:     "Positive_GetUserOrganization",
+			category: "positive",
+			run: func(t *testing.T) {
+				wOrg := server.Client.GET("/api/v1/organizations/me", setup.WithAuth(accessToken))
+				require.Equal(t, 200, wOrg.StatusCode)
+
+				var orgResp struct {
+					Data struct {
+						Organizations []struct {
+							ID string `json:"id"`
+						} `json:"organizations"`
+					} `json:"data"`
+				}
+				err := json.Unmarshal(wOrg.BodyBytes, &orgResp)
+				require.NoError(t, err)
+				require.NotEmpty(t, orgResp.Data.Organizations, "User should have at least one organization")
+				orgID = orgResp.Data.Organizations[0].ID
+			},
+		},
+		{
+			name:     "Positive_RequestWSTicket",
+			category: "positive",
+			run: func(t *testing.T) {
+				wTicket := server.Client.POST("/api/v1/auth/ticket?org_id="+orgID, nil, setup.WithAuth(accessToken))
+				require.Equal(t, 200, wTicket.StatusCode)
+
+				var ticketResp struct {
+					Data struct {
+						Ticket string `json:"ticket"`
+					} `json:"data"`
+				}
+				err := json.Unmarshal(wTicket.BodyBytes, &ticketResp)
+				require.NoError(t, err)
+				ticket = ticketResp.Data.Ticket
+			},
+		},
+		{
+			name:     "Positive_ConnectAndSubscribe",
+			category: "positive",
+			run: func(t *testing.T) {
+				wsURL := strings.Replace(server.BaseURL, "http", "ws", 1) + "/api/v1/ws?ticket=" + ticket
+				u, _ := url.Parse(wsURL)
+				var err error
+				conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+				require.NoError(t, err)
+
+				subscribeMsg := map[string]string{
+					"type":    "subscribe",
+					"channel": "org_" + orgID + "_notifications",
+				}
+				err = conn.WriteJSON(subscribeMsg)
+				require.NoError(t, err)
+
+				var infoMsg struct {
+					Type    string `json:"type"`
+					Channel string `json:"channel"`
+					Data    string `json:"data"`
+				}
+				err = conn.ReadJSON(&infoMsg)
+				require.NoError(t, err)
+				assert.Equal(t, "info", infoMsg.Type)
+				assert.Equal(t, "org_"+orgID+"_notifications", infoMsg.Channel)
+			},
+		},
+		{
+			name:     "Positive_TriggerAndVerifyNotification",
+			category: "positive",
+			run: func(t *testing.T) {
+				time.Sleep(1 * time.Second) // wait for sub
+
+				loginPayload := map[string]any{
+					"username": registerPayload["username"],
+					"password": registerPayload["password"],
+				}
+
+				wLogin := server.Client.POST("/api/v1/auth/login", loginPayload)
+				require.Equal(t, 200, wLogin.StatusCode)
+
+				conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+				var wsWrapper struct {
+					Type    string `json:"type"`
+					Channel string `json:"channel"`
+					Data    struct {
+						Type    string `json:"type"`
+						UserID  string `json:"user_id"`
+						Message string `json:"message"`
+					} `json:"data"`
+				}
+
+				_, message, err := conn.ReadMessage()
+				require.NoError(t, err)
+
+				err = json.Unmarshal(message, &wsWrapper)
+				require.NoError(t, err)
+
+				assert.Equal(t, "message", wsWrapper.Type)
+				assert.Equal(t, "user_login", wsWrapper.Data.Type)
+				assert.Equal(t, userID, wsWrapper.Data.UserID)
+			},
+		},
 	}
-	err := json.Unmarshal(w.BodyBytes, &registerResp)
-	require.NoError(t, err)
-	accessToken := registerResp.Data.AccessToken
-	userID := registerResp.Data.User.ID
 
-	// 2. Get User Organization
-	wOrg := server.Client.GET("/api/v1/organizations/me", setup.WithAuth(accessToken))
-	require.Equal(t, 200, wOrg.StatusCode)
-
-	var orgResp struct {
-		Data struct {
-			Organizations []struct {
-				ID string `json:"id"`
-			} `json:"organizations"`
-		} `json:"data"`
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
 	}
-	err = json.Unmarshal(wOrg.BodyBytes, &orgResp)
-	require.NoError(t, err)
-	require.NotEmpty(t, orgResp.Data.Organizations, "User should have at least one organization")
-	orgID := orgResp.Data.Organizations[0].ID
-
-	// 3. Request Ticket
-	wTicket := server.Client.POST("/api/v1/auth/ticket?org_id="+orgID, nil, setup.WithAuth(accessToken))
-	require.Equal(t, 200, wTicket.StatusCode)
-
-	var ticketResp struct {
-		Data struct {
-			Ticket string `json:"ticket"`
-		} `json:"data"`
+	
+	if conn != nil {
+		conn.Close()
 	}
-	err = json.Unmarshal(wTicket.BodyBytes, &ticketResp)
-	require.NoError(t, err)
-	ticket := ticketResp.Data.Ticket
-
-	// 4. Connect to WebSocket
-	wsURL := strings.Replace(server.BaseURL, "http", "ws", 1) + "/api/v1/ws?ticket=" + ticket
-	u, _ := url.Parse(wsURL)
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	require.NoError(t, err)
-	defer conn.Close()
-
-	// 4. Subscribe to Organization Channel
-	subscribeMsg := map[string]string{
-		"type":    "subscribe",
-		"channel": "org_" + orgID + "_notifications",
-	}
-	err = conn.WriteJSON(subscribeMsg)
-	require.NoError(t, err)
-
-	// Verify subscription info message
-	var infoMsg struct {
-		Type    string `json:"type"`
-		Channel string `json:"channel"`
-		Data    string `json:"data"`
-	}
-	err = conn.ReadJSON(&infoMsg)
-	require.NoError(t, err)
-	assert.Equal(t, "info", infoMsg.Type)
-	assert.Equal(t, "org_"+orgID+"_notifications", infoMsg.Channel)
-
-	// 5. Trigger Notification (Login)
-	t.Log("Waiting for subscription to propagate...")
-	time.Sleep(1 * time.Second)
-	t.Log("Triggering Login to generate notification...")
-
-	// We login again to trigger the "user_login" event
-	loginPayload := map[string]any{
-		"username": registerPayload["username"],
-		"password": registerPayload["password"],
-	}
-
-	wLogin := server.Client.POST("/api/v1/auth/login", loginPayload)
-	require.Equal(t, 200, wLogin.StatusCode)
-	t.Log("Login successful")
-
-	// 6. Verify Notification
-	t.Log("Waiting for notification...")
-	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-
-	var wsWrapper struct {
-		Type    string `json:"type"`
-		Channel string `json:"channel"`
-		Data    struct {
-			Type    string `json:"type"`
-			UserID  string `json:"user_id"`
-			Message string `json:"message"`
-		} `json:"data"`
-	}
-
-	_, message, err := conn.ReadMessage()
-	if err != nil {
-		t.Logf("ReadMessage failed: %v", err)
-	}
-	require.NoError(t, err)
-	t.Logf("Received message: %s", string(message))
-
-	err = json.Unmarshal(message, &wsWrapper)
-	require.NoError(t, err)
-
-	assert.Equal(t, "message", wsWrapper.Type)
-	assert.Equal(t, "user_login", wsWrapper.Data.Type)
-	assert.Equal(t, userID, wsWrapper.Data.UserID)
-}
-
-func timestamp() string {
-	return strconv.FormatInt(time.Now().UnixNano(), 10)
 }
 
 func TestPresenceE2E_IsolationAndEvents(t *testing.T) {
@@ -174,7 +205,6 @@ func TestPresenceE2E_IsolationAndEvents(t *testing.T) {
 		token := resp.Data.AccessToken
 		uid := resp.Data.User.ID
 
-		// Create a unique organization
 		orgPayload := map[string]any{
 			"name": namePrefix + " Org " + timestamp(),
 			"slug": strings.ToLower(namePrefix) + "-org-" + timestamp(),
@@ -194,7 +224,6 @@ func TestPresenceE2E_IsolationAndEvents(t *testing.T) {
 	}
 
 	connectWS := func(token, orgID string) *websocket.Conn {
-		// Request Ticket
 		urlPath := "/api/v1/auth/ticket"
 		if orgID != "" {
 			urlPath += "?org_id=" + orgID
@@ -207,90 +236,102 @@ func TestPresenceE2E_IsolationAndEvents(t *testing.T) {
 				Ticket string `json:"ticket"`
 			} `json:"data"`
 		}
-		err := json.Unmarshal(wTicket.BodyBytes, &ticketResp)
-		require.NoError(t, err)
+		json.Unmarshal(wTicket.BodyBytes, &ticketResp)
 
 		wsURL := strings.Replace(server.BaseURL, "http", "ws", 1) + "/api/v1/ws?ticket=" + ticketResp.Data.Ticket
 		u, _ := url.Parse(wsURL)
-		conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-		require.NoError(t, err)
+		conn, _, _ := websocket.DefaultDialer.Dial(u.String(), nil)
 		return conn
 	}
 
-	tokenA, uidA, org1ID := createUser("UserA")
-	connA := connectWS(tokenA, org1ID)
-	defer connA.Close()
+	var tokenA, uidA, org1ID string
+	var connA *websocket.Conn
+	var tokenC, org2ID string
+	var connC *websocket.Conn
 
-	channelOrg1 := "presence:org:" + org1ID
-	connA.WriteJSON(map[string]string{
-		"type":    "subscribe",
-		"channel": channelOrg1,
-	})
-	_, _, _ = connA.ReadMessage()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_UserAConnectsAndJoinsPresence",
+			category: "positive",
+			run: func(t *testing.T) {
+				tokenA, uidA, org1ID = createUser("UserA")
+				connA = connectWS(tokenA, org1ID)
+				
+				channelOrg1 := "presence:org:" + org1ID
+				connA.WriteJSON(map[string]string{"type": "subscribe", "channel": channelOrg1})
+				_, _, _ = connA.ReadMessage() // read sub info
 
-	// Wait for async registration
-	time.Sleep(500 * time.Millisecond)
+				time.Sleep(500 * time.Millisecond) // wait for async reg
+				wPresence := server.Client.GET("/api/v1/organizations/"+org1ID+"/presence", setup.WithAuth(tokenA))
+				require.Equal(t, 200, wPresence.StatusCode)
+				assert.Contains(t, string(wPresence.BodyBytes), uidA)
+			},
+		},
+		{
+			name:     "Positive_SecondConnectionForUserADoesNotTriggerLeave",
+			category: "positive",
+			run: func(t *testing.T) {
+				connA2 := connectWS(tokenA, org1ID)
+				defer connA2.Close()
+				connA2.WriteJSON(map[string]string{"type": "subscribe", "channel": "presence:org:" + org1ID})
 
-	wPresence := server.Client.GET("/api/v1/organizations/"+org1ID+"/presence", setup.WithAuth(tokenA))
-	require.Equal(t, 200, wPresence.StatusCode)
-	assert.Contains(t, string(wPresence.BodyBytes), uidA)
+				// Drain A2 join event from A
+				connA.SetReadDeadline(time.Now().Add(5 * time.Second))
+				_, _, err := connA.ReadMessage()
+				require.NoError(t, err)
+			},
+		},
+		{
+			name:     "Vulnerability_UserCIsIsolatedFromUserA",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				tokenC, _, org2ID = createUser("UserC")
+				connC = connectWS(tokenC, org2ID)
+				connC.WriteJSON(map[string]string{"type": "subscribe", "channel": "presence:org:" + org2ID})
 
-	connA2 := connectWS(tokenA, org1ID)
-	defer connA2.Close()
-	connA2.WriteJSON(map[string]string{"type": "subscribe", "channel": channelOrg1})
-
-	// Drain A2 join event from A
-	connA.SetReadDeadline(time.Now().Add(5 * time.Second))
-	_, _, err := connA.ReadMessage()
-	require.NoError(t, err)
-
-	tokenC, _, org2ID := createUser("UserC")
-	connC := connectWS(tokenC, org2ID)
-	defer connC.Close()
-	channelOrg2 := "presence:org:" + org2ID
-	connC.WriteJSON(map[string]string{"type": "subscribe", "channel": channelOrg2})
-
-	// Trigger event in Org 1 again (A3 connects)
-	connA3 := connectWS(tokenA, org1ID)
-	defer connA3.Close()
-	connA3.WriteJSON(map[string]string{"type": "subscribe", "channel": channelOrg1})
-	// A should receive A3 join event (drain buffer)
-	connA.SetReadDeadline(time.Now().Add(5 * time.Second))
-
-	// Read loop to find the join event
-	foundJoin := false
-	for {
-		_, msg, err := connA.ReadMessage()
-		if err != nil {
-			break
-		}
-		t.Logf("A received (looking for Join): %s", string(msg))
-		if strings.Contains(string(msg), "\"event\":\"join\"") {
-			foundJoin = true
-			break
-		}
+				// A3 connects
+				connA3 := connectWS(tokenA, org1ID)
+				
+				connA3.WriteJSON(map[string]string{"type": "subscribe", "channel": "presence:org:" + org1ID})
+				
+				connA.SetReadDeadline(time.Now().Add(5 * time.Second))
+				foundJoin := false
+				for {
+					_, msg, err := connA.ReadMessage()
+					if err != nil { break }
+					if strings.Contains(string(msg), "\"event\":\"join\"") {
+						foundJoin = true
+						break
+					}
+				}
+				require.True(t, foundJoin, "Did not receive join event")
+				
+				connA3.Close()
+				connA.SetReadDeadline(time.Now().Add(1 * time.Second))
+				foundLeave := false
+				for {
+					_, msg, err := connA.ReadMessage()
+					if err != nil { break }
+					if strings.Contains(string(msg), "\"event\":\"leave\"") {
+						foundLeave = true
+						break
+					}
+				}
+				require.False(t, foundLeave, "Received leave event while same user still has active org connections")
+			},
+		},
 	}
-	require.True(t, foundJoin, "Did not receive join event")
 
-	// C should NOT receive Org 1 events
-	// ... (rest of the test)
-
-	require.NoError(t, connA3.Close())
-
-	connA.SetReadDeadline(time.Now().Add(1 * time.Second))
-
-	// Closing A3 must not emit leave because A and A2 are still online for the same user/org.
-	foundLeave := false
-	for {
-		_, msg, err := connA.ReadMessage()
-		if err != nil {
-			break
-		}
-		t.Logf("A received (looking for Leave): %s", string(msg))
-		if strings.Contains(string(msg), "\"event\":\"leave\"") {
-			foundLeave = true
-			break
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
 	}
-	require.False(t, foundLeave, "Received leave event while same user still has active org connections")
+
+	if connA != nil { connA.Close() }
+	if connC != nil { connC.Close() }
 }
