@@ -21,88 +21,179 @@ func newCounterTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func TestCounterRepository_CreateAndFindByID(t *testing.T) {
-	db := newCounterTestDB(t)
-	repo := NewCounterRepository(db)
+func TestCounterRepository(t *testing.T) {
 	ctx := context.Background()
 
-	counter := &entity.Counter{
-		ID:       "c-1",
-		TenantID: "t-1",
-		BranchID: "b-1",
-		Code:     "C1",
-		Name:     "Counter 1",
-		Status:   entity.CounterStatusActive,
-	}
+	t.Run("CreateAndFindByID", func(t *testing.T) {
+		tests := []struct {
+			name    string
+			counter *entity.Counter
+			assert  func(t *testing.T, repo CounterRepository)
+		}{
+			{
+				name: "Positive_CreateSuccess",
+				counter: &entity.Counter{
+					ID:       "c-1",
+					TenantID: "t-1",
+					BranchID: "b-1",
+					Code:     "C1",
+					Name:     "Counter 1",
+					Status:   entity.CounterStatusActive,
+				},
+				assert: func(t *testing.T, repo CounterRepository) {
+					found, err := repo.FindByID(ctx, "t-1", "c-1")
+					require.NoError(t, err)
+					assert.Equal(t, "Counter 1", found.Name)
+					assert.Equal(t, "C1", found.Code)
+				},
+			},
+		}
 
-	err := repo.Create(ctx, counter)
-	require.NoError(t, err)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				db := newCounterTestDB(t)
+				repo := NewCounterRepository(db)
 
-	found, err := repo.FindByID(ctx, "t-1", "c-1")
-	require.NoError(t, err)
-	assert.Equal(t, "Counter 1", found.Name)
-	assert.Equal(t, "C1", found.Code)
-}
-
-func TestCounterRepository_FindAll(t *testing.T) {
-	db := newCounterTestDB(t)
-	repo := NewCounterRepository(db)
-	ctx := context.Background()
-
-	repo.Create(ctx, &entity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1", Code: "C1", Name: "C1"})
-	repo.Create(ctx, &entity.Counter{ID: "c-2", TenantID: "t-1", BranchID: "b-1", Code: "C2", Name: "C2"})
-	repo.Create(ctx, &entity.Counter{ID: "c-3", TenantID: "t-2", BranchID: "b-1", Code: "C3", Name: "C3"})
-
-	found, err := repo.FindAll(ctx, "t-1")
-	require.NoError(t, err)
-	assert.Len(t, found, 2)
-}
-
-func TestCounterRepository_UpdateAndDelete(t *testing.T) {
-	db := newCounterTestDB(t)
-	repo := NewCounterRepository(db)
-	ctx := context.Background()
-
-	counter := &entity.Counter{
-		ID:       "c-1",
-		TenantID: "t-1",
-		BranchID: "b-1",
-		Code:     "C1",
-		Name:     "Counter 1",
-		Status:   entity.CounterStatusActive,
-	}
-	repo.Create(ctx, counter)
-
-	// Update
-	now := time.Now().UnixMilli()
-	err := repo.Update(ctx, &entity.Counter{
-		ID:        "c-1",
-		TenantID:  "t-1",
-		Code:      "C1-NEW",
-		Name:      "Counter One",
-		Status:    entity.CounterStatusInactive,
-		UpdatedAt: now,
+				err := repo.Create(ctx, tt.counter)
+				require.NoError(t, err)
+				tt.assert(t, repo)
+			})
+		}
 	})
-	require.NoError(t, err)
 
-	updated, _ := repo.FindByID(ctx, "t-1", "c-1")
-	assert.Equal(t, "C1-NEW", updated.Code)
-	assert.Equal(t, "Counter One", updated.Name)
-	assert.Equal(t, entity.CounterStatusInactive, updated.Status)
-	assert.Equal(t, now, updated.UpdatedAt)
+	t.Run("FindAll", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func(repo CounterRepository)
+			tenantID string
+			wantLen  int
+		}{
+			{
+				name: "Positive_FindsAllByTenant",
+				setup: func(repo CounterRepository) {
+					_ = repo.Create(ctx, &entity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1", Code: "C1", Name: "C1"})
+					_ = repo.Create(ctx, &entity.Counter{ID: "c-2", TenantID: "t-1", BranchID: "b-1", Code: "C2", Name: "C2"})
+					_ = repo.Create(ctx, &entity.Counter{ID: "c-3", TenantID: "t-2", BranchID: "b-1", Code: "C3", Name: "C3"})
+				},
+				tenantID: "t-1",
+				wantLen:  2,
+			},
+		}
 
-	// Update missing
-	err = repo.Update(ctx, &entity.Counter{ID: "c-99", TenantID: "t-1"})
-	assert.ErrorIs(t, err, exception.ErrNotFound)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				db := newCounterTestDB(t)
+				repo := NewCounterRepository(db)
+				tt.setup(repo)
 
-	// Delete
-	err = repo.Delete(ctx, "t-1", "c-1")
-	require.NoError(t, err)
+				found, err := repo.FindAll(ctx, tt.tenantID)
+				require.NoError(t, err)
+				assert.Len(t, found, tt.wantLen)
+			})
+		}
+	})
 
-	_, err = repo.FindByID(ctx, "t-1", "c-1")
-	assert.Error(t, err)
+	t.Run("Update", func(t *testing.T) {
+		tests := []struct {
+			name    string
+			setup   func(repo CounterRepository)
+			req     *entity.Counter
+			wantErr error
+			assert  func(t *testing.T, repo CounterRepository, now int64)
+		}{
+			{
+				name: "Positive_UpdateSuccess",
+				setup: func(repo CounterRepository) {
+					_ = repo.Create(ctx, &entity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1", Code: "C1", Name: "Counter 1", Status: entity.CounterStatusActive})
+				},
+				req: &entity.Counter{ID: "c-1", TenantID: "t-1", Code: "C1-NEW", Name: "Counter One", Status: entity.CounterStatusInactive},
+				assert: func(t *testing.T, repo CounterRepository, now int64) {
+					updated, err := repo.FindByID(ctx, "t-1", "c-1")
+					require.NoError(t, err)
+					assert.Equal(t, "C1-NEW", updated.Code)
+					assert.Equal(t, "Counter One", updated.Name)
+					assert.Equal(t, entity.CounterStatusInactive, updated.Status)
+					assert.Equal(t, now, updated.UpdatedAt)
+				},
+			},
+			{
+				name:    "Negative_UpdateMissing",
+				setup:   func(repo CounterRepository) {},
+				req:     &entity.Counter{ID: "c-99", TenantID: "t-1"},
+				wantErr: exception.ErrNotFound,
+			},
+		}
 
-	// Delete missing
-	err = repo.Delete(ctx, "t-1", "c-99")
-	assert.ErrorIs(t, err, exception.ErrNotFound)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				db := newCounterTestDB(t)
+				repo := NewCounterRepository(db)
+				tt.setup(repo)
+
+				now := time.Now().UnixMilli()
+				if tt.req.UpdatedAt == 0 && tt.req.ID != "c-99" {
+					tt.req.UpdatedAt = now
+				}
+
+				err := repo.Update(ctx, tt.req)
+				if tt.wantErr != nil {
+					assert.ErrorIs(t, err, tt.wantErr)
+					return
+				}
+				require.NoError(t, err)
+				if tt.assert != nil {
+					tt.assert(t, repo, now)
+				}
+			})
+		}
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			setup     func(repo CounterRepository)
+			tenantID  string
+			counterID string
+			wantErr   error
+			assert    func(t *testing.T, repo CounterRepository)
+		}{
+			{
+				name: "Positive_DeleteSuccess",
+				setup: func(repo CounterRepository) {
+					_ = repo.Create(ctx, &entity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1", Code: "C1", Name: "C1"})
+				},
+				tenantID:  "t-1",
+				counterID: "c-1",
+				assert: func(t *testing.T, repo CounterRepository) {
+					_, err := repo.FindByID(ctx, "t-1", "c-1")
+					assert.Error(t, err)
+				},
+			},
+			{
+				name:      "Negative_DeleteMissing",
+				setup:     func(repo CounterRepository) {},
+				tenantID:  "t-1",
+				counterID: "c-99",
+				wantErr:   exception.ErrNotFound,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				db := newCounterTestDB(t)
+				repo := NewCounterRepository(db)
+				tt.setup(repo)
+
+				err := repo.Delete(ctx, tt.tenantID, tt.counterID)
+				if tt.wantErr != nil {
+					assert.ErrorIs(t, err, tt.wantErr)
+					return
+				}
+				require.NoError(t, err)
+				if tt.assert != nil {
+					tt.assert(t, repo)
+				}
+			})
+		}
+	})
 }
