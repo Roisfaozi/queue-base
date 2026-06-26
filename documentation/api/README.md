@@ -3,7 +3,15 @@
 ## Current Contract Docs
 
 - `AI_STREAMING_CONTRACT.md` — planned or supporting contract until verified against a live route
-- `QMS_API_REFERENCE.md` — live QMS API reference for branch, service, counter, settings, queue, and scanner routes
+- `QMS_API_REFERENCE.md` — landing page for split QMS API reference
+- `qms/README.md` — index seluruh dokumen API QMS per domain
+- `qms/COMMON.md` — auth, headers, envelope, enum, dan error notes umum QMS
+- `qms/BRANCH_API.md` — branch API
+- `qms/SERVICE_API.md` — service API
+- `qms/COUNTER_API.md` — counter API
+- `qms/SETTINGS_API.md` — settings API
+- `qms/QUEUE_API.md` — queue API
+- `qms/SCANNER_API.md` — scanner API
 
 ## QMS Functional Docs
 
