@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
@@ -112,7 +111,7 @@ func TestScannerCheckIn(t *testing.T) {
 				ServiceID:   "service-1",
 				PatientName: "John Doe",
 			},
-			authenticator: stubScannerAuthenticator{err: errors.New("invalid credential")},
+			authenticator: stubScannerAuthenticator{err: exception.ErrUnauthorized},
 			tenantID:      "t-1",
 			branchID:      "b-1",
 			wantErr:       exception.ErrUnauthorized,

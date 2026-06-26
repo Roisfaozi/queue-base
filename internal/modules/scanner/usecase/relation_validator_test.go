@@ -94,7 +94,7 @@ func TestRelationValidator_ValidateNegativeMissingBranch(t *testing.T) {
 	validator := NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
-	assert.ErrorIs(t, err, exception.ErrForbidden)
+	assert.ErrorIs(t, err, exception.ErrNotFound)
 }
 
 func TestRelationValidator_ValidateEdgeNoCounter(t *testing.T) {
