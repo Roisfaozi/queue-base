@@ -52,71 +52,64 @@ func setupRoleTestRouter(uc usecase.RoleUseCase) *gin.Engine {
 	return router
 }
 
-func TestRoleHandler_Create_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
+func TestRoleHandler_Create(t *testing.T) {
+	tests := []struct {
+		name         string
+		category     string
+		body         string
+		setupMock    func(*mocks.MockRoleUseCase)
+		wantCode     int
+		wantContains string
+		assertNoCall bool
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			body:     `{"name":"admin","description":"Administrator role"}`,
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
+				req := model.CreateRoleRequest{Name: "admin", Description: "Administrator role"}
+				mockUseCase.On("Create", mock.Anything, &req).Return(&model.RoleResponse{ID: "uuid", Name: "admin"}, nil)
+			},
+			wantCode: http.StatusCreated,
+		},
+		{name: "BindingError", category: "negative", body: `invalid json`, wantCode: http.StatusBadRequest, wantContains: "invalid request body", assertNoCall: true},
+		{name: "ValidationError", category: "negative", body: `{"name":"","description":"Administrator role"}`, wantCode: http.StatusUnprocessableEntity, wantContains: "validation error", assertNoCall: true},
+		{
+			name:     "UseCaseError",
+			category: "negative",
+			body:     `{"name":"existing","description":"Existing role"}`,
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
+				req := model.CreateRoleRequest{Name: "existing", Description: "Existing role"}
+				mockUseCase.On("Create", mock.Anything, &req).Return(nil, exception.ErrConflict)
+			},
+			wantCode: http.StatusConflict,
+		},
+	}
 
-	createRequest := model.CreateRoleRequest{Name: "admin", Description: "Administrator role"}
-	requestBody, _ := json.Marshal(createRequest)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := new(mocks.MockRoleUseCase)
+			router := setupRoleTestRouter(mockUseCase)
+			if tt.setupMock != nil {
+				tt.setupMock(mockUseCase)
+			}
 
-	mockUseCase.On("Create", mock.Anything, &createRequest).Return(&model.RoleResponse{ID: "uuid", Name: "admin"}, nil)
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles", bytes.NewBufferString(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(w, req)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles", bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusCreated, w.Code)
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestRoleHandler_Create_BindingError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles", bytes.NewBufferString("invalid json"))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid request body")
-	mockUseCase.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
-}
-
-func TestRoleHandler_Create_ValidationError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	createRequest := model.CreateRoleRequest{Name: "", Description: "Administrator role"} // Invalid name
-	requestBody, _ := json.Marshal(createRequest)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles", bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	assert.Contains(t, w.Body.String(), "validation error")
-	mockUseCase.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
-}
-
-func TestRoleHandler_Create_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	createRequest := model.CreateRoleRequest{Name: "existing", Description: "Existing role"}
-	requestBody, _ := json.Marshal(createRequest)
-
-	mockUseCase.On("Create", mock.Anything, &createRequest).Return(nil, exception.ErrConflict)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles", bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusConflict, w.Code)
-	mockUseCase.AssertExpectations(t)
+			assert.Equal(t, tt.wantCode, w.Code)
+			if tt.wantContains != "" {
+				assert.Contains(t, w.Body.String(), tt.wantContains)
+			}
+			if tt.assertNoCall {
+				mockUseCase.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+			} else {
+				mockUseCase.AssertExpectations(t)
+			}
+		})
+	}
 }
 
 func TestRoleHandler_GetAll_Success(t *testing.T) {
@@ -156,49 +149,33 @@ func TestRoleHandler_GetAll_UseCaseError(t *testing.T) {
 	mockUseCase.AssertExpectations(t)
 }
 
-func TestRoleHandler_Delete_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
+func TestRoleHandler_Delete(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		roleID   string
+		err      error
+		wantCode int
+	}{
+		{name: "Success", category: "positive", roleID: "test-uuid", wantCode: http.StatusOK},
+		{name: "NotFound", category: "negative", roleID: "non-existent-uuid", err: exception.ErrNotFound, wantCode: http.StatusNotFound},
+		{name: "Forbidden", category: "vulnerability", roleID: "superadmin-uuid", err: exception.ErrForbidden, wantCode: http.StatusForbidden},
+	}
 
-	roleID := "test-uuid"
-	mockUseCase.On("Delete", mock.Anything, roleID).Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := new(mocks.MockRoleUseCase)
+			router := setupRoleTestRouter(mockUseCase)
+			mockUseCase.On("Delete", mock.Anything, tt.roleID).Return(tt.err)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodDelete, "/api/v1/roles/"+roleID, nil)
-	router.ServeHTTP(w, req)
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(http.MethodDelete, "/api/v1/roles/"+tt.roleID, nil)
+			router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestRoleHandler_Delete_NotFound(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	roleID := "non-existent-uuid"
-	mockUseCase.On("Delete", mock.Anything, roleID).Return(exception.ErrNotFound)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodDelete, "/api/v1/roles/"+roleID, nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestRoleHandler_Delete_Forbidden(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	roleID := "superadmin-uuid"
-	mockUseCase.On("Delete", mock.Anything, roleID).Return(exception.ErrForbidden)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodDelete, "/api/v1/roles/"+roleID, nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusForbidden, w.Code)
-	mockUseCase.AssertExpectations(t)
+			assert.Equal(t, tt.wantCode, w.Code)
+			mockUseCase.AssertExpectations(t)
+		})
+	}
 }
 
 func TestRoleHandler_GetAllRolesDynamic_Success(t *testing.T) {

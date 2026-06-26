@@ -38,161 +38,146 @@ func setupAccessTest() (*accessTestDeps, usecase.IAccessUseCase) {
 }
 
 func TestCreateAccessRight(t *testing.T) {
-	t.Run("Success - Create Valid Access Right", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+	tests := []struct {
+		name        string
+		category    string
+		req         model.CreateAccessRightRequest
+		repoErr     error
+		matcher     interface{}
+		wantErr     error
+		wantName    string
+		wantDesc    string
+	}{
+		{name: "Success - Create Valid Access Right", category: "positive", req: model.CreateAccessRightRequest{Name: "view_dashboard", Description: "Allows viewing the main dashboard"}, matcher: mock.AnythingOfType("*entity.AccessRight"), wantName: "view_dashboard", wantDesc: "Allows viewing the main dashboard"},
+		{name: "Error - Repository Create Fails", category: "negative", req: model.CreateAccessRightRequest{Name: "error_right"}, matcher: mock.AnythingOfType("*entity.AccessRight"), repoErr: errors.New("db error"), wantErr: errors.New("db error")},
+		{name: "Success - Sanitize Inputs", category: "vulnerability", req: model.CreateAccessRightRequest{Name: "<b>Bold Name</b>", Description: "<script>alert('xss')</script>"}, matcher: mock.MatchedBy(func(ar *entity.AccessRight) bool { return ar.Name == "&lt;b&gt;Bold Name&lt;/b&gt;" && ar.Description == "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" }), wantName: "&lt;b&gt;Bold Name&lt;/b&gt;", wantDesc: "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"},
+	}
 
-		deps.Repo.On("CreateAccessRight", ctx, mock.AnythingOfType("*entity.AccessRight")).Return(nil).Once()
-		req := model.CreateAccessRightRequest{
-			Name:        "view_dashboard",
-			Description: "Allows viewing the main dashboard",
-		}
-		createdAccessRight, err := uc.CreateAccessRight(ctx, req)
-		assert.NoError(t, err)
-		assert.NotNil(t, createdAccessRight)
-		assert.Equal(t, req.Name, createdAccessRight.Name)
-		deps.Repo.AssertExpectations(t)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupAccessTest()
+			ctx := context.Background()
+			deps.Repo.On("CreateAccessRight", ctx, tt.matcher).Return(tt.repoErr).Once()
 
-	t.Run("Error - Repository Create Fails", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+			createdAccessRight, err := uc.CreateAccessRight(ctx, tt.req)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.wantErr.Error(), err.Error())
+				deps.Repo.AssertExpectations(t)
+				return
+			}
 
-		req := model.CreateAccessRightRequest{Name: "error_right"}
-		repoErr := errors.New("db error")
-		deps.Repo.On("CreateAccessRight", ctx, mock.AnythingOfType("*entity.AccessRight")).Return(repoErr).Once()
-
-		_, err := uc.CreateAccessRight(ctx, req)
-		assert.Error(t, err)
-		assert.Equal(t, repoErr, err)
-		deps.Repo.AssertExpectations(t)
-	})
+			assert.NoError(t, err)
+			assert.NotNil(t, createdAccessRight)
+			assert.Equal(t, tt.wantName, createdAccessRight.Name)
+			assert.Equal(t, tt.wantDesc, createdAccessRight.Description)
+			deps.Repo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestGetAllAccessRights(t *testing.T) {
-	t.Run("Success - Has Data", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+	tests := []struct {
+		name     string
+		category string
+		entities []*entity.AccessRight
+		repoErr  error
+		wantErr  error
+		wantLen  int
+	}{
+		{name: "Success - Has Data", category: "positive", entities: []*entity.AccessRight{{ID: "1", Name: "view_dashboard"}, {ID: "2", Name: "edit_settings"}}, wantLen: 2},
+		{name: "Success - No Data", category: "edge", entities: []*entity.AccessRight{}, wantLen: 0},
+		{name: "Error - Repository Fails", category: "negative", repoErr: errors.New("db error"), wantErr: errors.New("db error")},
+	}
 
-		expectedEntities := []*entity.AccessRight{
-			{ID: "1", Name: "view_dashboard"},
-			{ID: "2", Name: "edit_settings"},
-		}
-		deps.Repo.On("GetAccessRights", ctx).Return(expectedEntities, nil).Once()
-		results, err := uc.GetAllAccessRights(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, results)
-		assert.Len(t, results.Data, 2)
-		deps.Repo.AssertExpectations(t)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupAccessTest()
+			ctx := context.Background()
+			deps.Repo.On("GetAccessRights", ctx).Return(tt.entities, tt.repoErr).Once()
 
-	t.Run("Success - No Data", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+			results, err := uc.GetAllAccessRights(ctx)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.Nil(t, results)
+				assert.Equal(t, tt.wantErr.Error(), err.Error())
+				deps.Repo.AssertExpectations(t)
+				return
+			}
 
-		deps.Repo.On("GetAccessRights", ctx).Return([]*entity.AccessRight{}, nil).Once()
-		results, err := uc.GetAllAccessRights(ctx)
-		assert.NoError(t, err)
-		assert.NotNil(t, results)
-		assert.Len(t, results.Data, 0)
-		deps.Repo.AssertExpectations(t)
-	})
-
-	t.Run("Error - Repository Fails", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
-
-		repoErr := errors.New("db error")
-		deps.Repo.On("GetAccessRights", ctx).Return(nil, repoErr).Once()
-
-		results, err := uc.GetAllAccessRights(ctx)
-		assert.Error(t, err)
-		assert.Nil(t, results)
-		assert.Equal(t, repoErr, err)
-		deps.Repo.AssertExpectations(t)
-	})
-
-	t.Run("Success - Sanitize Inputs", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
-
-		req := model.CreateAccessRightRequest{
-			Name:        "<b>Bold Name</b>",
-			Description: "<script>alert('xss')</script>",
-		}
-
-		// Expect HTML escaped strings (pkg.SanitizeString escapes HTML tags)
-		expectedName := "&lt;b&gt;Bold Name&lt;/b&gt;"
-		expectedDesc := "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
-
-		deps.Repo.On("CreateAccessRight", ctx, mock.MatchedBy(func(ar *entity.AccessRight) bool {
-			return ar.Name == expectedName && ar.Description == expectedDesc
-		})).Return(nil).Once()
-
-		createdAccessRight, err := uc.CreateAccessRight(ctx, req)
-		assert.NoError(t, err)
-		assert.NotNil(t, createdAccessRight)
-		assert.Equal(t, expectedName, createdAccessRight.Name)
-		assert.Equal(t, expectedDesc, createdAccessRight.Description)
-		deps.Repo.AssertExpectations(t)
-	})
-
+			assert.NoError(t, err)
+			assert.NotNil(t, results)
+			assert.Len(t, results.Data, tt.wantLen)
+			deps.Repo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestCreateEndpoint(t *testing.T) {
-	t.Run("Success - Create Valid Endpoint", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+	tests := []struct {
+		name     string
+		category string
+		req      model.CreateEndpointRequest
+		repoErr  error
+		wantErr  error
+		wantPath string
+	}{
+		{name: "Success - Create Valid Endpoint", category: "positive", req: model.CreateEndpointRequest{Path: "/api/v1/test", Method: "GET"}, wantPath: "/api/v1/test"},
+		{name: "Error - Repository Create Fails", category: "negative", req: model.CreateEndpointRequest{Path: "/error", Method: "POST"}, repoErr: errors.New("db error"), wantErr: errors.New("db error")},
+	}
 
-		deps.Repo.On("CreateEndpoint", ctx, mock.AnythingOfType("*entity.Endpoint")).Return(nil).Once()
-		req := model.CreateEndpointRequest{Path: "/api/v1/test", Method: "GET"}
-		createdEndpoint, err := uc.CreateEndpoint(ctx, req)
-		assert.NoError(t, err)
-		assert.NotNil(t, createdEndpoint)
-		assert.Equal(t, req.Path, createdEndpoint.Path)
-		deps.Repo.AssertExpectations(t)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupAccessTest()
+			ctx := context.Background()
+			deps.Repo.On("CreateEndpoint", ctx, mock.AnythingOfType("*entity.Endpoint")).Return(tt.repoErr).Once()
 
-	t.Run("Error - Repository Create Fails", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+			createdEndpoint, err := uc.CreateEndpoint(ctx, tt.req)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.wantErr.Error(), err.Error())
+				deps.Repo.AssertExpectations(t)
+				return
+			}
 
-		req := model.CreateEndpointRequest{Path: "/error", Method: "POST"}
-		repoErr := errors.New("db error")
-		deps.Repo.On("CreateEndpoint", ctx, mock.AnythingOfType("*entity.Endpoint")).Return(repoErr).Once()
-
-		_, err := uc.CreateEndpoint(ctx, req)
-		assert.Error(t, err)
-		assert.Equal(t, repoErr, err)
-		deps.Repo.AssertExpectations(t)
-	})
+			assert.NoError(t, err)
+			assert.NotNil(t, createdEndpoint)
+			assert.Equal(t, tt.wantPath, createdEndpoint.Path)
+			deps.Repo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestLinkEndpointToAccessRight(t *testing.T) {
-	t.Run("Success - Link Valid IDs", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+	tests := []struct {
+		name     string
+		category string
+		req      model.LinkEndpointRequest
+		repoErr  error
+		wantErr  error
+	}{
+		{name: "Success - Link Valid IDs", category: "positive", req: model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "2"}},
+		{name: "Error - Repository Fails", category: "negative", req: model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "2"}, repoErr: errors.New("db error"), wantErr: errors.New("db error")},
+	}
 
-		req := model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "2"}
-		deps.Repo.On("LinkEndpointToAccessRight", ctx, req.AccessRightID, req.EndpointID).Return(nil).Once()
-		err := uc.LinkEndpointToAccessRight(ctx, req)
-		assert.NoError(t, err)
-		deps.Repo.AssertExpectations(t)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupAccessTest()
+			ctx := context.Background()
+			deps.Repo.On("LinkEndpointToAccessRight", ctx, tt.req.AccessRightID, tt.req.EndpointID).Return(tt.repoErr).Once()
 
-	t.Run("Error - Repository Fails", func(t *testing.T) {
-		deps, uc := setupAccessTest()
-		ctx := context.Background()
+			err := uc.LinkEndpointToAccessRight(ctx, tt.req)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.wantErr.Error(), err.Error())
+				deps.Repo.AssertExpectations(t)
+				return
+			}
 
-		req := model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "2"}
-		repoErr := errors.New("db error")
-		deps.Repo.On("LinkEndpointToAccessRight", ctx, req.AccessRightID, req.EndpointID).Return(repoErr).Once()
-
-		err := uc.LinkEndpointToAccessRight(ctx, req)
-		assert.Error(t, err)
-		assert.Equal(t, repoErr, err)
-		deps.Repo.AssertExpectations(t)
-	})
+			assert.NoError(t, err)
+			deps.Repo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestDeleteAccessRight(t *testing.T) {
