@@ -112,41 +112,55 @@ func TestRoleHandler_Create(t *testing.T) {
 	}
 }
 
-func TestRoleHandler_GetAll_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	expectedRoles := []model.RoleResponse{
-		{ID: "1", Name: "admin"},
-		{ID: "2", Name: "user"},
+func TestRoleHandler_GetAll(t *testing.T) {
+	tests := []struct {
+		name         string
+		setupMock    func(*mocks.MockRoleUseCase)
+		wantCode     int
+		wantDataLen  int
+		wantContains string
+	}{
+		{
+			name: "Success",
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
+				expectedRoles := []model.RoleResponse{{ID: "1", Name: "admin"}, {ID: "2", Name: "user"}}
+				mockUseCase.On("GetAll", mock.Anything).Return(expectedRoles, nil).Once()
+			},
+			wantCode:    http.StatusOK,
+			wantDataLen: 2,
+		},
+		{
+			name: "UseCaseError",
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
+				mockUseCase.On("GetAll", mock.Anything).Return(nil, errors.New("some database error")).Once()
+			},
+			wantCode: http.StatusInternalServerError,
+		},
 	}
-	mockUseCase.On("GetAll", mock.Anything).Return(expectedRoles, nil)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/roles", nil)
-	router.ServeHTTP(w, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := new(mocks.MockRoleUseCase)
+			router := setupRoleTestRouter(mockUseCase)
+			tt.setupMock(mockUseCase)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(http.MethodGet, "/api/v1/roles", nil)
+			router.ServeHTTP(w, req)
 
-	var responseBody response.WebResponseSuccess[[]model.RoleResponse]
-	err := json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.NoError(t, err)
-	assert.Len(t, responseBody.Data, 2)
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestRoleHandler_GetAll_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	mockUseCase.On("GetAll", mock.Anything).Return(nil, errors.New("some database error"))
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/roles", nil)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	mockUseCase.AssertExpectations(t)
+			assert.Equal(t, tt.wantCode, w.Code)
+			if tt.wantDataLen > 0 {
+				var responseBody response.WebResponseSuccess[[]model.RoleResponse]
+				err := json.Unmarshal(w.Body.Bytes(), &responseBody)
+				assert.NoError(t, err)
+				assert.Len(t, responseBody.Data, tt.wantDataLen)
+			}
+			if tt.wantContains != "" {
+				assert.Contains(t, w.Body.String(), tt.wantContains)
+			}
+			mockUseCase.AssertExpectations(t)
+		})
+	}
 }
 
 func TestRoleHandler_Delete(t *testing.T) {
@@ -178,34 +192,73 @@ func TestRoleHandler_Delete(t *testing.T) {
 	}
 }
 
-func TestRoleHandler_GetAllRolesDynamic_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	dynamicFilter := &querybuilder.DynamicFilter{
-		Filter: map[string]querybuilder.Filter{
-			"Name": {Type: "contains", From: "test"},
+func TestRoleHandler_GetRolesDynamic(t *testing.T) {
+	tests := []struct {
+		name         string
+		body         string
+		setupMock    func(*mocks.MockRoleUseCase, *querybuilder.DynamicFilter)
+		wantCode     int
+		wantDataLen  int
+		wantContains string
+		assertNoCall bool
+	}{
+		{
+			name: "Success",
+			body: `{"filter":{"Name":{"type":"contains","from":"test"}}}`,
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase, dynamicFilter *querybuilder.DynamicFilter) {
+				expectedRoles := []model.RoleResponse{{ID: "1", Name: "test_role"}}
+				mockUseCase.On("GetAllRolesDynamic", mock.Anything, dynamicFilter).Return(expectedRoles, nil).Once()
+			},
+			wantCode:    http.StatusOK,
+			wantDataLen: 1,
+		},
+		{name: "BindingError", body: `invalid json`, wantCode: http.StatusBadRequest, wantContains: "invalid request body", assertNoCall: true},
+		{
+			name: "UseCaseError",
+			body: `{"filter":{}}`,
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase, dynamicFilter *querybuilder.DynamicFilter) {
+				mockUseCase.On("GetAllRolesDynamic", mock.Anything, dynamicFilter).Return(nil, errors.New("db error")).Once()
+			},
+			wantCode: http.StatusInternalServerError,
 		},
 	}
-	requestBody, _ := json.Marshal(dynamicFilter)
 
-	expectedRoles := []model.RoleResponse{
-		{ID: "1", Name: "test_role"},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := new(mocks.MockRoleUseCase)
+			router := setupRoleTestRouter(mockUseCase)
+
+			var dynamicFilter querybuilder.DynamicFilter
+			if tt.body != "invalid json" {
+				err := json.Unmarshal([]byte(tt.body), &dynamicFilter)
+				assert.NoError(t, err)
+			}
+			if tt.setupMock != nil {
+				tt.setupMock(mockUseCase, &dynamicFilter)
+			}
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles/search", bytes.NewBufferString(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantCode, w.Code)
+			if tt.wantDataLen > 0 {
+				var responseBody response.WebResponseSuccess[[]model.RoleResponse]
+				err := json.Unmarshal(w.Body.Bytes(), &responseBody)
+				assert.NoError(t, err)
+				assert.Len(t, responseBody.Data, tt.wantDataLen)
+			}
+			if tt.wantContains != "" {
+				assert.Contains(t, w.Body.String(), tt.wantContains)
+			}
+			if tt.assertNoCall {
+				mockUseCase.AssertNotCalled(t, "GetAllRolesDynamic", mock.Anything, mock.Anything)
+			} else {
+				mockUseCase.AssertExpectations(t)
+			}
+		})
 	}
-	mockUseCase.On("GetAllRolesDynamic", mock.Anything, dynamicFilter).Return(expectedRoles, nil)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles/search", bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var responseBody response.WebResponseSuccess[[]model.RoleResponse]
-	err := json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.NoError(t, err)
-	assert.Len(t, responseBody.Data, 1)
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestRoleHandler_Create_XSS_Name(t *testing.T) {
@@ -229,111 +282,80 @@ func TestRoleHandler_Create_XSS_Name(t *testing.T) {
 	mockUseCase.AssertExpectations(t)
 }
 
-func TestRoleHandler_Update_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
+func TestRoleHandler_Update(t *testing.T) {
+	tests := []struct {
+		name         string
+		roleID       string
+		body         string
+		setupMock    func(*mocks.MockRoleUseCase, string)
+		wantCode     int
+		wantContains string
+		assertNoCall bool
+	}{
+		{
+			name:   "Success",
+			roleID: "test-uuid",
+			body:   `{"description":"Updated description"}`,
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase, roleID string) {
+				updateRequest := model.UpdateRoleRequest{Description: "Updated description"}
+				mockUseCase.On("Update", mock.Anything, roleID, &updateRequest).Return(&model.RoleResponse{ID: roleID, Name: "admin", Description: "Updated description"}, nil).Once()
+			},
+			wantCode: http.StatusOK,
+		},
+		{
+			name:         "BindingError",
+			roleID:       "test-uuid",
+			body:         `invalid json`,
+			wantCode:     http.StatusBadRequest,
+			wantContains: "invalid request body",
+			assertNoCall: true,
+		},
+		{
+			name:   "XSS Sanitization",
+			roleID: "test-uuid",
+			body:   `{"description":"<script>alert(1)</script>"}`,
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase, roleID string) {
+				sanitizedRequest := model.UpdateRoleRequest{Description: "&lt;script&gt;alert(1)&lt;/script&gt;"}
+				mockUseCase.On("Update", mock.Anything, roleID, &sanitizedRequest).Return(&model.RoleResponse{ID: roleID, Name: "admin", Description: "&lt;script&gt;alert(1)&lt;/script&gt;"}, nil).Once()
+			},
+			wantCode: http.StatusOK,
+		},
+		{
+			name:   "UseCaseError",
+			roleID: "test-uuid",
+			body:   `{"description":"Updated description"}`,
+			setupMock: func(mockUseCase *mocks.MockRoleUseCase, roleID string) {
+				updateRequest := model.UpdateRoleRequest{Description: "Updated description"}
+				mockUseCase.On("Update", mock.Anything, roleID, &updateRequest).Return(nil, exception.ErrNotFound).Once()
+			},
+			wantCode: http.StatusNotFound,
+		},
+	}
 
-	roleID := "test-uuid"
-	updateRequest := model.UpdateRoleRequest{Description: "Updated description"}
-	requestBody, _ := json.Marshal(updateRequest)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := new(mocks.MockRoleUseCase)
+			router := setupRoleTestRouter(mockUseCase)
+			if tt.setupMock != nil {
+				tt.setupMock(mockUseCase, tt.roleID)
+			}
 
-	mockUseCase.On("Update", mock.Anything, roleID, &updateRequest).Return(&model.RoleResponse{ID: roleID, Name: "admin", Description: "Updated description"}, nil)
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(http.MethodPut, "/api/v1/roles/"+tt.roleID, bytes.NewBufferString(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(w, req)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPut, "/api/v1/roles/"+roleID, bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestRoleHandler_Update_BindingError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	roleID := "test-uuid"
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPut, "/api/v1/roles/"+roleID, bytes.NewBufferString("invalid json"))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid request body")
-	mockUseCase.AssertNotCalled(t, "Update", mock.Anything, mock.Anything, mock.Anything)
-}
-
-func TestRoleHandler_Update_XSS_Sanitization(t *testing.T) {
-
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	roleID := "test-uuid"
-	updateRequest := model.UpdateRoleRequest{Description: "<script>alert(1)</script>"}
-	requestBody, _ := json.Marshal(updateRequest)
-
-	sanitizedRequest := model.UpdateRoleRequest{Description: "&lt;script&gt;alert(1)&lt;/script&gt;"}
-	mockUseCase.On("Update", mock.Anything, roleID, &sanitizedRequest).Return(&model.RoleResponse{ID: roleID, Name: "admin", Description: "&lt;script&gt;alert(1)&lt;/script&gt;"}, nil)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPut, "/api/v1/roles/"+roleID, bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	// Since XSS is sanitized, validation passes and update occurs.
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestRoleHandler_Update_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	roleID := "test-uuid"
-	updateRequest := model.UpdateRoleRequest{Description: "Updated description"}
-	requestBody, _ := json.Marshal(updateRequest)
-
-	mockUseCase.On("Update", mock.Anything, roleID, &updateRequest).Return(nil, exception.ErrNotFound)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPut, "/api/v1/roles/"+roleID, bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestRoleHandler_GetRolesDynamic_BindingError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles/search", bytes.NewBufferString("invalid json"))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUseCase.AssertNotCalled(t, "GetAllRolesDynamic", mock.Anything, mock.Anything)
-}
-
-func TestRoleHandler_GetRolesDynamic_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockRoleUseCase)
-	router := setupRoleTestRouter(mockUseCase)
-
-	dynamicFilter := &querybuilder.DynamicFilter{}
-	requestBody, _ := json.Marshal(dynamicFilter)
-
-	mockUseCase.On("GetAllRolesDynamic", mock.Anything, dynamicFilter).Return(nil, errors.New("db error"))
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/roles/search", bytes.NewBuffer(requestBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	mockUseCase.AssertExpectations(t)
+			assert.Equal(t, tt.wantCode, w.Code)
+			if tt.wantContains != "" {
+				assert.Contains(t, w.Body.String(), tt.wantContains)
+			}
+			if tt.assertNoCall {
+				mockUseCase.AssertNotCalled(t, "Update", mock.Anything, mock.Anything, mock.Anything)
+			} else {
+				mockUseCase.AssertExpectations(t)
+			}
+		})
+	}
 }
 
 func TestRoleHandler_HandleError_Variants(t *testing.T) {
