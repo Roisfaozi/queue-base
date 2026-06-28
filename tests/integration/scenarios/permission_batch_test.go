@@ -47,18 +47,28 @@ func TestScenario_PermissionBatchCheck(t *testing.T) {
 	err = permService.GrantPermissionToRole(ctx, roleName, "/articles", "WRITE", "global")
 	require.NoError(t, err)
 
-	items := []permissionModel.PermissionCheckItem{
-		{Resource: "/articles", Action: "READ"},
-		{Resource: "/articles", Action: "WRITE"},
-		{Resource: "/articles", Action: "DELETE"},
-		{Resource: "/users", Action: "READ"},
+	tests := []struct {
+		name     string
+		item     permissionModel.PermissionCheckItem
+		expected bool
+	}{
+		{name: "ArticlesRead", item: permissionModel.PermissionCheckItem{Resource: "/articles", Action: "READ"}, expected: true},
+		{name: "ArticlesWrite", item: permissionModel.PermissionCheckItem{Resource: "/articles", Action: "WRITE"}, expected: true},
+		{name: "ArticlesDelete", item: permissionModel.PermissionCheckItem{Resource: "/articles", Action: "DELETE"}, expected: false},
+		{name: "UsersRead", item: permissionModel.PermissionCheckItem{Resource: "/users", Action: "READ"}, expected: false},
+	}
+
+	items := make([]permissionModel.PermissionCheckItem, 0, len(tests))
+	for _, tt := range tests {
+		items = append(items, tt.item)
 	}
 
 	results, err := permService.BatchCheckPermission(ctx, user.ID, items)
 	require.NoError(t, err)
 
-	assert.True(t, results["/articles:READ"], "Should be able to READ articles")
-	assert.True(t, results["/articles:WRITE"], "Should be able to WRITE articles")
-	assert.False(t, results["/articles:DELETE"], "Should NOT be able to DELETE articles")
-	assert.False(t, results["/users:READ"], "Should NOT be able to READ users")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, results[tt.item.Resource+":"+tt.item.Action])
+		})
+	}
 }
