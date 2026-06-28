@@ -236,22 +236,37 @@ func TestRoleIntegration_Delete(t *testing.T) {
 	}
 }
 
-func TestRoleIntegration_Update_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+func TestRoleIntegration_Update(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase)
+	}{
+		{
+			name: "Success",
+			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
+				created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
+					Name:        "Role To Update",
+					Description: "Original Description",
+				})
+				require.NoError(t, err)
 
-	roleUC := setupRoleIntegration(env)
+				updated, err := roleUC.Update(context.Background(), created.ID, &model.UpdateRoleRequest{Description: "Updated Description"})
+				require.NoError(t, err)
+				assert.Equal(t, created.ID, updated.ID)
+				assert.Equal(t, "Updated Description", updated.Description)
+			},
+		},
+	}
 
-	created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
-		Name:        "Role To Update",
-		Description: "Original Description",
-	})
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
 
-	updated, err := roleUC.Update(context.Background(), created.ID, &model.UpdateRoleRequest{Description: "Updated Description"})
-	require.NoError(t, err)
-	assert.Equal(t, created.ID, updated.ID)
-	assert.Equal(t, "Updated Description", updated.Description)
+			roleUC := setupRoleIntegration(env)
+			tt.run(t, env, roleUC)
+		})
+	}
 }
 
 func TestRoleIntegration_Edge_SpecialCharactersInName(t *testing.T) {
