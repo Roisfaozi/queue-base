@@ -227,17 +227,39 @@ func TestAccessIntegration_EndpointLinkFlow(t *testing.T) {
 	}
 }
 
-func TestAccessIntegration_DeleteEndpoint_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+func TestAccessIntegration_DeleteEndpoint(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, uc usecase.IAccessUseCase)
+	}{
+		{
+			name: "Success",
+			run: func(t *testing.T, uc usecase.IAccessUseCase) {
+				ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/temp", Method: "POST"})
+				require.NoError(t, err)
 
-	uc := setupAccessIntegration(env)
+				err = uc.DeleteEndpoint(context.Background(), ep.ID)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "Idempotent_NotFound",
+			run: func(t *testing.T, uc usecase.IAccessUseCase) {
+				err := uc.DeleteEndpoint(context.Background(), "nonexistent-id")
+				assert.NoError(t, err)
+			},
+		},
+	}
 
-	ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/temp", Method: "POST"})
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
 
-	err = uc.DeleteEndpoint(context.Background(), ep.ID)
-	assert.NoError(t, err)
+			uc := setupAccessIntegration(env)
+			tt.run(t, uc)
+		})
+	}
 }
 
 func TestAccessIntegration_DynamicSearch_AccessRights(t *testing.T) {
