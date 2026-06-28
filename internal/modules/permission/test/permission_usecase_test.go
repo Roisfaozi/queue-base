@@ -457,171 +457,180 @@ func TestRevokeRoleFromUser_Guardian_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestRevokeRoleFromUser_Guardian_EmptyInput(t *testing.T) {
-	_, uc := setupPermissionTest()
-	assert.Error(t, uc.RevokeRoleFromUser(context.Background(), "", "role", "global"))
-	assert.Error(t, uc.RevokeRoleFromUser(context.Background(), "user", "", "global"))
+func TestRevokeRoleFromUser_Guardian(t *testing.T) {
+	tests := []struct {
+		name        string
+		userID      string
+		roleName    string
+		setupMock   func(*permissionTestDeps)
+		wantErr     error
+		wantContain string
+	}{
+		{name: "Empty User", userID: "", roleName: "role", wantContain: "required"},
+		{name: "Empty Role", userID: "user", roleName: "", wantContain: "required"},
+		{name: "User Not Found", userID: "u", roleName: "r", setupMock: func(deps *permissionTestDeps) {
+			deps.UserRepo.On("FindByID", mock.Anything, "u").Return(nil, gorm.ErrRecordNotFound)
+		}, wantErr: exception.ErrNotFound},
+		{name: "User Repo Error", userID: "u", roleName: "r", setupMock: func(deps *permissionTestDeps) {
+			deps.UserRepo.On("FindByID", mock.Anything, "u").Return(nil, errors.New("db fail"))
+		}, wantErr: exception.ErrInternalServer},
+		{name: "Role Not Found", userID: "u", roleName: "r", setupMock: func(deps *permissionTestDeps) {
+			deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
+			deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(nil, gorm.ErrRecordNotFound)
+		}, wantErr: exception.ErrBadRequest},
+		{name: "Role Repo Error", userID: "u", roleName: "r", setupMock: func(deps *permissionTestDeps) {
+			deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
+			deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(nil, errors.New("db fail"))
+		}, wantErr: exception.ErrInternalServer},
+		{name: "Enforcer Error", userID: "u", roleName: "r", setupMock: func(deps *permissionTestDeps) {
+			deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
+			deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(&roleEntity.Role{Name: "r"}, nil)
+			deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, errors.New("casbin fail"))
+		}, wantErr: exception.ErrInternalServer},
+		{name: "Role Not Assigned", userID: "u", roleName: "r", setupMock: func(deps *permissionTestDeps) {
+			deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
+			deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(&roleEntity.Role{Name: "r"}, nil)
+			deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, nil)
+		}, wantContain: "role was not assigned to user"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			if tt.setupMock != nil {
+				tt.setupMock(deps)
+			}
+
+			err := uc.RevokeRoleFromUser(context.Background(), tt.userID, tt.roleName, "global")
+			assert.Error(t, err)
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+			}
+			if tt.wantContain != "" {
+				assert.Contains(t, err.Error(), tt.wantContain)
+			}
+		})
+	}
 }
 
-func TestRevokeRoleFromUser_Guardian_UserNotFound(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.UserRepo.On("FindByID", mock.Anything, "u").Return(nil, gorm.ErrRecordNotFound)
+func TestAddParentRole_Guardian(t *testing.T) {
+	tests := []struct {
+		name        string
+		child       string
+		parent      string
+		setupMock   func(*permissionTestDeps)
+		wantErr     error
+		wantContain string
+	}{
+		{name: "Success", child: "editor", parent: "viewer", setupMock: func(deps *permissionTestDeps) {
+			deps.RoleRepo.On("FindByName", mock.Anything, "editor").Return(&roleEntity.Role{Name: "editor"}, nil)
+			deps.RoleRepo.On("FindByName", mock.Anything, "viewer").Return(&roleEntity.Role{Name: "viewer"}, nil)
+			deps.Enforcer.On("AddGroupingPolicy", mock.Anything).Return(true, nil)
+		}},
+		{name: "Child Role Not Found", child: "child", parent: "parent", setupMock: func(deps *permissionTestDeps) {
+			deps.RoleRepo.On("FindByName", mock.Anything, "child").Return(nil, errors.New("not found"))
+		}, wantErr: exception.ErrBadRequest},
+		{name: "Parent Role Not Found", child: "child", parent: "parent", setupMock: func(deps *permissionTestDeps) {
+			deps.RoleRepo.On("FindByName", mock.Anything, "child").Return(&roleEntity.Role{Name: "child"}, nil)
+			deps.RoleRepo.On("FindByName", mock.Anything, "parent").Return(nil, errors.New("not found"))
+		}, wantErr: exception.ErrBadRequest},
+		{name: "Self Inheritance", child: "role", parent: "role", setupMock: func(deps *permissionTestDeps) {
+			deps.RoleRepo.On("FindByName", mock.Anything, "role").Return(&roleEntity.Role{Name: "role"}, nil)
+		}, wantContain: "cannot inherit from itself"},
+		{name: "Enforcer Error", child: "editor", parent: "viewer", setupMock: func(deps *permissionTestDeps) {
+			deps.RoleRepo.On("FindByName", mock.Anything, "editor").Return(&roleEntity.Role{Name: "editor"}, nil)
+			deps.RoleRepo.On("FindByName", mock.Anything, "viewer").Return(&roleEntity.Role{Name: "viewer"}, nil)
+			deps.Enforcer.On("AddGroupingPolicy", mock.Anything).Return(false, errors.New("casbin fail"))
+		}, wantContain: "casbin fail"},
+	}
 
-	err := uc.RevokeRoleFromUser(context.Background(), "u", "r", "global")
-	assert.ErrorIs(t, err, exception.ErrNotFound)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			if tt.setupMock != nil {
+				tt.setupMock(deps)
+			}
+
+			err := uc.AddParentRole(context.Background(), tt.child, tt.parent, "global")
+			if tt.wantErr != nil || tt.wantContain != "" {
+				assert.Error(t, err)
+				if tt.wantErr != nil {
+					assert.ErrorIs(t, err, tt.wantErr)
+				}
+				if tt.wantContain != "" {
+					assert.Contains(t, err.Error(), tt.wantContain)
+				}
+				return
+			}
+
+			assert.NoError(t, err)
+		})
+	}
 }
 
-func TestRevokeRoleFromUser_Guardian_UserRepoError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.UserRepo.On("FindByID", mock.Anything, "u").Return(nil, errors.New("db fail"))
+func TestRemoveParentRole_Guardian(t *testing.T) {
+	tests := []struct {
+		name        string
+		child       string
+		parent      string
+		setupMock   func(*permissionTestDeps)
+		wantContain string
+	}{
+		{name: "Success", child: "editor", parent: "viewer", setupMock: func(deps *permissionTestDeps) {
+			deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(true, nil)
+		}},
+		{name: "Enforcer Error", child: "editor", parent: "viewer", setupMock: func(deps *permissionTestDeps) {
+			deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, errors.New("casbin fail"))
+		}, wantContain: "casbin fail"},
+		{name: "Relationship Not Found", child: "editor", parent: "viewer", setupMock: func(deps *permissionTestDeps) {
+			deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, nil)
+		}, wantContain: "inheritance relationship not found"},
+	}
 
-	err := uc.RevokeRoleFromUser(context.Background(), "u", "r", "global")
-	assert.ErrorIs(t, err, exception.ErrInternalServer)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			tt.setupMock(deps)
+
+			err := uc.RemoveParentRole(context.Background(), tt.child, tt.parent, "global")
+			if tt.wantContain != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantContain)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
 }
 
-func TestRevokeRoleFromUser_Guardian_RoleNotFound(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
-	deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(nil, gorm.ErrRecordNotFound)
+func TestGetParentRoles_Guardian(t *testing.T) {
+	tests := []struct {
+		name        string
+		role        string
+		parents     []string
+		repoErr     error
+		wantContain string
+	}{
+		{name: "Success", role: "editor", parents: []string{"viewer"}},
+		{name: "Enforcer Error", role: "editor", repoErr: errors.New("casbin fail"), wantContain: "casbin fail"},
+	}
 
-	err := uc.RevokeRoleFromUser(context.Background(), "u", "r", "global")
-	assert.ErrorIs(t, err, exception.ErrBadRequest)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			deps.Enforcer.On("GetRolesForUser", mock.Anything, mock.Anything).Return(tt.parents, tt.repoErr)
 
-func TestRevokeRoleFromUser_Guardian_RoleRepoError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
-	deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(nil, errors.New("db fail"))
+			res, err := uc.GetParentRoles(context.Background(), tt.role, "global")
+			if tt.wantContain != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantContain)
+				return
+			}
 
-	err := uc.RevokeRoleFromUser(context.Background(), "u", "r", "global")
-	assert.ErrorIs(t, err, exception.ErrInternalServer)
-}
-
-func TestRevokeRoleFromUser_Guardian_EnforcerError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
-	deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(&roleEntity.Role{Name: "r"}, nil)
-	deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, errors.New("casbin fail"))
-
-	err := uc.RevokeRoleFromUser(context.Background(), "u", "r", "global")
-	assert.ErrorIs(t, err, exception.ErrInternalServer)
-}
-
-func TestRevokeRoleFromUser_Guardian_RoleNotAssigned(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.UserRepo.On("FindByID", mock.Anything, "u").Return(&userEntity.User{ID: "u"}, nil)
-	deps.RoleRepo.On("FindByName", mock.Anything, "r").Return(&roleEntity.Role{Name: "r"}, nil)
-	deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, nil) // Removed = false
-
-	err := uc.RevokeRoleFromUser(context.Background(), "u", "r", "global")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "role was not assigned to user")
-}
-
-func TestAddParentRole_Guardian_Success(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	child, parent := "editor", "viewer"
-
-	deps.RoleRepo.On("FindByName", mock.Anything, child).Return(&roleEntity.Role{Name: child}, nil)
-	deps.RoleRepo.On("FindByName", mock.Anything, parent).Return(&roleEntity.Role{Name: parent}, nil)
-	deps.Enforcer.On("AddGroupingPolicy", mock.Anything).Return(true, nil)
-
-	err := uc.AddParentRole(context.Background(), child, parent, "global")
-	assert.NoError(t, err)
-}
-
-func TestAddParentRole_Guardian_ChildRoleNotFound(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.RoleRepo.On("FindByName", mock.Anything, "child").Return(nil, errors.New("not found"))
-
-	err := uc.AddParentRole(context.Background(), "child", "parent", "global")
-	assert.ErrorIs(t, err, exception.ErrBadRequest)
-}
-
-func TestAddParentRole_Guardian_ParentRoleNotFound(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.RoleRepo.On("FindByName", mock.Anything, "child").Return(&roleEntity.Role{Name: "child"}, nil)
-	deps.RoleRepo.On("FindByName", mock.Anything, "parent").Return(nil, errors.New("not found"))
-
-	err := uc.AddParentRole(context.Background(), "child", "parent", "global")
-	assert.ErrorIs(t, err, exception.ErrBadRequest)
-}
-
-func TestAddParentRole_Guardian_SelfInheritance(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.RoleRepo.On("FindByName", mock.Anything, "role").Return(&roleEntity.Role{Name: "role"}, nil)
-
-	err := uc.AddParentRole(context.Background(), "role", "role", "global")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot inherit from itself")
-}
-
-func TestAddParentRole_Guardian_EnforcerError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	child, parent := "editor", "viewer"
-
-	deps.RoleRepo.On("FindByName", mock.Anything, child).Return(&roleEntity.Role{Name: child}, nil)
-	deps.RoleRepo.On("FindByName", mock.Anything, parent).Return(&roleEntity.Role{Name: parent}, nil)
-	deps.Enforcer.On("AddGroupingPolicy", mock.Anything).Return(false, errors.New("casbin fail"))
-
-	err := uc.AddParentRole(context.Background(), child, parent, "global")
-	assert.Error(t, err)
-	assert.Equal(t, "casbin fail", err.Error())
-}
-
-func TestRemoveParentRole_Guardian_Success(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	child, parent := "editor", "viewer"
-
-	deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(true, nil)
-
-	err := uc.RemoveParentRole(context.Background(), child, parent, "global")
-	assert.NoError(t, err)
-}
-
-func TestRemoveParentRole_Guardian_EnforcerError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	child, parent := "editor", "viewer"
-
-	deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, errors.New("casbin fail"))
-
-	err := uc.RemoveParentRole(context.Background(), child, parent, "global")
-	assert.Error(t, err)
-	assert.Equal(t, "casbin fail", err.Error())
-}
-
-func TestRemoveParentRole_Guardian_RelationshipNotFound(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	child, parent := "editor", "viewer"
-
-	deps.Enforcer.On("RemoveFilteredGroupingPolicy", mock.Anything, mock.Anything).Return(false, nil)
-
-	err := uc.RemoveParentRole(context.Background(), child, parent, "global")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "inheritance relationship not found")
-}
-
-func TestGetParentRoles_Guardian_Success(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	role := "editor"
-	parents := []string{"viewer"}
-
-	deps.Enforcer.On("GetRolesForUser", mock.Anything, mock.Anything).Return(parents, nil)
-
-	res, err := uc.GetParentRoles(context.Background(), role, "global")
-	assert.NoError(t, err)
-	assert.Equal(t, parents, res)
-}
-
-func TestGetParentRoles_Guardian_EnforcerError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	role := "editor"
-
-	deps.Enforcer.On("GetRolesForUser", mock.Anything, mock.Anything).Return(nil, errors.New("casbin fail"))
-
-	_, err := uc.GetParentRoles(context.Background(), role, "global")
-	assert.Error(t, err)
-	assert.Equal(t, "casbin fail", err.Error())
+			assert.NoError(t, err)
+			assert.Equal(t, tt.parents, res)
+		})
+	}
 }
 
 func TestPermissionUseCase_Edge_MaxStringLength(t *testing.T) {
