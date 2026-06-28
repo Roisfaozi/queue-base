@@ -16,7 +16,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Helper: Create admin user and get token for role tests
 func createRoleAdminAndLogin(t *testing.T, server *setup.TestServer) string {
 	f := fixtures.NewUserFactory(server.DB)
 	hash, _ := bcrypt.GenerateFromPassword([]byte("RoleAdmin123!"), bcrypt.DefaultCost)
@@ -52,44 +51,53 @@ func TestRoleE2E_CreateRole(t *testing.T) {
 
 	adminToken := createRoleAdminAndLogin(t, server)
 
-	t.Run("Success - Create Role", func(t *testing.T) {
-		roleName := "TestRole_" + uuid.New().String()[:8]
-		resp := server.Client.POST("/api/v1/roles", map[string]any{
-			"name":        roleName,
-			"description": "A test role",
-		}, setup.WithAuth(adminToken))
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_CreateRole",
+			run: func(t *testing.T) {
+				roleName := "TestRole_" + uuid.New().String()[:8]
+				resp := server.Client.POST("/api/v1/roles", map[string]any{
+					"name":        roleName,
+					"description": "A test role",
+				}, setup.WithAuth(adminToken))
+				assert.Equal(t, 201, resp.StatusCode)
 
-		assert.Equal(t, 201, resp.StatusCode)
+				var result struct {
+					Data struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				assert.Equal(t, roleName, result.Data.Name)
+			},
+		},
+		{
+			name: "Negative_DuplicateRoleName",
+			run: func(t *testing.T) {
+				roleName := "DuplicateRole"
+				server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: roleName})
 
-		var result struct {
-			Data struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		assert.Equal(t, roleName, result.Data.Name)
-	})
+				resp := server.Client.POST("/api/v1/roles", map[string]any{"name": roleName}, setup.WithAuth(adminToken))
+				assert.Equal(t, 409, resp.StatusCode)
+			},
+		},
+		{
+			name: "Negative_EmptyName",
+			run: func(t *testing.T) {
+				resp := server.Client.POST("/api/v1/roles", map[string]any{"name": ""}, setup.WithAuth(adminToken))
+				assert.Equal(t, 422, resp.StatusCode)
+			},
+		},
+	}
 
-	t.Run("Negative - Duplicate Role Name", func(t *testing.T) {
-		roleName := "DuplicateRole"
-		server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: roleName})
-
-		resp := server.Client.POST("/api/v1/roles", map[string]any{
-			"name": roleName,
-		}, setup.WithAuth(adminToken))
-
-		assert.Equal(t, 409, resp.StatusCode)
-	})
-
-	t.Run("Negative - Empty Name", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/roles", map[string]any{
-			"name": "",
-		}, setup.WithAuth(adminToken))
-
-		assert.Equal(t, 422, resp.StatusCode)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestRoleE2E_DeleteRole(t *testing.T) {
@@ -98,19 +106,32 @@ func TestRoleE2E_DeleteRole(t *testing.T) {
 
 	adminToken := createRoleAdminAndLogin(t, server)
 
-	t.Run("Success - Delete Role", func(t *testing.T) {
-		// Create role to delete
-		roleToDelete := &roleEntity.Role{ID: uuid.New().String(), Name: "RoleToDelete"}
-		server.DB.Create(roleToDelete)
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_DeleteRole",
+			run: func(t *testing.T) {
+				roleToDelete := &roleEntity.Role{ID: uuid.New().String(), Name: "RoleToDelete"}
+				server.DB.Create(roleToDelete)
 
-		resp := server.Client.DELETE("/api/v1/roles/"+roleToDelete.ID, setup.WithAuth(adminToken))
-		assert.Equal(t, 200, resp.StatusCode)
-	})
+				resp := server.Client.DELETE("/api/v1/roles/"+roleToDelete.ID, setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
+			},
+		},
+		{
+			name: "Negative_DeleteNonExistent",
+			run: func(t *testing.T) {
+				resp := server.Client.DELETE("/api/v1/roles/nonexistent-role-id", setup.WithAuth(adminToken))
+				assert.Equal(t, 404, resp.StatusCode)
+			},
+		},
+	}
 
-	t.Run("Negative - Delete Non-existent", func(t *testing.T) {
-		resp := server.Client.DELETE("/api/v1/roles/nonexistent-role-id", setup.WithAuth(adminToken))
-		assert.Equal(t, 404, resp.StatusCode)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestRoleE2E_GetAllRoles(t *testing.T) {
@@ -119,24 +140,35 @@ func TestRoleE2E_GetAllRoles(t *testing.T) {
 
 	adminToken := createRoleAdminAndLogin(t, server)
 
-	// Create some roles
 	server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: "Role_List_1"})
 	server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: "Role_List_2"})
 
-	t.Run("Success - Get All Roles", func(t *testing.T) {
-		resp := server.Client.GET("/api/v1/roles", setup.WithAuth(adminToken))
-		assert.Equal(t, 200, resp.StatusCode)
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_GetAllRoles",
+			run: func(t *testing.T) {
+				resp := server.Client.GET("/api/v1/roles", setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
 
-		var result struct {
-			Data []struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(result.Data), 2)
-	})
+				var result struct {
+					Data []struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, len(result.Data), 2)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestRoleE2E_UpdateRole(t *testing.T) {
@@ -144,37 +176,43 @@ func TestRoleE2E_UpdateRole(t *testing.T) {
 	defer server.Cleanup()
 
 	adminToken := createRoleAdminAndLogin(t, server)
-
-	// Create role to update
 	roleToUpdate := &roleEntity.Role{ID: uuid.New().String(), Name: "RoleToUpdate", Description: "Original"}
 	server.DB.Create(roleToUpdate)
 
-	t.Run("Success - Update Role", func(t *testing.T) {
-		resp := server.Client.PUT("/api/v1/roles/"+roleToUpdate.ID, map[string]any{
-			"description": "Updated Description",
-		}, setup.WithAuth(adminToken))
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_UpdateRole",
+			run: func(t *testing.T) {
+				resp := server.Client.PUT("/api/v1/roles/"+roleToUpdate.ID, map[string]any{"description": "Updated Description"}, setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
 
-		assert.Equal(t, 200, resp.StatusCode)
+				var result struct {
+					Data struct {
+						ID          string `json:"id"`
+						Name        string `json:"name"`
+						Description string `json:"description"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				assert.Equal(t, "Updated Description", result.Data.Description)
+			},
+		},
+		{
+			name: "Negative_UpdateNonExistent",
+			run: func(t *testing.T) {
+				resp := server.Client.PUT("/api/v1/roles/nonexistent-role-id", map[string]any{"description": "Updated Description"}, setup.WithAuth(adminToken))
+				assert.Equal(t, 404, resp.StatusCode)
+			},
+		},
+	}
 
-		var result struct {
-			Data struct {
-				ID          string `json:"id"`
-				Name        string `json:"name"`
-				Description string `json:"description"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		assert.Equal(t, "Updated Description", result.Data.Description)
-	})
-
-	t.Run("Negative - Update Non-existent", func(t *testing.T) {
-		resp := server.Client.PUT("/api/v1/roles/nonexistent-role-id", map[string]any{
-			"description": "Updated Description",
-		}, setup.WithAuth(adminToken))
-
-		assert.Equal(t, 404, resp.StatusCode)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestRoleE2E_DynamicSearch(t *testing.T) {
@@ -183,27 +221,37 @@ func TestRoleE2E_DynamicSearch(t *testing.T) {
 
 	adminToken := createRoleAdminAndLogin(t, server)
 
-	// Create roles for searching
 	server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: "SearchableRole_Alpha"})
 	server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: "SearchableRole_Beta"})
 	server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: "OtherRole"})
 
-	t.Run("Success - Search by Name", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/roles/search", map[string]any{
-			"filter": map[string]any{
-				"name": map[string]any{"type": "contains", "from": "Searchable"},
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_SearchByName",
+			run: func(t *testing.T) {
+				resp := server.Client.POST("/api/v1/roles/search", map[string]any{
+					"filter": map[string]any{
+						"name": map[string]any{"type": "contains", "from": "Searchable"},
+					},
+				}, setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
+
+				var result struct {
+					Data []struct {
+						Name string `json:"name"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, len(result.Data), 2)
 			},
-		}, setup.WithAuth(adminToken))
+		},
+	}
 
-		assert.Equal(t, 200, resp.StatusCode)
-
-		var result struct {
-			Data []struct {
-				Name string `json:"name"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(result.Data), 2)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }

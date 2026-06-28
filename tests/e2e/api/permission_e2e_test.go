@@ -89,7 +89,15 @@ func TestPermissionE2E_RoleHierarchy(t *testing.T) {
 	err = resp.JSON(&checkRes)
 	require.NoError(t, err)
 
-	assert.False(t, checkRes.Data.Results["/api/v1/coffee:GET"], "Supervisor should NOT have access yet")
+	checks := []struct {
+		name     string
+		expected bool
+	}{
+		{name: "BeforeInheritance", expected: false},
+		{name: "AfterInheritance", expected: true},
+	}
+
+	assert.Equal(t, checks[0].expected, checkRes.Data.Results["/api/v1/coffee:GET"], "Supervisor should NOT have access yet")
 
 	inheritPayload := map[string]any{
 		"child_role":  "Supervisor",
@@ -103,7 +111,7 @@ func TestPermissionE2E_RoleHierarchy(t *testing.T) {
 	err = resp.JSON(&checkRes)
 	require.NoError(t, err)
 
-	assert.True(t, checkRes.Data.Results["/api/v1/coffee:GET"], "Supervisor SHOULD have access after inheritance")
+	assert.Equal(t, checks[1].expected, checkRes.Data.Results["/api/v1/coffee:GET"], "Supervisor SHOULD have access after inheritance")
 }
 
 func TestPermissionE2E_BatchCheck(t *testing.T) {
@@ -154,13 +162,20 @@ func TestPermissionE2E_BatchCheck(t *testing.T) {
 	roles, _ := server.Enforcer.GetRolesForUser(user.ID, "global")
 	t.Logf("DEBUG: Roles for user %s: %v", user.ID, roles)
 
-	req := model.BatchPermissionCheckRequest{
-		Items: []model.PermissionCheckItem{
-			{Resource: "/news", Action: "READ"},
-			{Resource: "/news", Action: "WRITE"},
-			{Resource: "/news", Action: "DELETE"},
-			{Resource: "/admin", Action: "GET"},
-		},
+	tests := []struct {
+		name     string
+		item     model.PermissionCheckItem
+		expected bool
+	}{
+		{name: "NewsRead", item: model.PermissionCheckItem{Resource: "/news", Action: "READ"}, expected: true},
+		{name: "NewsWrite", item: model.PermissionCheckItem{Resource: "/news", Action: "WRITE"}, expected: true},
+		{name: "NewsDelete", item: model.PermissionCheckItem{Resource: "/news", Action: "DELETE"}, expected: false},
+		{name: "AdminGet", item: model.PermissionCheckItem{Resource: "/admin", Action: "GET"}, expected: false},
+	}
+
+	req := model.BatchPermissionCheckRequest{Items: make([]model.PermissionCheckItem, 0, len(tests))}
+	for _, tt := range tests {
+		req.Items = append(req.Items, tt.item)
 	}
 
 	resp = client.POST("/api/v1/permissions/check-batch", req, setup.WithAuth(userToken))
@@ -172,10 +187,11 @@ func TestPermissionE2E_BatchCheck(t *testing.T) {
 	err = resp.JSON(&checkRes)
 	require.NoError(t, err)
 
-	assert.True(t, checkRes.Data.Results["/news:READ"])
-	assert.True(t, checkRes.Data.Results["/news:WRITE"])
-	assert.False(t, checkRes.Data.Results["/news:DELETE"])
-	assert.False(t, checkRes.Data.Results["/admin:GET"])
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, checkRes.Data.Results[tt.item.Resource+":"+tt.item.Action])
+		})
+	}
 }
 
 func TestPermissionE2E_RevokeRole(t *testing.T) {
@@ -223,16 +239,28 @@ func TestPermissionE2E_RevokeRole(t *testing.T) {
 	roles, _ := server.Enforcer.GetRolesForUser(user.ID, "global")
 	assert.Contains(t, roles, "RevokeTestRole")
 
-	t.Run("Success - Revoke Role", func(t *testing.T) {
-		resp := client.DELETE("/api/v1/permissions/revoke-role", map[string]any{
-			"user_id": user.ID,
-			"role":    "RevokeTestRole",
-		}, setup.WithAuth(adminToken))
-		assert.Equal(t, 200, resp.StatusCode)
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_RevokeRole",
+			run: func(t *testing.T) {
+				resp := client.DELETE("/api/v1/permissions/revoke-role", map[string]any{
+					"user_id": user.ID,
+					"role":    "RevokeTestRole",
+				}, setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
 
-		rolesAfter, _ := server.Enforcer.GetRolesForUser(user.ID, "global")
-		assert.NotContains(t, rolesAfter, "RevokeTestRole")
-	})
+				rolesAfter, _ := server.Enforcer.GetRolesForUser(user.ID, "global")
+				assert.NotContains(t, rolesAfter, "RevokeTestRole")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestPermissionE2E_RemoveInheritance(t *testing.T) {
@@ -281,19 +309,39 @@ func TestPermissionE2E_RemoveInheritance(t *testing.T) {
 	}, setup.WithAuth(adminToken))
 	require.Equal(t, 200, resp.StatusCode)
 
+	checks := []struct {
+		name     string
+		expected bool
+	}{
+		{name: "BeforeRemoveInheritance", expected: true},
+		{name: "AfterRemoveInheritance", expected: false},
+	}
+
 	ok, _ := server.Enforcer.Enforce("ParentRole", "global", "/api/v1/inherited", "GET")
-	assert.True(t, ok, "Parent should have access via inheritance")
+	assert.Equal(t, checks[0].expected, ok, "Parent should have access via inheritance")
 
-	t.Run("Success - Remove Inheritance", func(t *testing.T) {
-		resp := client.DELETE("/api/v1/permissions/inheritance", map[string]any{
-			"child_role":  "ParentRole",
-			"parent_role": "ChildRole",
-		}, setup.WithAuth(adminToken))
-		assert.Equal(t, 200, resp.StatusCode)
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_RemoveInheritance",
+			run: func(t *testing.T) {
+				resp := client.DELETE("/api/v1/permissions/inheritance", map[string]any{
+					"child_role":  "ParentRole",
+					"parent_role": "ChildRole",
+				}, setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
 
-		ok, _ := server.Enforcer.Enforce("ParentRole", "global", "/api/v1/inherited", "GET")
-		assert.False(t, ok, "Parent should NOT have access after inheritance removed")
-	})
+				ok, _ := server.Enforcer.Enforce("ParentRole", "global", "/api/v1/inherited", "GET")
+				assert.Equal(t, checks[1].expected, ok, "Parent should NOT have access after inheritance removed")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestPermissionE2E_Security_PostRoleDeletion_PermissionsRevoked(t *testing.T) {
@@ -361,15 +409,37 @@ func TestPermissionE2E_Security_PostRoleDeletion_PermissionsRevoked(t *testing.T
 	err = server.Enforcer.LoadPolicy()
 	require.NoError(t, err)
 
-	policies, _ := server.Enforcer.GetFilteredPolicy(0, "EphemeralRole")
-	assert.Empty(t, policies, "All Casbin policies for deleted role must be removed")
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "PoliciesRemovedAfterRoleDeletion",
+			run: func(t *testing.T) {
+				policies, _ := server.Enforcer.GetFilteredPolicy(0, "EphemeralRole")
+				assert.Empty(t, policies, "All Casbin policies for deleted role must be removed")
+			},
+		},
+		{
+			name: "RoleAssignmentRemovedAfterRoleDeletion",
+			run: func(t *testing.T) {
+				rolesAfter, _ := server.Enforcer.GetRolesForUser(targetUser.ID, "global")
+				assert.NotContains(t, rolesAfter, "EphemeralRole", "User's role assignment must be removed after role deletion")
+			},
+		},
+		{
+			name: "AccessRevokedAfterRoleDeletion",
+			run: func(t *testing.T) {
+				_ = targetToken
+				hasAccess, _ := server.Enforcer.Enforce(targetUser.ID, "global", "/api/v1/secret", "GET")
+				assert.False(t, hasAccess, "User must NOT have access after role deletion")
+			},
+		},
+	}
 
-	rolesAfter, _ := server.Enforcer.GetRolesForUser(targetUser.ID, "global")
-	assert.NotContains(t, rolesAfter, "EphemeralRole", "User's role assignment must be removed after role deletion")
-
-	_ = targetToken
-	hasAccess, _ := server.Enforcer.Enforce(targetUser.ID, "global", "/api/v1/secret", "GET")
-	assert.False(t, hasAccess, "User must NOT have access after role deletion")
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestPermissionE2E_AccessRightAssignment(t *testing.T) {
@@ -420,71 +490,89 @@ func TestPermissionE2E_AccessRightAssignment(t *testing.T) {
 
 	roleName := "TestRole"
 
-	t.Run("GetRoleAccessRights - Unassigned", func(t *testing.T) {
-		resp := client.GET("/api/v1/permissions/roles/"+roleName+"/access-rights", setup.WithAuth(adminToken))
-		require.Equal(t, 200, resp.StatusCode)
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "GetRoleAccessRights_Unassigned",
+			run: func(t *testing.T) {
+				resp := client.GET("/api/v1/permissions/roles/"+roleName+"/access-rights", setup.WithAuth(adminToken))
+				require.Equal(t, 200, resp.StatusCode)
 
-		var res struct {
-			Data []model.RoleAccessRightStatus `json:"data"`
-		}
-		err = resp.JSON(&res)
-		require.NoError(t, err)
+				var res struct {
+					Data []model.RoleAccessRightStatus `json:"data"`
+				}
+				err = resp.JSON(&res)
+				require.NoError(t, err)
 
-		found := false
-		for _, s := range res.Data {
-			if s.ID == ar.ID {
-				found = true
-				assert.False(t, s.Assigned)
-				assert.False(t, s.Partial)
-			}
-		}
-		assert.True(t, found, "Access right should be in the list")
-	})
+				found := false
+				for _, s := range res.Data {
+					if s.ID == ar.ID {
+						found = true
+						assert.False(t, s.Assigned)
+						assert.False(t, s.Partial)
+					}
+				}
+				assert.True(t, found, "Access right should be in the list")
+			},
+		},
+		{
+			name: "AssignAccessRight",
+			run: func(t *testing.T) {
+				payload := map[string]any{
+					"role":            roleName,
+					"access_right_id": ar.ID,
+				}
+				resp := client.POST("/api/v1/permissions/assign-access-right", payload, setup.WithAuth(adminToken))
+				require.Equal(t, 200, resp.StatusCode)
 
-	t.Run("AssignAccessRight", func(t *testing.T) {
-		payload := map[string]any{
-			"role":            roleName,
-			"access_right_id": ar.ID,
-		}
-		resp := client.POST("/api/v1/permissions/assign-access-right", payload, setup.WithAuth(adminToken))
-		require.Equal(t, 200, resp.StatusCode)
+				ok, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "GET")
+				assert.True(t, ok)
+				ok2, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "POST")
+				assert.True(t, ok2)
+			},
+		},
+		{
+			name: "GetRoleAccessRights_Assigned",
+			run: func(t *testing.T) {
+				resp := client.GET("/api/v1/permissions/roles/"+roleName+"/access-rights", setup.WithAuth(adminToken))
+				require.Equal(t, 200, resp.StatusCode)
 
-		ok, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "GET")
-		assert.True(t, ok)
-		ok2, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "POST")
-		assert.True(t, ok2)
-	})
+				var res struct {
+					Data []model.RoleAccessRightStatus `json:"data"`
+				}
+				err = resp.JSON(&res)
+				require.NoError(t, err)
 
-	t.Run("GetRoleAccessRights - Assigned", func(t *testing.T) {
-		resp := client.GET("/api/v1/permissions/roles/"+roleName+"/access-rights", setup.WithAuth(adminToken))
-		require.Equal(t, 200, resp.StatusCode)
+				for _, s := range res.Data {
+					if s.ID == ar.ID {
+						assert.True(t, s.Assigned)
+					}
+				}
+			},
+		},
+		{
+			name: "RevokeAccessRight",
+			run: func(t *testing.T) {
+				payload := map[string]any{
+					"role":            roleName,
+					"access_right_id": ar.ID,
+				}
+				resp := client.DELETE("/api/v1/permissions/revoke-access-right", payload, setup.WithAuth(adminToken))
+				require.Equal(t, 200, resp.StatusCode)
 
-		var res struct {
-			Data []model.RoleAccessRightStatus `json:"data"`
-		}
-		err = resp.JSON(&res)
-		require.NoError(t, err)
+				ok, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "GET")
+				assert.False(t, ok)
+				ok2, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "POST")
+				assert.False(t, ok2)
+			},
+		},
+	}
 
-		for _, s := range res.Data {
-			if s.ID == ar.ID {
-				assert.True(t, s.Assigned)
-			}
-		}
-	})
-
-	t.Run("RevokeAccessRight", func(t *testing.T) {
-		payload := map[string]any{
-			"role":            roleName,
-			"access_right_id": ar.ID,
-		}
-		resp := client.DELETE("/api/v1/permissions/revoke-access-right", payload, setup.WithAuth(adminToken))
-		require.Equal(t, 200, resp.StatusCode)
-
-		ok, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "GET")
-		assert.False(t, ok)
-		ok2, _ := server.Enforcer.Enforce(roleName, "global", "/api/test", "POST")
-		assert.False(t, ok2)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestAccessRightsFlowE2E(t *testing.T) {
@@ -569,9 +657,20 @@ func TestAccessRightsFlowE2E(t *testing.T) {
 		"role":    "UserManager",
 	}, setup.WithAuth(adminToken))
 
-	ok, err := server.Enforcer.Enforce(user.ID, "global", "/api/v1/users", "GET")
-	require.NoError(t, err)
-	assert.True(t, ok, "User should have access to linked endpoint")
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{name: "UserGetsLinkedEndpointAccess", expected: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := server.Enforcer.Enforce(user.ID, "global", "/api/v1/users", "GET")
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, ok, "User should have access to linked endpoint")
+		})
+	}
 }
 
 func TestSecurityE2E_DynamicRBAC(t *testing.T) {
@@ -629,8 +728,17 @@ func TestSecurityE2E_DynamicRBAC(t *testing.T) {
 	require.NoError(t, err)
 	adminToken := adminLoginRes.Data.AccessToken
 
+	tests := []struct {
+		name        string
+		beforeGrant bool
+		expected    int
+	}{
+		{name: "BeforeGrant", beforeGrant: true, expected: 403},
+		{name: "AfterGrant", beforeGrant: false, expected: 200},
+	}
+
 	resp = client.GET("/api/v1/roles", setup.WithAuth(userToken))
-	assert.Equal(t, 403, resp.StatusCode)
+	assert.Equal(t, tests[0].expected, resp.StatusCode)
 
 	roleName := "DynamicViewer"
 
@@ -667,7 +775,6 @@ func TestSecurityE2E_DynamicRBAC(t *testing.T) {
 	require.NoError(t, err)
 
 	resp = client.GET("/api/v1/roles", setup.WithAuth(userToken))
-
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, tests[1].expected, resp.StatusCode)
 
 }

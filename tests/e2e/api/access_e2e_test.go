@@ -14,7 +14,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Helper: Create admin user for access tests
 func createAccessAdminAndLogin(t *testing.T, server *setup.TestServer) string {
 	f := fixtures.NewUserFactory(server.DB)
 	hash, _ := bcrypt.GenerateFromPassword([]byte("AccessAdmin123!"), bcrypt.DefaultCost)
@@ -51,52 +50,69 @@ func TestAccessE2E_AccessRightsCRUD(t *testing.T) {
 	adminToken := createAccessAdminAndLogin(t, server)
 	var createdID string
 
-	t.Run("Success - Create Access Right", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/access-rights", map[string]any{
-			"name":        "manage_reports",
-			"description": "Can manage reports",
-		}, setup.WithAuth(adminToken))
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_CreateAccessRight",
+			run: func(t *testing.T) {
+				resp := server.Client.POST("/api/v1/access-rights", map[string]any{
+					"name":        "manage_reports",
+					"description": "Can manage reports",
+				}, setup.WithAuth(adminToken))
+				assert.Equal(t, 201, resp.StatusCode)
 
-		assert.Equal(t, 201, resp.StatusCode)
+				var result struct {
+					Data struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				createdID = result.Data.ID
+				assert.Equal(t, "manage_reports", result.Data.Name)
+			},
+		},
+		{
+			name: "Success_GetAllAccessRights",
+			run: func(t *testing.T) {
+				resp := server.Client.GET("/api/v1/access-rights", setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
 
-		var result struct {
-			Data struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		createdID = result.Data.ID
-		assert.Equal(t, "manage_reports", result.Data.Name)
-	})
+				var result struct {
+					Data struct {
+						Data []struct {
+							ID   string `json:"id"`
+							Name string `json:"name"`
+						} `json:"data"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, len(result.Data.Data), 1)
+			},
+		},
+		{
+			name: "Success_DeleteAccessRight",
+			run: func(t *testing.T) {
+				resp := server.Client.DELETE("/api/v1/access-rights/"+createdID, setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
+			},
+		},
+		{
+			name: "Negative_DeleteNonExistent",
+			run: func(t *testing.T) {
+				resp := server.Client.DELETE("/api/v1/access-rights/nonexistent-id", setup.WithAuth(adminToken))
+				assert.Equal(t, 404, resp.StatusCode)
+			},
+		},
+	}
 
-	t.Run("Success - Get All Access Rights", func(t *testing.T) {
-		resp := server.Client.GET("/api/v1/access-rights", setup.WithAuth(adminToken))
-		assert.Equal(t, 200, resp.StatusCode)
-
-		var result struct {
-			Data struct {
-				Data []struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"data"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(result.Data.Data), 1)
-	})
-
-	t.Run("Success - Delete Access Right", func(t *testing.T) {
-		resp := server.Client.DELETE("/api/v1/access-rights/"+createdID, setup.WithAuth(adminToken))
-		assert.Equal(t, 200, resp.StatusCode)
-	})
-
-	t.Run("Negative - Delete Non-existent", func(t *testing.T) {
-		resp := server.Client.DELETE("/api/v1/access-rights/nonexistent-id", setup.WithAuth(adminToken))
-		assert.Equal(t, 404, resp.StatusCode)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestAccessE2E_EndpointsCRUD(t *testing.T) {
@@ -106,31 +122,44 @@ func TestAccessE2E_EndpointsCRUD(t *testing.T) {
 	adminToken := createAccessAdminAndLogin(t, server)
 	var createdID string
 
-	t.Run("Success - Create Endpoint", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/endpoints", map[string]any{
-			"path":   "/api/v1/reports",
-			"method": "GET",
-		}, setup.WithAuth(adminToken))
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Success_CreateEndpoint",
+			run: func(t *testing.T) {
+				resp := server.Client.POST("/api/v1/endpoints", map[string]any{
+					"path":   "/api/v1/reports",
+					"method": "GET",
+				}, setup.WithAuth(adminToken))
+				assert.Equal(t, 201, resp.StatusCode)
 
-		assert.Equal(t, 201, resp.StatusCode)
+				var result struct {
+					Data struct {
+						ID     string `json:"id"`
+						Path   string `json:"path"`
+						Method string `json:"method"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				createdID = result.Data.ID
+				assert.Equal(t, "/api/v1/reports", result.Data.Path)
+			},
+		},
+		{
+			name: "Success_DeleteEndpoint",
+			run: func(t *testing.T) {
+				resp := server.Client.DELETE("/api/v1/endpoints/"+createdID, setup.WithAuth(adminToken))
+				assert.Equal(t, 200, resp.StatusCode)
+			},
+		},
+	}
 
-		var result struct {
-			Data struct {
-				ID     string `json:"id"`
-				Path   string `json:"path"`
-				Method string `json:"method"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		createdID = result.Data.ID
-		assert.Equal(t, "/api/v1/reports", result.Data.Path)
-	})
-
-	t.Run("Success - Delete Endpoint", func(t *testing.T) {
-		resp := server.Client.DELETE("/api/v1/endpoints/"+createdID, setup.WithAuth(adminToken))
-		assert.Equal(t, 200, resp.StatusCode)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
 }
 
 func TestAccessE2E_LinkEndpointToAccessRight(t *testing.T) {
@@ -139,7 +168,6 @@ func TestAccessE2E_LinkEndpointToAccessRight(t *testing.T) {
 
 	adminToken := createAccessAdminAndLogin(t, server)
 
-	// Create Access Right
 	resp := server.Client.POST("/api/v1/access-rights", map[string]any{
 		"name": "link_test_access",
 	}, setup.WithAuth(adminToken))
@@ -152,7 +180,6 @@ func TestAccessE2E_LinkEndpointToAccessRight(t *testing.T) {
 	resp.JSON(&arResult)
 	accessRightID := arResult.Data.ID
 
-	// Create Endpoint
 	resp = server.Client.POST("/api/v1/endpoints", map[string]any{
 		"path":   "/api/v1/linked-resource",
 		"method": "POST",
@@ -166,23 +193,21 @@ func TestAccessE2E_LinkEndpointToAccessRight(t *testing.T) {
 	resp.JSON(&epResult)
 	endpointID := epResult.Data.ID
 
-	t.Run("Success - Link Endpoint to Access Right", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/access-rights/link", map[string]any{
-			"access_right_id": accessRightID,
-			"endpoint_id":     endpointID,
-		}, setup.WithAuth(adminToken))
+	tests := []struct {
+		name    string
+		payload map[string]any
+		status  int
+	}{
+		{name: "Success_LinkEndpointToAccessRight", payload: map[string]any{"access_right_id": accessRightID, "endpoint_id": endpointID}, status: 200},
+		{name: "Negative_InvalidIDs", payload: map[string]any{"access_right_id": "", "endpoint_id": ""}, status: 422},
+	}
 
-		assert.Equal(t, 200, resp.StatusCode)
-	})
-
-	t.Run("Negative - Invalid IDs", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/access-rights/link", map[string]any{
-			"access_right_id": "",
-			"endpoint_id":     "",
-		}, setup.WithAuth(adminToken))
-
-		assert.Equal(t, 422, resp.StatusCode)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := server.Client.POST("/api/v1/access-rights/link", tt.payload, setup.WithAuth(adminToken))
+			assert.Equal(t, tt.status, resp.StatusCode)
+		})
+	}
 }
 
 func TestAccessE2E_DynamicSearch(t *testing.T) {
@@ -191,38 +216,35 @@ func TestAccessE2E_DynamicSearch(t *testing.T) {
 
 	adminToken := createAccessAdminAndLogin(t, server)
 
-	// Create some data
-	server.Client.POST("/api/v1/access-rights", map[string]any{
-		"name": "searchable_access_alpha",
-	}, setup.WithAuth(adminToken))
-	server.Client.POST("/api/v1/access-rights", map[string]any{
-		"name": "searchable_access_beta",
-	}, setup.WithAuth(adminToken))
+	server.Client.POST("/api/v1/access-rights", map[string]any{"name": "searchable_access_alpha"}, setup.WithAuth(adminToken))
+	server.Client.POST("/api/v1/access-rights", map[string]any{"name": "searchable_access_beta"}, setup.WithAuth(adminToken))
+	server.Client.POST("/api/v1/endpoints", map[string]any{"path": "/api/v1/searchable", "method": "GET"}, setup.WithAuth(adminToken))
+	server.Client.POST("/api/v1/endpoints", map[string]any{"path": "/api/v1/searchable", "method": "POST"}, setup.WithAuth(adminToken))
 
-	server.Client.POST("/api/v1/endpoints", map[string]any{
-		"path": "/api/v1/searchable", "method": "GET",
-	}, setup.WithAuth(adminToken))
-	server.Client.POST("/api/v1/endpoints", map[string]any{
-		"path": "/api/v1/searchable", "method": "POST",
-	}, setup.WithAuth(adminToken))
+	tests := []struct {
+		name    string
+		url     string
+		payload map[string]any
+		status  int
+	}{
+		{
+			name:    "Success_SearchAccessRights",
+			url:     "/api/v1/access-rights/search",
+			status:  200,
+			payload: map[string]any{"filter": map[string]any{"name": map[string]any{"type": "contains", "from": "searchable"}}},
+		},
+		{
+			name:    "Success_SearchEndpoints",
+			url:     "/api/v1/endpoints/search",
+			status:  200,
+			payload: map[string]any{"filter": map[string]any{"path": map[string]any{"type": "contains", "from": "searchable"}}},
+		},
+	}
 
-	t.Run("Success - Search Access Rights", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/access-rights/search", map[string]any{
-			"filter": map[string]any{
-				"name": map[string]any{"type": "contains", "from": "searchable"},
-			},
-		}, setup.WithAuth(adminToken))
-
-		assert.Equal(t, 200, resp.StatusCode)
-	})
-
-	t.Run("Success - Search Endpoints", func(t *testing.T) {
-		resp := server.Client.POST("/api/v1/endpoints/search", map[string]any{
-			"filter": map[string]any{
-				"path": map[string]any{"type": "contains", "from": "searchable"},
-			},
-		}, setup.WithAuth(adminToken))
-
-		assert.Equal(t, 200, resp.StatusCode)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := server.Client.POST(tt.url, tt.payload, setup.WithAuth(adminToken))
+			assert.Equal(t, tt.status, resp.StatusCode)
+		})
+	}
 }
