@@ -124,111 +124,144 @@ func TestAccessRepository_FindAccessRightsDynamic(t *testing.T) {
 // =============================================================================
 
 func TestAccessRepository_CreateEndpoint(t *testing.T) {
-	repo, _ := setupAccessRepo(t)
-	ctx := context.Background()
+	tests := []struct {
+		name string
+		run  func(*testing.T, repository.AccessRepository, context.Context)
+	}{
+		{
+			name: "Success",
+			run: func(t *testing.T, repo repository.AccessRepository, ctx context.Context) {
+				endpoint := &entity.Endpoint{ID: "ep-1", Path: "/api/test", Method: "GET"}
+				err := repo.CreateEndpoint(ctx, endpoint)
+				require.NoError(t, err)
+				found, err := repo.GetEndpointByID(ctx, "ep-1")
+				require.NoError(t, err)
+				assert.Equal(t, "/api/test", found.Path)
+				assert.Equal(t, "GET", found.Method)
+			},
+		},
+		{
+			name: "Duplicate ID error",
+			run: func(t *testing.T, repo repository.AccessRepository, ctx context.Context) {
+				endpoint := &entity.Endpoint{ID: "ep-dup", Path: "/api/first", Method: "GET"}
+				err := repo.CreateEndpoint(ctx, endpoint)
+				require.NoError(t, err)
+				duplicate := &entity.Endpoint{ID: "ep-dup", Path: "/api/second", Method: "POST"}
+				err = repo.CreateEndpoint(ctx, duplicate)
+				require.Error(t, err)
+			},
+		},
+	}
 
-	t.Run("Success", func(t *testing.T) {
-		endpoint := &entity.Endpoint{
-			ID:     "ep-1",
-			Path:   "/api/test",
-			Method: "GET",
-		}
-		err := repo.CreateEndpoint(ctx, endpoint)
-		require.NoError(t, err)
-
-		// Verify it was created
-		found, err := repo.GetEndpointByID(ctx, "ep-1")
-		require.NoError(t, err)
-		assert.Equal(t, "/api/test", found.Path)
-		assert.Equal(t, "GET", found.Method)
-	})
-
-	t.Run("Duplicate ID error", func(t *testing.T) {
-		endpoint := &entity.Endpoint{
-			ID:     "ep-dup",
-			Path:   "/api/first",
-			Method: "GET",
-		}
-		err := repo.CreateEndpoint(ctx, endpoint)
-		require.NoError(t, err)
-
-		// Try to create with same ID
-		duplicate := &entity.Endpoint{
-			ID:     "ep-dup",
-			Path:   "/api/second",
-			Method: "POST",
-		}
-		err = repo.CreateEndpoint(ctx, duplicate)
-		require.Error(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, _ := setupAccessRepo(t)
+			ctx := context.Background()
+			tt.run(t, repo, ctx)
+		})
+	}
 }
 
 func TestAccessRepository_GetEndpoints(t *testing.T) {
-	repo, db := setupAccessRepo(t)
-	ctx := context.Background()
+	tests := []struct {
+		name string
+		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
+	}{
+		{
+			name: "Returns all endpoints",
+			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
+				endpoints := []entity.Endpoint{{ID: "get-1", Path: "/api/users", Method: "GET"}, {ID: "get-2", Path: "/api/roles", Method: "POST"}}
+				db.Create(&endpoints)
+				result, err := repo.GetEndpoints(ctx)
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, len(result), 2)
+			},
+		},
+		{
+			name: "Empty table returns empty slice",
+			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
+				db.Exec("DELETE FROM endpoints")
+				result, err := repo.GetEndpoints(ctx)
+				require.NoError(t, err)
+				assert.Empty(t, result)
+			},
+		},
+	}
 
-	t.Run("Returns all endpoints", func(t *testing.T) {
-		// Seed data
-		endpoints := []entity.Endpoint{
-			{ID: "get-1", Path: "/api/users", Method: "GET"},
-			{ID: "get-2", Path: "/api/roles", Method: "POST"},
-		}
-		db.Create(&endpoints)
-
-		result, err := repo.GetEndpoints(ctx)
-		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(result), 2)
-	})
-
-	t.Run("Empty table returns empty slice", func(t *testing.T) {
-		// Clean the table first
-		db.Exec("DELETE FROM endpoints")
-
-		result, err := repo.GetEndpoints(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, result)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, db := setupAccessRepo(t)
+			ctx := context.Background()
+			tt.run(t, repo, db, ctx)
+		})
+	}
 }
 
 func TestAccessRepository_GetEndpointByID(t *testing.T) {
-	repo, db := setupAccessRepo(t)
-	ctx := context.Background()
+	tests := []struct {
+		name string
+		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
+	}{
+		{
+			name: "Found",
+			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
+				endpoint := entity.Endpoint{ID: "find-1", Path: "/api/find", Method: "GET"}
+				db.Create(&endpoint)
+				result, err := repo.GetEndpointByID(ctx, "find-1")
+				require.NoError(t, err)
+				assert.Equal(t, "/api/find", result.Path)
+			},
+		},
+		{
+			name: "Not found",
+			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
+				_, err := repo.GetEndpointByID(ctx, "non-existent-id")
+				require.Error(t, err)
+			},
+		},
+	}
 
-	t.Run("Found", func(t *testing.T) {
-		endpoint := entity.Endpoint{ID: "find-1", Path: "/api/find", Method: "GET"}
-		db.Create(&endpoint)
-
-		result, err := repo.GetEndpointByID(ctx, "find-1")
-		require.NoError(t, err)
-		assert.Equal(t, "/api/find", result.Path)
-	})
-
-	t.Run("Not found", func(t *testing.T) {
-		_, err := repo.GetEndpointByID(ctx, "non-existent-id")
-		require.Error(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, db := setupAccessRepo(t)
+			ctx := context.Background()
+			tt.run(t, repo, db, ctx)
+		})
+	}
 }
 
 func TestAccessRepository_DeleteEndpoint(t *testing.T) {
-	repo, db := setupAccessRepo(t)
-	ctx := context.Background()
+	tests := []struct {
+		name string
+		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
+	}{
+		{
+			name: "Success",
+			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
+				endpoint := entity.Endpoint{ID: "del-1", Path: "/api/delete", Method: "DELETE"}
+				db.Create(&endpoint)
+				err := repo.DeleteEndpoint(ctx, "del-1")
+				require.NoError(t, err)
+				_, err = repo.GetEndpointByID(ctx, "del-1")
+				require.Error(t, err)
+			},
+		},
+		{
+			name: "Delete non-existent does not error",
+			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
+				err := repo.DeleteEndpoint(ctx, "never-existed")
+				require.NoError(t, err)
+			},
+		},
+	}
 
-	t.Run("Success", func(t *testing.T) {
-		endpoint := entity.Endpoint{ID: "del-1", Path: "/api/delete", Method: "DELETE"}
-		db.Create(&endpoint)
-
-		err := repo.DeleteEndpoint(ctx, "del-1")
-		require.NoError(t, err)
-
-		// Verify it's gone
-		_, err = repo.GetEndpointByID(ctx, "del-1")
-		require.Error(t, err)
-	})
-
-	t.Run("Delete non-existent does not error", func(t *testing.T) {
-		err := repo.DeleteEndpoint(ctx, "never-existed")
-		require.NoError(t, err) // GORM soft deletes don't error for missing records
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, db := setupAccessRepo(t)
+			ctx := context.Background()
+			tt.run(t, repo, db, ctx)
+		})
+	}
 }
 
 // =============================================================================
