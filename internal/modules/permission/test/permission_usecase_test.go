@@ -201,91 +201,97 @@ func TestRevokePermissionFromRole(t *testing.T) {
 	}
 }
 
-func TestGetAllPermissions_Success(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	expectedPolicies := [][]string{{"role", "path", "GET"}}
+func TestGetAllPermissions(t *testing.T) {
+	tests := []struct {
+		name     string
+		policies [][]string
+		repoErr  error
+		wantErr  bool
+	}{
+		{name: "Success", policies: [][]string{{"role", "path", "GET"}}},
+		{name: "Error", repoErr: errors.New("casbin error"), wantErr: true},
+	}
 
-	deps.Enforcer.On("GetPolicy").Return(expectedPolicies, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			deps.Enforcer.On("GetPolicy").Return(tt.policies, tt.repoErr).Once()
 
-	policies, err := uc.GetAllPermissions(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, expectedPolicies, policies)
+			policies, err := uc.GetAllPermissions(context.Background())
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.policies, policies)
+		})
+	}
 }
 
-func TestGetAllPermissions_Error(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	deps.Enforcer.On("GetPolicy").Return(nil, errors.New("casbin error"))
+func TestGetPermissionsForRole(t *testing.T) {
+	tests := []struct {
+		name     string
+		role     string
+		policies [][]string
+		repoErr  error
+		wantErr  bool
+	}{
+		{name: "Success", role: "admin", policies: [][]string{{"admin", "path", "GET"}}},
+		{name: "Error", role: "admin", repoErr: errors.New("casbin error"), wantErr: true},
+	}
 
-	_, err := uc.GetAllPermissions(context.Background())
-	assert.Error(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			deps.Enforcer.On("GetFilteredPolicy", 0, mock.Anything).Return(tt.policies, tt.repoErr).Once()
+
+			policies, err := uc.GetPermissionsForRole(context.Background(), tt.role)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.policies, policies)
+		})
+	}
 }
 
-func TestGetPermissionsForRole_Success(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	role := "admin"
-	expectedPolicies := [][]string{{"admin", "path", "GET"}}
+func TestUpdatePermission(t *testing.T) {
+	tests := []struct {
+		name    string
+		oldP    []string
+		newP    []string
+		updated bool
+		repoErr error
+		wantErr bool
+	}{
+		{name: "Success", oldP: []string{"role", "old", "GET"}, newP: []string{"role", "new", "GET"}, updated: true},
+		{name: "Empty Old Input", oldP: []string{}, newP: []string{"a"}, wantErr: true},
+		{name: "Empty New Input", oldP: []string{"a"}, newP: []string{}, wantErr: true},
+		{name: "EnforcerError", oldP: []string{"role", "old", "GET"}, newP: []string{"role", "new", "GET"}, repoErr: errors.New("casbin error"), wantErr: true},
+		{name: "PolicyNotFound", oldP: []string{"role", "old", "GET"}, newP: []string{"role", "new", "GET"}, updated: false, wantErr: true},
+	}
 
-	deps.Enforcer.On("GetFilteredPolicy", 0, mock.Anything).Return(expectedPolicies, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			if len(tt.oldP) > 0 && len(tt.newP) > 0 {
+				deps.Enforcer.On("UpdatePolicy", tt.oldP, tt.newP).Return(tt.updated, tt.repoErr).Once()
+			}
 
-	policies, err := uc.GetPermissionsForRole(context.Background(), role)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedPolicies, policies)
-}
+			updated, err := uc.UpdatePermission(context.Background(), tt.oldP, tt.newP)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.False(t, updated)
+				return
+			}
 
-func TestGetPermissionsForRole_Error(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	role := "admin"
-	deps.Enforcer.On("GetFilteredPolicy", 0, mock.Anything).Return(nil, errors.New("casbin error"))
-
-	_, err := uc.GetPermissionsForRole(context.Background(), role)
-	assert.Error(t, err)
-}
-
-func TestUpdatePermission_Success(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	oldP := []string{"role", "old", "GET"}
-	newP := []string{"role", "new", "GET"}
-
-	deps.Enforcer.On("UpdatePolicy", oldP, newP).Return(true, nil)
-
-	updated, err := uc.UpdatePermission(context.Background(), oldP, newP)
-	assert.NoError(t, err)
-	assert.True(t, updated)
-}
-
-func TestUpdatePermission_EmptyInput(t *testing.T) {
-	_, uc := setupPermissionTest()
-	updated, err := uc.UpdatePermission(context.Background(), []string{}, []string{"a"})
-	assert.Error(t, err)
-	assert.False(t, updated)
-
-	updated, err = uc.UpdatePermission(context.Background(), []string{"a"}, []string{})
-	assert.Error(t, err)
-	assert.False(t, updated)
-}
-
-func TestUpdatePermission_EnforcerError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	oldP := []string{"role", "old", "GET"}
-	newP := []string{"role", "new", "GET"}
-
-	deps.Enforcer.On("UpdatePolicy", oldP, newP).Return(false, errors.New("casbin error"))
-
-	updated, err := uc.UpdatePermission(context.Background(), oldP, newP)
-	assert.Error(t, err)
-	assert.False(t, updated)
-}
-
-func TestUpdatePermission_PolicyNotFound(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	oldP := []string{"role", "old", "GET"}
-	newP := []string{"role", "new", "GET"}
-
-	deps.Enforcer.On("UpdatePolicy", oldP, newP).Return(false, nil)
-
-	updated, err := uc.UpdatePermission(context.Background(), oldP, newP)
-	assert.Error(t, err)
-	assert.False(t, updated)
+			assert.NoError(t, err)
+			assert.True(t, updated)
+		})
+	}
 }
 
 func TestDeleteRole_ReloadsPolicyOutsideTransaction(t *testing.T) {
@@ -326,143 +332,113 @@ func TestDeleteRole_DefersPolicyReloadInsideTransaction(t *testing.T) {
 // BATCH PERMISSION CHECK TESTS
 // ============================================================================
 
-func TestPermissionUseCase_BatchCheckPermission_Success_AllAllowed(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	ctx := context.Background()
-
-	userID := "user-123"
-	items := []model.PermissionCheckItem{
-		{Resource: "/api/users", Action: "GET"},
-		{Resource: "/api/users", Action: "POST"},
-		{Resource: "/api/roles", Action: "GET"},
-	}
-
-	// Mock Enforce - All allowed
-	deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil)
-
-	// Execute
-	results, err := uc.BatchCheckPermission(ctx, userID, items)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, results)
-	assert.Equal(t, 3, len(results))
-	assert.True(t, results["/api/users:GET"])
-	assert.True(t, results["/api/users:POST"])
-	assert.True(t, results["/api/roles:GET"])
-}
-
-func TestPermissionUseCase_BatchCheckPermission_Success_Mixed(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	ctx := context.Background()
-
-	userID := "user-456"
-	items := []model.PermissionCheckItem{
-		{Resource: "/api/users", Action: "GET"},    // Allowed
-		{Resource: "/api/users", Action: "DELETE"}, // Denied
-		{Resource: "/api/roles", Action: "POST"},   // Allowed
-		{Resource: "/api/admin", Action: "GET"},    // Denied
-	}
-
-	// Mock Enforce - Mixed results
-	deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool {
-		return p[2] == "/api/users" && p[3] == "GET"
-	})).Return(true, nil)
-	deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool {
-		return p[2] == "/api/users" && p[3] == "DELETE"
-	})).Return(false, nil)
-	deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool {
-		return p[2] == "/api/roles" && p[3] == "POST"
-	})).Return(true, nil)
-	deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool {
-		return p[2] == "/api/admin" && p[3] == "GET"
-	})).Return(false, nil)
-	deps.Enforcer.On("Enforce", mock.Anything).Return(false, nil)
-
-	// Execute
-	results, err := uc.BatchCheckPermission(ctx, userID, items)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, results)
-	assert.Equal(t, 4, len(results))
-	assert.True(t, results["/api/users:GET"])
-	assert.False(t, results["/api/users:DELETE"])
-	assert.True(t, results["/api/roles:POST"])
-	assert.False(t, results["/api/admin:GET"])
-}
-
-func TestPermissionUseCase_BatchCheckPermission_EmptyItems(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	ctx := context.Background()
-
-	userID := "user-789"
-	items := []model.PermissionCheckItem{} // Empty list
-
-	// Execute
-	results, err := uc.BatchCheckPermission(ctx, userID, items)
-
-	// Assert - Should return empty map
-	assert.NoError(t, err)
-	assert.NotNil(t, results)
-	assert.Equal(t, 0, len(results))
-	deps.Enforcer.AssertNotCalled(t, "Enforce")
-}
-
-func TestPermissionUseCase_BatchCheckPermission_LargeItemList(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	ctx := context.Background()
-
-	userID := "user-101"
-
-	// Create 100 items
-	items := make([]model.PermissionCheckItem, 100)
+func TestPermissionUseCase_BatchCheckPermission(t *testing.T) {
+	largeItems := make([]model.PermissionCheckItem, 100)
 	for i := 0; i < 100; i++ {
-		items[i] = model.PermissionCheckItem{
-			Resource: "/api/resource",
-			Action:   "GET",
-		}
-		// Mock each enforce call
-		deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil).Once()
+		largeItems[i] = model.PermissionCheckItem{Resource: "/api/resource", Action: "GET"}
 	}
 
-	// Execute
-	results, err := uc.BatchCheckPermission(ctx, userID, items)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, results)
-	// Note: All items have same resource:action, so only 1 key in map
-	assert.Equal(t, 1, len(results))
-	assert.True(t, results["/api/resource:GET"])
-}
-
-func TestPermissionUseCase_BatchCheckPermission_EnforcerError(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	ctx := context.Background()
-
-	userID := "user-202"
-	items := []model.PermissionCheckItem{
-		{Resource: "/api/users", Action: "GET"},
-		{Resource: "/api/roles", Action: "POST"}, // This will error
-		{Resource: "/api/admin", Action: "GET"},
+	tests := []struct {
+		name        string
+		userID      string
+		items       []model.PermissionCheckItem
+		setupMock   func(*permissionTestDeps)
+		wantLen     int
+		assertFn    func(*testing.T, map[string]bool)
+		assertNoUse bool
+	}{
+		{
+			name:   "Success All Allowed",
+			userID: "user-123",
+			items:  []model.PermissionCheckItem{{Resource: "/api/users", Action: "GET"}, {Resource: "/api/users", Action: "POST"}, {Resource: "/api/roles", Action: "GET"}},
+			setupMock: func(deps *permissionTestDeps) {
+				deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil)
+			},
+			wantLen: 3,
+			assertFn: func(t *testing.T, results map[string]bool) {
+				assert.True(t, results["/api/users:GET"])
+				assert.True(t, results["/api/users:POST"])
+				assert.True(t, results["/api/roles:GET"])
+			},
+		},
+		{
+			name:   "Success Mixed",
+			userID: "user-456",
+			items:  []model.PermissionCheckItem{{Resource: "/api/users", Action: "GET"}, {Resource: "/api/users", Action: "DELETE"}, {Resource: "/api/roles", Action: "POST"}, {Resource: "/api/admin", Action: "GET"}},
+			setupMock: func(deps *permissionTestDeps) {
+				deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool { return p[2] == "/api/users" && p[3] == "GET" })).Return(true, nil)
+				deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool { return p[2] == "/api/users" && p[3] == "DELETE" })).Return(false, nil)
+				deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool { return p[2] == "/api/roles" && p[3] == "POST" })).Return(true, nil)
+				deps.Enforcer.On("Enforce", mock.MatchedBy(func(p []interface{}) bool { return p[2] == "/api/admin" && p[3] == "GET" })).Return(false, nil)
+				deps.Enforcer.On("Enforce", mock.Anything).Return(false, nil)
+			},
+			wantLen: 4,
+			assertFn: func(t *testing.T, results map[string]bool) {
+				assert.True(t, results["/api/users:GET"])
+				assert.False(t, results["/api/users:DELETE"])
+				assert.True(t, results["/api/roles:POST"])
+				assert.False(t, results["/api/admin:GET"])
+			},
+		},
+		{
+			name:        "Empty Items",
+			userID:      "user-789",
+			items:       []model.PermissionCheckItem{},
+			wantLen:     0,
+			assertNoUse: true,
+		},
+		{
+			name:   "Large Item List",
+			userID: "user-101",
+			items:  largeItems,
+			setupMock: func(deps *permissionTestDeps) {
+				for i := 0; i < 100; i++ {
+					deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil).Once()
+				}
+			},
+			wantLen: 1,
+			assertFn: func(t *testing.T, results map[string]bool) {
+				assert.True(t, results["/api/resource:GET"])
+			},
+		},
+		{
+			name:   "Enforcer Error",
+			userID: "user-202",
+			items:  []model.PermissionCheckItem{{Resource: "/api/users", Action: "GET"}, {Resource: "/api/roles", Action: "POST"}, {Resource: "/api/admin", Action: "GET"}},
+			setupMock: func(deps *permissionTestDeps) {
+				deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil).Once()
+				deps.Enforcer.On("Enforce", mock.Anything).Return(false, errors.New("casbin database error")).Once()
+				deps.Enforcer.On("Enforce", mock.Anything).Return(false, nil).Once()
+			},
+			wantLen: 3,
+			assertFn: func(t *testing.T, results map[string]bool) {
+				assert.True(t, results["/api/users:GET"])
+				assert.False(t, results["/api/roles:POST"])
+				assert.False(t, results["/api/admin:GET"])
+			},
+		},
 	}
 
-	// Mock Enforce - One with error
-	deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil).Once()
-	deps.Enforcer.On("Enforce", mock.Anything).Return(false, errors.New("casbin database error")).Once()
-	deps.Enforcer.On("Enforce", mock.Anything).Return(false, nil).Once()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			ctx := context.Background()
+			if tt.setupMock != nil {
+				tt.setupMock(deps)
+			}
 
-	// Execute
-	results, err := uc.BatchCheckPermission(ctx, userID, items)
-
-	// Assert - Should not fail, but log error and continue
-	assert.NoError(t, err)
-	assert.NotNil(t, results)
-	assert.Equal(t, 3, len(results))
-	assert.True(t, results["/api/users:GET"])
-	assert.False(t, results["/api/roles:POST"]) // Error treated as false
-	assert.False(t, results["/api/admin:GET"])
+			results, err := uc.BatchCheckPermission(ctx, tt.userID, tt.items)
+			assert.NoError(t, err)
+			assert.NotNil(t, results)
+			assert.Equal(t, tt.wantLen, len(results))
+			if tt.assertFn != nil {
+				tt.assertFn(t, results)
+			}
+			if tt.assertNoUse {
+				deps.Enforcer.AssertNotCalled(t, "Enforce")
+			}
+		})
+	}
 }
 
 // ============================================================================
