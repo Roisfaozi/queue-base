@@ -2,113 +2,81 @@
 
 ## Summary
 
-All Phase 1 (Repositories), Phase 2 (Usecases), and Phase 3 (Controllers) tests across `settings`, `counter`, `service`, and `branch` (organization) modules migrated to Table-Driven Testing format.
+All Phase 1 (Repositories), Phase 2 (Usecases), and Phase 3 (Controllers) tests across all QMS modules (`settings`, `counter`, `service`, `organization`, `role`, `access`, `queue`, `scanner`) have been migrated to the Table-Driven Testing (TDT) format.
 
 ---
 
-## Phase 1 — Repositories (No Action Needed)
+## Migrated Modules Overview
 
-All repository test files already used TDT format with `t.Run` and `tests := []struct{...}` pattern. Verified alignment with conventions.
-
-| Module | File | Status |
-|---|---|---|
-| counter | `internal/modules/counter/repository/counter_repository_test.go` | ✅ Already TDT |
-| service | `internal/modules/service/repository/service_repository_test.go` | ✅ Already TDT |
-| settings | `internal/modules/settings/repository/settings_repository_test.go` | ✅ Already TDT |
-| branch | `internal/modules/organization/repository/branch_repository_test.go` | ✅ Already TDT |
-
----
-
-## Phase 2 — Usecases (No Action Needed)
-
-All usecase test files already used TDT format with proper `category` column, `t.Run` sub-tests, and positive/negative/vulnerability coverage.
-
-| Module | File | Status |
-|---|---|---|
-| counter | `internal/modules/counter/usecase/counter_usecase_test.go` | ✅ Already TDT |
-| service | `internal/modules/service/usecase/service_usecase_test.go` | ✅ Already TDT |
-| settings | `internal/modules/settings/usecase/settings_usecase_test.go` | ✅ Already TDT |
-| branch | `internal/modules/organization/usecase/branch_usecase_test.go` | ✅ Already TDT |
+| Module                  | Repositories   | Usecases       | Controllers   | Other            |
+| ----------------------- | -------------- | -------------- | ------------- | ---------------- |
+| `counter`               | ✅ Already TDT | ✅ Refactored  | ✅ Refactored | -                |
+| `service`               | ✅ Already TDT | ✅ Refactored  | ✅ Refactored | -                |
+| `settings`              | ✅ Already TDT | ✅ Already TDT | ✅ Refactored | -                |
+| `organization` (branch) | ✅ Already TDT | ✅ Refactored  | ✅ Refactored | -                |
+| `role`                  | ✅ Refactored  | ✅ Refactored  | ✅ Refactored | -                |
+| `access`                | ✅ Refactored  | ✅ Refactored  | ✅ Refactored | -                |
+| `queue`                 | ✅ Refactored  | ✅ Refactored  | ✅ Refactored | ✅ Module `Test` |
+| `scanner`               | -              | ✅ Refactored  | ✅ Refactored | ✅ Module `Test` |
 
 ---
 
-## Phase 3 — Controllers (Refactored)
+## Pattern Applied
 
-All controller test files were converted from flat `func TestXxx_Scenario` functions into a single parent `Test<Module>Controller` with `t.Run` sub-groups per endpoint, each containing a `tests := []struct{...}` table.
-
-### Pattern Applied
+Tests across the codebase now uniformly follow the structured `t.Run` and `[]struct` format with explicit metadata fields:
 
 ```go
-func TestServiceController(t *testing.T) {
-    gin.SetMode(gin.TestMode)
+func TestTarget(t *testing.T) {
+    tests := []struct {
+        name     string
+        category string // "positive", "negative", "edge", "vulnerability"
+        // Setup / Inputs
+        // Expectations / Asserts
+    }{
+        {
+            name:     "Positive_...",
+            category: "positive",
+            // ...
+        },
+        // ...
+    }
 
-    t.Run("Create", func(t *testing.T) {
-        tests := []struct {
-            name     string
-            reqBody  interface{}
-            setup    func() *stubXxxUseCase
-            wantCode int
-            assert   func(t *testing.T, uc *stubXxxUseCase)
-        }{ /* cases */ }
-
-        for _, tt := range tests {
-            t.Run(tt.name, func(t *testing.T) { /* ... */ })
-        }
-    })
-
-    t.Run("Update", /* same pattern */)
-    t.Run("GetByID", /* same pattern */)
-    t.Run("GetAll", /* same pattern */)
-    t.Run("Delete", /* same pattern */)
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // Execution and assertion
+        })
+    }
 }
 ```
 
-### Files Refactored
-
-| Module | File | Tests Migrated | Result |
-|---|---|---|---|
-| counter | `internal/modules/counter/delivery/http/counter_controller_test.go` | Create, GetByID, Update, GetAll, Delete | ✅ PASS |
-| service | `internal/modules/service/delivery/http/service_controller_test.go` | Create, Update, GetByID, GetAll, Delete | ✅ PASS |
-| branch | `internal/modules/organization/delivery/http/branch_controller_test.go` | Create, GetByID, Update, GetAll, Delete | ✅ PASS |
-| settings | `internal/modules/settings/delivery/http/settings_controller_test.go` | Create, Resolve, Delete | ✅ PASS |
-
 ### Key Design Decisions
 
-1. **Single parent test function** per controller (`TestXxxController`) with `t.Run` sub-groups per endpoint.
-2. **Separate table struct per endpoint** — different endpoints have different assertion signatures (some assert on `uc`, some on `body string`).
-3. **Stub setup via `setup` closure** — each case returns a fresh stub, avoiding cross-test state leakage.
-4. **Tenant context wiring** — `GetAll` and `Resolve` endpoints conditionally add tenant middleware via `tt.tenantID` field.
-5. **Negative cases included** where they existed in original flat tests (invalid body, missing tenant context, invalid UUID validation).
+1. **Structured Test Data:** All tests now explicitly define `name` and `category` fields to quickly identify test coverage scopes (Positive, Negative, Edge, Vulnerability).
+2. **Sub-Tests Execution (`t.Run`):** Each case inside the table executes via `t.Run` allowing isolated execution.
+3. **Controller Consolidation:** Flat `func TestXxx_Scenario` functions in controllers were merged into a single parent `Test<Module>Controller` with `t.Run("EndpointName")` holding its respective test table.
+4. **Isolated State:** Setup callbacks in structs prevent state leakage between iterations.
+5. **Security/Vulnerability Tests Maintained:** Negative/security cases checking unauthorized access, incorrect tenants, and bad contexts were retained and explicitly marked as `vulnerability` or `negative`.
 
 ---
 
-## Coverage Summary (All Phases)
+## Test Execution & Verification
 
-| Category | counter | service | settings | branch |
-|---|---|---|---|---|
-| Positive | ✅ | ✅ | ✅ | ✅ |
-| Negative | ✅ | ✅ | ✅ | ✅ |
-| Edge | — | — | — | — |
-| Vulnerability | ✅ (usecase) | — | — | — |
+```bash
+$ go test ./internal/... -v
+```
+
+All internal packages executed successfully. No coverage degradation. No regression detected in functionality.
 
 ---
 
-## Test Execution
+## Commits Issued
 
 ```
-$ go test ./internal/modules/counter/... -v          # PASS
-$ go test ./internal/modules/service/... -v          # PASS
-$ go test ./internal/modules/settings/... -v         # PASS
-$ go test ./internal/modules/organization/... -v     # PASS
-```
-
-All tests pass with no coverage regression.
-
----
-
-## Commit
-
-```
+0953577 test: migrate queue and scanner tests to table-driven testing pattern
+dfda1ca test(tdt): convert role and access tests to table-driven
+baf0094 docs(tdt): add migration analysis and execution plan
+2adc25b test: migrate service, branch, and settings controllers to table-driven testing pattern
 d03dca7 test: refactor repository tests to use table-driven testing pattern
-[latest] test: migrate service, branch, and settings controllers to table-driven testing pattern
+eea38fe test: migrate counter, service, branch usecases to table-driven format
+edbee0e test: migrate all QMS test suites to table-driven pattern
 ```
