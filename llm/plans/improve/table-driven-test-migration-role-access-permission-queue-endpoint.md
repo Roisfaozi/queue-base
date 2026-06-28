@@ -1,5 +1,31 @@
 # Plan — Table-Driven Migration for Role, Access, Permission, and Queue Registration Endpoint Tests
 
+## Current Progress Snapshot
+
+Status per 2026-06-28:
+
+- `role` — selesai untuk unit/package, integration, dan E2E scope yang diaudit
+- `access` — selesai untuk unit/package, integration, dan E2E scope yang diaudit
+- `permission` — selesai untuk unit/package, integration, dan E2E scope yang diaudit
+- flow pendaftaran endpoint baru `POST /api/v1/queues` — **belum dikerjakan** sesuai instruksi scope terakhir
+
+Verifikasi runtime yang sudah terbukti pass pada scope `role/access/permission`:
+
+- `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/role/... ./internal/modules/access/... ./internal/modules/permission/... ./tests/integration/modules ./tests/integration/scenarios`
+- `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test -tags=e2e ./tests/e2e/api -run 'Test(Access|Role|Permission)E2E|TestAccessRightsFlowE2E|TestSecurityE2E_DynamicRBAC'`
+
+Catatan penting progress:
+
+- migration style sempat memunculkan fail stateful pada `access` E2E CRUD karena setup diisolasi per subtest; sudah diperbaiki dengan shared parent state
+- integration dan E2E `DeleteEndpoint` untuk ID tidak ada menunjukkan runtime truth berupa idempotent success; ekspektasi test sudah diselaraskan
+- log observability pada role integration yang dulu berbunyi `KNOWN GAP` sudah dibersihkan karena hasil runtime tidak lagi mendukung wording itu
+
+Out of scope aktif:
+
+- test auth/user yang sedang dirty di workspace
+- queue registration endpoint flow
+- flow pendaftaran endpoint baru di luar analisa/doc plan ini
+
 ## Objective
 
 Ubah test existing untuk scope berikut menjadi table-driven test **tanpa menambah skenario baru dan tanpa kehilangan skenario yang sudah ada**:
@@ -484,4 +510,3 @@ Migrasi ini layak dilakukan **secara coverage-preserving refactor**:
 - jangan buang skenario
 - pecah `permission` per method
 - pakai `queue_usecase_test.go` sebagai precedent lokal utama
-
