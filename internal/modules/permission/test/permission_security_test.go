@@ -139,80 +139,73 @@ func TestGrantPermissionToRole_SQLInjectionInputs(t *testing.T) {
 // 🔐 CONCURRENT PERMISSION UPDATES
 // ============================================================================
 
-func TestGrantPermissionToRole_Concurrent_SameRole(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	numConcurrent := 10
-
-	roleName := "editor"
-	role := &roleEntity.Role{ID: "role-editor", Name: roleName}
-
-	deps.RoleRepo.On("FindByName", mock.Anything, roleName).Return(role, nil).Maybe()
-
-	var successCount int32
-	deps.Enforcer.On("AddPolicy", mock.Anything).
-		Run(func(args mock.Arguments) {
-			atomic.AddInt32(&successCount, 1)
-		}).Return(true, nil).Maybe()
-
-	var wg sync.WaitGroup
-	errChan := make(chan error, numConcurrent)
-
-	for i := 0; i < numConcurrent; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			path := "/api/resource/" + string(rune('a'+idx))
-			err := uc.GrantPermissionToRole(context.Background(), roleName, path, "GET", "global")
-			errChan <- err
-		}(i)
+func TestPermissionConcurrentOperations(t *testing.T) {
+	tests := []struct {
+		name          string
+		numConcurrent int
+		setupMock     func(*permissionTestDeps, *int32)
+		runOne        func(usecase.IPermissionUseCase, int) error
+		wantCount     int32
+	}{
+		{
+			name:          "grant permission concurrent same role",
+			numConcurrent: 10,
+			setupMock: func(deps *permissionTestDeps, count *int32) {
+				roleName := "editor"
+				deps.RoleRepo.On("FindByName", mock.Anything, roleName).Return(&roleEntity.Role{ID: "role-editor", Name: roleName}, nil).Maybe()
+				deps.Enforcer.On("AddPolicy", mock.Anything).Run(func(args mock.Arguments) {
+					atomic.AddInt32(count, 1)
+				}).Return(true, nil).Maybe()
+			},
+			runOne: func(uc usecase.IPermissionUseCase, idx int) error {
+				path := "/api/resource/" + string(rune('a'+idx))
+				return uc.GrantPermissionToRole(context.Background(), "editor", path, "GET", "global")
+			},
+			wantCount: 10,
+		},
+		{
+			name:          "revoke permission concurrent",
+			numConcurrent: 5,
+			setupMock: func(deps *permissionTestDeps, count *int32) {
+				roleName := "editor"
+				deps.RoleRepo.On("FindByName", mock.Anything, roleName).Return(&roleEntity.Role{ID: "role-editor", Name: roleName}, nil).Maybe()
+				deps.Enforcer.On("RemovePolicy", mock.Anything).Run(func(args mock.Arguments) {
+					atomic.AddInt32(count, 1)
+				}).Return(true, nil)
+			},
+			runOne: func(uc usecase.IPermissionUseCase, idx int) error {
+				path := "/api/resource/" + string(rune('a'+idx))
+				return uc.RevokePermissionFromRole(context.Background(), "editor", path, "DELETE", "global")
+			},
+			wantCount: 5,
+		},
 	}
 
-	wg.Wait()
-	close(errChan)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			var opCount int32
+			tt.setupMock(deps, &opCount)
 
-	for err := range errChan {
-		assert.NoError(t, err)
+			var wg sync.WaitGroup
+			errChan := make(chan error, tt.numConcurrent)
+			for i := 0; i < tt.numConcurrent; i++ {
+				wg.Add(1)
+				go func(idx int) {
+					defer wg.Done()
+					errChan <- tt.runOne(uc, idx)
+				}(i)
+			}
+
+			wg.Wait()
+			close(errChan)
+			for err := range errChan {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.wantCount, atomic.LoadInt32(&opCount))
+		})
 	}
-
-	assert.Equal(t, int32(numConcurrent), atomic.LoadInt32(&successCount))
-}
-
-func TestRevokePermissionFromRole_Concurrent(t *testing.T) {
-	deps, uc := setupPermissionTest()
-	numConcurrent := 5
-
-	roleName := "editor"
-	role := &roleEntity.Role{ID: "role-editor", Name: roleName}
-
-	deps.RoleRepo.On("FindByName", mock.Anything, roleName).Return(role, nil).Maybe()
-
-	var revokeCount int32
-	deps.Enforcer.On("RemovePolicy", mock.Anything).
-		Run(func(args mock.Arguments) {
-			atomic.AddInt32(&revokeCount, 1)
-		}).Return(true, nil)
-
-	var wg sync.WaitGroup
-	errChan := make(chan error, numConcurrent)
-
-	for i := 0; i < numConcurrent; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			path := "/api/resource/" + string(rune('a'+idx))
-			err := uc.RevokePermissionFromRole(context.Background(), roleName, path, "DELETE", "global")
-			errChan <- err
-		}(i)
-	}
-
-	wg.Wait()
-	close(errChan)
-
-	for err := range errChan {
-		assert.NoError(t, err)
-	}
-
-	assert.Equal(t, int32(numConcurrent), atomic.LoadInt32(&revokeCount))
 }
 
 // ============================================================================
@@ -314,38 +307,41 @@ func TestPermissionPolicyFailureHandling(t *testing.T) {
 }
 
 func TestConcurrentBatchPermissionCheck(t *testing.T) {
-	deps, uc := setupPermissionTest()
-
-	userID := "user-concurrent"
-	numGoroutines := 10
-	itemsPerCheck := 5
-
-	deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil).Maybe()
-
-	var wg sync.WaitGroup
-	var successCount int32
-
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-
-			items := make([]model.PermissionCheckItem, itemsPerCheck)
-			itemsKey := idx * itemsPerCheck
-			for j := 0; j < itemsPerCheck; j++ {
-				items[j] = model.PermissionCheckItem{
-					Resource: fmt.Sprintf("/api/resource-%d", itemsKey+j),
-					Action:   "GET",
-				}
-			}
-
-			results, err := uc.BatchCheckPermission(context.Background(), userID, items)
-			if err == nil && len(results) == itemsPerCheck {
-				atomic.AddInt32(&successCount, 1)
-			}
-		}(i)
+	tests := []struct {
+		name          string
+		userID        string
+		numGoroutines int
+		itemsPerCheck int
+		wantSuccess   int32
+	}{
+		{name: "concurrent batch check", userID: "user-concurrent", numGoroutines: 10, itemsPerCheck: 5, wantSuccess: 10},
 	}
 
-	wg.Wait()
-	assert.Equal(t, int32(numGoroutines), successCount)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, uc := setupPermissionTest()
+			deps.Enforcer.On("Enforce", mock.Anything).Return(true, nil).Maybe()
+
+			var wg sync.WaitGroup
+			var successCount int32
+			for i := 0; i < tt.numGoroutines; i++ {
+				wg.Add(1)
+				go func(idx int) {
+					defer wg.Done()
+					items := make([]model.PermissionCheckItem, tt.itemsPerCheck)
+					itemsKey := idx * tt.itemsPerCheck
+					for j := 0; j < tt.itemsPerCheck; j++ {
+						items[j] = model.PermissionCheckItem{Resource: fmt.Sprintf("/api/resource-%d", itemsKey+j), Action: "GET"}
+					}
+					results, err := uc.BatchCheckPermission(context.Background(), tt.userID, items)
+					if err == nil && len(results) == tt.itemsPerCheck {
+						atomic.AddInt32(&successCount, 1)
+					}
+				}(i)
+			}
+
+			wg.Wait()
+			assert.Equal(t, tt.wantSuccess, successCount)
+		})
+	}
 }
