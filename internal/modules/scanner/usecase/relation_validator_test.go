@@ -83,51 +83,98 @@ func (s stubCounterRepo) Update(ctx context.Context, counter *counterEntity.Coun
 }
 func (s stubCounterRepo) Delete(ctx context.Context, tenantID, counterID string) error { return nil }
 
-func TestRelationValidator_ValidateSuccess(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil)
-	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
-	assert.NoError(t, err)
-}
+func TestRelationValidator_Validate(t *testing.T) {
+	tests := []struct {
+		name      string
+		category  string
+		tenantID  string
+		branchID  string
+		serviceID string
+		counterID string
+		validator RelationValidator
+		wantErr   error
+	}{
+		{
+			name:      "Positive_ValidateSuccess",
+			category:  "positive",
+			tenantID:  "t-1",
+			branchID:  "b-1",
+			serviceID: "s-1",
+			counterID: "c-1",
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
+			wantErr:   nil,
+		},
+		{
+			name:      "Negative_ValidateMissingBranch",
+			category:  "negative",
+			tenantID:  "t-1",
+			branchID:  "b-1",
+			serviceID: "s-1",
+			counterID: "c-1",
+			validator: NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
+			wantErr:   exception.ErrNotFound,
+		},
+		{
+			name:      "Edge_ValidateNoCounter",
+			category:  "edge",
+			tenantID:  "t-1",
+			branchID:  "b-1",
+			serviceID: "s-1",
+			counterID: "",
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
+			wantErr:   nil,
+		},
+		{
+			name:      "Security_ValidateCrossBranchCounter",
+			category:  "vulnerability",
+			tenantID:  "t-1",
+			branchID:  "b-1",
+			serviceID: "s-1",
+			counterID: "c-1",
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "other-branch"}, nil),
+			wantErr:   exception.ErrForbidden,
+		},
+		{
+			name:      "Negative_ValidateRequireCounterSetting",
+			category:  "negative",
+			tenantID:  "t-1",
+			branchID:  "b-1",
+			serviceID: "s-1",
+			counterID: "",
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
+			wantErr:   exception.ErrForbidden,
+		},
+		{
+			name:      "Negative_ValidatePharmacyFlowDisabledForForward",
+			category:  "negative",
+			tenantID:  "t-1",
+			branchID:  "b-1",
+			serviceID: "s-1",
+			counterID: "c-1",
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "false"}),
+			wantErr:   exception.ErrForbidden,
+		},
+		{
+			name:      "Positive_ValidatePharmacyFlowEnabledAllowsForward",
+			category:  "positive",
+			tenantID:  "t-1",
+			branchID:  "b-1",
+			serviceID: "s-1",
+			counterID: "c-1",
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
+			wantErr:   nil,
+		},
+	}
 
-func TestRelationValidator_ValidateNegativeMissingBranch(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil)
-	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
-	assert.ErrorIs(t, err, exception.ErrNotFound)
-}
-
-func TestRelationValidator_ValidateEdgeNoCounter(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil)
-	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "")
-	assert.NoError(t, err)
-}
-
-func TestRelationValidator_ValidateSecurityCrossBranchCounter(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "other-branch"}, nil)
-	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
-	assert.ErrorIs(t, err, exception.ErrForbidden)
-}
-
-func TestRelationValidator_ValidateNegativeRequireCounterSetting(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"})
-	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "")
-	assert.ErrorIs(t, err, exception.ErrForbidden)
-}
-
-func TestRelationValidator_ValidateNegativePharmacyFlowDisabledForForward(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "false"})
-	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
-	assert.ErrorIs(t, err, exception.ErrForbidden)
-}
-
-func TestRelationValidator_ValidatePharmacyFlowEnabledAllowsForward(t *testing.T) {
-	validator := NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"})
-	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	err := validator.Validate(ctx, "t-1", "b-1", "s-1", "c-1")
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := database.SetOrganizationContext(context.Background(), tt.tenantID)
+			err := tt.validator.Validate(ctx, tt.tenantID, tt.branchID, tt.serviceID, tt.counterID)
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

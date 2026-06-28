@@ -18,26 +18,76 @@ func (s stubAPIKeyUseCase) Authenticate(ctx context.Context, key string) (*apiKe
 	return s.identity, s.err
 }
 
-func TestAPIKeyAuthenticator_Success(t *testing.T) {
-	auth := NewAPIKeyAuthenticator(stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "t-1", UserID: "client-1"}})
-	err := auth.Authenticate(context.Background(), "t-1", "b-1", "client-1", "sk_live_key")
-	assert.NoError(t, err)
-}
+func TestAPIKeyAuthenticator_Authenticate(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		tenantID string
+		branchID string
+		clientID string
+		apiKey   string
+		setup    func() stubAPIKeyUseCase
+		wantErr  error
+	}{
+		{
+			name:     "Positive_Success",
+			category: "positive",
+			tenantID: "t-1",
+			branchID: "b-1",
+			clientID: "client-1",
+			apiKey:   "sk_live_key",
+			setup: func() stubAPIKeyUseCase {
+				return stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "t-1", UserID: "client-1"}}
+			},
+			wantErr: nil,
+		},
+		{
+			name:     "Negative_WrongTenant",
+			category: "negative",
+			tenantID: "t-1",
+			branchID: "b-1",
+			clientID: "client-1",
+			apiKey:   "sk_live_key",
+			setup: func() stubAPIKeyUseCase {
+				return stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "other", UserID: "client-1"}}
+			},
+			wantErr: exception.ErrUnauthorized,
+		},
+		{
+			name:     "Edge_EmptyClientIDAllowed",
+			category: "edge",
+			tenantID: "t-1",
+			branchID: "b-1",
+			clientID: "",
+			apiKey:   "sk_live_key",
+			setup: func() stubAPIKeyUseCase {
+				return stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "t-1", UserID: "client-1"}}
+			},
+			wantErr: nil,
+		},
+		{
+			name:     "Security_WrongClientRejected",
+			category: "vulnerability",
+			tenantID: "t-1",
+			branchID: "b-1",
+			clientID: "client-2",
+			apiKey:   "sk_live_key",
+			setup: func() stubAPIKeyUseCase {
+				return stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "t-1", UserID: "client-1"}}
+			},
+			wantErr: exception.ErrUnauthorized,
+		},
+	}
 
-func TestAPIKeyAuthenticator_NegativeWrongTenant(t *testing.T) {
-	auth := NewAPIKeyAuthenticator(stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "other", UserID: "client-1"}})
-	err := auth.Authenticate(context.Background(), "t-1", "b-1", "client-1", "sk_live_key")
-	assert.ErrorIs(t, err, exception.ErrUnauthorized)
-}
-
-func TestAPIKeyAuthenticator_EdgeEmptyClientIDAllowed(t *testing.T) {
-	auth := NewAPIKeyAuthenticator(stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "t-1", UserID: "client-1"}})
-	err := auth.Authenticate(context.Background(), "t-1", "b-1", "", "sk_live_key")
-	assert.NoError(t, err)
-}
-
-func TestAPIKeyAuthenticator_SecurityWrongClientRejected(t *testing.T) {
-	auth := NewAPIKeyAuthenticator(stubAPIKeyUseCase{identity: &apiKeyModel.ApiKeyIdentity{OrganizationID: "t-1", UserID: "client-1"}})
-	err := auth.Authenticate(context.Background(), "t-1", "b-1", "client-2", "sk_live_key")
-	assert.ErrorIs(t, err, exception.ErrUnauthorized)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			auth := NewAPIKeyAuthenticator(tt.setup())
+			err := auth.Authenticate(context.Background(), tt.tenantID, tt.branchID, tt.clientID, tt.apiKey)
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
