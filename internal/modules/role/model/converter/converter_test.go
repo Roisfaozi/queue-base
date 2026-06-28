@@ -11,54 +11,48 @@ import (
 
 func TestRoleToResponse(t *testing.T) {
 	now := time.Now().Unix()
-	role := &entity.Role{
-		ID:          "role-1",
-		Name:        "Admin",
-		Description: "Administrator",
-		CreatedAt:   now,
-		UpdatedAt:   now,
+	tests := []struct {
+		name string
+		role *entity.Role
+	}{
+		{name: "single role", role: &entity.Role{ID: "role-1", Name: "Admin", Description: "Administrator", CreatedAt: now, UpdatedAt: now}},
 	}
 
-	res := converter.RoleToResponse(role)
-
-	assert.NotNil(t, res)
-	assert.Equal(t, role.ID, res.ID)
-	assert.Equal(t, role.Name, res.Name)
-	assert.Equal(t, role.Description, res.Description)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := converter.RoleToResponse(tt.role)
+			assert.NotNil(t, res)
+			assert.Equal(t, tt.role.ID, res.ID)
+			assert.Equal(t, tt.role.Name, res.Name)
+			assert.Equal(t, tt.role.Description, res.Description)
+		})
+	}
 }
 
 func TestRolesToResponse(t *testing.T) {
 	now := time.Now().Unix()
-	roles := []*entity.Role{
-		{
-			ID:          "role-1",
-			Name:        "Admin",
-			Description: "Administrator",
-			CreatedAt:   now,
-			UpdatedAt:   now,
-		},
-		{
-			ID:          "role-2",
-			Name:        "User",
-			Description: "Standard User",
-			CreatedAt:   now,
-			UpdatedAt:   now,
-		},
+	tests := []struct {
+		name    string
+		roles   []*entity.Role
+		wantNil bool
+		wantLen int
+	}{
+		{name: "has data", roles: []*entity.Role{{ID: "role-1", Name: "Admin", Description: "Administrator", CreatedAt: now, UpdatedAt: now}, {ID: "role-2", Name: "User", Description: "Standard User", CreatedAt: now, UpdatedAt: now}}, wantLen: 2},
+		{name: "empty", roles: nil, wantNil: true, wantLen: 0},
 	}
 
-	res := converter.RolesToResponse(roles)
-
-	assert.NotNil(t, res)
-	assert.Len(t, res, 2)
-	assert.Equal(t, roles[0].ID, res[0].ID)
-	assert.Equal(t, roles[1].ID, res[1].ID)
-}
-
-func TestRolesToResponse_Empty(t *testing.T) {
-	var roles []*entity.Role
-
-	res := converter.RolesToResponse(roles)
-
-	assert.Nil(t, res)
-	assert.Len(t, res, 0)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := converter.RolesToResponse(tt.roles)
+			if tt.wantNil {
+				assert.Nil(t, res)
+				assert.Len(t, res, tt.wantLen)
+				return
+			}
+			assert.NotNil(t, res)
+			assert.Len(t, res, tt.wantLen)
+			assert.Equal(t, tt.roles[0].ID, res[0].ID)
+			assert.Equal(t, tt.roles[1].ID, res[1].ID)
+		})
+	}
 }

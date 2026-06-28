@@ -35,63 +35,63 @@ func setupSecurityRoleTest() (*mocks.MockRoleRepository, *permissionMocks.MockIP
 	return mockRepo, mockPerm, uc
 }
 
-// TestDeleteRole_SuperadminProtection tests that superadmin role cannot be deleted.
 func TestDeleteRole_SuperadminProtection(t *testing.T) {
-	repo, _, uc := setupSecurityRoleTest()
-
-	roleID := "role-superadmin-id"
-	role := &entity.Role{ID: roleID, Name: "role:superadmin"}
-
-	repo.On("FindByID", mock.Anything, roleID).Return(role, nil)
-
-	err := uc.Delete(context.Background(), roleID)
-
-	assert.Error(t, err)
-	assert.Equal(t, exception.ErrForbidden, err)
-	repo.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything)
-}
-
-// TestDeleteRole_SuperadminProtection_CaseSensitive tests bypass attempts with case variations.
-// Current implementation uses exact string match, so ensure we know behavior for variations.
-func TestDeleteRole_SuperadminProtection_CaseSensitive(t *testing.T) {
-	repo, perm, uc := setupSecurityRoleTest()
-
-	// If a role is named "Role:SuperAdmin", it technically isn't "role:superadmin".
-	// This test verifies if the system allows deleting it (which is correct behavior if strict).
-	// But if the system intends to protect all case variations, this test will fail (or indicate need for fix).
-	roleID := "role-fake-superadmin"
-	roleName := "Role:SuperAdmin"
-	role := &entity.Role{ID: roleID, Name: roleName}
-
-	repo.On("FindByID", mock.Anything, roleID).Return(role, nil)
-	repo.On("Delete", mock.Anything, roleID).Return(nil)
-	perm.On("DeleteRole", mock.Anything, roleName).Return(nil)
-
-	err := uc.Delete(context.Background(), roleID)
-
-	// Currently expecting success because protection is exact match
-	assert.NoError(t, err)
-}
-
-// TestUpdateRole_SuperadminProtection tests if updating superadmin is allowed.
-func TestUpdateRole_SuperadminProtection(t *testing.T) {
-	repo, _, uc := setupSecurityRoleTest()
-
-	roleID := "role-superadmin-id"
-	role := &entity.Role{ID: roleID, Name: "role:superadmin"}
-
-	repo.On("FindByID", mock.Anything, roleID).Return(role, nil)
-
-	// Expect Update to be called because currently there is NO protection on Update
-	// If protection is added later, this expectation should verify it (expecting error instead).
-	// For now, we assert that it succeeds (documenting current behavior).
-	repo.On("Update", mock.Anything, role).Return(nil)
-
-	req := &model.UpdateRoleRequest{
-		Description: "Updated description",
+	tests := []struct {
+		name         string
+		roleID       string
+		roleName     string
+		setupDelete  bool
+		wantErr      error
+		assertDelete bool
+	}{
+		{name: "forbid exact superadmin", roleID: "role-superadmin-id", roleName: "role:superadmin", wantErr: exception.ErrForbidden, assertDelete: false},
+		{name: "allow case variation", roleID: "role-fake-superadmin", roleName: "Role:SuperAdmin", setupDelete: true, assertDelete: true},
 	}
 
-	_, err := uc.Update(context.Background(), roleID, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, perm, uc := setupSecurityRoleTest()
+			role := &entity.Role{ID: tt.roleID, Name: tt.roleName}
+			repo.On("FindByID", mock.Anything, tt.roleID).Return(role, nil)
+			if tt.setupDelete {
+				repo.On("Delete", mock.Anything, tt.roleID).Return(nil)
+				perm.On("DeleteRole", mock.Anything, tt.roleName).Return(nil)
+			}
 
-	assert.NoError(t, err)
+			err := uc.Delete(context.Background(), tt.roleID)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.wantErr, err)
+				repo.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything)
+				return
+			}
+
+			assert.NoError(t, err)
+			if tt.assertDelete {
+				repo.AssertCalled(t, "Delete", mock.Anything, tt.roleID)
+			}
+		})
+	}
+}
+
+func TestUpdateRole_SuperadminProtection(t *testing.T) {
+	tests := []struct {
+		name   string
+		roleID string
+		role   *entity.Role
+		body   *model.UpdateRoleRequest
+	}{
+		{name: "update allowed for exact superadmin", roleID: "role-superadmin-id", role: &entity.Role{ID: "role-superadmin-id", Name: "role:superadmin"}, body: &model.UpdateRoleRequest{Description: "Updated description"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, _, uc := setupSecurityRoleTest()
+			repo.On("FindByID", mock.Anything, tt.roleID).Return(tt.role, nil)
+			repo.On("Update", mock.Anything, tt.role).Return(nil)
+
+			_, err := uc.Update(context.Background(), tt.roleID, tt.body)
+			assert.NoError(t, err)
+		})
+	}
 }
