@@ -31,11 +31,13 @@ func setupRoleIntegration(env *setup.TestEnvironment) usecase.RoleUseCase {
 
 func TestRoleIntegration_Create(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, roleUC usecase.RoleUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, roleUC usecase.RoleUseCase)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
 				req := &model.CreateRoleRequest{
 					Name:        "Test Role",
@@ -50,7 +52,8 @@ func TestRoleIntegration_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_DuplicateName",
+			name:     "Negative_DuplicateName",
+			category: "negative",
 			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
 				_, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: "Duplicate", Description: "First"})
 				require.NoError(t, err)
@@ -60,7 +63,8 @@ func TestRoleIntegration_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_EmptyName",
+			name:     "Negative_EmptyName",
+			category: "negative",
 			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
 				result, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: "", Description: "Empty Name"})
 				if err == nil {
@@ -69,14 +73,16 @@ func TestRoleIntegration_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "Edge_Create_LongName",
+			name:     "Edge_Create_LongName",
+			category: "edge",
 			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
 				_, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: strings.Repeat("a", 60), Description: "Long Name"})
 				assert.Error(t, err)
 			},
 		},
 		{
-			name: "Edge_MinimumNameLength",
+			name:     "Edge_MinimumNameLength",
+			category: "edge",
 			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
 				result, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: "A", Description: "Single char role"})
 				require.NoError(t, err)
@@ -98,11 +104,13 @@ func TestRoleIntegration_Create(t *testing.T) {
 
 func TestRoleIntegration_Query(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, roleUC usecase.RoleUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, roleUC usecase.RoleUseCase)
 	}{
 		{
-			name: "GetAll_Success",
+			name:     "GetAll_Success",
+			category: "positive",
 			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
 				roles := []model.CreateRoleRequest{
 					{Name: "Test Role 1", Description: "Description 1"},
@@ -121,7 +129,8 @@ func TestRoleIntegration_Query(t *testing.T) {
 			},
 		},
 		{
-			name: "DynamicSearch_Success",
+			name:     "DynamicSearch_Success",
+			category: "positive",
 			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
 				roles := []model.CreateRoleRequest{
 					{Name: "Manager", Description: "Manager role"},
@@ -163,11 +172,13 @@ func TestRoleIntegration_Query(t *testing.T) {
 
 func TestRoleIntegration_Delete(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
 				created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
 					Name:        "Delete Role",
@@ -180,21 +191,24 @@ func TestRoleIntegration_Delete(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_NonExistentRole",
+			name:     "Negative_NonExistentRole",
+			category: "negative",
 			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
 				err := roleUC.Delete(context.Background(), "non-existent-id")
 				assert.Error(t, err)
 			},
 		},
 		{
-			name: "Security_Delete_SuperadminForbidden",
+			name:     "Security_Delete_SuperadminForbidden",
+			category: "negative",
 			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
 				err := roleUC.Delete(context.Background(), "role:superadmin")
 				assert.Error(t, err)
 			},
 		},
 		{
-			name: "WithActiveUsers_DocumentsBehavior",
+			name:     "WithActiveUsers_DocumentsBehavior",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
 				created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
 					Name:        "RoleWithUsers",
@@ -220,7 +234,7 @@ func TestRoleIntegration_Delete(t *testing.T) {
 						roleStillInCasbin = true
 					}
 				}
-				t.Logf("KNOWN GAP: Casbin grouping still contains deleted role '%s': %v — cleanup not cascaded by usecase.Delete", created.Name, roleStillInCasbin)
+				t.Logf("Post-delete Casbin grouping contains deleted role '%s': %v", created.Name, roleStillInCasbin)
 			},
 		},
 	}
@@ -238,11 +252,13 @@ func TestRoleIntegration_Delete(t *testing.T) {
 
 func TestRoleIntegration_Update(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
 				created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
 					Name:        "Role To Update",

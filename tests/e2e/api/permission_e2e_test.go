@@ -240,11 +240,13 @@ func TestPermissionE2E_RevokeRole(t *testing.T) {
 	assert.Contains(t, roles, "RevokeTestRole")
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "Success_RevokeRole",
+			name:     "Success_RevokeRole",
+			category: "positive",
 			run: func(t *testing.T) {
 				resp := client.DELETE("/api/v1/permissions/revoke-role", map[string]any{
 					"user_id": user.ID,
@@ -321,11 +323,13 @@ func TestPermissionE2E_RemoveInheritance(t *testing.T) {
 	assert.Equal(t, checks[0].expected, ok, "Parent should have access via inheritance")
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "Success_RemoveInheritance",
+			name:     "Success_RemoveInheritance",
+			category: "positive",
 			run: func(t *testing.T) {
 				resp := client.DELETE("/api/v1/permissions/inheritance", map[string]any{
 					"child_role":  "ParentRole",
@@ -410,25 +414,29 @@ func TestPermissionE2E_Security_PostRoleDeletion_PermissionsRevoked(t *testing.T
 	require.NoError(t, err)
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "PoliciesRemovedAfterRoleDeletion",
+			name:     "PoliciesRemovedAfterRoleDeletion",
+			category: "positive",
 			run: func(t *testing.T) {
 				policies, _ := server.Enforcer.GetFilteredPolicy(0, "EphemeralRole")
 				assert.Empty(t, policies, "All Casbin policies for deleted role must be removed")
 			},
 		},
 		{
-			name: "RoleAssignmentRemovedAfterRoleDeletion",
+			name:     "RoleAssignmentRemovedAfterRoleDeletion",
+			category: "positive",
 			run: func(t *testing.T) {
 				rolesAfter, _ := server.Enforcer.GetRolesForUser(targetUser.ID, "global")
 				assert.NotContains(t, rolesAfter, "EphemeralRole", "User's role assignment must be removed after role deletion")
 			},
 		},
 		{
-			name: "AccessRevokedAfterRoleDeletion",
+			name:     "AccessRevokedAfterRoleDeletion",
+			category: "positive",
 			run: func(t *testing.T) {
 				_ = targetToken
 				hasAccess, _ := server.Enforcer.Enforce(targetUser.ID, "global", "/api/v1/secret", "GET")
@@ -491,11 +499,13 @@ func TestPermissionE2E_AccessRightAssignment(t *testing.T) {
 	roleName := "TestRole"
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "GetRoleAccessRights_Unassigned",
+			name:     "GetRoleAccessRights_Unassigned",
+			category: "positive",
 			run: func(t *testing.T) {
 				resp := client.GET("/api/v1/permissions/roles/"+roleName+"/access-rights", setup.WithAuth(adminToken))
 				require.Equal(t, 200, resp.StatusCode)
@@ -518,7 +528,8 @@ func TestPermissionE2E_AccessRightAssignment(t *testing.T) {
 			},
 		},
 		{
-			name: "AssignAccessRight",
+			name:     "AssignAccessRight",
+			category: "positive",
 			run: func(t *testing.T) {
 				payload := map[string]any{
 					"role":            roleName,
@@ -534,7 +545,8 @@ func TestPermissionE2E_AccessRightAssignment(t *testing.T) {
 			},
 		},
 		{
-			name: "GetRoleAccessRights_Assigned",
+			name:     "GetRoleAccessRights_Assigned",
+			category: "positive",
 			run: func(t *testing.T) {
 				resp := client.GET("/api/v1/permissions/roles/"+roleName+"/access-rights", setup.WithAuth(adminToken))
 				require.Equal(t, 200, resp.StatusCode)
@@ -553,7 +565,8 @@ func TestPermissionE2E_AccessRightAssignment(t *testing.T) {
 			},
 		},
 		{
-			name: "RevokeAccessRight",
+			name:     "RevokeAccessRight",
+			category: "positive",
 			run: func(t *testing.T) {
 				payload := map[string]any{
 					"role":            roleName,

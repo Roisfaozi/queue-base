@@ -50,11 +50,13 @@ func TestAccessE2E_AccessRightsCRUD(t *testing.T) {
 	var createdID string
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T, server *setup.TestServer, adminToken string, createdID *string)
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer, adminToken string, createdID *string)
 	}{
 		{
-			name: "Success_CreateAccessRight",
+			name:     "Success_CreateAccessRight",
+			category: "positive",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string, createdID *string) {
 				resp := server.Client.POST("/api/v1/access-rights", map[string]any{
 					"name":        "manage_reports",
@@ -75,7 +77,8 @@ func TestAccessE2E_AccessRightsCRUD(t *testing.T) {
 			},
 		},
 		{
-			name: "Success_GetAllAccessRights",
+			name:     "Success_GetAllAccessRights",
+			category: "positive",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string, createdID *string) {
 				resp := server.Client.GET("/api/v1/access-rights", setup.WithAuth(adminToken))
 				assert.Equal(t, 200, resp.StatusCode)
@@ -94,7 +97,8 @@ func TestAccessE2E_AccessRightsCRUD(t *testing.T) {
 			},
 		},
 		{
-			name: "Success_DeleteAccessRight",
+			name:     "Success_DeleteAccessRight",
+			category: "positive",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string, createdID *string) {
 				// We need a createdID, let's create one first
 				respCreate := server.Client.POST("/api/v1/access-rights", map[string]any{
@@ -112,7 +116,8 @@ func TestAccessE2E_AccessRightsCRUD(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_DeleteNonExistent",
+			name:     "Negative_DeleteNonExistent",
+			category: "negative",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string, createdID *string) {
 				resp := server.Client.DELETE("/api/v1/access-rights/nonexistent-id", setup.WithAuth(adminToken))
 				assert.Equal(t, 404, resp.StatusCode)
@@ -129,11 +134,13 @@ func TestAccessE2E_AccessRightsCRUD(t *testing.T) {
 
 func TestAccessE2E_EndpointsCRUD(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, server *setup.TestServer, adminToken string)
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer, adminToken string)
 	}{
 		{
-			name: "Success_CreateEndpoint",
+			name:     "Success_CreateEndpoint",
+			category: "positive",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string) {
 				resp := server.Client.POST("/api/v1/endpoints", map[string]any{
 					"path":   "/api/v1/reports",
@@ -158,7 +165,8 @@ func TestAccessE2E_EndpointsCRUD(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_DeleteNonExistent",
+			name:     "Negative_DeleteNonExistent",
+			category: "negative",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string) {
 				resp := server.Client.DELETE("/api/v1/endpoints/nonexistent-id", setup.WithAuth(adminToken))
 				assert.Equal(t, 200, resp.StatusCode)
@@ -178,11 +186,13 @@ func TestAccessE2E_EndpointsCRUD(t *testing.T) {
 
 func TestAccessE2E_LinkEndpointToAccessRight(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, server *setup.TestServer, adminToken string)
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer, adminToken string)
 	}{
 		{
-			name: "Success_LinkEndpointToAccessRight",
+			name:     "Success_LinkEndpointToAccessRight",
+			category: "positive",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string) {
 				arResp := server.Client.POST("/api/v1/access-rights", map[string]any{
 					"name": "link_test_access",
@@ -215,7 +225,8 @@ func TestAccessE2E_LinkEndpointToAccessRight(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_InvalidIDs",
+			name:     "Negative_InvalidIDs",
+			category: "negative",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string) {
 				resp := server.Client.POST("/api/v1/access-rights/link", map[string]any{
 					"access_right_id": "",
@@ -238,11 +249,13 @@ func TestAccessE2E_LinkEndpointToAccessRight(t *testing.T) {
 
 func TestAccessE2E_DynamicSearch(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, server *setup.TestServer, adminToken string)
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer, adminToken string)
 	}{
 		{
-			name: "Success_SearchAccessRights",
+			name:     "Success_SearchAccessRights",
+			category: "positive",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string) {
 				server.Client.POST("/api/v1/access-rights", map[string]any{"name": "searchable_access_alpha"}, setup.WithAuth(adminToken))
 				server.Client.POST("/api/v1/access-rights", map[string]any{"name": "searchable_access_beta"}, setup.WithAuth(adminToken))
@@ -254,7 +267,8 @@ func TestAccessE2E_DynamicSearch(t *testing.T) {
 			},
 		},
 		{
-			name: "Success_SearchEndpoints",
+			name:     "Success_SearchEndpoints",
+			category: "positive",
 			run: func(t *testing.T, server *setup.TestServer, adminToken string) {
 				server.Client.POST("/api/v1/endpoints", map[string]any{"path": "/api/v1/searchable1", "method": "GET"}, setup.WithAuth(adminToken))
 				server.Client.POST("/api/v1/endpoints", map[string]any{"path": "/api/v1/searchable2", "method": "POST"}, setup.WithAuth(adminToken))

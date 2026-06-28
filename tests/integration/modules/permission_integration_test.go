@@ -25,11 +25,13 @@ func setupPermissionIntegration(env *setup.TestEnvironment) usecase.IPermissionU
 
 func TestPermissionIntegration_AssignRoleToUser(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				user := setup.CreateTestUser(t, env.DB, "testuser_perm", "test@perm.com", "Password123!")
 				roleName := "admin"
@@ -44,7 +46,8 @@ func TestPermissionIntegration_AssignRoleToUser(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_AssignRoleToNonExistentUser",
+			name:     "Negative_AssignRoleToNonExistentUser",
+			category: "negative",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				setup.CreateTestRole(t, env.DB, "valid_role")
 
@@ -67,11 +70,13 @@ func TestPermissionIntegration_AssignRoleToUser(t *testing.T) {
 
 func TestPermissionIntegration_GrantPermissionToRole(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				roleName := "editor"
 				setup.CreateTestRole(t, env.DB, roleName)
@@ -85,7 +90,8 @@ func TestPermissionIntegration_GrantPermissionToRole(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_GrantNonExistentRole",
+			name:     "Negative_GrantNonExistentRole",
+			category: "negative",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				err := permUC.GrantPermissionToRole(context.Background(), "non_existent_role", "/any", "GET", "global")
 				assert.Error(t, err)
@@ -106,11 +112,13 @@ func TestPermissionIntegration_GrantPermissionToRole(t *testing.T) {
 
 func TestPermissionIntegration_RolePermissionMutation(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
 	}{
 		{
-			name: "RevokePermission",
+			name:     "RevokePermission",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				roleName := "viewer"
 				setup.CreateTestRole(t, env.DB, roleName)
@@ -126,7 +134,8 @@ func TestPermissionIntegration_RolePermissionMutation(t *testing.T) {
 			},
 		},
 		{
-			name: "UpdatePermission",
+			name:     "UpdatePermission",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				roleName := "manager"
 				setup.CreateTestRole(t, env.DB, roleName)
@@ -146,7 +155,8 @@ func TestPermissionIntegration_RolePermissionMutation(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_RevokeNonExistentPermission",
+			name:     "Negative_RevokeNonExistentPermission",
+			category: "negative",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				roleName := "valid_role"
 				setup.CreateTestRole(t, env.DB, roleName)
@@ -156,7 +166,8 @@ func TestPermissionIntegration_RolePermissionMutation(t *testing.T) {
 			},
 		},
 		{
-			name: "FullLifecycle",
+			name:     "FullLifecycle",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				roleName := "lifecycle_role"
 				setup.CreateTestRole(t, env.DB, roleName)
@@ -192,18 +203,21 @@ func TestPermissionIntegration_RolePermissionMutation(t *testing.T) {
 
 func TestPermissionIntegration_QueryPermissions(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase)
 	}{
 		{
-			name: "GetAllPermissions",
+			name:     "GetAllPermissions",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				_, err := permUC.GetAllPermissions(context.Background())
 				assert.NoError(t, err)
 			},
 		},
 		{
-			name: "GetPermissionsForRole",
+			name:     "GetPermissionsForRole",
+			category: "positive",
 			run: func(t *testing.T, env *setup.TestEnvironment, permUC usecase.IPermissionUseCase) {
 				roleName := "role_for_list"
 				setup.CreateTestRole(t, env.DB, roleName)

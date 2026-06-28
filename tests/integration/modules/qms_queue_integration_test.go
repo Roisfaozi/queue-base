@@ -68,7 +68,7 @@ func setupQMSIntegration(t *testing.T) *qmsDeps {
 
 func TestQMSQueueIntegration(t *testing.T) {
 	deps := setupQMSIntegration(t)
-	
+
 	ctx := database.SetOrganizationContext(context.Background(), deps.tenantID)
 	ctx = database.SetBranchContext(ctx, deps.branchID)
 
@@ -87,7 +87,7 @@ func TestQMSQueueIntegration(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, queueRes)
 				assert.Equal(t, queueEntity.QueueStatusWaiting, queueRes.Status)
-				
+
 				// Forward
 				forwarded, err := deps.queueMod.QueueUseCase.ForwardQueue(ctx, queueRes.ID, &queueModel.ForwardQueueRequest{DestinationServiceID: deps.pharmacyServiceID, DestinationCounterID: deps.counterID})
 				require.NoError(t, err)

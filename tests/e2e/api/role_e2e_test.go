@@ -52,11 +52,13 @@ func TestRoleE2E_CreateRole(t *testing.T) {
 	adminToken := createRoleAdminAndLogin(t, server)
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "Success_CreateRole",
+			name:     "Success_CreateRole",
+			category: "positive",
 			run: func(t *testing.T) {
 				roleName := "TestRole_" + uuid.New().String()[:8]
 				resp := server.Client.POST("/api/v1/roles", map[string]any{
@@ -77,7 +79,8 @@ func TestRoleE2E_CreateRole(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_DuplicateRoleName",
+			name:     "Negative_DuplicateRoleName",
+			category: "negative",
 			run: func(t *testing.T) {
 				roleName := "DuplicateRole"
 				server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: roleName})
@@ -87,7 +90,8 @@ func TestRoleE2E_CreateRole(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_EmptyName",
+			name:     "Negative_EmptyName",
+			category: "negative",
 			run: func(t *testing.T) {
 				resp := server.Client.POST("/api/v1/roles", map[string]any{"name": ""}, setup.WithAuth(adminToken))
 				assert.Equal(t, 422, resp.StatusCode)
@@ -107,11 +111,13 @@ func TestRoleE2E_DeleteRole(t *testing.T) {
 	adminToken := createRoleAdminAndLogin(t, server)
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "Success_DeleteRole",
+			name:     "Success_DeleteRole",
+			category: "positive",
 			run: func(t *testing.T) {
 				roleToDelete := &roleEntity.Role{ID: uuid.New().String(), Name: "RoleToDelete"}
 				server.DB.Create(roleToDelete)
@@ -121,7 +127,8 @@ func TestRoleE2E_DeleteRole(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_DeleteNonExistent",
+			name:     "Negative_DeleteNonExistent",
+			category: "negative",
 			run: func(t *testing.T) {
 				resp := server.Client.DELETE("/api/v1/roles/nonexistent-role-id", setup.WithAuth(adminToken))
 				assert.Equal(t, 404, resp.StatusCode)
@@ -144,11 +151,13 @@ func TestRoleE2E_GetAllRoles(t *testing.T) {
 	server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: "Role_List_2"})
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "Success_GetAllRoles",
+			name:     "Success_GetAllRoles",
+			category: "positive",
 			run: func(t *testing.T) {
 				resp := server.Client.GET("/api/v1/roles", setup.WithAuth(adminToken))
 				assert.Equal(t, 200, resp.StatusCode)
@@ -180,11 +189,13 @@ func TestRoleE2E_UpdateRole(t *testing.T) {
 	server.DB.Create(roleToUpdate)
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "Success_UpdateRole",
+			name:     "Success_UpdateRole",
+			category: "positive",
 			run: func(t *testing.T) {
 				resp := server.Client.PUT("/api/v1/roles/"+roleToUpdate.ID, map[string]any{"description": "Updated Description"}, setup.WithAuth(adminToken))
 				assert.Equal(t, 200, resp.StatusCode)
@@ -202,7 +213,8 @@ func TestRoleE2E_UpdateRole(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_UpdateNonExistent",
+			name:     "Negative_UpdateNonExistent",
+			category: "negative",
 			run: func(t *testing.T) {
 				resp := server.Client.PUT("/api/v1/roles/nonexistent-role-id", map[string]any{"description": "Updated Description"}, setup.WithAuth(adminToken))
 				assert.Equal(t, 404, resp.StatusCode)
@@ -226,11 +238,13 @@ func TestRoleE2E_DynamicSearch(t *testing.T) {
 	server.DB.Create(&roleEntity.Role{ID: uuid.New().String(), Name: "OtherRole"})
 
 	tests := []struct {
-		name string
-		run  func(t *testing.T)
+		name     string
+		category string
+		run      func(t *testing.T)
 	}{
 		{
-			name: "Success_SearchByName",
+			name:     "Success_SearchByName",
+			category: "positive",
 			run: func(t *testing.T) {
 				resp := server.Client.POST("/api/v1/roles/search", map[string]any{
 					"filter": map[string]any{

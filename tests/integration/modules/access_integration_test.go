@@ -122,11 +122,13 @@ func TestAccessIntegration_DeleteAccessRight(t *testing.T) {
 
 func TestAccessIntegration_EndpointLinkFlow(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, uc usecase.IAccessUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, uc usecase.IAccessUseCase)
 	}{
 		{
-			name: "CreateEndpoint_LinkToAccessRight",
+			name:     "CreateEndpoint_LinkToAccessRight",
+			category: "positive",
 			run: func(t *testing.T, uc usecase.IAccessUseCase) {
 				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Roles", Description: "d"})
 				require.NoError(t, err)
@@ -155,7 +157,8 @@ func TestAccessIntegration_EndpointLinkFlow(t *testing.T) {
 			},
 		},
 		{
-			name: "LinkEndpoint_Negative_DuplicateLink",
+			name:     "LinkEndpoint_Negative_DuplicateLink",
+			category: "negative",
 			run: func(t *testing.T, uc usecase.IAccessUseCase) {
 				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "DupLink", Description: "d"})
 				require.NoError(t, err)
@@ -171,7 +174,8 @@ func TestAccessIntegration_EndpointLinkFlow(t *testing.T) {
 			},
 		},
 		{
-			name: "UnlinkEndpointFromAccessRight_Success",
+			name:     "UnlinkEndpointFromAccessRight_Success",
+			category: "positive",
 			run: func(t *testing.T, uc usecase.IAccessUseCase) {
 				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Unlink", Description: "d"})
 				require.NoError(t, err)
@@ -203,7 +207,8 @@ func TestAccessIntegration_EndpointLinkFlow(t *testing.T) {
 			},
 		},
 		{
-			name: "UnlinkEndpointFromAccessRight_Negative_NonExistent",
+			name:     "UnlinkEndpointFromAccessRight_Negative_NonExistent",
+			category: "negative",
 			run: func(t *testing.T, uc usecase.IAccessUseCase) {
 				err := uc.UnlinkEndpointFromAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: "non-existent", EndpointID: "non-existent"})
 				require.NoError(t, err)
