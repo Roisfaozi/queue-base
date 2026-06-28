@@ -659,8 +659,10 @@ func TestTokenRepository(t *testing.T) {
 				{
 					name:     "Negative_Error",
 					category: "negative",
-					setup:    func(mock redismock.ClientMock) { mock.ExpectSet(lockedKey, "locked", duration).SetErr(errors.New("err")) },
-					wantErr:  true,
+					setup: func(mock redismock.ClientMock) {
+						mock.ExpectSet(lockedKey, "locked", duration).SetErr(errors.New("err"))
+					},
+					wantErr: true,
 				},
 			}
 			for _, tt := range tests {

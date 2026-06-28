@@ -686,6 +686,287 @@ func TestAccessRightsFlowE2E(t *testing.T) {
 	}
 }
 
+func TestPermissionE2E_EndpointRegistrationToRoleAccess_Monolith(t *testing.T) {
+	server := setup.SetupTestServer(t)
+	defer server.Cleanup()
+	client := server.Client
+	type flowState struct {
+		adminToken          string
+		nonAdminToken       string
+		endpointPath        string
+		accessRightID       string
+		roleName            string
+		roleID              string
+		userID              string
+		nonAdminID          string
+		foreignUserID       string
+		userHasRoleAccess   bool
+		roleHasDirectAccess bool
+	}
+
+	f := fixtures.NewUserFactory(server.DB)
+	hash, _ := bcrypt.GenerateFromPassword([]byte("EndpointFlow123!"), bcrypt.DefaultCost)
+
+	admin := f.Create(func(u *userEntity.User) {
+		u.Username = "endpoint_flow_admin"
+		u.Password = string(hash)
+	})
+	nonAdmin := f.Create(func(u *userEntity.User) {
+		u.Username = "endpoint_flow_non_admin"
+		u.Password = string(hash)
+	})
+	_, err := server.Enforcer.AddGroupingPolicy(admin.ID, "role:superadmin", "global")
+	require.NoError(t, err)
+	_, err = server.Enforcer.AddPolicy("role:superadmin", "global", "*", "*")
+	require.NoError(t, err)
+	err = server.Enforcer.SavePolicy()
+	require.NoError(t, err)
+
+	loginResp := client.POST("/api/v1/auth/login", map[string]any{
+		"username": admin.Username,
+		"password": "EndpointFlow123!",
+	})
+	require.Equal(t, 200, loginResp.StatusCode)
+	var loginData struct {
+		Data struct {
+			AccessToken string `json:"access_token"`
+		} `json:"data"`
+	}
+	require.NoError(t, loginResp.JSON(&loginData))
+	adminToken := loginData.Data.AccessToken
+
+	nonAdminLoginResp := client.POST("/api/v1/auth/login", map[string]any{
+		"username": nonAdmin.Username,
+		"password": "EndpointFlow123!",
+	})
+	require.Equal(t, 200, nonAdminLoginResp.StatusCode)
+	var nonAdminLoginData struct {
+		Data struct {
+			AccessToken string `json:"access_token"`
+		} `json:"data"`
+	}
+	require.NoError(t, nonAdminLoginResp.JSON(&nonAdminLoginData))
+	nonAdminToken := nonAdminLoginData.Data.AccessToken
+	state := &flowState{adminToken: adminToken, nonAdminToken: nonAdminToken, nonAdminID: nonAdmin.ID}
+
+	endpointPath := "/api/v1/monolith-endpoint-" + uuid.New().String()[:8]
+	accessRightName := "MonolithAccess_" + uuid.New().String()[:8]
+	roleName := "MonolithRole_" + uuid.New().String()[:8]
+	foreignUser := f.Create(func(u *userEntity.User) {
+		u.Username = "endpoint_flow_foreign_user"
+		u.Password = string(hash)
+	})
+	state.endpointPath = endpointPath
+	state.roleName = roleName
+	state.foreignUserID = foreignUser.ID
+
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, state *flowState)
+	}{
+		{
+			name:     "NonAdminCannotRegisterEndpoint",
+			category: "security",
+			run: func(t *testing.T, state *flowState) {
+				resp := client.POST("/api/v1/endpoints", map[string]any{
+					"path":   "/api/v1/non-admin-blocked-" + uuid.New().String()[:8],
+					"method": "GET",
+				}, setup.WithAuth(state.nonAdminToken))
+				assert.Equal(t, 403, resp.StatusCode)
+			},
+		},
+	}
+
+	createAccessRightResp := client.POST("/api/v1/access-rights", map[string]any{
+		"name":        accessRightName,
+		"description": "Monolith endpoint flow",
+	}, setup.WithAuth(adminToken))
+	require.Equal(t, 201, createAccessRightResp.StatusCode)
+	var accessRightData struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	require.NoError(t, createAccessRightResp.JSON(&accessRightData))
+	state.accessRightID = accessRightData.Data.ID
+
+	createEndpointResp := client.POST("/api/v1/endpoints", map[string]any{
+		"path":   endpointPath,
+		"method": "GET",
+	}, setup.WithAuth(adminToken))
+	require.Equal(t, 201, createEndpointResp.StatusCode)
+	var endpointData struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	require.NoError(t, createEndpointResp.JSON(&endpointData))
+	state.roleID = uuid.New().String()
+	tests = append(tests, struct {
+		name     string
+		category string
+		run      func(t *testing.T, state *flowState)
+	}{
+		name:     "InvalidLinkPayloadRejected",
+		category: "negative",
+		run: func(t *testing.T, state *flowState) {
+			resp := client.POST("/api/v1/access-rights/link", map[string]any{
+				"access_right_id": "",
+				"endpoint_id":     "",
+			}, setup.WithAuth(state.adminToken))
+			assert.Equal(t, 422, resp.StatusCode)
+		},
+	})
+
+	linkResp := client.POST("/api/v1/access-rights/link", map[string]any{
+		"access_right_id": accessRightData.Data.ID,
+		"endpoint_id":     endpointData.Data.ID,
+	}, setup.WithAuth(adminToken))
+	require.Equal(t, 200, linkResp.StatusCode)
+
+	require.NoError(t, server.DB.Create(&roleEntity.Role{ID: state.roleID, Name: roleName}).Error)
+
+	roleAccessBeforeResp := client.GET("/api/v1/permissions/roles/"+roleName+"/access-rights", setup.WithAuth(adminToken))
+	require.Equal(t, 200, roleAccessBeforeResp.StatusCode)
+	var roleAccessBefore struct {
+		Data []model.RoleAccessRightStatus `json:"data"`
+	}
+	require.NoError(t, roleAccessBeforeResp.JSON(&roleAccessBefore))
+	foundUnassigned := false
+	for _, status := range roleAccessBefore.Data {
+		if status.ID == accessRightData.Data.ID {
+			foundUnassigned = true
+			assert.False(t, status.Assigned)
+		}
+	}
+	tests = append(tests,
+		struct {
+			name     string
+			category string
+			run      func(t *testing.T, state *flowState)
+		}{
+			name:     "RoleAccessRightInitiallyUnassigned",
+			category: "edge",
+			run: func(t *testing.T, state *flowState) {
+				assert.True(t, foundUnassigned)
+			},
+		},
+		struct {
+			name     string
+			category string
+			run      func(t *testing.T, state *flowState)
+		}{
+			name:     "UserWithoutRoleCannotAccessRegisteredEndpoint",
+			category: "security",
+			run: func(t *testing.T, state *flowState) {
+				hasAccess, err := server.Enforcer.Enforce(state.nonAdminID, "global", state.endpointPath, "GET")
+				require.NoError(t, err)
+				assert.False(t, hasAccess)
+			},
+		},
+	)
+
+	assignAccessRightResp := client.POST("/api/v1/permissions/assign-access-right", map[string]any{
+		"role":            roleName,
+		"access_right_id": accessRightData.Data.ID,
+	}, setup.WithAuth(adminToken))
+	require.Equal(t, 200, assignAccessRightResp.StatusCode)
+	state.roleHasDirectAccess, err = server.Enforcer.Enforce(roleName, "global", endpointPath, "GET")
+	require.NoError(t, err)
+	tests = append(tests, struct {
+		name     string
+		category string
+		run      func(t *testing.T, state *flowState)
+	}{
+		name:     "RoleReceivesEndpointAccessAfterAssignment",
+		category: "positive",
+		run: func(t *testing.T, state *flowState) {
+			assert.True(t, state.roleHasDirectAccess)
+		},
+	})
+
+	user := f.Create(func(u *userEntity.User) {
+		u.Username = "endpoint_flow_user"
+		u.Password = string(hash)
+	})
+
+	assignRoleResp := client.POST("/api/v1/permissions/assign-role", map[string]any{
+		"user_id": user.ID,
+		"role":    roleName,
+	}, setup.WithAuth(adminToken))
+	require.Equal(t, 200, assignRoleResp.StatusCode)
+	state.userID = user.ID
+	state.userHasRoleAccess, err = server.Enforcer.Enforce(user.ID, "global", endpointPath, "GET")
+	require.NoError(t, err)
+	tests = append(tests,
+		struct {
+			name     string
+			category string
+			run      func(t *testing.T, state *flowState)
+		}{
+			name:     "AssignedUserReceivesEndpointAccess",
+			category: "positive",
+			run: func(t *testing.T, state *flowState) {
+				assert.True(t, state.userHasRoleAccess)
+			},
+		},
+		struct {
+			name     string
+			category string
+			run      func(t *testing.T, state *flowState)
+		}{
+			name:     "UnassignedOtherUserDoesNotInheritAccess",
+			category: "vulnerability",
+			run: func(t *testing.T, state *flowState) {
+				hasAccess, err := server.Enforcer.Enforce(state.foreignUserID, "global", state.endpointPath, "GET")
+				require.NoError(t, err)
+				assert.False(t, hasAccess)
+			},
+		},
+	)
+
+	revokeAccessRightResp := client.DELETE("/api/v1/permissions/revoke-access-right", map[string]any{
+		"role":            roleName,
+		"access_right_id": accessRightData.Data.ID,
+	}, setup.WithAuth(adminToken))
+	require.Equal(t, 200, revokeAccessRightResp.StatusCode)
+	tests = append(tests,
+		struct {
+			name     string
+			category string
+			run      func(t *testing.T, state *flowState)
+		}{
+			name:     "RevokeRemovesRoleAccess",
+			category: "edge",
+			run: func(t *testing.T, state *flowState) {
+				roleHasAccessAfterRevoke, err := server.Enforcer.Enforce(state.roleName, "global", state.endpointPath, "GET")
+				require.NoError(t, err)
+				assert.False(t, roleHasAccessAfterRevoke)
+			},
+		},
+		struct {
+			name     string
+			category string
+			run      func(t *testing.T, state *flowState)
+		}{
+			name:     "RevokeRemovesUserAccessImmediately",
+			category: "vulnerability",
+			run: func(t *testing.T, state *flowState) {
+				userHasAccessAfterRevoke, err := server.Enforcer.Enforce(state.userID, "global", state.endpointPath, "GET")
+				require.NoError(t, err)
+				assert.False(t, userHasAccessAfterRevoke)
+			},
+		},
+	)
+
+	for _, tt := range tests {
+		t.Run(tt.category+"_"+tt.name, func(t *testing.T) {
+			tt.run(t, state)
+		})
+	}
+}
+
 func TestSecurityE2E_DynamicRBAC(t *testing.T) {
 	server := setup.SetupTestServer(t)
 	defer server.Cleanup()

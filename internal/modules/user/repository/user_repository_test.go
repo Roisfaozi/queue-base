@@ -303,7 +303,9 @@ func TestUserRepository(t *testing.T) {
 			{
 				name:     "Positive_Success",
 				category: "positive",
-				setup:    func(db *gorm.DB) { db.Create(&entity.User{ID: "1", Status: entity.UserStatusActive, Username: "u1", Email: "e1@a.com"}) },
+				setup: func(db *gorm.DB) {
+					db.Create(&entity.User{ID: "1", Status: entity.UserStatusActive, Username: "u1", Email: "e1@a.com"})
+				},
 			},
 			{
 				name:     "Negative_DBError",
