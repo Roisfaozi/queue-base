@@ -22,85 +22,204 @@ func setupAccessIntegration(env *setup.TestEnvironment) usecase.IAccessUseCase {
 	return usecase.NewAccessUseCase(repo, env.Logger)
 }
 
-func TestAccessIntegration_CreateAccessRight_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	req := model.CreateAccessRightRequest{
-		Name:        "User Management",
-		Description: "Manage users",
-	}
-
-	ar, err := uc.CreateAccessRight(context.Background(), req)
-
-	require.NoError(t, err)
-	assert.NotEmpty(t, ar.ID)
-	assert.Equal(t, req.Name, ar.Name)
-}
-
-func TestAccessIntegration_CreateAccessRight_Fail_Duplicate(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	req := model.CreateAccessRightRequest{Name: "Dup", Description: "d"}
-	_, err := uc.CreateAccessRight(context.Background(), req)
-	require.NoError(t, err)
-
-	_, err = uc.CreateAccessRight(context.Background(), req)
-	assert.Error(t, err)
-}
-
-func TestAccessIntegration_DeleteAccessRight_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Del", Description: "d"})
-	require.NoError(t, err)
-
-	err = uc.DeleteAccessRight(context.Background(), ar.ID)
-	assert.NoError(t, err)
-}
-
-func TestAccessIntegration_DeleteAccessRight_Fail_NotFound(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-	err := uc.DeleteAccessRight(context.Background(), "ghost-id")
-	assert.Error(t, err)
-}
-
-func TestAccessIntegration_CreateEndpoint_LinkToAccessRight(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	ar, _ := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Roles", Description: "d"})
-	ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/api/v1/roles", Method: "GET"})
-	require.NoError(t, err)
-
-	err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
-	require.NoError(t, err)
-
-	list, _ := uc.GetAllAccessRights(context.Background())
-	foundLinked := false
-	for _, item := range list.Data {
-		if item.ID == ar.ID {
-			for _, e := range item.Endpoints {
-				if e.ID == ep.ID {
-					foundLinked = true
+func TestAccessIntegration_CreateAccessRight(t *testing.T) {
+	tests := []struct {
+		name       string
+		req        model.CreateAccessRightRequest
+		prepare    func(t *testing.T, uc usecase.IAccessUseCase, req model.CreateAccessRightRequest)
+		assertions func(t *testing.T, ar *model.AccessRightResponse, err error, req model.CreateAccessRightRequest)
+	}{
+		{
+			name: "Success",
+			req: model.CreateAccessRightRequest{
+				Name:        "User Management",
+				Description: "Manage users",
+			},
+			assertions: func(t *testing.T, ar *model.AccessRightResponse, err error, req model.CreateAccessRightRequest) {
+				require.NoError(t, err)
+				assert.NotEmpty(t, ar.ID)
+				assert.Equal(t, req.Name, ar.Name)
+			},
+		},
+		{
+			name: "Fail_Duplicate",
+			req:  model.CreateAccessRightRequest{Name: "Dup", Description: "d"},
+			prepare: func(t *testing.T, uc usecase.IAccessUseCase, req model.CreateAccessRightRequest) {
+				_, err := uc.CreateAccessRight(context.Background(), req)
+				require.NoError(t, err)
+			},
+			assertions: func(t *testing.T, _ *model.AccessRightResponse, err error, _ model.CreateAccessRightRequest) {
+				assert.Error(t, err)
+			},
+		},
+		{
+			name: "Security_SQLInjectionPrevention",
+			req:  model.CreateAccessRightRequest{Name: "name' OR '1'='1"},
+			assertions: func(t *testing.T, ar *model.AccessRightResponse, err error, req model.CreateAccessRightRequest) {
+				if err == nil {
+					assert.Equal(t, pkg.SanitizeString(req.Name), ar.Name)
 				}
-			}
-		}
+			},
+		},
 	}
-	assert.True(t, foundLinked)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			uc := setupAccessIntegration(env)
+			if tt.prepare != nil {
+				tt.prepare(t, uc, tt.req)
+			}
+
+			ar, err := uc.CreateAccessRight(context.Background(), tt.req)
+			tt.assertions(t, ar, err, tt.req)
+		})
+	}
+}
+
+func TestAccessIntegration_DeleteAccessRight(t *testing.T) {
+	tests := []struct {
+		name       string
+		prepare    func(t *testing.T, uc usecase.IAccessUseCase) string
+		assertions func(t *testing.T, err error)
+	}{
+		{
+			name: "Success",
+			prepare: func(t *testing.T, uc usecase.IAccessUseCase) string {
+				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Del", Description: "d"})
+				require.NoError(t, err)
+				return ar.ID
+			},
+			assertions: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name: "Fail_NotFound",
+			prepare: func(t *testing.T, uc usecase.IAccessUseCase) string {
+				return "ghost-id"
+			},
+			assertions: func(t *testing.T, err error) {
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			uc := setupAccessIntegration(env)
+			id := tt.prepare(t, uc)
+			err := uc.DeleteAccessRight(context.Background(), id)
+			tt.assertions(t, err)
+		})
+	}
+}
+
+func TestAccessIntegration_EndpointLinkFlow(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, uc usecase.IAccessUseCase)
+	}{
+		{
+			name: "CreateEndpoint_LinkToAccessRight",
+			run: func(t *testing.T, uc usecase.IAccessUseCase) {
+				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Roles", Description: "d"})
+				require.NoError(t, err)
+
+				ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/api/v1/roles", Method: "GET"})
+				require.NoError(t, err)
+
+				err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
+				require.NoError(t, err)
+
+				list, err := uc.GetAllAccessRights(context.Background())
+				require.NoError(t, err)
+
+				foundLinked := false
+				for _, item := range list.Data {
+					if item.ID != ar.ID {
+						continue
+					}
+					for _, endpoint := range item.Endpoints {
+						if endpoint.ID == ep.ID {
+							foundLinked = true
+						}
+					}
+				}
+				assert.True(t, foundLinked)
+			},
+		},
+		{
+			name: "LinkEndpoint_Negative_DuplicateLink",
+			run: func(t *testing.T, uc usecase.IAccessUseCase) {
+				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "DupLink", Description: "d"})
+				require.NoError(t, err)
+
+				ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/api/v1/duplink", Method: "GET"})
+				require.NoError(t, err)
+
+				err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
+				require.NoError(t, err)
+
+				err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
+				t.Logf("Duplicate link error (expected idempotent or conflict): %v", err)
+			},
+		},
+		{
+			name: "UnlinkEndpointFromAccessRight_Success",
+			run: func(t *testing.T, uc usecase.IAccessUseCase) {
+				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Unlink", Description: "d"})
+				require.NoError(t, err)
+
+				ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/api/v1/unlink", Method: "GET"})
+				require.NoError(t, err)
+
+				err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
+				require.NoError(t, err)
+
+				err = uc.UnlinkEndpointFromAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
+				require.NoError(t, err)
+
+				list, err := uc.GetAllAccessRights(context.Background())
+				require.NoError(t, err)
+
+				foundLinked := false
+				for _, item := range list.Data {
+					if item.ID != ar.ID {
+						continue
+					}
+					for _, endpoint := range item.Endpoints {
+						if endpoint.ID == ep.ID {
+							foundLinked = true
+						}
+					}
+				}
+				assert.False(t, foundLinked)
+			},
+		},
+		{
+			name: "UnlinkEndpointFromAccessRight_Negative_NonExistent",
+			run: func(t *testing.T, uc usecase.IAccessUseCase) {
+				err := uc.UnlinkEndpointFromAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: "non-existent", EndpointID: "non-existent"})
+				require.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			uc := setupAccessIntegration(env)
+			tt.run(t, uc)
+		})
+	}
 }
 
 func TestAccessIntegration_DeleteEndpoint_Success(t *testing.T) {
@@ -109,8 +228,10 @@ func TestAccessIntegration_DeleteEndpoint_Success(t *testing.T) {
 
 	uc := setupAccessIntegration(env)
 
-	ep, _ := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/temp", Method: "POST"})
-	err := uc.DeleteEndpoint(context.Background(), ep.ID)
+	ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/temp", Method: "POST"})
+	require.NoError(t, err)
+
+	err = uc.DeleteEndpoint(context.Background(), ep.ID)
 	assert.NoError(t, err)
 }
 
@@ -120,8 +241,10 @@ func TestAccessIntegration_DynamicSearch_AccessRights(t *testing.T) {
 
 	uc := setupAccessIntegration(env)
 
-	_, _ = uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "User Management"})
-	_, _ = uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Audit Logs"})
+	_, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "User Management"})
+	require.NoError(t, err)
+	_, err = uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Audit Logs"})
+	require.NoError(t, err)
 
 	filter := &querybuilder.DynamicFilter{
 		Filter: map[string]querybuilder.Filter{
@@ -132,81 +255,4 @@ func TestAccessIntegration_DynamicSearch_AccessRights(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, list.Data, 1)
 	assert.Equal(t, "User Management", list.Data[0].Name)
-}
-
-func TestAccessIntegration_Security_SQLInjectionPrevention(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	payload := "name' OR '1'='1"
-	ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: payload})
-	if err == nil {
-		assert.Equal(t, pkg.SanitizeString(payload), ar.Name)
-	}
-}
-
-func TestAccessIntegration_LinkEndpoint_Negative_DuplicateLink(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "DupLink", Description: "d"})
-	require.NoError(t, err)
-
-	ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/api/v1/duplink", Method: "GET"})
-	require.NoError(t, err)
-
-	err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
-	require.NoError(t, err)
-
-	err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
-	t.Logf("Duplicate link error (expected idempotent or conflict): %v", err)
-}
-
-func TestAccessIntegration_UnlinkEndpointFromAccessRight_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Unlink", Description: "d"})
-	require.NoError(t, err)
-	ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/api/v1/unlink", Method: "GET"})
-	require.NoError(t, err)
-
-	// Link first
-	err = uc.LinkEndpointToAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
-	require.NoError(t, err)
-
-	// Now unlink
-	err = uc.UnlinkEndpointFromAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: ar.ID, EndpointID: ep.ID})
-	require.NoError(t, err)
-
-	// Verify it is unlinked
-	list, err := uc.GetAllAccessRights(context.Background())
-	require.NoError(t, err)
-	foundLinked := false
-	for _, item := range list.Data {
-		if item.ID == ar.ID {
-			for _, e := range item.Endpoints {
-				if e.ID == ep.ID {
-					foundLinked = true
-				}
-			}
-		}
-	}
-	assert.False(t, foundLinked)
-}
-
-func TestAccessIntegration_UnlinkEndpointFromAccessRight_Negative_NonExistent(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	uc := setupAccessIntegration(env)
-
-	err := uc.UnlinkEndpointFromAccessRight(context.Background(), model.LinkEndpointRequest{AccessRightID: "non-existent", EndpointID: "non-existent"})
-	require.NoError(t, err) // GORM handles non-existent gracefully when unlinking
 }

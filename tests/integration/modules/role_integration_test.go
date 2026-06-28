@@ -29,252 +29,211 @@ func setupRoleIntegration(env *setup.TestEnvironment) usecase.RoleUseCase {
 	return usecase.NewRoleUseCase(env.Logger, tm, roleRepo, permUC)
 }
 
-func TestRoleIntegration_Create_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+func TestRoleIntegration_Create(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, roleUC usecase.RoleUseCase)
+	}{
+		{
+			name: "Success",
+			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
+				req := &model.CreateRoleRequest{
+					Name:        "Test Role",
+					Description: "Test role description",
+				}
 
-	roleUC := setupRoleIntegration(env)
+				result, err := roleUC.Create(context.Background(), req)
+				require.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.NotEmpty(t, result.ID)
+				assert.Equal(t, req.Name, result.Name)
+			},
+		},
+		{
+			name: "Negative_DuplicateName",
+			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
+				_, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: "Duplicate", Description: "First"})
+				require.NoError(t, err)
 
-	req := &model.CreateRoleRequest{
-		Name:        "Test Role",
-		Description: "Test role description",
-	}
-
-	result, err := roleUC.Create(context.Background(), req)
-
-	require.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.NotEmpty(t, result.ID)
-	assert.Equal(t, req.Name, result.Name)
-}
-
-func TestRoleIntegration_Delete_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	createReq := &model.CreateRoleRequest{
-		Name:        "Delete Role",
-		Description: "Role to be deleted",
-	}
-	created, err := roleUC.Create(context.Background(), createReq)
-	require.NoError(t, err)
-
-	err = roleUC.Delete(context.Background(), created.ID)
-	require.NoError(t, err)
-}
-
-func TestRoleIntegration_GetAll_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	roles := []model.CreateRoleRequest{
-		{Name: "Test Role 1", Description: "Description 1"},
-		{Name: "Test Role 2", Description: "Description 2"},
-	}
-
-	for _, req := range roles {
-		_, err := roleUC.Create(context.Background(), &req)
-		require.NoError(t, err)
-	}
-
-	result, err := roleUC.GetAll(context.Background())
-
-	require.NoError(t, err)
-	assert.GreaterOrEqual(t, len(result), 2)
-}
-
-func TestRoleIntegration_DynamicSearch_Success(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	roles := []model.CreateRoleRequest{
-		{Name: "Manager", Description: "Manager role"},
-		{Name: "Developer", Description: "Developer role"},
-		{Name: "Designer", Description: "Designer role"},
-	}
-
-	for _, req := range roles {
-		_, err := roleUC.Create(context.Background(), &req)
-		require.NoError(t, err)
-	}
-
-	filter := &querybuilder.DynamicFilter{
-		Filter: map[string]querybuilder.Filter{
-			"name": {Type: "contains", From: "Dev"},
+				_, err = roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: "Duplicate", Description: "Second"})
+				assert.Error(t, err)
+			},
+		},
+		{
+			name: "Negative_EmptyName",
+			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
+				result, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: "", Description: "Empty Name"})
+				if err == nil {
+					assert.NotEmpty(t, result.ID)
+				}
+			},
+		},
+		{
+			name: "Edge_Create_LongName",
+			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
+				_, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: strings.Repeat("a", 60), Description: "Long Name"})
+				assert.Error(t, err)
+			},
+		},
+		{
+			name: "Edge_MinimumNameLength",
+			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
+				result, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: "A", Description: "Single char role"})
+				require.NoError(t, err)
+				assert.NotEmpty(t, result.ID)
+			},
 		},
 	}
 
-	result, err := roleUC.GetAllRolesDynamic(context.Background(), filter)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
 
-	require.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "Developer", result[0].Name)
-}
-
-func TestRoleIntegration_Create_Negative_DuplicateName(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	req1 := &model.CreateRoleRequest{Name: "Duplicate", Description: "First"}
-	_, err := roleUC.Create(context.Background(), req1)
-	require.NoError(t, err)
-
-	req2 := &model.CreateRoleRequest{Name: "Duplicate", Description: "Second"}
-	_, err = roleUC.Create(context.Background(), req2)
-	assert.Error(t, err)
-}
-
-func TestRoleIntegration_Create_Negative_EmptyName(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	req := &model.CreateRoleRequest{Name: "", Description: "Empty Name"}
-	result, err := roleUC.Create(context.Background(), req)
-
-	_ = err
-	if err == nil {
-		assert.NotEmpty(t, result.ID)
-	}
-}
-
-func TestRoleIntegration_Delete_Negative_NonExistentRole(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	err := roleUC.Delete(context.Background(), "non-existent-id")
-	assert.Error(t, err)
-}
-
-func TestRoleIntegration_Edge_Create_LongName(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	longName := strings.Repeat("a", 60)
-	req := &model.CreateRoleRequest{Name: longName, Description: "Long Name"}
-
-	_, err := roleUC.Create(context.Background(), req)
-	assert.Error(t, err)
-}
-
-func TestRoleIntegration_Edge_SpecialCharactersInName(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	specialNames := []string{
-		"Admin@#$%", "Role-With-Dashes", "Role_With_Underscores", "Role.With.Dots", "Role (With Parentheses)",
-	}
-
-	for _, name := range specialNames {
-		t.Run("SpecialChar_"+name, func(t *testing.T) {
-			req := &model.CreateRoleRequest{Name: name, Description: "Special char role"}
-			result, err := roleUC.Create(context.Background(), req)
-			require.NoError(t, err)
-			assert.Equal(t, name, result.Name)
+			roleUC := setupRoleIntegration(env)
+			tt.run(t, roleUC)
 		})
 	}
 }
 
-func TestRoleIntegration_Edge_UnicodeInName(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+func TestRoleIntegration_Query(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, roleUC usecase.RoleUseCase)
+	}{
+		{
+			name: "GetAll_Success",
+			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
+				roles := []model.CreateRoleRequest{
+					{Name: "Test Role 1", Description: "Description 1"},
+					{Name: "Test Role 2", Description: "Description 2"},
+				}
 
-	roleUC := setupRoleIntegration(env)
+				for _, req := range roles {
+					request := req
+					_, err := roleUC.Create(context.Background(), &request)
+					require.NoError(t, err)
+				}
 
-	unicodeNames := []string{
-		"管理员", "Администратор", "مدير", "マネージャー",
+				result, err := roleUC.GetAll(context.Background())
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, len(result), 2)
+			},
+		},
+		{
+			name: "DynamicSearch_Success",
+			run: func(t *testing.T, roleUC usecase.RoleUseCase) {
+				roles := []model.CreateRoleRequest{
+					{Name: "Manager", Description: "Manager role"},
+					{Name: "Developer", Description: "Developer role"},
+					{Name: "Designer", Description: "Designer role"},
+				}
+
+				for _, req := range roles {
+					request := req
+					_, err := roleUC.Create(context.Background(), &request)
+					require.NoError(t, err)
+				}
+
+				filter := &querybuilder.DynamicFilter{
+					Filter: map[string]querybuilder.Filter{
+						"name": {Type: "contains", From: "Dev"},
+					},
+				}
+
+				result, err := roleUC.GetAllRolesDynamic(context.Background(), filter)
+				require.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Len(t, result, 1)
+				assert.Equal(t, "Developer", result[0].Name)
+			},
+		},
 	}
 
-	for _, name := range unicodeNames {
-		t.Run("Unicode_"+name, func(t *testing.T) {
-			req := &model.CreateRoleRequest{Name: name, Description: "Unicode role"}
-			result, err := roleUC.Create(context.Background(), req)
-			require.NoError(t, err)
-			assert.Equal(t, name, result.Name)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			roleUC := setupRoleIntegration(env)
+			tt.run(t, roleUC)
 		})
 	}
 }
 
-func TestRoleIntegration_Edge_MinimumNameLength(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+func TestRoleIntegration_Delete(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase)
+	}{
+		{
+			name: "Success",
+			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
+				created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
+					Name:        "Delete Role",
+					Description: "Role to be deleted",
+				})
+				require.NoError(t, err)
 
-	roleUC := setupRoleIntegration(env)
+				err = roleUC.Delete(context.Background(), created.ID)
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "Negative_NonExistentRole",
+			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
+				err := roleUC.Delete(context.Background(), "non-existent-id")
+				assert.Error(t, err)
+			},
+		},
+		{
+			name: "Security_Delete_SuperadminForbidden",
+			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
+				err := roleUC.Delete(context.Background(), "role:superadmin")
+				assert.Error(t, err)
+			},
+		},
+		{
+			name: "WithActiveUsers_DocumentsBehavior",
+			run: func(t *testing.T, env *setup.TestEnvironment, roleUC usecase.RoleUseCase) {
+				created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
+					Name:        "RoleWithUsers",
+					Description: "Has active assignments",
+				})
+				require.NoError(t, err)
 
-	req := &model.CreateRoleRequest{Name: "A", Description: "Single char role"}
-	result, err := roleUC.Create(context.Background(), req)
-	require.NoError(t, err)
-	assert.NotEmpty(t, result.ID)
-}
+				_, err = env.Enforcer.AddGroupingPolicy("user:fake-active-user", created.Name, "global")
+				require.NoError(t, err)
+				require.NoError(t, env.Enforcer.SavePolicy())
 
-func TestRoleIntegration_Security_SQLInjectionInName(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+				err = roleUC.Delete(context.Background(), created.ID)
+				require.NoError(t, err, "Role deletion should succeed even when users are assigned")
 
-	roleUC := setupRoleIntegration(env)
+				err = roleUC.Delete(context.Background(), created.ID)
+				assert.Error(t, err, "Role already deleted — second delete should return not-found")
 
-	sqlInjections := []string{
-		"Admin' OR '1'='1", "'; DROP TABLE roles--", "Admin'--", "1' UNION SELECT * FROM roles--",
+				rolesAfter, err := env.Enforcer.GetRolesForUser("user:fake-active-user", "global")
+				require.NoError(t, err)
+				roleStillInCasbin := false
+				for _, roleName := range rolesAfter {
+					if roleName == created.Name {
+						roleStillInCasbin = true
+					}
+				}
+				t.Logf("KNOWN GAP: Casbin grouping still contains deleted role '%s': %v — cleanup not cascaded by usecase.Delete", created.Name, roleStillInCasbin)
+			},
+		},
 	}
 
-	for _, injection := range sqlInjections {
-		t.Run("SQLInjection_"+injection, func(t *testing.T) {
-			req := &model.CreateRoleRequest{Name: injection, Description: "SQL injection attempt"}
-			_, err := roleUC.Create(context.Background(), req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
 
-			_ = err
+			roleUC := setupRoleIntegration(env)
+			tt.run(t, env, roleUC)
 		})
 	}
-}
-
-func TestRoleIntegration_Security_XSSInDescription(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	xssPayloads := []string{
-		"<script>alert('XSS')</script>",
-		"<img src=x onerror=alert('XSS')>",
-	}
-
-	for i, xss := range xssPayloads {
-		t.Run(fmt.Sprintf("XSS_%d", i), func(t *testing.T) {
-			req := &model.CreateRoleRequest{
-				Name:        fmt.Sprintf("XSSRole_%d", i),
-				Description: xss,
-			}
-			result, err := roleUC.Create(context.Background(), req)
-			require.NoError(t, err)
-			assert.NotEmpty(t, result.ID)
-		})
-	}
-}
-
-func TestRoleIntegration_Security_Delete_SuperadminForbidden(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	err := roleUC.Delete(context.Background(), "role:superadmin")
-	assert.Error(t, err)
 }
 
 func TestRoleIntegration_Update_Success(t *testing.T) {
@@ -283,51 +242,111 @@ func TestRoleIntegration_Update_Success(t *testing.T) {
 
 	roleUC := setupRoleIntegration(env)
 
-	createReq := &model.CreateRoleRequest{
+	created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
 		Name:        "Role To Update",
 		Description: "Original Description",
-	}
-	created, err := roleUC.Create(context.Background(), createReq)
+	})
 	require.NoError(t, err)
 
-	updateReq := &model.UpdateRoleRequest{
-		Description: "Updated Description",
-	}
-
-	updated, err := roleUC.Update(context.Background(), created.ID, updateReq)
-
+	updated, err := roleUC.Update(context.Background(), created.ID, &model.UpdateRoleRequest{Description: "Updated Description"})
 	require.NoError(t, err)
 	assert.Equal(t, created.ID, updated.ID)
 	assert.Equal(t, "Updated Description", updated.Description)
 }
 
-func TestRoleIntegration_Delete_WithActiveUsers_DocumentsBehavior(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-
-	roleUC := setupRoleIntegration(env)
-
-	created, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
-		Name:        "RoleWithUsers",
-		Description: "Has active assignments",
-	})
-	require.NoError(t, err)
-
-	_, err = env.Enforcer.AddGroupingPolicy("user:fake-active-user", created.Name, "global")
-	require.NoError(t, err)
-	env.Enforcer.SavePolicy()
-	err = roleUC.Delete(context.Background(), created.ID)
-	require.NoError(t, err, "Role deletion should succeed even when users are assigned")
-
-	err = roleUC.Delete(context.Background(), created.ID)
-	assert.Error(t, err, "Role already deleted — second delete should return not-found")
-
-	rolesAfter, _ := env.Enforcer.GetRolesForUser("user:fake-active-user", "global")
-	roleStillInCasbin := false
-	for _, r := range rolesAfter {
-		if r == created.Name {
-			roleStillInCasbin = true
-		}
+func TestRoleIntegration_Edge_SpecialCharactersInName(t *testing.T) {
+	tests := []struct {
+		name string
+		role string
+	}{
+		{name: "AdminSymbols", role: "Admin@#$%"},
+		{name: "Dashes", role: "Role-With-Dashes"},
+		{name: "Underscores", role: "Role_With_Underscores"},
+		{name: "Dots", role: "Role.With.Dots"},
+		{name: "Parentheses", role: "Role (With Parentheses)"},
 	}
-	t.Logf("KNOWN GAP: Casbin grouping still contains deleted role '%s': %v — cleanup not cascaded by usecase.Delete", created.Name, roleStillInCasbin)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			roleUC := setupRoleIntegration(env)
+			result, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: tt.role, Description: "Special char role"})
+			require.NoError(t, err)
+			assert.Equal(t, tt.role, result.Name)
+		})
+	}
+}
+
+func TestRoleIntegration_Edge_UnicodeInName(t *testing.T) {
+	tests := []struct {
+		name string
+		role string
+	}{
+		{name: "Chinese", role: "管理员"},
+		{name: "Cyrillic", role: "Администратор"},
+		{name: "Arabic", role: "مدير"},
+		{name: "Japanese", role: "マネージャー"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			roleUC := setupRoleIntegration(env)
+			result, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: tt.role, Description: "Unicode role"})
+			require.NoError(t, err)
+			assert.Equal(t, tt.role, result.Name)
+		})
+	}
+}
+
+func TestRoleIntegration_Security_SQLInjectionInName(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload string
+	}{
+		{name: "BooleanBypass", payload: "Admin' OR '1'='1"},
+		{name: "DropTable", payload: "'; DROP TABLE roles--"},
+		{name: "Comment", payload: "Admin'--"},
+		{name: "Union", payload: "1' UNION SELECT * FROM roles--"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			roleUC := setupRoleIntegration(env)
+			_, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{Name: tt.payload, Description: "SQL injection attempt"})
+			_ = err
+		})
+	}
+}
+
+func TestRoleIntegration_Security_XSSInDescription(t *testing.T) {
+	tests := []struct {
+		name        string
+		description string
+	}{
+		{name: "ScriptTag", description: "<script>alert('XSS')</script>"},
+		{name: "ImageOnError", description: "<img src=x onerror=alert('XSS')>"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setup.SetupIntegrationEnvironment(t)
+			defer env.Cleanup()
+
+			roleUC := setupRoleIntegration(env)
+			result, err := roleUC.Create(context.Background(), &model.CreateRoleRequest{
+				Name:        fmt.Sprintf("XSSRole_%s", tt.name),
+				Description: tt.description,
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, result.ID)
+		})
+	}
 }
