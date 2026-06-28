@@ -47,7 +47,7 @@ func setupUserRepo(t *testing.T) (repository.UserRepository, *gorm.DB) {
 
 func simulateDBError(db *gorm.DB) {
 	sqlDB, _ := db.DB()
-	sqlDB.Close()
+	_ = sqlDB.Close()
 }
 
 func TestUserRepository(t *testing.T) {
