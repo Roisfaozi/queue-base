@@ -23,6 +23,7 @@ Source of truth for developer docs in repo.
 - `documentation/architecture/SYSTEM_ARCHITECTURE.md`
 - `documentation/architecture/MULTI_TENANCY.md`
 - `documentation/architecture/ARCHITECTURE_VISUAL_AND_SEQUENCE.md`
+- `documentation/architecture/QMS_ARCHITECTURE.md`
 
 ## Guides
 
@@ -50,6 +51,7 @@ Source of truth for developer docs in repo.
 
 ## QMS Runtime Docs
 
+- `documentation/architecture/QMS_ARCHITECTURE.md` — single-source QMS architecture, ERD, relation flow, and E2E diagrams
 - `documentation/QMS_FEATURE_AND_E2E_GUIDE.md` — complete feature, logic flow, boundary, and E2E guide
 - `documentation/guides/QMS_MANUAL_TEST_FLOW.md` — manual QA/UAT runbook for QMS end-to-end flow
 - `documentation/api/QMS_API_REFERENCE.md` — top-level QMS API entrypoint
