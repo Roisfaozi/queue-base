@@ -15,6 +15,7 @@ import (
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,8 +67,9 @@ func newBranchTestValidator(t *testing.T) *validator.Validate {
 
 func TestBranchController_CreateUsesTenantContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubBranchControllerUseCase{createRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1"}}
-	controller := NewBranchController(uc, newBranchTestValidator(t))
+	controller := NewBranchController(uc, newBranchTestValidator(t), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -90,7 +92,8 @@ func TestBranchController_CreateUsesTenantContext(t *testing.T) {
 func TestBranchController_CreateRejectsInvalidBody(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubBranchControllerUseCase{}
-	controller := NewBranchController(uc, newBranchTestValidator(t))
+	log := logrus.New()
+	controller := NewBranchController(uc, newBranchTestValidator(t), log)
 	router := gin.New()
 	router.POST("/branches", controller.Create)
 
@@ -105,7 +108,8 @@ func TestBranchController_CreateRejectsInvalidBody(t *testing.T) {
 func TestBranchController_GetByIDReturnsBranch(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubBranchControllerUseCase{getRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
-	controller := NewBranchController(uc, newBranchTestValidator(t))
+	log := logrus.New()
+	controller := NewBranchController(uc, newBranchTestValidator(t), log)
 	router := gin.New()
 	router.GET("/branches/:id", controller.GetByID)
 
@@ -121,7 +125,8 @@ func TestBranchController_UpdateSanitizesFields(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	name := " Main Office "
 	uc := &stubBranchControllerUseCase{updateRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
-	controller := NewBranchController(uc, newBranchTestValidator(t))
+	log := logrus.New()
+	controller := NewBranchController(uc, newBranchTestValidator(t), log)
 	router := gin.New()
 	router.PUT("/branches/:id", controller.Update)
 
@@ -140,7 +145,8 @@ func TestBranchController_UpdateSanitizesFields(t *testing.T) {
 func TestBranchController_GetAllReturnsBranches(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubBranchControllerUseCase{listRes: []model.BranchResponse{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}}
-	controller := NewBranchController(uc, newBranchTestValidator(t))
+	log := logrus.New()
+	controller := NewBranchController(uc, newBranchTestValidator(t), log)
 	router := gin.New()
 	router.GET("/branches", controller.GetAll)
 
@@ -155,7 +161,8 @@ func TestBranchController_GetAllReturnsBranches(t *testing.T) {
 func TestBranchController_DeleteReturnsNoContent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubBranchControllerUseCase{}
-	controller := NewBranchController(uc, newBranchTestValidator(t))
+	log := logrus.New()
+	controller := NewBranchController(uc, newBranchTestValidator(t), log)
 	router := gin.New()
 	router.DELETE("/branches/:id", controller.Delete)
 
