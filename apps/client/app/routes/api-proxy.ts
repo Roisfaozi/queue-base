@@ -6,33 +6,25 @@ const BACKEND_BASE_URL = (
 
 async function handleRequest(request: Request, params: any) {
 	const url = new URL(request.url);
-	// Construct target URL maintaining the full path from the request
 	const targetUrl = `${BACKEND_BASE_URL}${url.pathname}${url.search}`;
 
 	console.log(`[Proxy] ${request.method} ${url.pathname} -> ${targetUrl}`);
 
 	const headers = new Headers(request.headers);
-
-	// Forward cookies from the request to the backend
-	// In React Router 7, cookies are already in the headers
-
-	// Remove host header to avoid conflicts
 	headers.delete("host");
 
 	try {
 		const response = await fetch(targetUrl, {
 			method: request.method,
-			headers: headers,
+			headers,
 			body:
 				request.method !== "GET" && request.method !== "HEAD"
 					? await request.blob()
 					: undefined,
 		});
 
-		// Create response headers
 		const responseHeaders = new Headers();
 
-		// Explicitly handle Set-Cookie to avoid concatenation issues
 		if (response.headers.getSetCookie) {
 			const setCookies = response.headers.getSetCookie();
 			setCookies.forEach((cookie) => {
@@ -41,7 +33,6 @@ async function handleRequest(request: Request, params: any) {
 		}
 
 		response.headers.forEach((value, key) => {
-			// Forward other safe headers (excluding Set-Cookie which we handled above)
 			if (
 				key.toLowerCase() !== "set-cookie" &&
 				(key.toLowerCase() === "content-type" ||
@@ -65,7 +56,7 @@ async function handleRequest(request: Request, params: any) {
 			JSON.stringify({
 				success: false,
 				code: "BACKEND_OFFLINE",
-				message: "Gagal terhubung ke API Server.",
+				message: `Gagal terhubung ke API Server di ${BACKEND_BASE_URL}.`,
 			}),
 			{ status: 502, headers: { "Content-Type": "application/json" } },
 		);
