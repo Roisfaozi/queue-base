@@ -31,7 +31,7 @@ type AddEndpointToAccessRightRequest struct {
 type AccessRightResponse struct {
 	ID          string             `json:"id"`
 	Name        string             `json:"name"`
-	Description string             `json:"description,omitempty"`
+	Description string             `json:"description"`
 	Endpoints   []EndpointResponse `json:"endpoints,omitempty"`
 	CreatedAt   int64              `json:"created_at"`
 	UpdatedAt   int64              `json:"updated_at"`
