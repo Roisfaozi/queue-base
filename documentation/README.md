@@ -29,6 +29,7 @@ Source of truth for developer docs in repo.
 - `documentation/guides/GETTING_STARTED.md`
 - `documentation/guides/DEVELOPER_FLOW.md`
 - `documentation/guides/TESTING.md`
+- `documentation/guides/QMS_MANUAL_TEST_FLOW.md`
 - `documentation/guides/API_USAGE.md`
 - `documentation/guides/API_ACCESS_WORKFLOW.md`
 - `documentation/guides/ACCESS_RIGHTS_REFERENCE.md`
@@ -50,6 +51,7 @@ Source of truth for developer docs in repo.
 ## QMS Runtime Docs
 
 - `documentation/QMS_FEATURE_AND_E2E_GUIDE.md` — complete feature, logic flow, boundary, and E2E guide
+- `documentation/guides/QMS_MANUAL_TEST_FLOW.md` — manual QA/UAT runbook for QMS end-to-end flow
 - `documentation/api/QMS_API_REFERENCE.md` — top-level QMS API entrypoint
 - `documentation/api/qms/COMMON.md` — common QMS auth/envelope/error reference
 - `documentation/api/qms/BRANCH_API.md` — branch API
