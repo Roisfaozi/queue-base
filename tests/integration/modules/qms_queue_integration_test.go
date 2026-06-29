@@ -32,8 +32,9 @@ func TestQMSQueueIntegration_LifecycleAndSettingsGuard(t *testing.T) {
 	}
 
 	v := validator.New()
+	log := env.Logger
 	settingsMod := settingsModule.NewSettingsModule(env.DB, v)
-	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver)
+	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, log)
 
 	tenantID := uuid.New().String()
 	branchID := uuid.New().String()
