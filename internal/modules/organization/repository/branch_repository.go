@@ -64,7 +64,6 @@ func (r *branchRepository) Update(ctx context.Context, branch *entity.Branch) er
 			"code":       branch.Code,
 			"name":       branch.Name,
 			"status":     branch.Status,
-			"settings":   branch.Settings,
 			"updated_at": branch.UpdatedAt,
 		})
 	if res.Error != nil {
