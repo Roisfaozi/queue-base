@@ -16,6 +16,7 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,8 +72,9 @@ func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *mod
 
 func TestQueueController_Register(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -105,7 +107,8 @@ func (s *stubQueueControllerUseCase) ListQueues(ctx context.Context, req model.L
 func TestQueueController_GetAllSetsBranchContextFromQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1"}}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	log := logrus.New()
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -162,8 +165,9 @@ func (s *stubQueueControllerUseCase) GetQueueStats(ctx context.Context) (*model.
 
 func TestQueueController_Transition(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{transitionRes: &model.QueueResponse{ID: "q-1", Status: entity.QueueStatusCalling}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -185,8 +189,9 @@ func TestQueueController_Transition(t *testing.T) {
 
 func TestQueueController_Forward(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{forwardRes: &model.QueueResponse{ID: "q-1", CurrentJourneyID: "j-2"}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -209,8 +214,9 @@ func TestQueueController_Forward(t *testing.T) {
 
 func TestQueueController_GetByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{getRes: &model.QueueResponse{ID: "q-1"}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -230,8 +236,9 @@ func TestQueueController_GetByID(t *testing.T) {
 
 func TestQueueController_GetQueueStats(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{statsRes: &model.QueueStatsResponse{TotalQueuesToday: 10}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -250,8 +257,9 @@ func TestQueueController_GetQueueStats(t *testing.T) {
 
 func TestQueueController_GetAll(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1", Status: entity.QueueStatusWaiting}}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -272,8 +280,9 @@ func TestQueueController_GetAll(t *testing.T) {
 
 func TestQueueController_GetAll_WithFilters(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{listRes: []model.QueueResponse{{ID: "q-1", QueueDate: "2026-06-24"}}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -294,8 +303,9 @@ func TestQueueController_GetAll_WithFilters(t *testing.T) {
 
 func TestQueueController_GetJourneysByBranchAndService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1"}}}
-	controller := NewQueueController(uc, newQueueTestValidator())
+	controller := NewQueueController(uc, newQueueTestValidator(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -315,7 +325,8 @@ func TestQueueController_GetJourneysByBranchAndService(t *testing.T) {
 func TestQueueController_GetJourneysByBranchAndCounter(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1"}}}
-	controller := NewQueueController(uc, validator.New())
+	log := logrus.New()
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -335,7 +346,8 @@ func TestQueueController_GetJourneysByBranchAndCounter(t *testing.T) {
 func TestQueueController_GetVisitJourneys(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{visitRes: []model.VisitJourneyResponse{{ID: "v-1", EventType: "registration"}}}
-	controller := NewQueueController(uc, validator.New())
+	log := logrus.New()
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -356,7 +368,8 @@ func TestQueueController_GetVisitJourneys(t *testing.T) {
 func TestQueueController_GetVisitJourneysRejectsMissingID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{}
-	controller := NewQueueController(uc, validator.New())
+	log := logrus.New()
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.GET("/queues/:id/visit-journeys", controller.GetVisitJourneys)
 
@@ -370,7 +383,8 @@ func TestQueueController_GetVisitJourneysRejectsMissingID(t *testing.T) {
 func TestQueueController_TransitionRejectsMissingID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{}
-	controller := NewQueueController(uc, validator.New())
+	log := logrus.New()
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.POST("/queues/:id/transition", controller.Transition)
 
@@ -385,8 +399,9 @@ func TestQueueController_TransitionRejectsMissingID(t *testing.T) {
 
 func TestQueueController_ForwardRejectsMissingID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	log := logrus.New()
 	uc := &stubQueueControllerUseCase{}
-	controller := NewQueueController(uc, validator.New())
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.POST("/queues/:id/forward", controller.Forward)
 
@@ -402,7 +417,8 @@ func TestQueueController_ForwardRejectsMissingID(t *testing.T) {
 func TestQueueController_GetQueueStatsRejectsMissingBranchID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{}
-	controller := NewQueueController(uc, validator.New())
+	log := logrus.New()
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.GET("/branches/:id/queue-stats", controller.GetQueueStats)
 
@@ -417,7 +433,8 @@ func TestQueueController_GetQueueStatsRejectsMissingBranchID(t *testing.T) {
 func TestQueueController_GetJourneysByBranchAndServiceRejectsMissingPathIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{}
-	controller := NewQueueController(uc, validator.New())
+	log := logrus.New()
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.GET("/branches/:id/services/:service_id/queue-journeys", controller.GetJourneysByBranchAndService)
 
@@ -432,7 +449,8 @@ func TestQueueController_GetJourneysByBranchAndServiceRejectsMissingPathIDs(t *t
 func TestQueueController_GetJourneysByBranchAndCounterRejectsMissingPathIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	uc := &stubQueueControllerUseCase{}
-	controller := NewQueueController(uc, validator.New())
+	log := logrus.New()
+	controller := NewQueueController(uc, validator.New(), log)
 	router := gin.New()
 	router.GET("/branches/:id/counters/:counter_id/queue-journeys", controller.GetJourneysByBranchAndCounter)
 

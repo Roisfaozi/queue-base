@@ -12,6 +12,7 @@ import (
 	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,7 @@ type QueueModule struct {
 	QueueController *queueHttp.QueueController
 	QueueRepo       repository.QueueRepository
 	QueueUseCase    usecase.QueueUseCase
+	Log             *logrus.Logger
 }
 
 type defaultRelationValidator struct {
@@ -75,10 +77,10 @@ func (v *defaultRelationValidator) Validate(ctx context.Context, tenantID, branc
 	return nil
 }
 
-func NewQueueModule(db *gorm.DB, validate *validator.Validate, settingsResolver usecase.SettingsResolver) *QueueModule {
+func NewQueueModule(db *gorm.DB, validate *validator.Validate, settingsResolver usecase.SettingsResolver, log *logrus.Logger) *QueueModule {
 	repo := repository.NewQueueRepository(db)
 	relationValidator := NewDefaultRelationValidator(db, settingsResolver)
 	uc := usecase.NewQueueUseCase(repo, settingsResolver, relationValidator)
-	ctrl := queueHttp.NewQueueController(uc, validate)
-	return &QueueModule{QueueController: ctrl, QueueRepo: repo, QueueUseCase: uc}
+	ctrl := queueHttp.NewQueueController(uc, validate, log)
+	return &QueueModule{QueueController: ctrl, QueueRepo: repo, QueueUseCase: uc, Log: log}
 }

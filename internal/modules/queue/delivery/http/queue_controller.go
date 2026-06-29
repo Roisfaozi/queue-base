@@ -9,15 +9,17 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type QueueController struct {
 	useCase  usecase.QueueUseCase
 	validate *validator.Validate
+	log      *logrus.Logger
 }
 
-func NewQueueController(useCase usecase.QueueUseCase, validate *validator.Validate) *QueueController {
-	return &QueueController{useCase: useCase, validate: validate}
+func NewQueueController(useCase usecase.QueueUseCase, validate *validator.Validate, log *logrus.Logger) *QueueController {
+	return &QueueController{useCase: useCase, validate: validate, log: log}
 }
 
 // Register godoc
@@ -42,12 +44,14 @@ func (h *QueueController) Register(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
+		h.log.WithError(err).Error("validation error on register queue")
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	ctx := database.SetBranchContext(c.Request.Context(), req.BranchID)
 	res, err := h.useCase.RegisterQueue(ctx, &req)
 	if err != nil {
+		h.log.WithError(err).Error("failed to register queue")
 		response.HandleError(c, err, "failed to register queue")
 		return
 	}
@@ -84,6 +88,7 @@ func (h *QueueController) GetAll(c *gin.Context) {
 	}
 	res, err := h.useCase.ListQueues(ctx, req)
 	if err != nil {
+		h.log.WithError(err).Error("failed to get list queues", err)
 		response.HandleError(c, err, "failed to get queues")
 		return
 	}
@@ -105,6 +110,8 @@ func (h *QueueController) GetAll(c *gin.Context) {
 func (h *QueueController) GetByID(c *gin.Context) {
 	res, err := h.useCase.GetQueueByID(c.Request.Context(), c.Param("id"))
 	if err != nil {
+		h.log.WithError(err).Error("failed to get queue")
+
 		response.HandleError(c, err, "failed to get queue")
 		return
 	}
@@ -143,6 +150,8 @@ func (h *QueueController) Forward(c *gin.Context) {
 	}
 	res, err := h.useCase.ForwardQueue(c.Request.Context(), c.Param("id"), &req)
 	if err != nil {
+		h.log.WithError(err).Error("failed to forward queue")
+
 		response.HandleError(c, err, "failed to forward queue")
 		return
 	}
@@ -181,6 +190,7 @@ func (h *QueueController) Transition(c *gin.Context) {
 	}
 	res, err := h.useCase.TransitionQueue(c.Request.Context(), c.Param("id"), &req)
 	if err != nil {
+		h.log.WithError(err).Error("failed to transition queue")
 		response.HandleError(c, err, "failed to transition queue")
 		return
 	}
@@ -217,6 +227,7 @@ func (h *QueueController) GetJourneysByBranchAndService(c *gin.Context) {
 	ctx := database.SetBranchContext(c.Request.Context(), branchID)
 	res, err := h.useCase.ListActiveJourneys(ctx, req)
 	if err != nil {
+		h.log.WithError(err).Error("failed to get queue journeys")
 		response.HandleError(c, err, "failed to get queue journeys")
 		return
 	}
@@ -253,6 +264,7 @@ func (h *QueueController) GetJourneysByBranchAndCounter(c *gin.Context) {
 	ctx := database.SetBranchContext(c.Request.Context(), branchID)
 	res, err := h.useCase.ListActiveJourneys(ctx, req)
 	if err != nil {
+		h.log.WithError(err).Error("failed to get queue journeys")
 		response.HandleError(c, err, "failed to get queue journeys")
 		return
 	}
@@ -280,6 +292,7 @@ func (h *QueueController) GetVisitJourneys(c *gin.Context) {
 	}
 	res, err := h.useCase.GetVisitJourneys(c.Request.Context(), queueID)
 	if err != nil {
+		h.log.WithError(err).Error("failed to get visit journeys")
 		response.HandleError(c, err, "failed to get visit journeys")
 		return
 	}
@@ -307,6 +320,7 @@ func (h *QueueController) GetQueueStats(c *gin.Context) {
 	ctx := database.SetBranchContext(c.Request.Context(), branchID)
 	res, err := h.useCase.GetQueueStats(ctx)
 	if err != nil {
+		h.log.WithError(err).Error("failed to get queue stats")
 		response.HandleError(c, err, "failed to get queue stats")
 		return
 	}
