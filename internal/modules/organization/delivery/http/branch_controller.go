@@ -10,15 +10,17 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type BranchController struct {
 	useCase  usecase.BranchUseCase
 	validate *validator.Validate
+	Log      *logrus.Logger
 }
 
-func NewBranchController(useCase usecase.BranchUseCase, validate *validator.Validate) *BranchController {
-	return &BranchController{useCase: useCase, validate: validate}
+func NewBranchController(useCase usecase.BranchUseCase, validate *validator.Validate, log *logrus.Logger) *BranchController {
+	return &BranchController{useCase: useCase, validate: validate, Log: log}
 }
 
 // GetByID godoc
@@ -68,6 +70,7 @@ func (h *BranchController) Create(c *gin.Context) {
 	}
 	res, err := h.useCase.CreateBranch(c.Request.Context(), &req)
 	if err != nil {
+		h.Log.WithContext(c.Request.Context()).WithError(err).Error("Failed to create branch")
 		response.HandleError(c, err, "failed to create branch")
 		return
 	}

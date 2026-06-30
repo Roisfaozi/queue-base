@@ -19,7 +19,6 @@ export async function ALL(
 		headers.set("Authorization", `Bearer ${token}`);
 	}
 
-	// Explicitly forward all cookies from Next.js cookie store to the backend
 	const allCookies = cookieStore.getAll();
 	if (allCookies.length > 0) {
 		const cookieHeader = allCookies
@@ -28,7 +27,6 @@ export async function ALL(
 		headers.set("Cookie", cookieHeader);
 	}
 
-	// Remove host header to avoid conflicts with backend
 	headers.delete("host");
 
 	try {
@@ -39,15 +37,13 @@ export async function ALL(
 
 		const response = await fetch(url, {
 			method: request.method,
-			headers: headers,
-			body: body,
+			headers,
+			body,
 			cache: "no-store",
 		});
 
-		// Create response headers
 		const responseHeaders = new Headers();
 		response.headers.forEach((value, key) => {
-			// Forward Set-Cookie and other safe headers
 			if (
 				key.toLowerCase() === "set-cookie" ||
 				key.toLowerCase() === "content-type" ||
@@ -77,8 +73,7 @@ export async function ALL(
 			{
 				success: false,
 				code: "BACKEND_OFFLINE",
-				message:
-					"Gagal terhubung ke API Server. Pastikan backend sudah menyala di port 8080.",
+				message: `Gagal terhubung ke API Server di ${BACKEND_URL}.`,
 			},
 			{ status: 502 },
 		);
