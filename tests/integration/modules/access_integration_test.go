@@ -25,12 +25,14 @@ func setupAccessIntegration(env *setup.TestEnvironment) usecase.IAccessUseCase {
 func TestAccessIntegration_CreateAccessRight(t *testing.T) {
 	tests := []struct {
 		name       string
+		category   string
 		req        model.CreateAccessRightRequest
 		prepare    func(t *testing.T, uc usecase.IAccessUseCase, req model.CreateAccessRightRequest)
 		assertions func(t *testing.T, ar *model.AccessRightResponse, err error, req model.CreateAccessRightRequest)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			req: model.CreateAccessRightRequest{
 				Name:        "User Management",
 				Description: "Manage users",
@@ -42,8 +44,9 @@ func TestAccessIntegration_CreateAccessRight(t *testing.T) {
 			},
 		},
 		{
-			name: "Fail_Duplicate",
-			req:  model.CreateAccessRightRequest{Name: "Dup", Description: "d"},
+			name:     "Fail_Duplicate",
+			category: "negative",
+			req:      model.CreateAccessRightRequest{Name: "Dup", Description: "d"},
 			prepare: func(t *testing.T, uc usecase.IAccessUseCase, req model.CreateAccessRightRequest) {
 				_, err := uc.CreateAccessRight(context.Background(), req)
 				require.NoError(t, err)
@@ -53,8 +56,9 @@ func TestAccessIntegration_CreateAccessRight(t *testing.T) {
 			},
 		},
 		{
-			name: "Security_SQLInjectionPrevention",
-			req:  model.CreateAccessRightRequest{Name: "name' OR '1'='1"},
+			name:     "Security_SQLInjectionPrevention",
+			category: "security",
+			req:      model.CreateAccessRightRequest{Name: "name' OR '1'='1"},
 			assertions: func(t *testing.T, ar *model.AccessRightResponse, err error, req model.CreateAccessRightRequest) {
 				if err == nil {
 					assert.Equal(t, pkg.SanitizeString(req.Name), ar.Name)
@@ -82,11 +86,13 @@ func TestAccessIntegration_CreateAccessRight(t *testing.T) {
 func TestAccessIntegration_DeleteAccessRight(t *testing.T) {
 	tests := []struct {
 		name       string
+		category   string
 		prepare    func(t *testing.T, uc usecase.IAccessUseCase) string
 		assertions func(t *testing.T, err error)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			prepare: func(t *testing.T, uc usecase.IAccessUseCase) string {
 				ar, err := uc.CreateAccessRight(context.Background(), model.CreateAccessRightRequest{Name: "Del", Description: "d"})
 				require.NoError(t, err)
@@ -97,7 +103,8 @@ func TestAccessIntegration_DeleteAccessRight(t *testing.T) {
 			},
 		},
 		{
-			name: "Fail_NotFound",
+			name:     "Fail_NotFound",
+			category: "negative",
 			prepare: func(t *testing.T, uc usecase.IAccessUseCase) string {
 				return "ghost-id"
 			},
@@ -229,11 +236,13 @@ func TestAccessIntegration_EndpointLinkFlow(t *testing.T) {
 
 func TestAccessIntegration_DeleteEndpoint(t *testing.T) {
 	tests := []struct {
-		name string
-		run  func(t *testing.T, uc usecase.IAccessUseCase)
+		name     string
+		category string
+		run      func(t *testing.T, uc usecase.IAccessUseCase)
 	}{
 		{
-			name: "Success",
+			name:     "Success",
+			category: "positive",
 			run: func(t *testing.T, uc usecase.IAccessUseCase) {
 				ep, err := uc.CreateEndpoint(context.Background(), model.CreateEndpointRequest{Path: "/temp", Method: "POST"})
 				require.NoError(t, err)
@@ -243,7 +252,8 @@ func TestAccessIntegration_DeleteEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name: "Idempotent_NotFound",
+			name:     "Idempotent_NotFound",
+			category: "negative",
 			run: func(t *testing.T, uc usecase.IAccessUseCase) {
 				err := uc.DeleteEndpoint(context.Background(), "nonexistent-id")
 				assert.NoError(t, err)

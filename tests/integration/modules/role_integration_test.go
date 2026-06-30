@@ -287,14 +287,15 @@ func TestRoleIntegration_Update(t *testing.T) {
 
 func TestRoleIntegration_Edge_SpecialCharactersInName(t *testing.T) {
 	tests := []struct {
-		name string
-		role string
+		name     string
+		category string
+		role     string
 	}{
-		{name: "AdminSymbols", role: "Admin@#$%"},
-		{name: "Dashes", role: "Role-With-Dashes"},
-		{name: "Underscores", role: "Role_With_Underscores"},
-		{name: "Dots", role: "Role.With.Dots"},
-		{name: "Parentheses", role: "Role (With Parentheses)"},
+		{name: "AdminSymbols", category: "edge", role: "Admin@#$%"},
+		{name: "Dashes", category: "edge", role: "Role-With-Dashes"},
+		{name: "Underscores", category: "edge", role: "Role_With_Underscores"},
+		{name: "Dots", category: "edge", role: "Role.With.Dots"},
+		{name: "Parentheses", category: "edge", role: "Role (With Parentheses)"},
 	}
 
 	for _, tt := range tests {
@@ -312,13 +313,14 @@ func TestRoleIntegration_Edge_SpecialCharactersInName(t *testing.T) {
 
 func TestRoleIntegration_Edge_UnicodeInName(t *testing.T) {
 	tests := []struct {
-		name string
-		role string
+		name     string
+		category string
+		role     string
 	}{
-		{name: "Chinese", role: "管理员"},
-		{name: "Cyrillic", role: "Администратор"},
-		{name: "Arabic", role: "مدير"},
-		{name: "Japanese", role: "マネージャー"},
+		{name: "Chinese", category: "edge", role: "管理员"},
+		{name: "Cyrillic", category: "edge", role: "Администратор"},
+		{name: "Arabic", category: "edge", role: "مدير"},
+		{name: "Japanese", category: "edge", role: "マネージャー"},
 	}
 
 	for _, tt := range tests {
@@ -336,13 +338,14 @@ func TestRoleIntegration_Edge_UnicodeInName(t *testing.T) {
 
 func TestRoleIntegration_Security_SQLInjectionInName(t *testing.T) {
 	tests := []struct {
-		name    string
-		payload string
+		name     string
+		category string
+		payload  string
 	}{
-		{name: "BooleanBypass", payload: "Admin' OR '1'='1"},
-		{name: "DropTable", payload: "'; DROP TABLE roles--"},
-		{name: "Comment", payload: "Admin'--"},
-		{name: "Union", payload: "1' UNION SELECT * FROM roles--"},
+		{name: "BooleanBypass", category: "security", payload: "Admin' OR '1'='1"},
+		{name: "DropTable", category: "security", payload: "'; DROP TABLE roles--"},
+		{name: "Comment", category: "security", payload: "Admin'--"},
+		{name: "Union", category: "security", payload: "1' UNION SELECT * FROM roles--"},
 	}
 
 	for _, tt := range tests {
@@ -360,10 +363,11 @@ func TestRoleIntegration_Security_SQLInjectionInName(t *testing.T) {
 func TestRoleIntegration_Security_XSSInDescription(t *testing.T) {
 	tests := []struct {
 		name        string
+		category    string
 		description string
 	}{
-		{name: "ScriptTag", description: "<script>alert('XSS')</script>"},
-		{name: "ImageOnError", description: "<img src=x onerror=alert('XSS')>"},
+		{name: "ScriptTag", category: "security", description: "<script>alert('XSS')</script>"},
+		{name: "ImageOnError", category: "security", description: "<img src=x onerror=alert('XSS')>"},
 	}
 
 	for _, tt := range tests {
