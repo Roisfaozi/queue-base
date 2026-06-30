@@ -13,6 +13,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/api_key/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/api_key/usecase"
 	orgRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/stretchr/testify/assert"
@@ -23,12 +24,12 @@ func TestApiKeyIntegration_Lifecycle(t *testing.T) {
 	tests := []struct {
 		name     string
 		category string
-		run      func(t *testing.T, uc usecase.ApiKeyUseCase, env *setup.TestEnvironment, user *setup.TestUser, orgID string)
+		run      func(t *testing.T, uc usecase.ApiKeyUseCase, env *setup.TestEnvironment, user *userEntity.User, orgID string)
 	}{
 		{
 			name:     "Create and Authenticate with Caching",
 			category: "positive",
-			run: func(t *testing.T, uc usecase.ApiKeyUseCase, env *setup.TestEnvironment, user *setup.TestUser, orgID string) {
+			run: func(t *testing.T, uc usecase.ApiKeyUseCase, env *setup.TestEnvironment, user *userEntity.User, orgID string) {
 				ctx := context.Background()
 				createReq := &model.CreateApiKeyRequest{
 					Name:   "Prod Key",
@@ -60,7 +61,7 @@ func TestApiKeyIntegration_Lifecycle(t *testing.T) {
 		{
 			name:     "Revoke should invalidate Cache",
 			category: "negative",
-			run: func(t *testing.T, uc usecase.ApiKeyUseCase, env *setup.TestEnvironment, user *setup.TestUser, orgID string) {
+			run: func(t *testing.T, uc usecase.ApiKeyUseCase, env *setup.TestEnvironment, user *userEntity.User, orgID string) {
 				ctx := context.Background()
 				created, _ := uc.Create(ctx, user.ID, orgID, &model.CreateApiKeyRequest{Name: "To Revoke"})
 
