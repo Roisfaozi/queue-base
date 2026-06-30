@@ -301,7 +301,8 @@
       "Bash(t.errorf)",
       "Bash(t.log)",
       "Bash(tt.run)",
-      "Bash(ioutil.writefile)"
+      "Bash(ioutil.writefile)",
+      "Bash(make *)"
     ]
   },
   "$version": 4

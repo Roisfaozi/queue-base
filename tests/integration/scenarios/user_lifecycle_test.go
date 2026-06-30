@@ -143,7 +143,7 @@ type lifecycleDeps struct {
 	userUC    userUseCase.UserUseCase
 	authUC    authUseCase.AuthUseCase
 	auditUC   auditUseCase.AuditUseCase
-	auditRepo auditRepository.AuditRepository
+	auditRepo auditUseCase.AuditRepository
 	userID    string
 }
 

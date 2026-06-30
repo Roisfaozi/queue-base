@@ -10,19 +10,7 @@
 - `internal/modules/auth/repository/*_test.go` (2 files) — all TDT
 - `internal/modules/user/repository/*_test.go` (2 files) — all TDT
 
-### State: Needs Fix (already TDT but missing `category`)
-
-| File                                                        | Issue                                   |
-| ----------------------------------------------------------- | --------------------------------------- |
-| `tests/integration/modules/auth_integration_test.go`        | TDT exists but `category` field missing |
-| `tests/integration/modules/user_integration_test.go`        | TDT exists but `category` field missing |
-| `tests/e2e/api/auth_e2e_test.go`                            | TDT exists but `category` field missing |
-| `tests/e2e/api/user_e2e_test.go`                            | TDT exists but `category` field missing |
-| `tests/integration/modules/qms_queue_integration_test.go`   | TDT exists but `category` field missing |
-| `tests/integration/modules/qms_scanner_integration_test.go` | TDT exists but `category` field missing |
-| `tests/integration/modules/role_integration_test.go`        | TDT exists but `category` field missing |
-| `tests/integration/modules/access_integration_test.go`      | TDT exists but `category` field missing |
-| `tests/integration/modules/permission_integration_test.go`  | TDT exists but `category` field missing |
+### State: Needs Fix (missing `category`) — None. All TDT-compliant. ✅
 
 ### State: Not Yet Migrated (needs full TDT wrap)
 
@@ -59,7 +47,7 @@
 
 | File                                           | Test Count (est.) | Priority |
 | ---------------------------------------------- | ----------------- | -------- |
-| `tests/e2e/api/auth_e2e_test.go`               | 4                 | High     |
+| `tests/e2e/api/auth_e2e_test.go`               | 4                 | DONE     |
 | `tests/e2e/api/email_verification_e2e_test.go` | 2                 | Medium   |
 | `tests/e2e/api/export_audit_e2e_test.go`       | 1                 | Low      |
 | `tests/e2e/api/multi_tenancy_e2e_test.go`      | 2                 | High     |
@@ -68,7 +56,7 @@
 | `tests/e2e/api/qms_queue_e2e_test.go`          | 3                 | High     |
 | `tests/e2e/api/stats_e2e_test.go`              | 2                 | Low      |
 | `tests/e2e/api/tenant_isolation_e2e_test.go`   | 2                 | High     |
-| `tests/e2e/api/user_e2e_test.go`               | 4                 | High     |
+| `tests/e2e/api/user_e2e_test.go`               | 4                 | DONE     |
 | `tests/e2e/modules/api_key_e2e_test.go`        | 2                 | Medium   |
 | `tests/e2e/modules/qms_scanner_e2e_test.go`    | 2                 | Medium   |
 | `tests/e2e/modules/tus_e2e_test.go`            | 2                 | Low      |
@@ -97,12 +85,11 @@
 
 ### Implementation Plan
 
-1. **Phase 1 — Fix TDT with missing `category`:**
-   - Files: auth_integration, user_integration, auth_e2e, user_e2e
-   - Action: add `category string` to struct and `category: "positive"|"negative"|"edge"|"security"` to each case
+1. **Phase 1 — Fix TDT with missing `category` (DONE):**
+   - Remaining Files: qms_queue_integration, qms_scanner_integration (Already compliant)
 2. **Phase 2 — Priority (high risk / core functionality):**
-   - integration: data_isolation, organization, api_key, data_isolation, user_lifecycle
-   - e2e: auth_e2e, multi_tenancy, tenant_isolation, user_e2e, qms_queue
+   - integration: data_isolation, organization, api_key, user_lifecycle (DONE)
+   - e2e: auth_e2e (DONE), user_e2e (DONE), multi_tenancy, tenant_isolation, qms_queue
    - unit: organization (controller, usecase, member)
 
 3. **Phase 3 — Remaining medium priority**
