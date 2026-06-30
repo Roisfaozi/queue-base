@@ -15,6 +15,7 @@ import (
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,7 +104,8 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewBranchController(uc, newBranchTestValidator(t))
+				log:=logrus.New()
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -147,8 +149,9 @@ func TestBranchController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
+				log:=logrus.New()
 				uc := tt.setup()
-				controller := NewBranchController(uc, newBranchTestValidator(t))
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
 				router.GET("/branches/:id", controller.GetByID)
 
@@ -191,7 +194,9 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewBranchController(uc, newBranchTestValidator(t))
+				log:=logrus.New()
+
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
 				router.PUT("/branches/:id", controller.Update)
 
@@ -231,7 +236,9 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewBranchController(uc, newBranchTestValidator(t))
+				log:=logrus.New()
+
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
 				router.GET("/branches", controller.GetAll)
 
@@ -265,7 +272,9 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewBranchController(uc, newBranchTestValidator(t))
+				log:=logrus.New()
+
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
 				router.DELETE("/branches/:id", controller.Delete)
 

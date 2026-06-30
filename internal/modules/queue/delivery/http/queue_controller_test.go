@@ -16,6 +16,7 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -140,7 +141,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:= logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -224,7 +226,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -273,7 +276,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -335,7 +339,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -405,7 +410,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -462,7 +468,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -520,7 +527,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -584,7 +592,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
@@ -648,7 +657,8 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewQueueController(uc, newQueueTestValidator())
+				log:=logrus.New()
+				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
