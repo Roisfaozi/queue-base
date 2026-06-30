@@ -52,7 +52,7 @@
 | `tests/integration/scenarios/role_hierarchy_test.go`                    | 1                 | Low      |
 | `tests/integration/scenarios/transaction_integrity_test.go`             | 2                 | Medium   |
 | `tests/integration/scenarios/transactional_enforcer_regression_test.go` | 2                 | Medium   |
-| `tests/integration/scenarios/user_lifecycle_test.go`                    | 3                 | High     |
+| `tests/integration/scenarios/user_lifecycle_test.go`                    | 3                 | DONE     |
 | `tests/integration/scenarios/worker_integration_test.go`                | 2                 | Low      |
 
 #### E2E Tests
