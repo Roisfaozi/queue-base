@@ -27,134 +27,173 @@ func setupAuditHandlerTest() (*mocks.MockAuditUseCase, *handlers.AuditTaskHandle
 }
 
 func TestAuditTaskHandler_ProcessTaskAuditLog(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		uc, handler := setupAuditHandlerTest()
+	tests := []struct {
+		name      string
+		category  string
+		payload   []byte
+		setupMock func(uc *mocks.MockAuditUseCase)
+		wantErr   bool
+		errMsg    string
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			payload: func() []byte {
+				b, _ := json.Marshal(auditModel.CreateAuditLogRequest{UserID: "user123", Action: "CREATE"})
+				return b
+			}(),
+			setupMock: func(uc *mocks.MockAuditUseCase) {
+				uc.EXPECT().LogActivity(mock.Anything, auditModel.CreateAuditLogRequest{UserID: "user123", Action: "CREATE"}).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:      "InvalidPayload",
+			category:  "negative",
+			payload:   []byte("invalid json"),
+			setupMock: nil,
+			wantErr:   true,
+			errMsg:    "failed to unmarshal",
+		},
+		{
+			name:     "UseCaseError",
+			category: "negative",
+			payload: func() []byte {
+				b, _ := json.Marshal(auditModel.CreateAuditLogRequest{UserID: "user123", Action: "CREATE"})
+				return b
+			}(),
+			setupMock: func(uc *mocks.MockAuditUseCase) {
+				uc.EXPECT().LogActivity(mock.Anything, auditModel.CreateAuditLogRequest{UserID: "user123", Action: "CREATE"}).Return(errors.New("db error"))
+			},
+			wantErr: true,
+			errMsg:  "failed to log audit activity",
+		},
+	}
 
-		payload := auditModel.CreateAuditLogRequest{
-			UserID: "user123",
-			Action: "CREATE",
-		}
-		b, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypeAuditLogCreate, b)
-
-		uc.EXPECT().LogActivity(mock.Anything, payload).Return(nil)
-
-		err := handler.ProcessTaskAuditLog(context.Background(), task)
-		assert.NoError(t, err)
-		uc.AssertExpectations(t)
-	})
-
-	t.Run("Invalid Payload", func(t *testing.T) {
-		_, handler := setupAuditHandlerTest()
-		task := asynq.NewTask(tasks.TypeAuditLogCreate, []byte("invalid json"))
-
-		err := handler.ProcessTaskAuditLog(context.Background(), task)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarshal")
-	})
-
-	t.Run("UseCase Error", func(t *testing.T) {
-		uc, handler := setupAuditHandlerTest()
-
-		payload := auditModel.CreateAuditLogRequest{
-			UserID: "user123",
-			Action: "CREATE",
-		}
-		b, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypeAuditLogCreate, b)
-
-		expectedErr := errors.New("db error")
-		uc.EXPECT().LogActivity(mock.Anything, payload).Return(expectedErr)
-
-		err := handler.ProcessTaskAuditLog(context.Background(), task)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to log audit activity")
-		uc.AssertExpectations(t)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uc, handler := setupAuditHandlerTest()
+			if tt.setupMock != nil {
+				tt.setupMock(uc)
+			}
+			task := asynq.NewTask(tasks.TypeAuditLogCreate, tt.payload)
+			err := handler.ProcessTaskAuditLog(context.Background(), task)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+				uc.AssertExpectations(t)
+			}
+		})
+	}
 }
 
 func TestAuditTaskHandler_ProcessTaskAuditLogExport(t *testing.T) {
 	// Clean up exports directory after tests
 	defer func() { _ = os.RemoveAll("exports") }()
 
-	t.Run("Success", func(t *testing.T) {
-		uc, handler := setupAuditHandlerTest()
-
-		payload := auditModel.AuditLogExportPayload{
-			UserID:         "user123",
-			OrganizationID: "org123",
-			FromDate:       "2023-01-01",
-			ToDate:         "2023-01-31",
-		}
-		b, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypeAuditLogExport, b)
-
-		uc.EXPECT().ExportLogs(mock.Anything, payload.FromDate, payload.ToDate, mock.AnythingOfType("func([]model.AuditLogResponse) error")).
-			RunAndReturn(func(ctx context.Context, from, to string, process func([]auditModel.AuditLogResponse) error) error {
-				return process([]auditModel.AuditLogResponse{
-					{
-						ID:        "log1",
-						UserID:    "user123",
-						Action:    "LOGIN",
-						Entity:    "User",
-						EntityID:  "user123",
-						CreatedAt: 1672531200,
-					},
+	tests := []struct {
+		name      string
+		category  string
+		payload   []byte
+		setupMock func(uc *mocks.MockAuditUseCase)
+		wantErr   bool
+		errMsg    string
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			payload: func() []byte {
+				b, _ := json.Marshal(auditModel.AuditLogExportPayload{
+					UserID:         "user123",
+					OrganizationID: "org123",
+					FromDate:       "2023-01-01",
+					ToDate:         "2023-01-31",
 				})
-			})
+				return b
+			}(),
+			setupMock: func(uc *mocks.MockAuditUseCase) {
+				uc.EXPECT().ExportLogs(mock.Anything, "2023-01-01", "2023-01-31", mock.AnythingOfType("func([]model.AuditLogResponse) error")).
+					RunAndReturn(func(ctx context.Context, from, to string, process func([]auditModel.AuditLogResponse) error) error {
+						return process([]auditModel.AuditLogResponse{
+							{
+								ID:        "log1",
+								UserID:    "user123",
+								Action:    "LOGIN",
+								Entity:    "User",
+								EntityID:  "user123",
+								CreatedAt: 1672531200,
+							},
+						})
+					})
+			},
+			wantErr: false,
+		},
+		{
+			name:      "InvalidPayload",
+			category:  "negative",
+			payload:   []byte("invalid json"),
+			setupMock: nil,
+			wantErr:   true,
+			errMsg:    "failed to unmarshal",
+		},
+		{
+			name:     "UseCaseError",
+			category: "negative",
+			payload: func() []byte {
+				b, _ := json.Marshal(auditModel.AuditLogExportPayload{
+					UserID:   "user123",
+					FromDate: "2023-01-01",
+					ToDate:   "2023-01-31",
+				})
+				return b
+			}(),
+			setupMock: func(uc *mocks.MockAuditUseCase) {
+				uc.EXPECT().ExportLogs(mock.Anything, "2023-01-01", "2023-01-31", mock.AnythingOfType("func([]model.AuditLogResponse) error")).Return(errors.New("export failed"))
+			},
+			wantErr: true,
+			errMsg:  "failed to export logs",
+		},
+		{
+			name:     "ProcessCallbackError",
+			category: "negative",
+			payload: func() []byte {
+				b, _ := json.Marshal(auditModel.AuditLogExportPayload{
+					UserID: "user123",
+				})
+				return b
+			}(),
+			setupMock: func(uc *mocks.MockAuditUseCase) {
+				uc.EXPECT().ExportLogs(mock.Anything, "", "", mock.AnythingOfType("func([]model.AuditLogResponse) error")).
+					RunAndReturn(func(ctx context.Context, from, to string, process func([]auditModel.AuditLogResponse) error) error {
+						return errors.New("write error")
+					})
+			},
+			wantErr: true,
+			errMsg:  "failed to export logs: write error",
+		},
+	}
 
-		err := handler.ProcessTaskAuditLogExport(context.Background(), task)
-		assert.NoError(t, err)
-		uc.AssertExpectations(t)
-	})
-
-	t.Run("Invalid Payload", func(t *testing.T) {
-		_, handler := setupAuditHandlerTest()
-		task := asynq.NewTask(tasks.TypeAuditLogExport, []byte("invalid json"))
-
-		err := handler.ProcessTaskAuditLogExport(context.Background(), task)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarshal")
-	})
-
-	t.Run("UseCase Error", func(t *testing.T) {
-		uc, handler := setupAuditHandlerTest()
-
-		payload := auditModel.AuditLogExportPayload{
-			UserID:   "user123",
-			FromDate: "2023-01-01",
-			ToDate:   "2023-01-31",
-		}
-		b, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypeAuditLogExport, b)
-
-		expectedErr := errors.New("export failed")
-		uc.EXPECT().ExportLogs(mock.Anything, payload.FromDate, payload.ToDate, mock.AnythingOfType("func([]model.AuditLogResponse) error")).Return(expectedErr)
-
-		err := handler.ProcessTaskAuditLogExport(context.Background(), task)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to export logs")
-		uc.AssertExpectations(t)
-	})
-
-	t.Run("Process Callback Error", func(t *testing.T) {
-		uc, handler := setupAuditHandlerTest()
-
-		payload := auditModel.AuditLogExportPayload{
-			UserID: "user123",
-		}
-		b, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypeAuditLogExport, b)
-
-		expectedErr := errors.New("write error")
-		uc.EXPECT().ExportLogs(mock.Anything, payload.FromDate, payload.ToDate, mock.AnythingOfType("func([]model.AuditLogResponse) error")).
-			RunAndReturn(func(ctx context.Context, from, to string, process func([]auditModel.AuditLogResponse) error) error {
-				return expectedErr
-			})
-
-		err := handler.ProcessTaskAuditLogExport(context.Background(), task)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to export logs: write error")
-		uc.AssertExpectations(t)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uc, handler := setupAuditHandlerTest()
+			if tt.setupMock != nil {
+				tt.setupMock(uc)
+			}
+			task := asynq.NewTask(tasks.TypeAuditLogExport, tt.payload)
+			err := handler.ProcessTaskAuditLogExport(context.Background(), task)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+				uc.AssertExpectations(t)
+			}
+		})
+	}
 }
