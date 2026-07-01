@@ -16,42 +16,59 @@ import (
 )
 
 func TestScenario_RateLimit_Redis_Distributed(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_RateLimitRedisDistributed",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
 
-	setup.CleanupDatabase(t, env.DB)
+				setup.CleanupDatabase(t, env.DB)
 
-	rps := 3
-	window := 60 * time.Second
+				rps := 3
+				window := 60 * time.Second
 
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	router.Use(middleware.RateLimitMiddlewareRedis(env.Redis, env.Logger, middleware.LimiterTypeIP, rps, window))
-	router.GET("/test", func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
+				gin.SetMode(gin.TestMode)
+				router := gin.New()
+				router.Use(middleware.RateLimitMiddlewareRedis(env.Redis, env.Logger, middleware.LimiterTypeIP, rps, window))
+				router.GET("/test", func(c *gin.Context) {
+					c.Status(http.StatusOK)
+				})
 
-	for i := 0; i < rps; i++ {
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
+				for i := 0; i < rps; i++ {
+					w := httptest.NewRecorder()
+					req, _ := http.NewRequest("GET", "/test", nil)
 
-		req.RemoteAddr = "192.168.1.100:1234"
+					req.RemoteAddr = "192.168.1.100:1234"
 
-		router.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusOK, w.Code, "Request %d should pass", i+1)
+					router.ServeHTTP(w, req)
+					assert.Equal(t, http.StatusOK, w.Code, "Request %d should pass", i+1)
+				}
+
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest("GET", "/test", nil)
+				req.RemoteAddr = "192.168.1.100:1234"
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusTooManyRequests, w.Code, "Request exceeding limit should be blocked")
+
+				w2 := httptest.NewRecorder()
+				req2, _ := http.NewRequest("GET", "/test", nil)
+				req2.RemoteAddr = "10.0.0.5:5678"
+				router.ServeHTTP(w2, req2)
+
+				assert.Equal(t, http.StatusOK, w2.Code, "Request from different IP should pass")
+			},
+		},
 	}
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test", nil)
-	req.RemoteAddr = "192.168.1.100:1234"
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusTooManyRequests, w.Code, "Request exceeding limit should be blocked")
-
-	w2 := httptest.NewRecorder()
-	req2, _ := http.NewRequest("GET", "/test", nil)
-	req2.RemoteAddr = "10.0.0.5:5678"
-	router.ServeHTTP(w2, req2)
-
-	assert.Equal(t, http.StatusOK, w2.Code, "Request from different IP should pass")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
