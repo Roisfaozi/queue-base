@@ -239,6 +239,20 @@ func TestScannerCheckIn(t *testing.T) {
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
+			name:     "Negative_ForwardMissingQueueID",
+			category: "negative",
+			req: &CheckInRequest{
+				Action:               ActionForward,
+				BranchID:             "b-1",
+				ClientID:             "client-1",
+				APIKey:               "key-1",
+				DestinationServiceID: "service-2",
+			},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
 			name:     "Negative_RegisterMissingService",
 			category: "negative",
 			req: &CheckInRequest{
