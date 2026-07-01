@@ -1645,3 +1645,5 @@ queue_counters
 
 audit_logs
 ```
+
+lanjut lihat diagram `QMS NEW Design Diagrams.md`
