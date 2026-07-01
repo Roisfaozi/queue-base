@@ -77,10 +77,10 @@ func (v *defaultRelationValidator) Validate(ctx context.Context, tenantID, branc
 	return nil
 }
 
-func NewQueueModule(db *gorm.DB, validate *validator.Validate, settingsResolver usecase.SettingsResolver, log *logrus.Logger) *QueueModule {
+func NewQueueModule(db *gorm.DB, validate *validator.Validate, settingsResolver usecase.SettingsResolver, log *logrus.Logger, audit ...usecase.AuditLogger) *QueueModule {
 	repo := repository.NewQueueRepository(db)
 	relationValidator := NewDefaultRelationValidator(db, settingsResolver)
-	uc := usecase.NewQueueUseCase(repo, settingsResolver, relationValidator)
+	uc := usecase.NewQueueUseCase(repo, settingsResolver, relationValidator, audit...)
 	ctrl := queueHttp.NewQueueController(uc, validate, log)
 	return &QueueModule{QueueController: ctrl, QueueRepo: repo, QueueUseCase: uc, Log: log}
 }
