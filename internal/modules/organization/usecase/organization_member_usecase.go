@@ -227,13 +227,25 @@ func (uc *organizationMemberUseCase) UpdateMember(ctx context.Context, orgID, us
 			return err
 		}
 		if !isMember {
+			uc.log.WithContext(txCtx).WithFields(logrus.Fields{
+				"orgID":  orgID,
+				"userID": userID,
+			}).Warn("Attempted to update non-member")
 			return exception.ErrNotFound
 		}
 
 		if org.OwnerID == userID {
+			uc.log.WithContext(txCtx).WithFields(logrus.Fields{
+				"orgID":  orgID,
+				"userID": userID,
+			}).Warn("Attempted to update owner member")
 			return exception.ErrForbidden
 		}
 		if request.RoleID == DefaultOwnerRoleID && !actorIsOwner {
+			uc.log.WithContext(txCtx).WithFields(logrus.Fields{
+				"orgID":  orgID,
+				"userID": userID,
+			}).Warn("Non-owner attempted to assign owner role")
 			return exception.ErrForbidden
 		}
 

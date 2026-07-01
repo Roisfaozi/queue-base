@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
@@ -10,6 +9,8 @@ import (
 	organizationEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type stubCounterRepo struct {
@@ -97,63 +98,156 @@ func (s *stubCounterBranchRepo) Delete(_ context.Context, tenantID, branchID str
 	return s.err
 }
 
-func TestCreateCounterUsesTenantScopedBranch(t *testing.T) {
-	repo := &stubCounterRepo{}
-	branchRepo := &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1"}}
-	uc := NewCounterUseCase(repo, branchRepo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+func TestCreateCounter(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		req      model.CreateCounterRequest
+		stubRepo struct {
+			err error
+		}
+		stubBranchRepo struct {
+			branch *organizationEntity.Branch
+			err    error
+		}
+		tenantID string
+		wantErr  error
+		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo)
+	}{
+		{
+			name:     "Positive_CreatesCounterWithSanitizationAndBranch",
+			category: "positive",
+			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: " a1 ", Name: " Front Desk "},
+			stubBranchRepo: struct {
+				branch *organizationEntity.Branch
+				err    error
+			}{
+				branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1"},
+			},
+			tenantID: "tenant-1",
+			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo) {
+				assert.Equal(t, "tenant-1", res.TenantID)
+				assert.Equal(t, "tenant-1", branchRepo.seen.tenantID)
+				assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", branchRepo.seen.branchID)
+				require.NotNil(t, repo.counter)
+				assert.Equal(t, "A1", repo.counter.Code)
+				assert.Equal(t, "Front Desk", repo.counter.Name)
+			},
+		},
+		{
+			name:     "Negative_RequiresTenant",
+			category: "negative",
+			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Vulnerability_RejectsCrossTenantBranch",
+			category: "vulnerability",
+			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
+			stubBranchRepo: struct {
+				branch *organizationEntity.Branch
+				err    error
+			}{
+				err: exception.ErrNotFound,
+			},
+			tenantID: "tenant-1",
+			wantErr:  exception.ErrForbidden,
+			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo) {
+				assert.Nil(t, repo.counter)
+			},
+		},
+	}
 
-	res, err := uc.CreateCounter(ctx, &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: " a1 ", Name: " Front Desk "})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-	if res.TenantID != "tenant-1" {
-		t.Fatalf("expected tenant-1, got %s", res.TenantID)
-	}
-	if branchRepo.seen.tenantID != "tenant-1" || branchRepo.seen.branchID != "550e8400-e29b-41d4-a716-446655440000" {
-		t.Fatalf("unexpected branch lookup: %+v", branchRepo.seen)
-	}
-	if repo.counter == nil || repo.counter.Code != "A1" || repo.counter.Name != "Front Desk" {
-		t.Fatalf("counter not sanitized/stored: %+v", repo.counter)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubCounterRepo{err: tt.stubRepo.err}
+			branchRepo := &stubCounterBranchRepo{
+				branch: tt.stubBranchRepo.branch,
+				err:    tt.stubBranchRepo.err,
+			}
+			uc := NewCounterUseCase(repo, branchRepo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.CreateCounter(ctx, &tt.req)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				if tt.wantRes != nil {
+					tt.wantRes(t, res, repo, branchRepo)
+				}
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo, branchRepo)
+			}
+		})
 	}
 }
 
-func TestCreateCounterRequiresTenant(t *testing.T) {
-	uc := NewCounterUseCase(&stubCounterRepo{}, &stubCounterBranchRepo{})
-
-	_, err := uc.CreateCounter(context.Background(), &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"})
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
-	}
-}
-
-func TestUpdateCounterSanitizesFields(t *testing.T) {
+func TestUpdateCounter(t *testing.T) {
 	code := " b2 "
 	name := " Front Office "
-	repo := &stubCounterRepo{counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk", Status: entity.CounterStatusActive}}
-	uc := NewCounterUseCase(repo, &stubCounterBranchRepo{})
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-
-	res, err := uc.UpdateCounter(ctx, "counter-1", &model.UpdateCounterRequest{Code: &code, Name: &name})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
+	tests := []struct {
+		name     string
+		category string
+		id       string
+		req      model.UpdateCounterRequest
+		stubRepo struct {
+			counter *entity.Counter
+			err     error
+		}
+		tenantID string
+		wantErr  error
+		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo)
+	}{
+		{
+			name:     "Positive_SanitizesFields",
+			category: "positive",
+			id:       "counter-1",
+			req:      model.UpdateCounterRequest{Code: &code, Name: &name},
+			stubRepo: struct {
+				counter *entity.Counter
+				err     error
+			}{
+				counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk", Status: entity.CounterStatusActive},
+			},
+			tenantID: "tenant-1",
+			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo) {
+				assert.Equal(t, "B2", res.Code)
+				assert.Equal(t, "Front Office", res.Name)
+			},
+		},
 	}
-	if res.Code != "B2" || res.Name != "Front Office" {
-		t.Fatalf("expected sanitized response, got %+v", res)
-	}
-}
 
-func TestCreateCounterRejectsCrossTenantBranch(t *testing.T) {
-	repo := &stubCounterRepo{}
-	branchRepo := &stubCounterBranchRepo{err: exception.ErrNotFound}
-	uc := NewCounterUseCase(repo, branchRepo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubCounterRepo{
+				counter: tt.stubRepo.counter,
+				err:     tt.stubRepo.err,
+			}
+			branchRepo := &stubCounterBranchRepo{}
+			uc := NewCounterUseCase(repo, branchRepo)
 
-	_, err := uc.CreateCounter(ctx, &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"})
-	if !errors.Is(err, exception.ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
-	}
-	if repo.counter != nil {
-		t.Fatalf("expected counter create blocked, got %+v", repo.counter)
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.UpdateCounter(ctx, tt.id, &tt.req)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo)
+			}
+		})
 	}
 }
