@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +19,17 @@ func newQueueTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&entity.Queue{}, &entity.QueueJourney{}, &entity.VisitJourney{}, &queueCounterRow{}))
+	return db
+}
+
+func newQueueConcurrencyTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())), &gorm.Config{})
+	require.NoError(t, err)
+	conn, err := db.DB()
+	require.NoError(t, err)
+	conn.SetMaxOpenConns(1)
 	require.NoError(t, db.AutoMigrate(&entity.Queue{}, &entity.QueueJourney{}, &entity.VisitJourney{}, &queueCounterRow{}))
 	return db
 }
@@ -61,17 +74,58 @@ func TestQueueRepository(t *testing.T) {
 		}
 	})
 
+	t.Run("NextQueueNumberConcurrent", func(t *testing.T) {
+		db := newQueueConcurrencyTestDB(t)
+		repo := NewQueueRepository(db)
+		const workers = 8
+		results := make(chan int, workers)
+		errCh := make(chan error, workers)
+		var wg sync.WaitGroup
+
+		for i := 0; i < workers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				next, err := repo.NextQueueNumber(ctx, "tenant-1", "branch-1", date, "A")
+				if err != nil {
+					errCh <- err
+					return
+				}
+				results <- next
+			}()
+		}
+
+		wg.Wait()
+		close(results)
+		close(errCh)
+
+		for err := range errCh {
+			require.NoError(t, err)
+		}
+
+		seen := map[int]struct{}{}
+		for next := range results {
+			seen[next] = struct{}{}
+		}
+
+		require.Len(t, seen, workers)
+		for i := 1; i <= workers; i++ {
+			_, ok := seen[i]
+			require.Truef(t, ok, "missing queue number %d", i)
+		}
+	})
+
 	t.Run("ExistsRegistration", func(t *testing.T) {
 		tests := []struct {
-			name     string
-			category string
-			tenantID string
-			branchID string
-			queueID  string
-			patientID string
+			name        string
+			category    string
+			tenantID    string
+			branchID    string
+			queueID     string
+			patientID   string
 			patientName string
-			want     bool
-			wantErr  bool
+			want        bool
+			wantErr     bool
 		}{
 			{
 				name:        "Positive_DuplicateDetects",
@@ -132,6 +186,33 @@ func TestQueueRepository(t *testing.T) {
 		}
 	})
 
+	t.Run("CreateRegistrationWithNumber", func(t *testing.T) {
+		t.Run("Negative_RollsBackCounterAndChildrenOnQueueInsertFailure", func(t *testing.T) {
+			db := newQueueTestDB(t)
+			repo := NewQueueRepository(db)
+
+			require.NoError(t, db.Create(&entity.Queue{ID: "q-existing", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", TicketNo: "A001", QueueNo: 1, Status: entity.QueueStatusWaiting}).Error)
+
+			queue := &entity.Queue{ID: "q-existing", TenantID: "tenant-1", BranchID: "branch-1", Status: entity.QueueStatusWaiting}
+			journey := &entity.QueueJourney{ID: "j-1", QueueID: "q-existing", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}
+			visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-existing", TenantID: "tenant-1", EventType: "registration"}
+
+			err := repo.CreateRegistrationWithNumber(ctx, queue, journey, visit, date, "A")
+			require.Error(t, err)
+
+			var counter queueCounterRow
+			require.Error(t, db.First(&counter, "tenant_id = ? AND branch_id = ? AND queue_date = ? AND prefix = ?", "tenant-1", "branch-1", "2026-06-24", "A").Error)
+
+			var journeyCount int64
+			require.NoError(t, db.Model(&entity.QueueJourney{}).Where("id = ?", "j-1").Count(&journeyCount).Error)
+			require.Zero(t, journeyCount)
+
+			var visitCount int64
+			require.NoError(t, db.Model(&entity.VisitJourney{}).Where("id = ?", "v-1").Count(&visitCount).Error)
+			require.Zero(t, visitCount)
+		})
+	})
+
 	t.Run("UpdateQueueState", func(t *testing.T) {
 		tests := []struct {
 			name      string
@@ -170,14 +251,14 @@ func TestQueueRepository(t *testing.T) {
 				}).Error)
 				if tt.journeyID == "j-1" {
 					require.NoError(t, db.Create(&entity.QueueJourney{
-						ID: "j-1", QueueID: "q-1", TenantID: "tenant-1",
+						ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1",
 						ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusCalling,
 					}).Error)
 				}
 
-				visit := &entity.VisitJourney{ID: tt.visitID, QueueID: "q-1", TenantID: "tenant-1", EventType: "call"}
-				queue := &entity.Queue{ID: tt.queueID, Status: entity.QueueStatusServing, UpdatedAt: 123}
-				journey := &entity.QueueJourney{ID: tt.journeyID, Status: entity.JourneyStatusServing, UpdatedAt: 123}
+				visit := &entity.VisitJourney{ID: tt.visitID, QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", EventType: "call"}
+				queue := &entity.Queue{ID: tt.queueID, TenantID: "tenant-1", BranchID: "branch-1", Status: entity.QueueStatusServing, UpdatedAt: 123}
+				journey := &entity.QueueJourney{ID: tt.journeyID, TenantID: "tenant-1", BranchID: "branch-1", Status: entity.JourneyStatusServing, UpdatedAt: 123}
 
 				err := repo.UpdateQueueState(ctx, queue, journey, visit)
 
@@ -223,7 +304,7 @@ func TestQueueRepository(t *testing.T) {
 				require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A001", QueueNo: 1, CurrentJourneyID: "j-1"}).Error)
 				require.NoError(t, db.Create(&entity.Queue{ID: "q-2", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A002", QueueNo: 2, CurrentJourneyID: "j-2"}).Error)
 				require.NoError(t, db.Create(&entity.Queue{ID: "q-3", TenantID: "tenant-2", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A003", QueueNo: 3, CurrentJourneyID: "j-3"}).Error)
-				require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+				require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
 				require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-2", QueueID: "q-2", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
 				require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-3", QueueID: "q-3", TenantID: "tenant-2", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
 
@@ -284,11 +365,11 @@ func TestQueueRepository(t *testing.T) {
 				repo := NewQueueRepository(db)
 
 				require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting, TicketNo: "A001", QueueNo: 1}).Error)
-				require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", EventType: "registration", CreatedAt: 100}).Error)
-				require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-2", QueueID: "q-1", TenantID: "tenant-1", EventType: "call", CreatedAt: 200}).Error)
-				require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-3", QueueID: "q-1", TenantID: "tenant-2", EventType: "registration", CreatedAt: 50}).Error)
+				require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", EventType: "registration", CreatedAt: 100}).Error)
+				require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-2", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", EventType: "call", CreatedAt: 200}).Error)
+				require.NoError(t, db.Create(&entity.VisitJourney{ID: "v-3", QueueID: "q-1", TenantID: "tenant-2", BranchID: "branch-2", EventType: "registration", CreatedAt: 50}).Error)
 
-				visits, err := repo.FindVisitJourneysByQueueID(ctx, "tenant-1", "q-1")
+				visits, err := repo.FindVisitJourneysByQueueID(ctx, "tenant-1", "branch-1", "q-1")
 				require.NoError(t, err)
 				require.Len(t, visits, 2)
 				assert.Equal(t, "v-1", visits[0].ID)
@@ -301,10 +382,28 @@ func TestQueueRepository(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
+			prepare  func(t *testing.T, db *gorm.DB)
+			wantErr  error
 		}{
 			{
 				name:     "Positive_AutoIncrementsSequence",
 				category: "positive",
+			},
+			{
+				name:     "Negative_RejectsStaleCurrentJourney",
+				category: "negative",
+				prepare: func(t *testing.T, db *gorm.DB) {
+					require.NoError(t, db.Table("queues").Where("id = ?", "q-1").Update("current_journey_id", "j-other").Error)
+				},
+				wantErr: gorm.ErrRecordNotFound,
+			},
+			{
+				name:     "Negative_RejectsExistingSecondActiveJourney",
+				category: "negative",
+				prepare: func(t *testing.T, db *gorm.DB) {
+					require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-active", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-extra", SeqNo: 2, Status: entity.JourneyStatusPending}).Error)
+				},
+				wantErr: gorm.ErrDuplicatedKey,
 			},
 		}
 
@@ -314,14 +413,24 @@ func TestQueueRepository(t *testing.T) {
 				repo := NewQueueRepository(db)
 
 				require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", TicketNo: "A001", QueueNo: 1, CurrentJourneyID: "j-1"}).Error)
-				require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+				require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+				if tt.prepare != nil {
+					tt.prepare(t, db)
+				}
 
-				queue := &entity.Queue{ID: "q-1", CurrentJourneyID: "j-2", UpdatedAt: 123}
-				currentJourney := &entity.QueueJourney{ID: "j-1", Status: entity.JourneyStatusForwarded, UpdatedAt: 123}
-				nextJourney := &entity.QueueJourney{ID: "j-2", QueueID: "q-1", TenantID: "tenant-1", ServiceID: "svc-2", Status: entity.JourneyStatusPending}
-				visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", EventType: "forward"}
+				queue := &entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", CurrentJourneyID: "j-2", UpdatedAt: 123}
+				currentJourney := &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", Status: entity.JourneyStatusForwarded, UpdatedAt: 123}
+				nextJourney := &entity.QueueJourney{ID: "j-2", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-2", Status: entity.JourneyStatusPending}
+				visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", EventType: "forward"}
 
-				require.NoError(t, repo.CreateForwarding(ctx, queue, currentJourney, nextJourney, visit))
+				err := repo.CreateForwarding(ctx, queue, currentJourney, nextJourney, visit)
+				if tt.wantErr != nil {
+					require.ErrorIs(t, err, tt.wantErr)
+					var notSaved entity.QueueJourney
+					require.Error(t, db.First(&notSaved, "id = ?", "j-2").Error)
+					return
+				}
+				require.NoError(t, err)
 
 				var savedJourney entity.QueueJourney
 				require.NoError(t, db.First(&savedJourney, "id = ?", "j-2").Error)

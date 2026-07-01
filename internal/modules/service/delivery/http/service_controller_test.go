@@ -298,4 +298,3 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 }
-

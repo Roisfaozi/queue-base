@@ -39,6 +39,7 @@ type QueueJourney struct {
 	ID        string `gorm:"column:id;primaryKey;type:varchar(36)"`
 	QueueID   string `gorm:"column:queue_id;type:varchar(36);not null"`
 	TenantID  string `gorm:"column:tenant_id;type:varchar(36);not null"`
+	BranchID  string `gorm:"column:branch_id;type:varchar(36);not null"`
 	ServiceID string `gorm:"column:service_id;type:varchar(36);not null"`
 	CounterID string `gorm:"column:counter_id;type:varchar(36)"`
 	SeqNo     int    `gorm:"column:seq_no;type:int;not null"`
@@ -51,6 +52,7 @@ type VisitJourney struct {
 	ID        string `gorm:"column:id;primaryKey;type:varchar(36)"`
 	QueueID   string `gorm:"column:queue_id;type:varchar(36);not null"`
 	TenantID  string `gorm:"column:tenant_id;type:varchar(36);not null"`
+	BranchID  string `gorm:"column:branch_id;type:varchar(36);not null"`
 	EventType string `gorm:"column:event_type;type:varchar(100);not null"`
 	Payload   string `gorm:"column:payload;type:text"`
 	CreatedAt int64  `gorm:"column:created_at;autoCreateTime:milli"`

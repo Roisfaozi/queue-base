@@ -278,4 +278,3 @@ func TestCounterController(t *testing.T) {
 		}
 	})
 }
-

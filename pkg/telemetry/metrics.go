@@ -47,4 +47,21 @@ var (
 		},
 		[]string{"task_type", "status"},
 	)
+
+	// QMS metrics
+	QueueOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "app_qms_queue_operations_total",
+			Help: "Total number of QMS queue operations",
+		},
+		[]string{"operation", "status"},
+	)
+
+	ScannerCheckInsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "app_qms_scanner_check_ins_total",
+			Help: "Total number of QMS scanner check-in attempts",
+		},
+		[]string{"action", "status"},
+	)
 )

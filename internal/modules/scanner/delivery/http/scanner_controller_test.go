@@ -117,6 +117,60 @@ func TestScannerController(t *testing.T) {
 				},
 			},
 			{
+				name:    "Negative_RejectsInvalidBranchID",
+				reqBody: map[string]interface{}{"action": "register", "branch_id": "bad", "service_id": "s-1", "patient_name": "John"},
+				headers: map[string]string{"X-Client-ID": "client-1", "X-API-Key": "key-1"},
+				setup: func() *stubScannerControllerUseCase {
+					return &stubScannerControllerUseCase{}
+				},
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubScannerControllerUseCase) {
+					assert.False(t, uc.called)
+				},
+			},
+			{
+				name:    "Negative_RejectsMissingAPIKeyHeader",
+				reqBody: model.CheckInRequest{Action: "register", BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "s-1", PatientName: "John"},
+				headers: map[string]string{"X-Client-ID": "client-1"},
+				setup: func() *stubScannerControllerUseCase {
+					return &stubScannerControllerUseCase{}
+				},
+				tenantID: "t-1",
+				branchID: "b-1",
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubScannerControllerUseCase) {
+					assert.False(t, uc.called)
+				},
+			},
+			{
+				name:    "Negative_RejectsMissingClientHeader",
+				reqBody: model.CheckInRequest{Action: "register", BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "s-1", PatientName: "John"},
+				headers: map[string]string{"X-API-Key": "key-1"},
+				setup: func() *stubScannerControllerUseCase {
+					return &stubScannerControllerUseCase{}
+				},
+				tenantID: "t-1",
+				branchID: "b-1",
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubScannerControllerUseCase) {
+					assert.False(t, uc.called)
+				},
+			},
+			{
+				name:    "Negative_RejectsMissingBranchID",
+				reqBody: model.CheckInRequest{Action: "register", BranchID: "", ServiceID: "s-1", PatientName: "John"},
+				headers: map[string]string{"X-Client-ID": "client-1", "X-API-Key": "key-1"},
+				setup: func() *stubScannerControllerUseCase {
+					return &stubScannerControllerUseCase{}
+				},
+				tenantID: "t-1",
+				branchID: "b-1",
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubScannerControllerUseCase) {
+					assert.False(t, uc.called)
+				},
+			},
+			{
 				name:    "Security_PropagatesUnauthorized",
 				reqBody: model.CheckInRequest{Action: "register", BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "s-1", PatientName: "John"},
 				headers: map[string]string{"X-Client-ID": "client-1", "X-API-Key": "bad-key"},
@@ -144,6 +198,18 @@ func TestScannerController(t *testing.T) {
 					assert.True(t, uc.called)
 				},
 			},
+			{
+				name:    "Negative_RejectsMalformedJSON",
+				reqBody: nil,
+				headers: map[string]string{"X-Client-ID": "client-1", "X-API-Key": "key-1"},
+				setup: func() *stubScannerControllerUseCase {
+					return &stubScannerControllerUseCase{}
+				},
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubScannerControllerUseCase) {
+					assert.False(t, uc.called)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -168,11 +234,16 @@ func TestScannerController(t *testing.T) {
 
 				router.POST("/scanner/check-in", controller.CheckIn)
 
-				body, err := json.Marshal(tt.reqBody)
-				if err != nil {
-					t.Fatalf("Failed to marshal body: %v", err)
+				var req *http.Request
+				if tt.name == "Negative_RejectsMalformedJSON" {
+					req, _ = http.NewRequest("POST", "/scanner/check-in", bytes.NewBufferString("{"))
+				} else {
+					body, err := json.Marshal(tt.reqBody)
+					if err != nil {
+						t.Fatalf("Failed to marshal body: %v", err)
+					}
+					req, _ = http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 				}
-				req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 
 				for k, v := range tt.headers {
 					req.Header.Set(k, v)

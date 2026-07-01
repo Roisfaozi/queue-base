@@ -61,13 +61,13 @@ func (a APIKeyAuthenticator) Authenticate(ctx context.Context, tenantID, branchI
 	return nil
 }
 
-func NewScannerModule(queueModule *queueModulePkg.QueueModule, branchModule *branchModulePkg.BranchModule, serviceModule *serviceModulePkg.ServiceModule, counterModule *counterModulePkg.CounterModule, settingsModule *settingsModulePkg.SettingsModule, validate *validator.Validate, authenticator ScannerAuthenticator, log *logrus.Logger) *ScannerModule {
+func NewScannerModule(queueModule *queueModulePkg.QueueModule, branchModule *branchModulePkg.BranchModule, serviceModule *serviceModulePkg.ServiceModule, counterModule *counterModulePkg.CounterModule, settingsModule *settingsModulePkg.SettingsModule, validate *validator.Validate, authenticator ScannerAuthenticator, log *logrus.Logger, audit ...scannerUsecase.AuditLogger) *ScannerModule {
 	var resolver *settingsModulePkg.QueueSettingsResolver
 	if settingsModule != nil {
 		resolver = settingsModule.QueueSettingsResolver
 	}
 	relationValidator := scannerUsecase.NewRelationValidator(branchModule.BranchRepo, serviceModule.ServiceRepo, counterModule.CounterRepo, resolver)
-	uc := scannerUsecase.NewScannerUseCase(queueModule.QueueUseCase, authenticator, relationValidator)
+	uc := scannerUsecase.NewScannerUseCase(queueModule.QueueUseCase, authenticator, relationValidator, audit...)
 	ctrl := scannerHttp.NewScannerControllerWithLogger(uc, validate, log)
 	return &ScannerModule{ScannerController: ctrl, ScannerUseCase: uc}
 }

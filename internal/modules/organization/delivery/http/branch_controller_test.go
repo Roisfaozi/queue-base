@@ -104,7 +104,7 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -149,7 +149,7 @@ func TestBranchController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				log:=logrus.New()
+				log := logrus.New()
 				uc := tt.setup()
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
@@ -194,7 +194,7 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
@@ -236,7 +236,7 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
@@ -272,7 +272,7 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()

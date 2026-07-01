@@ -46,7 +46,7 @@ func TestApiKeyIntegration_Lifecycle(t *testing.T) {
 				assert.Equal(t, user.ID, identity.UserID)
 				assert.Equal(t, "api_tester", identity.Username)
 
-				actualKey := created.Key[8:] 
+				actualKey := created.Key[8:]
 				hash := setup.HashSHA256(actualKey)
 				cacheKey := fmt.Sprintf("nexusos:api_key:v1:%s", hash)
 

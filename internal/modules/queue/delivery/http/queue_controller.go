@@ -108,7 +108,16 @@ func (h *QueueController) GetAll(c *gin.Context) {
 // @Failure      500  {object}  response.SwaggerErrorResponseWrapper
 // @Router       /queues/{id} [get]
 func (h *QueueController) GetByID(c *gin.Context) {
-	res, err := h.useCase.GetQueueByID(c.Request.Context(), c.Param("id"))
+	queueID := c.Param("id")
+	if queueID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing queue id")
+		return
+	}
+	ctx := c.Request.Context()
+	if branchID, err := h.useCase.ResolveQueueBranchID(ctx, queueID); err == nil {
+		ctx = database.SetBranchContext(ctx, branchID)
+	}
+	res, err := h.useCase.GetQueueByID(ctx, queueID)
 	if err != nil {
 		h.log.WithError(err).Error("failed to get queue")
 
@@ -148,7 +157,13 @@ func (h *QueueController) Forward(c *gin.Context) {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
-	res, err := h.useCase.ForwardQueue(c.Request.Context(), c.Param("id"), &req)
+
+	ctx := c.Request.Context()
+	if branchID, err := h.useCase.ResolveQueueBranchID(ctx, c.Param("id")); err == nil {
+		ctx = database.SetBranchContext(ctx, branchID)
+	}
+
+	res, err := h.useCase.ForwardQueue(ctx, c.Param("id"), &req)
 	if err != nil {
 		h.log.WithError(err).Error("failed to forward queue")
 
@@ -188,7 +203,11 @@ func (h *QueueController) Transition(c *gin.Context) {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
-	res, err := h.useCase.TransitionQueue(c.Request.Context(), c.Param("id"), &req)
+	ctx := c.Request.Context()
+	if branchID, err := h.useCase.ResolveQueueBranchID(ctx, c.Param("id")); err == nil {
+		ctx = database.SetBranchContext(ctx, branchID)
+	}
+	res, err := h.useCase.TransitionQueue(ctx, c.Param("id"), &req)
 	if err != nil {
 		h.log.WithError(err).Error("failed to transition queue")
 		response.HandleError(c, err, "failed to transition queue")
@@ -290,7 +309,11 @@ func (h *QueueController) GetVisitJourneys(c *gin.Context) {
 		response.BadRequest(c, exception.ErrBadRequest, "missing queue id")
 		return
 	}
-	res, err := h.useCase.GetVisitJourneys(c.Request.Context(), queueID)
+	ctx := c.Request.Context()
+	if branchID, err := h.useCase.ResolveQueueBranchID(ctx, queueID); err == nil {
+		ctx = database.SetBranchContext(ctx, branchID)
+	}
+	res, err := h.useCase.GetVisitJourneys(ctx, queueID)
 	if err != nil {
 		h.log.WithError(err).Error("failed to get visit journeys")
 		response.HandleError(c, err, "failed to get visit journeys")

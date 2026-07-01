@@ -645,7 +645,6 @@ func TestOrganizationUseCase(t *testing.T) {
 					return len(params) == 3 && params[1] == usecase.DefaultOwnerRoleID
 				})).Return(true, nil)
 
-
 				response, err := uc.CreateOrganization(ctx, userID, request)
 
 				assert.NoError(t, err)
@@ -725,11 +724,10 @@ func TestOrganizationUseCase(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.run(t)
 		})
 	}
 }
-

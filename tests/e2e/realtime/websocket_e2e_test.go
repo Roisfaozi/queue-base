@@ -173,7 +173,7 @@ func TestWebSocketE2E_NotificationFlow(t *testing.T) {
 			tt.run(t)
 		})
 	}
-	
+
 	if conn != nil {
 		conn.Close()
 	}
@@ -260,7 +260,7 @@ func TestPresenceE2E_IsolationAndEvents(t *testing.T) {
 			run: func(t *testing.T) {
 				tokenA, uidA, org1ID = createUser("UserA")
 				connA = connectWS(tokenA, org1ID)
-				
+
 				channelOrg1 := "presence:org:" + org1ID
 				connA.WriteJSON(map[string]string{"type": "subscribe", "channel": channelOrg1})
 				_, _, _ = connA.ReadMessage() // read sub info
@@ -295,27 +295,31 @@ func TestPresenceE2E_IsolationAndEvents(t *testing.T) {
 
 				// A3 connects
 				connA3 := connectWS(tokenA, org1ID)
-				
+
 				connA3.WriteJSON(map[string]string{"type": "subscribe", "channel": "presence:org:" + org1ID})
-				
+
 				connA.SetReadDeadline(time.Now().Add(5 * time.Second))
 				foundJoin := false
 				for {
 					_, msg, err := connA.ReadMessage()
-					if err != nil { break }
+					if err != nil {
+						break
+					}
 					if strings.Contains(string(msg), "\"event\":\"join\"") {
 						foundJoin = true
 						break
 					}
 				}
 				require.True(t, foundJoin, "Did not receive join event")
-				
+
 				connA3.Close()
 				connA.SetReadDeadline(time.Now().Add(1 * time.Second))
 				foundLeave := false
 				for {
 					_, msg, err := connA.ReadMessage()
-					if err != nil { break }
+					if err != nil {
+						break
+					}
 					if strings.Contains(string(msg), "\"event\":\"leave\"") {
 						foundLeave = true
 						break
@@ -332,6 +336,10 @@ func TestPresenceE2E_IsolationAndEvents(t *testing.T) {
 		})
 	}
 
-	if connA != nil { connA.Close() }
-	if connC != nil { connC.Close() }
+	if connA != nil {
+		connA.Close()
+	}
+	if connC != nil {
+		connC.Close()
+	}
 }

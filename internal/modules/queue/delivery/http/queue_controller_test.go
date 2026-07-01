@@ -36,33 +36,40 @@ func newQueueTestValidator() *validator.Validate {
 }
 
 type stubQueueControllerUseCase struct {
-	registerCalled   bool
-	registerReq      *model.RegisterQueueRequest
-	registerBranchID string
-	listCalled       bool
-	listReq          model.ListQueuesRequest
-	listBranchID     string
-	getCalled        bool
-	getID            string
-	forwardCalled    bool
-	forwardReq       *model.ForwardQueueRequest
-	forwardID        string
-	forwardRes       *model.QueueResponse
-	forwardErr       error
-	listRes          []model.QueueResponse
-	getRes           *model.QueueResponse
-	transitionCalled bool
-	transitionReq    *model.QueueTransitionRequest
-	transitionID     string
-	transitionRes    *model.QueueResponse
-	transitionErr    error
-	journeyReq       model.QueueJourneyListRequest
-	journeyRes       []model.QueueJourneyResponse
-	visitRes         []model.VisitJourneyResponse
-	statsRes         *model.QueueStatsResponse
-	statsCalled      bool
+	ResolveQueueBranchIDFunc func(ctx context.Context, queueID string) (string, error)
+	registerCalled           bool
+	registerReq              *model.RegisterQueueRequest
+	registerBranchID         string
+	listCalled               bool
+	listReq                  model.ListQueuesRequest
+	listBranchID             string
+	getCalled                bool
+	getID                    string
+	forwardCalled            bool
+	forwardReq               *model.ForwardQueueRequest
+	forwardID                string
+	forwardRes               *model.QueueResponse
+	forwardErr               error
+	listRes                  []model.QueueResponse
+	getRes                   *model.QueueResponse
+	transitionCalled         bool
+	transitionReq            *model.QueueTransitionRequest
+	transitionID             string
+	transitionRes            *model.QueueResponse
+	transitionErr            error
+	journeyReq               model.QueueJourneyListRequest
+	journeyRes               []model.QueueJourneyResponse
+	visitRes                 []model.VisitJourneyResponse
+	statsRes                 *model.QueueStatsResponse
+	statsCalled              bool
 }
 
+func (s *stubQueueControllerUseCase) ResolveQueueBranchID(ctx context.Context, queueID string) (string, error) {
+	if s.ResolveQueueBranchIDFunc != nil {
+		return s.ResolveQueueBranchIDFunc(ctx, queueID)
+	}
+	return "branch-id", nil
+}
 func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error) {
 	s.registerCalled = true
 	s.registerReq = req
@@ -119,11 +126,11 @@ func TestQueueController(t *testing.T) {
 			assert   func(t *testing.T, uc *stubQueueControllerUseCase)
 		}{
 			{
-				name:    "Positive_Register",
+				name:     "Positive_Register",
 				category: "positive",
 				reqBody: model.RegisterQueueRequest{
-					BranchID: "550e8400-e29b-41d4-a716-446655440000",
-					ServiceID: "550e8400-e29b-41d4-a716-446655440001",
+					BranchID:    "550e8400-e29b-41d4-a716-446655440000",
+					ServiceID:   "550e8400-e29b-41d4-a716-446655440001",
 					PatientName: "John Queue",
 				},
 				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
@@ -141,7 +148,7 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:= logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -226,7 +233,7 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -271,12 +278,22 @@ func TestQueueController(t *testing.T) {
 					assert.Equal(t, "q-1", uc.getID)
 				},
 			},
+			{
+				name:     "Negative_GetByIDMissingIDHitsRouter404",
+				category: "negative",
+				queueID:  "",
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusNotFound,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.getCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -334,12 +351,23 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.transitionCalled)
 				},
 			},
+			{
+				name:     "Negative_TransitionRejectsInvalidAction",
+				category: "negative",
+				queueID:  "q-1",
+				reqBody:  map[string]any{"action": "drop-table"},
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.transitionCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -361,6 +389,26 @@ func TestQueueController(t *testing.T) {
 				}
 			})
 		}
+	})
+
+	t.Run("TransitionRejectsMalformedJSON", func(t *testing.T) {
+		uc := &stubQueueControllerUseCase{}
+		log := logrus.New()
+		controller := NewQueueController(uc, newQueueTestValidator(), log)
+		router := gin.New()
+		router.Use(func(c *gin.Context) {
+			ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+			c.Request = c.Request.WithContext(ctx)
+			c.Next()
+		})
+		router.POST("/queues/:id/transition", controller.Transition)
+
+		req, _ := http.NewRequest("POST", "/queues/q-1/transition", bytes.NewBufferString("{"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.False(t, uc.transitionCalled)
 	})
 
 	t.Run("Forward", func(t *testing.T) {
@@ -405,12 +453,23 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.forwardCalled)
 				},
 			},
+			{
+				name:     "Negative_ForwardRejectsInvalidDestinationService",
+				category: "negative",
+				queueID:  "q-1",
+				reqBody:  map[string]any{"destination_service_id": "bad"},
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.forwardCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -432,6 +491,26 @@ func TestQueueController(t *testing.T) {
 				}
 			})
 		}
+	})
+
+	t.Run("ForwardRejectsMalformedJSON", func(t *testing.T) {
+		uc := &stubQueueControllerUseCase{}
+		log := logrus.New()
+		controller := NewQueueController(uc, newQueueTestValidator(), log)
+		router := gin.New()
+		router.Use(func(c *gin.Context) {
+			ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+			c.Request = c.Request.WithContext(ctx)
+			c.Next()
+		})
+		router.POST("/queues/:id/forward", controller.Forward)
+
+		req, _ := http.NewRequest("POST", "/queues/q-1/forward", bytes.NewBufferString("{"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.False(t, uc.forwardCalled)
 	})
 
 	t.Run("GetVisitJourneys", func(t *testing.T) {
@@ -462,13 +541,16 @@ func TestQueueController(t *testing.T) {
 				queueID:  "",
 				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
 				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.getCalled)
+				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -522,12 +604,22 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.statsCalled)
 				},
 			},
+			{
+				name:     "Negative_RejectsMissingBranchPathParam",
+				category: "negative",
+				branchID: "",
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.statsCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -576,9 +668,63 @@ func TestQueueController(t *testing.T) {
 				},
 			},
 			{
+				name:      "Edge_ServiceJourneysPreserveStatusFilter",
+				category:  "edge",
+				branchID:  "branch-1",
+				serviceID: "svc-1",
+				query:     "?status=calling",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1", Status: entity.JourneyStatusCalling}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", Status: "calling"}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Edge_ServiceJourneysPreserveAllFilters",
+				category:  "edge",
+				branchID:  "branch-1",
+				serviceID: "svc-1",
+				query:     "?queue_date=2026-06-24&status=serving",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1", Status: entity.JourneyStatusServing}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: "2026-06-24", Status: "serving"}, uc.journeyReq)
+				},
+			},
+			{
 				name:      "Negative_RejectsMissingPathIDs",
 				category:  "negative",
 				branchID:  "",
+				serviceID: "",
+				query:     "",
+				setup:     func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode:  http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Negative_RejectsMalformedQuery",
+				category:  "negative",
+				branchID:  "branch-1",
+				serviceID: "svc-1",
+				query:     "?queue_date=%",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: ""}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Negative_RejectsEmptyServiceID",
+				category:  "negative",
+				branchID:  "branch-1",
 				serviceID: "",
 				query:     "",
 				setup:     func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
@@ -592,7 +738,7 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -641,9 +787,63 @@ func TestQueueController(t *testing.T) {
 				},
 			},
 			{
+				name:      "Edge_CounterJourneysPreserveQueueDateFilter",
+				category:  "edge",
+				branchID:  "branch-1",
+				counterID: "c-1",
+				query:     "?queue_date=2026-06-24",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", QueueDate: "2026-06-24"}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Edge_CounterJourneysPreserveAllFilters",
+				category:  "edge",
+				branchID:  "branch-1",
+				counterID: "c-1",
+				query:     "?queue_date=2026-06-24&status=serving",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1", Status: entity.JourneyStatusServing}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", QueueDate: "2026-06-24", Status: "serving"}, uc.journeyReq)
+				},
+			},
+			{
 				name:      "Negative_RejectsMissingPathIDs",
 				category:  "negative",
 				branchID:  "",
+				counterID: "",
+				query:     "",
+				setup:     func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode:  http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Negative_RejectsMalformedQuery",
+				category:  "negative",
+				branchID:  "branch-1",
+				counterID: "c-1",
+				query:     "?queue_date=%",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", QueueDate: ""}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Negative_RejectsEmptyCounterID",
+				category:  "negative",
+				branchID:  "branch-1",
 				counterID: "",
 				query:     "",
 				setup:     func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
@@ -657,7 +857,7 @@ func TestQueueController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				log:=logrus.New()
+				log := logrus.New()
 				controller := NewQueueController(uc, newQueueTestValidator(), log)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {

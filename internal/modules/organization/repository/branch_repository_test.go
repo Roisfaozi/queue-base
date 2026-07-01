@@ -160,31 +160,31 @@ func TestBranchRepository(t *testing.T) {
 
 	t.Run("Delete", func(t *testing.T) {
 		tests := []struct {
-			name      string
-			setup     func(repo BranchRepository)
-			tenantID  string
-			branchID  string
-			wantErr   error
-			assert    func(t *testing.T, repo BranchRepository)
+			name     string
+			setup    func(repo BranchRepository)
+			tenantID string
+			branchID string
+			wantErr  error
+			assert   func(t *testing.T, repo BranchRepository)
 		}{
 			{
 				name: "Positive_DeleteSuccess",
 				setup: func(repo BranchRepository) {
 					_ = repo.Create(ctx, &entity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "B1"})
 				},
-				tenantID:  "t-1",
-				branchID:  "b-1",
+				tenantID: "t-1",
+				branchID: "b-1",
 				assert: func(t *testing.T, repo BranchRepository) {
 					_, err := repo.FindByID(ctx, "t-1", "b-1")
 					assert.Error(t, err)
 				},
 			},
 			{
-				name:      "Negative_DeleteMissing",
-				setup:     func(repo BranchRepository) {},
-				tenantID:  "t-1",
-				branchID:  "b-99",
-				wantErr:   exception.ErrNotFound,
+				name:     "Negative_DeleteMissing",
+				setup:    func(repo BranchRepository) {},
+				tenantID: "t-1",
+				branchID: "b-99",
+				wantErr:  exception.ErrNotFound,
 			},
 		}
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
@@ -54,11 +56,93 @@ type stubRelationValidator struct {
 	validateCalled bool
 }
 
+type stubAuditLogger struct {
+	entries []auditModel.CreateAuditLogRequest
+	err     error
+}
+
+func (s *stubAuditLogger) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.entries = append(s.entries, req)
+	return s.err
+}
+
 func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
 	s.validateCalled = true
 	s.serviceID = serviceID
 	s.counterID = counterID
 	return s.err
+}
+
+func TestScannerAuditLogging(t *testing.T) {
+	t.Run("Register_EmitsAuditAndSurvivesFailure", func(t *testing.T) {
+		qh := &stubQueueHandler{registerRes: &queueModel.QueueResponse{ID: "q-1"}}
+		audit := &stubAuditLogger{err: assert.AnError}
+		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+		ctx = authcontext.WithUserID(ctx, "u-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionRegister, BranchID: "b-1", ClientID: "c-1", APIKey: "k-1", ServiceID: "svc-1", PatientName: "John"})
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.Len(t, audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		assert.True(t, ok)
+		assert.Equal(t, "SCANNER_REGISTER", audit.entries[0].Action)
+		assert.Equal(t, "scanner", audit.entries[0].Entity)
+		assert.Equal(t, "t-1", audit.entries[0].OrganizationID)
+		assert.Equal(t, "u-1", audit.entries[0].UserID)
+		assert.Equal(t, "b-1", values["branch_id"])
+	})
+
+	t.Run("Forward_DoesNotLeakAPIKey", func(t *testing.T) {
+		qh := &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}}
+		audit := &stubAuditLogger{}
+		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionForward, BranchID: "b-1", ClientID: "c-1", APIKey: "super-secret", QueueID: "q-1", DestinationServiceID: "svc-2", DestinationCounterID: "ctr-2"})
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		require := assert.New(t)
+		require.Len(audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.True(ok)
+		require.NotContains(values, "api_key")
+		require.Equal("SCANNER_FORWARD", audit.entries[0].Action)
+		require.Equal("q-1", audit.entries[0].EntityID)
+	})
+
+	t.Run("Register_DoesNotLeakPatientData", func(t *testing.T) {
+		qh := &stubQueueHandler{registerRes: &queueModel.QueueResponse{ID: "q-1"}}
+		audit := &stubAuditLogger{}
+		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionRegister, BranchID: "b-1", ClientID: "c-1", APIKey: "k-1", ServiceID: "svc-1", PatientID: "p-1", PatientName: "Sensitive Patient"})
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.Len(t, audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		assert.True(t, ok)
+		assert.NotContains(t, values, "patient_id")
+		assert.NotContains(t, values, "patient_name")
+	})
+
+	t.Run("RejectsBranchMismatch", func(t *testing.T) {
+		uc := NewScannerUseCase(&stubQueueHandler{}, stubScannerAuthenticator{}, &stubRelationValidator{}, &stubAuditLogger{})
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionRegister, BranchID: "b-2", ClientID: "c-1", APIKey: "k-1", ServiceID: "svc-1", PatientName: "John"})
+		assert.ErrorIs(t, err, exception.ErrForbidden)
+		assert.Nil(t, res)
+	})
 }
 
 // =============================================================================
@@ -83,6 +167,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "positive",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "key-1",
 				ServiceID:   "service-1",
@@ -106,6 +191,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "bad",
 				ServiceID:   "service-1",
@@ -121,6 +207,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "security",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "bad",
 				ServiceID:   "service-1",
@@ -136,6 +223,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "edge",
 			req: &CheckInRequest{
 				Action:               " forward ",
+				BranchID:             "b-1",
 				ClientID:             "client-1",
 				APIKey:               "key-1",
 				QueueID:              "q-1",
@@ -155,10 +243,75 @@ func TestScannerCheckIn(t *testing.T) {
 			},
 		},
 		{
+			name:     "Negative_ForwardMissingDestinationService",
+			category: "negative",
+			req: &CheckInRequest{
+				Action:      ActionForward,
+				BranchID:    "b-1",
+				ClientID:    "client-1",
+				APIKey:      "key-1",
+				QueueID:     "q-1",
+				PatientName: "John",
+			},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_ForwardMissingQueueID",
+			category: "negative",
+			req: &CheckInRequest{
+				Action:               ActionForward,
+				BranchID:             "b-1",
+				ClientID:             "client-1",
+				APIKey:               "key-1",
+				DestinationServiceID: "service-2",
+			},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Edge_ForwardMissingCounterIDAllowed",
+			category: "edge",
+			req: &CheckInRequest{
+				Action:               ActionForward,
+				BranchID:             "b-1",
+				ClientID:             "client-1",
+				APIKey:               "key-1",
+				QueueID:              "q-1",
+				DestinationServiceID: "service-2",
+			},
+			queueHandler: &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}},
+			validator:    &stubRelationValidator{},
+			tenantID:     "t-1",
+			branchID:     "b-1",
+			wantRes: func(t *testing.T, qh *stubQueueHandler, v *stubRelationValidator, res *CheckInResponse) {
+				assert.Equal(t, ActionForward, res.Action)
+				assert.True(t, qh.forwardCalled)
+				assert.Equal(t, "", v.counterID)
+			},
+		},
+		{
+			name:     "Negative_RegisterMissingService",
+			category: "negative",
+			req: &CheckInRequest{
+				Action:      ActionRegister,
+				BranchID:    "b-1",
+				ClientID:    "client-1",
+				APIKey:      "key-1",
+				PatientName: "John Doe",
+			},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
 			name:     "Vulnerability_RejectsUnknownAction",
 			category: "vulnerability",
 			req: &CheckInRequest{
 				Action:   "drop-table",
+				BranchID: "b-1",
 				ClientID: "client-1",
 				APIKey:   "key-1",
 			},
@@ -171,6 +324,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "key-1",
 				ServiceID:   "service-1",
@@ -186,6 +340,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:               ActionForward,
+				BranchID:             "b-1",
 				ClientID:             "client-1",
 				APIKey:               "key-1",
 				QueueID:              "q-1",
@@ -214,6 +369,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",
@@ -226,6 +382,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",
@@ -239,6 +396,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",
@@ -255,6 +413,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:               ActionForward,
+				BranchID:             "b-1",
 				ClientID:             "c-1",
 				APIKey:               "k-1",
 				QueueID:              "q-1",
@@ -271,6 +430,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "edge",
 			req: &CheckInRequest{
 				Action:      "REGISTER",
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",
@@ -283,6 +443,27 @@ func TestScannerCheckIn(t *testing.T) {
 			wantRes: func(t *testing.T, qh *stubQueueHandler, v *stubRelationValidator, res *CheckInResponse) {
 				assert.Equal(t, ActionRegister, res.Action)
 				assert.True(t, qh.registerCalled)
+			},
+		},
+		{
+			name:     "Edge_CaseInsensitiveForwardAction",
+			category: "edge",
+			req: &CheckInRequest{
+				Action:               "FORWARD",
+				BranchID:             "b-1",
+				ClientID:             "c-1",
+				APIKey:               "k-1",
+				QueueID:              "q-1",
+				DestinationServiceID: "s-2",
+			},
+			queueHandler: &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}},
+			validator:    &stubRelationValidator{},
+			tenantID:     "t-1",
+			branchID:     "b-1",
+			wantRes: func(t *testing.T, qh *stubQueueHandler, v *stubRelationValidator, res *CheckInResponse) {
+				assert.Equal(t, ActionForward, res.Action)
+				assert.True(t, qh.forwardCalled)
+				assert.Equal(t, "s-2", qh.forwardReq.DestinationServiceID)
 			},
 		},
 	}

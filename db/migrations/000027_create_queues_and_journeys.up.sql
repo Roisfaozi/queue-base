@@ -36,6 +36,7 @@ CREATE TABLE queue_journeys (
     id VARCHAR(36) PRIMARY KEY,
     queue_id VARCHAR(36) NOT NULL,
     tenant_id VARCHAR(36) NOT NULL,
+    branch_id VARCHAR(36) NOT NULL,
     service_id VARCHAR(36) NOT NULL,
     counter_id VARCHAR(36) NULL,
     seq_no INT NOT NULL,
@@ -50,6 +51,7 @@ CREATE TABLE visit_journeys (
     id VARCHAR(36) PRIMARY KEY,
     queue_id VARCHAR(36) NOT NULL,
     tenant_id VARCHAR(36) NOT NULL,
+    branch_id VARCHAR(36) NOT NULL,
     event_type VARCHAR(100) NOT NULL, -- registration, call, serve, skip, cancel, forward, complete
     payload TEXT NULL,
     created_at BIGINT,

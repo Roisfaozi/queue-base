@@ -47,7 +47,6 @@ func TestProjectIntegration_Create_Success(t *testing.T) {
 				}
 
 				result, err := uc.CreateProject(ctx, owner.ID, org.ID, req)
-
 				require.NoError(t, err)
 				assert.NotNil(t, result)
 				assert.NotEmpty(t, result.ID)

@@ -112,7 +112,7 @@ func (u *settingsUseCase) ResolveSetting(ctx context.Context, req *model.Resolve
 	if req.CounterID != "" {
 		s, err := u.repo.FindByScope(ctx, tenantID, entity.ScopeTypeCounter, req.CounterID, req.Key)
 		if err == nil && s != nil {
-			return u.mapToResponse(s), nil
+			return u.mapToResponseWithMeta(s, "counter", false), nil
 		}
 	}
 
@@ -120,7 +120,7 @@ func (u *settingsUseCase) ResolveSetting(ctx context.Context, req *model.Resolve
 	if req.ServiceID != "" {
 		s, err := u.repo.FindByScope(ctx, tenantID, entity.ScopeTypeService, req.ServiceID, req.Key)
 		if err == nil && s != nil {
-			return u.mapToResponse(s), nil
+			return u.mapToResponseWithMeta(s, "service", false), nil
 		}
 	}
 
@@ -128,25 +128,32 @@ func (u *settingsUseCase) ResolveSetting(ctx context.Context, req *model.Resolve
 	if req.BranchID != "" {
 		s, err := u.repo.FindByScope(ctx, tenantID, entity.ScopeTypeBranch, req.BranchID, req.Key)
 		if err == nil && s != nil {
-			return u.mapToResponse(s), nil
+			return u.mapToResponseWithMeta(s, "branch", false), nil
 		}
 	}
 
 	// 4. Check Tenant Scope
 	s, err := u.repo.FindByScope(ctx, tenantID, entity.ScopeTypeTenant, tenantID, req.Key)
 	if err == nil && s != nil {
-		return u.mapToResponse(s), nil
+		inherited := req.BranchID != "" || req.ServiceID != "" || req.CounterID != ""
+		return u.mapToResponseWithMeta(s, "tenant", inherited), nil
 	}
 
 	return nil, exception.ErrNotFound
 }
 
 func (u *settingsUseCase) mapToResponse(s *entity.Setting) *model.SettingResponse {
+	return u.mapToResponseWithMeta(s, s.ScopeType, false)
+}
+
+func (u *settingsUseCase) mapToResponseWithMeta(s *entity.Setting, source string, inherited bool) *model.SettingResponse {
 	return &model.SettingResponse{
 		ID:        s.ID,
 		TenantID:  s.TenantID,
 		ScopeType: s.ScopeType,
 		ScopeID:   s.ScopeID,
+		Source:    source,
+		Inherited: inherited,
 		Key:       s.Key,
 		Value:     s.Value,
 		ValueType: s.ValueType,

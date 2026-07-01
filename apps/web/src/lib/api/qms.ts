@@ -81,6 +81,18 @@ export interface VisitJourney {
 	created_at: number;
 }
 
+export interface QueueStatsResponse {
+	total_queues_today: number;
+	total_active_journeys: number;
+	total_completed_visits: number;
+	waiting_by_service: Record<string, number>;
+}
+
+export interface ScannerCheckInResponse {
+	action: "register" | "forward";
+	queue: Queue;
+}
+
 // -----------------------------------------------------------------------------
 // BRANCHES API
 // -----------------------------------------------------------------------------
@@ -175,7 +187,58 @@ export const queuesApi = {
 	getVisitJourneys: (id: string) =>
 		api.get<{ data: VisitJourney[] }>(`/queues/${id}/visit-journeys`),
 	getQueueStats: (branchId: string) =>
-		api.get<{ data: any }>(`/branches/${branchId}/queue-stats`),
+		api.get<{ data: QueueStatsResponse }>(`/branches/${branchId}/queue-stats`),
+	getJourneysByBranchAndService: (
+		branchId: string,
+		serviceId: string,
+		params?: { status?: string; queue_date?: string },
+	) => {
+		const searchParams = new URLSearchParams();
+		if (params?.status) searchParams.append("status", params.status);
+		if (params?.queue_date)
+			searchParams.append("queue_date", params.queue_date);
+		return api.get<{ data: QueueJourney[] }>(
+			`/branches/${branchId}/services/${serviceId}/queue-journeys${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+		);
+	},
+	getJourneysByBranchAndCounter: (
+		branchId: string,
+		counterId: string,
+		params?: { status?: string; queue_date?: string },
+	) => {
+		const searchParams = new URLSearchParams();
+		if (params?.status) searchParams.append("status", params.status);
+		if (params?.queue_date)
+			searchParams.append("queue_date", params.queue_date);
+		return api.get<{ data: QueueJourney[] }>(
+			`/branches/${branchId}/counters/${counterId}/queue-journeys${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+		);
+	},
+};
+
+// -----------------------------------------------------------------------------
+// SCANNER API
+// -----------------------------------------------------------------------------
+export const scannerApi = {
+	checkIn: (
+		data: {
+			action: "register" | "forward";
+			branch_id: string;
+			service_id?: string;
+			patient_id?: string;
+			patient_name?: string;
+			queue_id?: string;
+			destination_service_id?: string;
+			destination_counter_id?: string;
+		},
+		headers: { clientId: string; apiKey: string },
+	) =>
+		api.post<{ data: ScannerCheckInResponse }>("/scanner/check-in", data, {
+			headers: {
+				"X-Client-ID": headers.clientId,
+				"X-API-Key": headers.apiKey,
+			},
+		}),
 };
 
 // -----------------------------------------------------------------------------
