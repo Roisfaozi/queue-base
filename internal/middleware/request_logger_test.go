@@ -26,178 +26,276 @@ func setupRequestLoggerTest() (*gin.Engine, *logrus.Logger, *bytes.Buffer) {
 }
 
 // ============================================================================
-// ✅ POSITIVE CASES
+// Table Driven Tests
 // ============================================================================
 
 func TestRequestLogger_LogsRequest(t *testing.T) {
-	router, log, logBuffer := setupRequestLoggerTest()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "LogsRequest",
+			category: "positive",
+			run: func(t *testing.T) {
+				router, log, logBuffer := setupRequestLoggerTest()
 
-	router.Use(RequestLogger(log))
+				router.Use(RequestLogger(log))
 
-	router.GET("/test", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "success"})
-	})
+				router.GET("/test", func(c *gin.Context) {
+					c.JSON(http.StatusOK, gin.H{"message": "success"})
+				})
 
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("User-Agent", "TestAgent/1.0")
-	w := httptest.NewRecorder()
+				req := httptest.NewRequest("GET", "/test", nil)
+				req.Header.Set("User-Agent", "TestAgent/1.0")
+				w := httptest.NewRecorder()
 
-	router.ServeHTTP(w, req)
+				router.ServeHTTP(w, req)
 
-	// Assert
-	assert.Equal(t, http.StatusOK, w.Code)
+				// Assert
+				assert.Equal(t, http.StatusOK, w.Code)
 
-	// Parse log output
-	logOutput := logBuffer.String()
-	assert.Contains(t, logOutput, "http_request")
-	assert.Contains(t, logOutput, "GET")
-	assert.Contains(t, logOutput, "/test")
-	assert.Contains(t, logOutput, "200")
-	assert.Contains(t, logOutput, "TestAgent/1.0")
+				// Parse log output
+				logOutput := logBuffer.String()
+				assert.Contains(t, logOutput, "http_request")
+				assert.Contains(t, logOutput, "GET")
+				assert.Contains(t, logOutput, "/test")
+				assert.Contains(t, logOutput, "200")
+				assert.Contains(t, logOutput, "TestAgent/1.0")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRequestLogger_LogsWithRequestID(t *testing.T) {
-	router, log, logBuffer := setupRequestLoggerTest()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "LogsWithRequestID",
+			category: "positive",
+			run: func(t *testing.T) {
+				router, log, logBuffer := setupRequestLoggerTest()
 
-	// Add RequestID middleware first
-	router.Use(RequestIDMiddleware())
-	router.Use(RequestLogger(log))
+				// Add RequestID middleware first
+				router.Use(RequestIDMiddleware())
+				router.Use(RequestLogger(log))
 
-	router.GET("/test-with-id", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "success"})
-	})
+				router.GET("/test-with-id", func(c *gin.Context) {
+					c.JSON(http.StatusOK, gin.H{"message": "success"})
+				})
 
-	req := httptest.NewRequest("GET", "/test-with-id", nil)
-	w := httptest.NewRecorder()
+				req := httptest.NewRequest("GET", "/test-with-id", nil)
+				w := httptest.NewRecorder()
 
-	router.ServeHTTP(w, req)
+				router.ServeHTTP(w, req)
 
-	// Assert
-	assert.Equal(t, http.StatusOK, w.Code)
+				// Assert
+				assert.Equal(t, http.StatusOK, w.Code)
 
-	// Check that request_id is in response header
-	requestID := w.Header().Get("X-Request-ID")
-	assert.NotEmpty(t, requestID)
+				// Check that request_id is in response header
+				requestID := w.Header().Get("X-Request-ID")
+				assert.NotEmpty(t, requestID)
 
-	// Log should contain the request
-	logOutput := logBuffer.String()
-	assert.Contains(t, logOutput, "http_request")
-	assert.Contains(t, logOutput, "/test-with-id")
+				// Log should contain the request
+				logOutput := logBuffer.String()
+				assert.Contains(t, logOutput, "http_request")
+				assert.Contains(t, logOutput, "/test-with-id")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
-// ❌ NEGATIVE CASES
-
 func TestRequestLogger_LogsClientError(t *testing.T) {
-	router, log, logBuffer := setupRequestLoggerTest()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "LogsClientError",
+			category: "negative",
+			run: func(t *testing.T) {
+				router, log, logBuffer := setupRequestLoggerTest()
 
-	router.Use(RequestLogger(log))
+				router.Use(RequestLogger(log))
 
-	router.GET("/not-found", func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-	})
+				router.GET("/not-found", func(c *gin.Context) {
+					c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+				})
 
-	req := httptest.NewRequest("GET", "/not-found", nil)
-	w := httptest.NewRecorder()
+				req := httptest.NewRequest("GET", "/not-found", nil)
+				w := httptest.NewRecorder()
 
-	router.ServeHTTP(w, req)
+				router.ServeHTTP(w, req)
 
-	// Assert
-	assert.Equal(t, http.StatusNotFound, w.Code)
+				// Assert
+				assert.Equal(t, http.StatusNotFound, w.Code)
 
-	// Parse log output
-	var logEntry map[string]interface{}
-	err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
-	assert.NoError(t, err)
+				// Parse log output
+				var logEntry map[string]interface{}
+				err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
+				assert.NoError(t, err)
 
-	assert.Equal(t, "http_request", logEntry["type"])
-	assert.Equal(t, float64(404), logEntry["status"])
-	assert.Equal(t, "warning", logEntry["level"]) // 4xx should be warning
+				assert.Equal(t, "http_request", logEntry["type"])
+				assert.Equal(t, float64(404), logEntry["status"])
+				assert.Equal(t, "warning", logEntry["level"]) // 4xx should be warning
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRequestLogger_LogsServerError(t *testing.T) {
-	router, log, logBuffer := setupRequestLoggerTest()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "LogsServerError",
+			category: "negative",
+			run: func(t *testing.T) {
+				router, log, logBuffer := setupRequestLoggerTest()
 
-	router.Use(RequestLogger(log))
+				router.Use(RequestLogger(log))
 
-	router.GET("/server-error", func(c *gin.Context) {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
-	})
+				router.GET("/server-error", func(c *gin.Context) {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+				})
 
-	req := httptest.NewRequest("GET", "/server-error", nil)
-	w := httptest.NewRecorder()
+				req := httptest.NewRequest("GET", "/server-error", nil)
+				w := httptest.NewRecorder()
 
-	router.ServeHTTP(w, req)
+				router.ServeHTTP(w, req)
 
-	// Assert
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+				// Assert
+				assert.Equal(t, http.StatusInternalServerError, w.Code)
 
-	// Parse log output
-	var logEntry map[string]interface{}
-	err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
-	assert.NoError(t, err)
+				// Parse log output
+				var logEntry map[string]interface{}
+				err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
+				assert.NoError(t, err)
 
-	assert.Equal(t, "http_request", logEntry["type"])
-	assert.Equal(t, float64(500), logEntry["status"])
-	assert.Equal(t, "error", logEntry["level"]) // 5xx should be error
+				assert.Equal(t, "http_request", logEntry["type"])
+				assert.Equal(t, float64(500), logEntry["status"])
+				assert.Equal(t, "error", logEntry["level"]) // 5xx should be error
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
-// 🔄 EDGE CASES
-
 func TestRequestLogger_LogsLatency(t *testing.T) {
-	router, log, logBuffer := setupRequestLoggerTest()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "LogsLatency",
+			category: "edge",
+			run: func(t *testing.T) {
+				router, log, logBuffer := setupRequestLoggerTest()
 
-	router.Use(RequestLogger(log))
+				router.Use(RequestLogger(log))
 
-	router.GET("/slow", func(c *gin.Context) {
-		// Simulate some processing
-		time.Sleep(1 * time.Millisecond)
-		c.JSON(http.StatusOK, gin.H{"message": "done"})
-	})
+				router.GET("/slow", func(c *gin.Context) {
+					// Simulate some processing
+					time.Sleep(1 * time.Millisecond)
+					c.JSON(http.StatusOK, gin.H{"message": "done"})
+				})
 
-	req := httptest.NewRequest("GET", "/slow", nil)
-	w := httptest.NewRecorder()
+				req := httptest.NewRequest("GET", "/slow", nil)
+				w := httptest.NewRecorder()
 
-	router.ServeHTTP(w, req)
+				router.ServeHTTP(w, req)
 
-	// Assert
-	assert.Equal(t, http.StatusOK, w.Code)
+				// Assert
+				assert.Equal(t, http.StatusOK, w.Code)
 
-	// Parse log output
-	var logEntry map[string]interface{}
-	err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
-	assert.NoError(t, err)
+				// Parse log output
+				var logEntry map[string]interface{}
+				err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
+				assert.NoError(t, err)
 
-	// Should have latency fields
-	assert.Contains(t, logEntry, "latency_ns")
-	assert.Contains(t, logEntry, "latency_ms")
-	assert.Greater(t, logEntry["latency_ns"], float64(0))
+				// Should have latency fields
+				assert.Contains(t, logEntry, "latency_ns")
+				assert.Contains(t, logEntry, "latency_ms")
+				assert.Greater(t, logEntry["latency_ns"], float64(0))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRequestLogger_LogsDataLength(t *testing.T) {
-	router, log, logBuffer := setupRequestLoggerTest()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "LogsDataLength",
+			category: "edge",
+			run: func(t *testing.T) {
+				router, log, logBuffer := setupRequestLoggerTest()
 
-	router.Use(RequestLogger(log))
+				router.Use(RequestLogger(log))
 
-	router.GET("/data", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "success",
-			"data":    []int{1, 2, 3, 4, 5},
+				router.GET("/data", func(c *gin.Context) {
+					c.JSON(http.StatusOK, gin.H{
+						"message": "success",
+						"data":    []int{1, 2, 3, 4, 5},
+					})
+				})
+
+				req := httptest.NewRequest("GET", "/data", nil)
+				w := httptest.NewRecorder()
+
+				router.ServeHTTP(w, req)
+
+				// Assert
+				assert.Equal(t, http.StatusOK, w.Code)
+
+				// Parse log output
+				var logEntry map[string]interface{}
+				err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
+				assert.NoError(t, err)
+				// Should have data_length field
+				assert.Contains(t, logEntry, "data_length")
+				assert.Greater(t, logEntry["data_length"], float64(0))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
 		})
-	})
-
-	req := httptest.NewRequest("GET", "/data", nil)
-	w := httptest.NewRecorder()
-
-	router.ServeHTTP(w, req)
-
-	// Assert
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	// Parse log output
-	var logEntry map[string]interface{}
-	err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
-	assert.NoError(t, err)
-	// Should have data_length field
-	assert.Contains(t, logEntry, "data_length")
-	assert.Greater(t, logEntry["data_length"], float64(0))
+	}
 }
