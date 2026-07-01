@@ -29,6 +29,7 @@ Contoh kuat di repo ini:
 - `llm/test-playbooks/security-boundary-change-types.md`: command-level playbooks by change type, including auth/session, tenant/Casbin/API key, upload/storage, worker/audit/webhook, realtime, and frontend contract.
 - `llm/test-playbooks/qms-integration-e2e-parallel-plan.md`: parallel-safe integration and E2E plan for QMS rebuild slices.
 - `llm/test-playbooks/qms-final-verification.md`: final QMS Phase 8 verification commands and evidence rules for queue/scanner unit, race, vet, integration, and E2E checks.
+- `llm/test-playbooks/qms-observability-readiness.md`: Phase 11 observability readiness checklist for QMS metrics, audit, dashboard, and triage flows.
 - `llm/test-playbooks/qms-frontend-dashboard-handoff.md`: dashboard-first frontend AI workflow and E2E handoff for `apps/web` and `apps/client`.
 - `llm/test-playbooks/benchmark-before-after.md`: before/after benchmark discipline for performance-sensitive work.
 
