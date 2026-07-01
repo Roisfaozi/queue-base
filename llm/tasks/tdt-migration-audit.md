@@ -32,9 +32,9 @@
 | `tests/integration/modules/tus_integration_test.go`                     | 3                 | Low      |
 | `tests/integration/modules/webhook_integration_test.go`                 | 2                 | Medium   |
 | `tests/integration/modules/worker_integration_test.go`                  | 2                 | Medium   |
-| `tests/integration/scenarios/admin_security_test.go`                    | 2                 | High     |
+| `tests/integration/scenarios/admin_security_test.go`                    | 2                 | DONE     |
 | `tests/integration/scenarios/adv_rate_limit_test.go`                    | 2                 | Low      |
-| `tests/integration/scenarios/api_key_lifecycle_test.go`                 | 3                 | Medium   |
+| `tests/integration/scenarios/api_key_lifecycle_test.go`                 | 3                 | DONE     |
 | `tests/integration/scenarios/concurrent_session_test.go`                | 2                 | Medium   |
 | `tests/integration/scenarios/delete_user_integrity_test.go`             | 2                 | Medium   |
 | `tests/integration/scenarios/exception_handling_test.go`                | 3                 | Medium   |
