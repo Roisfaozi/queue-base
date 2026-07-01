@@ -173,3 +173,34 @@ Once the application is running, you can verify the setup:
   3. Run the collection. All requests should execute successfully, demonstrating user registration, login, role assignment, and RBAC checks.
 
 You are now ready to develop and extend the Casbin DB project.
+
+### Step 2.2.1: Frontend Worktree Environment
+
+After `make env-init` or `make env-sync`, frontend env files are generated automatically:
+
+- `apps/web/.env.local`
+- `apps/client/.env.local`
+
+Inspect them with:
+
+```bash
+make front-status
+```
+
+Show frontend run targets and generated ports:
+
+```bash
+make front-dev
+```
+
+Run the Next.js frontend:
+
+```bash
+make web-dev
+```
+
+Run the React Router frontend:
+
+```bash
+make client-dev
+```
