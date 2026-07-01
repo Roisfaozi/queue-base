@@ -301,10 +301,20 @@ func TestQueueRepository(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
+			prepare  func(t *testing.T, db *gorm.DB)
+			wantErr  error
 		}{
 			{
 				name:     "Positive_AutoIncrementsSequence",
 				category: "positive",
+			},
+			{
+				name:     "Negative_RejectsStaleCurrentJourney",
+				category: "negative",
+				prepare: func(t *testing.T, db *gorm.DB) {
+					require.NoError(t, db.Table("queues").Where("id = ?", "q-1").Update("current_journey_id", "j-other").Error)
+				},
+				wantErr: gorm.ErrRecordNotFound,
 			},
 		}
 
@@ -315,13 +325,23 @@ func TestQueueRepository(t *testing.T) {
 
 				require.NoError(t, db.Create(&entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", TicketNo: "A001", QueueNo: 1, CurrentJourneyID: "j-1"}).Error)
 				require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}).Error)
+				if tt.prepare != nil {
+					tt.prepare(t, db)
+				}
 
 				queue := &entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", CurrentJourneyID: "j-2", UpdatedAt: 123}
 				currentJourney := &entity.QueueJourney{ID: "j-1", TenantID: "tenant-1", BranchID: "branch-1", Status: entity.JourneyStatusForwarded, UpdatedAt: 123}
 				nextJourney := &entity.QueueJourney{ID: "j-2", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-2", Status: entity.JourneyStatusPending}
 				visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", EventType: "forward"}
 
-				require.NoError(t, repo.CreateForwarding(ctx, queue, currentJourney, nextJourney, visit))
+				err := repo.CreateForwarding(ctx, queue, currentJourney, nextJourney, visit)
+				if tt.wantErr != nil {
+					require.ErrorIs(t, err, tt.wantErr)
+					var notSaved entity.QueueJourney
+					require.Error(t, db.First(&notSaved, "id = ?", "j-2").Error)
+					return
+				}
+				require.NoError(t, err)
 
 				var savedJourney entity.QueueJourney
 				require.NoError(t, db.First(&savedJourney, "id = ?", "j-2").Error)

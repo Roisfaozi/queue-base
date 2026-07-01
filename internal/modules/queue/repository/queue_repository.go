@@ -226,6 +226,10 @@ func (r *queueRepository) NextJourneySequence(ctx context.Context, tenantID, bra
 
 func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
 	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
+		var lockedQueue entity.Queue
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("tenant_id = ? AND branch_id = ? AND id = ? AND current_journey_id = ?", queue.TenantID, queue.BranchID, queue.ID, currentJourney.ID).First(&lockedQueue).Error; err != nil {
+			return err
+		}
 		var maxSeq int
 		if err := tx.Model(&entity.QueueJourney{}).Where("tenant_id = ? AND branch_id = ? AND queue_id = ?", queue.TenantID, queue.BranchID, queue.ID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
 			return err
