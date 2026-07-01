@@ -18,65 +18,162 @@ func (m *MockHook) HandleUpload(ctx context.Context, event UploadEvent) error {
 }
 
 func TestRegistry_RegisterAndGet(t *testing.T) {
-	// Positive Case
-	registry := NewRegistry()
-	hook := &MockHook{}
-	uploadType := "avatar"
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Register And Get",
+			category: "positive",
+			run: func(t *testing.T) {
+				registry := NewRegistry()
+				hook := &MockHook{}
+				uploadType := "avatar"
 
-	registry.Register(uploadType, hook)
-	retrieved := registry.Get(uploadType)
+				registry.Register(uploadType, hook)
+				retrieved := registry.Get(uploadType)
 
-	assert.NotNil(t, retrieved)
-	assert.Equal(t, hook, retrieved)
+				assert.NotNil(t, retrieved)
+				assert.Equal(t, hook, retrieved)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRegistry_GetNonExistent(t *testing.T) {
-	// Negative Case
-	registry := NewRegistry()
-	retrieved := registry.Get("non-existent")
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Get Non Existent",
+			category: "negative",
+			run: func(t *testing.T) {
+				registry := NewRegistry()
+				retrieved := registry.Get("non-existent")
 
-	assert.Nil(t, retrieved)
-	assert.False(t, registry.Has("non-existent"))
+				assert.Nil(t, retrieved)
+				assert.False(t, registry.Has("non-existent"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRegistry_HasRegisteredType(t *testing.T) {
-	registry := NewRegistry()
-	hook := &MockHook{}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Has Registered Type",
+			category: "positive",
+			run: func(t *testing.T) {
+				registry := NewRegistry()
+				hook := &MockHook{}
 
-	registry.Register("avatar", hook)
+				registry.Register("avatar", hook)
 
-	assert.True(t, registry.Has("avatar"))
+				assert.True(t, registry.Has("avatar"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRegistry_OverwriteHook(t *testing.T) {
-	// Edge Case
-	registry := NewRegistry()
-	hook1 := &MockHook{}
-	hook2 := &MockHook{}
-	uploadType := "avatar"
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Overwrite Hook",
+			category: "edge",
+			run: func(t *testing.T) {
+				registry := NewRegistry()
+				hook1 := &MockHook{}
+				hook2 := &MockHook{}
+				uploadType := "avatar"
 
-	registry.Register(uploadType, hook1)
-	registry.Register(uploadType, hook2) // Overwrite
+				registry.Register(uploadType, hook1)
+				registry.Register(uploadType, hook2) // Overwrite
 
-	retrieved := registry.Get(uploadType)
-	assert.Equal(t, hook2, retrieved)
+				retrieved := registry.Get(uploadType)
+				assert.Equal(t, hook2, retrieved)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRegistry_EmptyType(t *testing.T) {
-	// Edge Case
-	registry := NewRegistry()
-	hook := &MockHook{}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Empty Type",
+			category: "edge",
+			run: func(t *testing.T) {
+				registry := NewRegistry()
+				hook := &MockHook{}
 
-	registry.Register("", hook)
-	assert.Equal(t, hook, registry.Get(""))
+				registry.Register("", hook)
+				assert.Equal(t, hook, registry.Get(""))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRegistry_TypeInjection(t *testing.T) {
-	// Security Case: Ensure special characters don't crash the registry (standard map behavior)
-	registry := NewRegistry()
-	hook := &MockHook{}
-	injectionKey := "../../etc/passwd%20' OR 1=1"
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Type Injection",
+			category: "security",
+			run: func(t *testing.T) {
+				registry := NewRegistry()
+				hook := &MockHook{}
+				injectionKey := "../../etc/passwd%20' OR 1=1"
 
-	registry.Register(injectionKey, hook)
-	assert.Equal(t, hook, registry.Get(injectionKey))
+				registry.Register(injectionKey, hook)
+				assert.Equal(t, hook, registry.Get(injectionKey))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
