@@ -38,6 +38,7 @@ type QueueUseCase interface {
 	ListActiveJourneys(ctx context.Context, req model.QueueJourneyListRequest) ([]model.QueueJourneyResponse, error)
 	GetVisitJourneys(ctx context.Context, queueID string) ([]model.VisitJourneyResponse, error)
 	GetQueueStats(ctx context.Context) (*model.QueueStatsResponse, error)
+	ResolveQueueBranchID(ctx context.Context, queueID string) (string, error)
 }
 
 type queueUseCase struct {
@@ -163,6 +164,18 @@ func (u *queueUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]
 		}
 	}
 	return res, nil
+}
+
+func (u *queueUseCase) ResolveQueueBranchID(ctx context.Context, queueID string) (string, error) {
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" || queueID == "" {
+		return "", exception.ErrBadRequest
+	}
+	queue, err := u.repo.FindQueueByTenantID(ctx, tenantID, queueID)
+	if err != nil {
+		return "", exception.ErrNotFound
+	}
+	return queue.BranchID, nil
 }
 
 func (u *queueUseCase) GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error) {

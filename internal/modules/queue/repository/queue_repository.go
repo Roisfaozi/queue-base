@@ -20,6 +20,7 @@ type QueueRepository interface {
 	ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error)
 	ListActiveJourneys(ctx context.Context, tenantID, branchID string, req model.QueueJourneyListRequest) ([]*entity.QueueJourney, error)
 	FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error)
+	FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
 	FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error)
 	NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error)
 	CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error
@@ -207,6 +208,14 @@ func (r *queueRepository) ListActiveJourneys(ctx context.Context, tenantID, bran
 func (r *queueRepository) FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error) {
 	var q entity.Queue
 	if err := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ? AND id = ?", tenantID, branchID, queueID).First(&q).Error; err != nil {
+		return nil, err
+	}
+	return &q, nil
+}
+
+func (r *queueRepository) FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
+	var q entity.Queue
+	if err := r.getDB(ctx).Where("tenant_id = ? AND id = ?", tenantID, queueID).First(&q).Error; err != nil {
 		return nil, err
 	}
 	return &q, nil
