@@ -128,7 +128,7 @@ export function QueuesContent() {
 							</SelectTrigger>
 							<SelectContent>
 								{branches.length === 0 ? (
-									<SelectItem value="" disabled>
+									<SelectItem value="__no_branches__" disabled>
 										No branches available
 									</SelectItem>
 								) : (

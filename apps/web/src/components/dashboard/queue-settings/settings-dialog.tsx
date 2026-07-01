@@ -198,7 +198,7 @@ export function SettingsDialog({
 							</FormControl>
 							<SelectContent>
 								{items.length === 0 ? (
-									<SelectItem value="" disabled>
+									<SelectItem value="__no_items__" disabled>
 										No {label.toLowerCase()}s available
 									</SelectItem>
 								) : (
