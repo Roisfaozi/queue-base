@@ -138,6 +138,20 @@ func TestQueueAuditLogging(t *testing.T) {
 		assert.Equal(t, "j-1", values["journey_id"])
 		assert.Equal(t, entity.QueueStatusCalling, values["status"])
 	})
+
+	t.Run("Register_AuditFailureDoesNotFailBusinessFlow", func(t *testing.T) {
+		repo := &stubQueueRepo{}
+		audit := &stubAuditLogger{err: assert.AnError}
+		uc := NewQueueUseCase(repo, &stubSettingsResolver{}, nil, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John"})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, audit.entries, 1)
+	})
 }
 
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {

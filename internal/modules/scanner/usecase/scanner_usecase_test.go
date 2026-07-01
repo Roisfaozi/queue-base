@@ -115,6 +115,15 @@ func TestScannerAuditLogging(t *testing.T) {
 		require.Equal("SCANNER_FORWARD", audit.entries[0].Action)
 		require.Equal("q-1", audit.entries[0].EntityID)
 	})
+	t.Run("RejectsBranchMismatch", func(t *testing.T) {
+		uc := NewScannerUseCase(&stubQueueHandler{}, stubScannerAuthenticator{}, &stubRelationValidator{}, &stubAuditLogger{})
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionRegister, BranchID: "b-2", ClientID: "c-1", APIKey: "k-1", ServiceID: "svc-1", PatientName: "John"})
+		assert.ErrorIs(t, err, exception.ErrForbidden)
+		assert.Nil(t, res)
+	})
 }
 
 // =============================================================================
