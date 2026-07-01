@@ -89,8 +89,8 @@ export function MembersProvider({ children }: { children: ReactNode }) {
 				);
 				toast.success("Member role updated");
 				await fetchData();
-			} catch (_error) {
-				toast.error("Failed to update role");
+			} catch (error: any) {
+				toast.error(error.message || "Failed to update role");
 			}
 		},
 		[currentOrganization, fetchData],
@@ -110,8 +110,8 @@ export function MembersProvider({ children }: { children: ReactNode }) {
 				await organizationsApi.removeMember(currentOrganization.id, userId);
 				toast.success("Member removed successfully");
 				await fetchData();
-			} catch (_error) {
-				toast.error("Failed to remove member");
+			} catch (error: any) {
+				toast.error(error.message || "Failed to remove member");
 			}
 		},
 		[currentOrganization, fetchData],

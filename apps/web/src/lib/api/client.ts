@@ -1,6 +1,18 @@
 import { useAuthStore } from "~/stores/use-auth-store";
 import { useOrganizationStore } from "~/stores/use-organization-store";
 
+export class ApiError extends Error {
+	status: number;
+	code?: string;
+
+	constructor(message: string, status: number, code?: string) {
+		super(message);
+		this.name = "ApiError";
+		this.status = status;
+		this.code = code;
+	}
+}
+
 type FetchOptions = RequestInit & {
 	headers?: Record<string, string>;
 	/** Jika true, 401 tidak akan memicu redirect ke halaman login */
@@ -126,6 +138,9 @@ class ApiClient {
 			) {
 				throw error;
 			}
+			if (error instanceof ApiError) {
+				throw error;
+			}
 			console.error("API Request Failed:", error);
 			throw error;
 		}
@@ -217,14 +232,15 @@ class ApiClient {
 						});
 					});
 				}
-				throw new Error("BACKEND_OFFLINE_ERROR");
+				throw new ApiError(message, response.status, "BACKEND_OFFLINE");
 			}
 
 			const errorMessage =
-				data?.error ||
 				data?.message ||
+				data?.error ||
 				`Error ${response.status}: ${response.statusText}`;
-			throw new Error(errorMessage);
+			console.warn("error dari client.ts", errorMessage);
+			throw new ApiError(errorMessage, response.status, data?.code);
 		}
 
 		return data as T;
