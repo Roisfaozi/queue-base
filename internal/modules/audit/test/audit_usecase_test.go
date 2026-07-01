@@ -44,14 +44,14 @@ func setupAuditTest() (*auditTestDeps, usecase.AuditUseCase) {
 	return deps, uc
 }
 
-func TestLogActivity(t *testing.T) {
+func TestAuditUseCase(t *testing.T) {
 	tests := []struct {
 		name     string
 		category string
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive_Success",
+			name:     "LogActivity_Positive_Success",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -70,7 +70,7 @@ func TestLogActivity(t *testing.T) {
 			},
 		},
 		{
-			name:     "Positive_TransactionalPath_WriteToOutbox",
+			name:     "LogActivity_Positive_TransactionalPath_WriteToOutbox",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -99,7 +99,7 @@ func TestLogActivity(t *testing.T) {
 			},
 		},
 		{
-			name:     "Positive_OrganizationContext_CapturesOrgID",
+			name:     "LogActivity_Positive_OrganizationContext_CapturesOrgID",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -119,7 +119,7 @@ func TestLogActivity(t *testing.T) {
 			},
 		},
 		{
-			name:     "Edge_NilJSONValues",
+			name:     "LogActivity_Edge_NilJSONValues",
 			category: "edge",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -138,7 +138,7 @@ func TestLogActivity(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative_RepoError",
+			name:     "LogActivity_Negative_RepoError",
 			category: "negative",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -149,23 +149,8 @@ func TestLogActivity(t *testing.T) {
 				assert.Error(t, err)
 			},
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
-
-func TestGetLogsDynamic(t *testing.T) {
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
 		{
-			name:     "Positive_Success",
+			name:     "GetLogsDynamic_Positive_Success",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -188,7 +173,7 @@ func TestGetLogsDynamic(t *testing.T) {
 			},
 		},
 		{
-			name:     "Edge_MalformedJSONInDB",
+			name:     "GetLogsDynamic_Edge_MalformedJSONInDB",
 			category: "edge",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -207,7 +192,7 @@ func TestGetLogsDynamic(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative_RepoError",
+			name:     "GetLogsDynamic_Negative_RepoError",
 			category: "negative",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
