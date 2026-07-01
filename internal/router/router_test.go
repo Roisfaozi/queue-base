@@ -65,49 +65,70 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 	)
 }
 
+// ============================================================================
+// Table Driven Tests
+// ============================================================================
+
 func TestTrustedProxies(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TrustedProxies_Tests",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	t.Run("Should not trust X-Forwarded-For by default", func(t *testing.T) {
-		cfg := RouterConfig{
-			AllowedOrigins: []string{"*"},
-		}
+				t.Run("Should not trust X-Forwarded-For by default", func(t *testing.T) {
+					cfg := RouterConfig{
+						AllowedOrigins: []string{"*"},
+					}
 
-		router := createTestRouter(cfg)
-		router.GET("/test-ip", func(c *gin.Context) {
-			c.String(200, c.ClientIP())
+					router := createTestRouter(cfg)
+					router.GET("/test-ip", func(c *gin.Context) {
+						c.String(200, c.ClientIP())
+					})
+
+					req, _ := http.NewRequest("GET", "/test-ip", nil)
+
+					req.Header.Set("X-Forwarded-For", "1.2.3.4")
+					req.RemoteAddr = "10.0.0.1:12345"
+
+					w := httptest.NewRecorder()
+					router.ServeHTTP(w, req)
+
+					assert.Equal(t, "10.0.0.1", w.Body.String())
+				})
+
+				t.Run("Should trust configured proxy", func(t *testing.T) {
+					cfg := RouterConfig{
+						AllowedOrigins: []string{"*"},
+						TrustedProxies: []string{"10.0.0.1"},
+					}
+
+					router := createTestRouter(cfg)
+					router.GET("/test-ip-trusted", func(c *gin.Context) {
+						c.String(200, c.ClientIP())
+					})
+
+					req, _ := http.NewRequest("GET", "/test-ip-trusted", nil)
+
+					req.Header.Set("X-Forwarded-For", "1.2.3.4")
+					req.RemoteAddr = "10.0.0.1:12345"
+
+					w := httptest.NewRecorder()
+					router.ServeHTTP(w, req)
+
+					assert.Equal(t, "1.2.3.4", w.Body.String())
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
 		})
-
-		req, _ := http.NewRequest("GET", "/test-ip", nil)
-
-		req.Header.Set("X-Forwarded-For", "1.2.3.4")
-		req.RemoteAddr = "10.0.0.1:12345"
-
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, "10.0.0.1", w.Body.String())
-	})
-
-	t.Run("Should trust configured proxy", func(t *testing.T) {
-		cfg := RouterConfig{
-			AllowedOrigins: []string{"*"},
-			TrustedProxies: []string{"10.0.0.1"},
-		}
-
-		router := createTestRouter(cfg)
-		router.GET("/test-ip-trusted", func(c *gin.Context) {
-			c.String(200, c.ClientIP())
-		})
-
-		req, _ := http.NewRequest("GET", "/test-ip-trusted", nil)
-
-		req.Header.Set("X-Forwarded-For", "1.2.3.4")
-		req.RemoteAddr = "10.0.0.1:12345"
-
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, "1.2.3.4", w.Body.String())
-	})
+	}
 }
