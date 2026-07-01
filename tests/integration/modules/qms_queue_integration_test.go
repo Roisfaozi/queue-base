@@ -143,6 +143,18 @@ func TestQMSQueueIntegration(t *testing.T) {
 				assert.GreaterOrEqual(t, stats.TotalQueuesToday, int64(3))
 			},
 		},
+		{
+			name:     "Vulnerability_CrossBranchQueueReadRejected",
+			category: "vulnerability",
+			run: func(t *testing.T, deps *qmsDeps, ctx context.Context) {
+				queueRes, err := deps.queueMod.QueueUseCase.RegisterQueue(ctx, &queueModel.RegisterQueueRequest{ServiceID: deps.regServiceID, PatientName: "Branch Safe"})
+				require.NoError(t, err)
+
+				foreignCtx := database.SetBranchContext(ctx, uuid.New().String())
+				_, err = deps.queueMod.QueueUseCase.GetQueueByID(foreignCtx, queueRes.ID)
+				assert.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
 	}
 
 	for _, tt := range tests {

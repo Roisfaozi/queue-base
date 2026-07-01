@@ -217,6 +217,17 @@ func TestQMSScannerIntegration(t *testing.T) {
 			},
 			wantErr: exception.ErrUnauthorized,
 		},
+		{
+			name:     "Vulnerability_MismatchedBranchRequestRejected",
+			category: "vulnerability",
+			req: scannerModel.CheckInRequest{
+				Action:      scannerUsecase.ActionRegister,
+				BranchID:    uuid.New().String(),
+				ServiceID:   deps.regServiceID,
+				PatientName: "Wrong Branch",
+			},
+			wantErr: exception.ErrForbidden,
+		},
 	}
 
 	for _, tt := range tests {
