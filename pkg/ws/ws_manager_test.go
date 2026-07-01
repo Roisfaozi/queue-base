@@ -122,194 +122,279 @@ func waitForMessage(conn *websocket.Conn, msgType string, channel string) (*ws.S
 }
 
 func TestNewWebSocketManager(t *testing.T) {
-	manager, server := setupTestServer()
-	defer server.Close()
-	defer manager.Stop()
-	assert.NotNil(t, manager)
-	assert.NotNil(t, manager.GetPresenceManager())
-	assert.NotNil(t, manager.Channels())
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_NewWebSocketManager",
+			category: "positive",
+			run: func(t *testing.T) {
+				manager, server := setupTestServer()
+				defer server.Close()
+				defer manager.Stop()
+				assert.NotNil(t, manager)
+				assert.NotNil(t, manager.GetPresenceManager())
+				assert.NotNil(t, manager.Channels())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebSocketManager_UnregisterKeepsPresenceForOtherConnections(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
-	presence := &RecordingPresenceManager{}
-	manager := ws.NewWebSocketManager(&ws.WebSocketConfig{}, logger, nil, presence)
-	go manager.Run()
-	defer manager.Stop()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_UnregisterKeepsPresenceForOtherConnections",
+			category: "positive",
+			run: func(t *testing.T) {
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
+				presence := &RecordingPresenceManager{}
+				manager := ws.NewWebSocketManager(&ws.WebSocketConfig{}, logger, nil, presence)
+				go manager.Run()
+				defer manager.Stop()
 
-	clientOne := &ws.Client{ID: "client-1", UserID: "user-1", OrgID: "org-1", Send: make(chan []byte, 1)}
-	clientTwo := &ws.Client{ID: "client-2", UserID: "user-1", OrgID: "org-1", Send: make(chan []byte, 1)}
+				clientOne := &ws.Client{ID: "client-1", UserID: "user-1", OrgID: "org-1", Send: make(chan []byte, 1)}
+				clientTwo := &ws.Client{ID: "client-2", UserID: "user-1", OrgID: "org-1", Send: make(chan []byte, 1)}
 
-	manager.RegisterClient(clientOne)
-	manager.RegisterClient(clientTwo)
-	require.Eventually(t, func() bool { return manager.ClientCount() == 2 }, time.Second, 10*time.Millisecond)
+				manager.RegisterClient(clientOne)
+				manager.RegisterClient(clientTwo)
+				require.Eventually(t, func() bool { return manager.ClientCount() == 2 }, time.Second, 10*time.Millisecond)
 
-	manager.UnregisterClient(clientOne)
-	require.Eventually(t, func() bool { return manager.ClientCount() == 1 }, time.Second, 10*time.Millisecond)
-	assert.Equal(t, 0, presence.OfflineCalls())
+				manager.UnregisterClient(clientOne)
+				require.Eventually(t, func() bool { return manager.ClientCount() == 1 }, time.Second, 10*time.Millisecond)
+				assert.Equal(t, 0, presence.OfflineCalls())
 
-	manager.UnregisterClient(clientTwo)
-	require.Eventually(t, func() bool { return manager.ClientCount() == 0 }, time.Second, 10*time.Millisecond)
-	assert.Equal(t, 1, presence.OfflineCalls())
+				manager.UnregisterClient(clientTwo)
+				require.Eventually(t, func() bool { return manager.ClientCount() == 0 }, time.Second, 10*time.Millisecond)
+				assert.Equal(t, 1, presence.OfflineCalls())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebSocketManager_UnregisterNilSendClient(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
-	manager := ws.NewWebSocketManager(&ws.WebSocketConfig{}, logger, nil, &NoOpPresenceManager{})
-	go manager.Run()
-	defer manager.Stop()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_UnregisterNilSendClient",
+			category: "edge",
+			run: func(t *testing.T) {
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
+				manager := ws.NewWebSocketManager(&ws.WebSocketConfig{}, logger, nil, &NoOpPresenceManager{})
+				go manager.Run()
+				defer manager.Stop()
 
-	client := &ws.Client{ID: "nil-send-client"}
+				client := &ws.Client{ID: "nil-send-client"}
 
-	manager.RegisterClient(client)
-	require.Eventually(t, func() bool { return manager.ClientCount() == 1 }, time.Second, 10*time.Millisecond)
+				manager.RegisterClient(client)
+				require.Eventually(t, func() bool { return manager.ClientCount() == 1 }, time.Second, 10*time.Millisecond)
 
-	manager.UnregisterClient(client)
-	require.Eventually(t, func() bool { return manager.ClientCount() == 0 }, time.Second, 10*time.Millisecond)
+				manager.UnregisterClient(client)
+				require.Eventually(t, func() bool { return manager.ClientCount() == 0 }, time.Second, 10*time.Millisecond)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebSocketManager_Integration(t *testing.T) {
-	manager, server := setupTestServer()
-	defer server.Close()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_WebSocketManager_Integration",
+			category: "positive",
+			run: func(t *testing.T) {
+				manager, server := setupTestServer()
+				defer server.Close()
 
-	conn, err := connectClient(server.URL)
-	require.NoError(t, err)
-	defer func() { _ = conn.Close() }() // Ignore close error
+				conn, err := connectClient(server.URL)
+				require.NoError(t, err)
+				defer func() { _ = conn.Close() }() // Ignore close error
 
-	// Wait for registration
-	for i := 0; i < 10; i++ {
-		if manager.ClientCount() == 1 {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
+				// Wait for registration
+				for i := 0; i < 10; i++ {
+					if manager.ClientCount() == 1 {
+						break
+					}
+					time.Sleep(10 * time.Millisecond)
+				}
+				assert.Equal(t, 1, manager.ClientCount())
+
+				// Test Unregister and Timeouts by calling them on stopped manager
+				manager.Stop()
+				manager.Stop() // Should not panic
+
+				c := &ws.Client{}
+				manager.RegisterClient(c)
+				manager.UnregisterClient(c)
+				manager.BroadcastToChannel("test", []byte("msg"))
+				manager.SubscribeToChannel(c, "test")
+				manager.UnsubscribeFromChannel(c, "test")
+
+				// Trigger channel block timeouts
+				manager3 := ws.NewWebSocketManager(&ws.WebSocketConfig{}, logrus.New(), nil, nil)
+				// Do NOT run manager3.Run(), so channels will block when full
+				for i := 0; i < 256; i++ {
+					manager3.RegisterClient(c)
+					manager3.UnregisterClient(c)
+					manager3.BroadcastToChannel("test", []byte("msg"))
+					manager3.SubscribeToChannel(c, "test")
+					manager3.UnsubscribeFromChannel(c, "test")
+				}
+				// The 257th should hit the timeout
+				manager3.RegisterClient(c)
+				manager3.UnregisterClient(c)
+				manager3.BroadcastToChannel("test", []byte("msg"))
+				manager3.SubscribeToChannel(c, "test")
+				manager3.UnsubscribeFromChannel(c, "test")
+
+				// Start a new one for the rest of the test
+				manager, server = setupTestServer()
+				defer server.Close()
+				defer manager.Stop()
+
+				conn, err = connectClient(server.URL)
+				require.NoError(t, err)
+				defer func() { _ = conn.Close() }() // Ignore close error
+
+				// Wait for registration
+				for i := 0; i < 10; i++ {
+					if manager.ClientCount() == 1 {
+						break
+					}
+					time.Sleep(10 * time.Millisecond)
+				}
+				assert.Equal(t, 1, manager.ClientCount())
+
+				// Subscribe
+				err = conn.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "test-channel"})
+				require.NoError(t, err)
+
+				// Wait for subscription info
+				_, err = waitForMessage(conn, "info", "test-channel")
+				require.NoError(t, err)
+
+				// Broadcast - Must send a message structure that client expects (ws.ServerMessage)
+				// to pass waitForMessage check
+				broadcastContent := ws.ServerMessage{
+					Type:    "message",
+					Channel: "test-channel",
+					Data:    map[string]string{"event": "hello"},
+				}
+				broadcastBytes, _ := json.Marshal(broadcastContent) // No error check needed for marshal in test
+				manager.BroadcastToChannel("test-channel", broadcastBytes)
+
+				// Wait for broadcast message
+				msg, err := waitForMessage(conn, "message", "test-channel")
+				require.NoError(t, err)
+				require.NotNil(t, msg)
+				assert.Equal(t, "message", msg.Type)
+				assert.Equal(t, "test-channel", msg.Channel)
+			},
+		},
 	}
-	assert.Equal(t, 1, manager.ClientCount())
-
-	// Test Unregister and Timeouts by calling them on stopped manager
-	manager.Stop()
-	manager.Stop() // Should not panic
-
-	c := &ws.Client{}
-	manager.RegisterClient(c)
-	manager.UnregisterClient(c)
-	manager.BroadcastToChannel("test", []byte("msg"))
-	manager.SubscribeToChannel(c, "test")
-	manager.UnsubscribeFromChannel(c, "test")
-
-	// Trigger channel block timeouts
-	manager3 := ws.NewWebSocketManager(&ws.WebSocketConfig{}, logrus.New(), nil, nil)
-	// Do NOT run manager3.Run(), so channels will block when full
-	for i := 0; i < 256; i++ {
-		manager3.RegisterClient(c)
-		manager3.UnregisterClient(c)
-		manager3.BroadcastToChannel("test", []byte("msg"))
-		manager3.SubscribeToChannel(c, "test")
-		manager3.UnsubscribeFromChannel(c, "test")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
 	}
-	// The 257th should hit the timeout
-	manager3.RegisterClient(c)
-	manager3.UnregisterClient(c)
-	manager3.BroadcastToChannel("test", []byte("msg"))
-	manager3.SubscribeToChannel(c, "test")
-	manager3.UnsubscribeFromChannel(c, "test")
-
-	// Start a new one for the rest of the test
-	manager, server = setupTestServer()
-	defer server.Close()
-	defer manager.Stop()
-
-	conn, err = connectClient(server.URL)
-	require.NoError(t, err)
-	defer func() { _ = conn.Close() }() // Ignore close error
-
-	// Wait for registration
-	for i := 0; i < 10; i++ {
-		if manager.ClientCount() == 1 {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	assert.Equal(t, 1, manager.ClientCount())
-
-	// Subscribe
-	err = conn.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "test-channel"})
-	require.NoError(t, err)
-
-	// Wait for subscription info
-	_, err = waitForMessage(conn, "info", "test-channel")
-	require.NoError(t, err)
-
-	// Broadcast - Must send a message structure that client expects (ws.ServerMessage)
-	// to pass waitForMessage check
-	broadcastContent := ws.ServerMessage{
-		Type:    "message",
-		Channel: "test-channel",
-		Data:    map[string]string{"event": "hello"},
-	}
-	broadcastBytes, _ := json.Marshal(broadcastContent) // No error check needed for marshal in test
-	manager.BroadcastToChannel("test-channel", broadcastBytes)
-
-	// Wait for broadcast message
-	msg, err := waitForMessage(conn, "message", "test-channel")
-	require.NoError(t, err)
-	require.NotNil(t, msg)
-	assert.Equal(t, "message", msg.Type)
-	assert.Equal(t, "test-channel", msg.Channel)
 }
 
 func TestBroadcastToChannel(t *testing.T) {
-	manager, server := setupTestServer()
-	defer server.Close()
-	defer manager.Stop()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_BroadcastToChannel",
+			category: "positive",
+			run: func(t *testing.T) {
+				manager, server := setupTestServer()
+				defer server.Close()
+				defer manager.Stop()
 
-	// Client 1 -> channel1
-	c1, err := connectClient(server.URL)
-	require.NoError(t, err)
-	defer func() { _ = c1.Close() }() // Ignore error
-	require.NoError(t, c1.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "channel1"}))
-	_, err = waitForMessage(c1, "info", "channel1")
-	require.NoError(t, err)
+				// Client 1 -> channel1
+				c1, err := connectClient(server.URL)
+				require.NoError(t, err)
+				defer func() { _ = c1.Close() }() // Ignore error
+				require.NoError(t, c1.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "channel1"}))
+				_, err = waitForMessage(c1, "info", "channel1")
+				require.NoError(t, err)
 
-	// Client 2 -> channel1
-	c2, err := connectClient(server.URL)
-	require.NoError(t, err)
-	defer func() { _ = c2.Close() }() // Ignore error
-	require.NoError(t, c2.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "channel1"}))
-	_, err = waitForMessage(c2, "info", "channel1")
-	require.NoError(t, err)
+				// Client 2 -> channel1
+				c2, err := connectClient(server.URL)
+				require.NoError(t, err)
+				defer func() { _ = c2.Close() }() // Ignore error
+				require.NoError(t, c2.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "channel1"}))
+				_, err = waitForMessage(c2, "info", "channel1")
+				require.NoError(t, err)
 
-	// Client 3 -> channel2
-	c3, err := connectClient(server.URL)
-	require.NoError(t, err)
-	defer func() { _ = c3.Close() }() // Ignore error
-	require.NoError(t, c3.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "channel2"}))
-	_, err = waitForMessage(c3, "info", "channel2")
-	require.NoError(t, err)
+				// Client 3 -> channel2
+				c3, err := connectClient(server.URL)
+				require.NoError(t, err)
+				defer func() { _ = c3.Close() }() // Ignore error
+				require.NoError(t, c3.WriteJSON(ws.ClientMessage{Type: "subscribe", Channel: "channel2"}))
+				_, err = waitForMessage(c3, "info", "channel2")
+				require.NoError(t, err)
 
-	// Broadcast to channel1
-	broadcastContent := ws.ServerMessage{
-		Type:    "message",
-		Channel: "channel1",
-		Data:    map[string]string{"msg": "hello channel 1"},
+				// Broadcast to channel1
+				broadcastContent := ws.ServerMessage{
+					Type:    "message",
+					Channel: "channel1",
+					Data:    map[string]string{"msg": "hello channel 1"},
+				}
+				msgBytes, _ := json.Marshal(broadcastContent)
+				manager.BroadcastToChannel("channel1", msgBytes)
+
+				// Verify c1 received
+				_, err = waitForMessage(c1, "message", "channel1")
+				assert.NoError(t, err)
+
+				// Verify c2 received
+				_, err = waitForMessage(c2, "message", "channel1")
+				assert.NoError(t, err)
+
+				// Verify c3 did NOT receive
+				if err := c3.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+					t.Fatalf("Failed to set read deadline for c3: %v", err)
+				}
+				var msg ws.ServerMessage
+				err = c3.ReadJSON(&msg)
+				assert.Error(t, err) // Should timeout or EOF
+			},
+		},
 	}
-	msgBytes, _ := json.Marshal(broadcastContent)
-	manager.BroadcastToChannel("channel1", msgBytes)
-
-	// Verify c1 received
-	_, err = waitForMessage(c1, "message", "channel1")
-	assert.NoError(t, err)
-
-	// Verify c2 received
-	_, err = waitForMessage(c2, "message", "channel1")
-	assert.NoError(t, err)
-
-	// Verify c3 did NOT receive
-	if err := c3.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
-		t.Fatalf("Failed to set read deadline for c3: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
 	}
-	var msg ws.ServerMessage
-	err = c3.ReadJSON(&msg)
-	assert.Error(t, err) // Should timeout or EOF
 }
