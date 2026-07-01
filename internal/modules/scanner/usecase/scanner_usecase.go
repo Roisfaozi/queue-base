@@ -94,7 +94,12 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 
 	serviceID := req.ServiceID
 	if action == ActionForward {
+		if req.QueueID == "" || req.DestinationServiceID == "" {
+			return nil, exception.ErrBadRequest
+		}
 		serviceID = req.DestinationServiceID
+	} else if serviceID == "" {
+		return nil, exception.ErrBadRequest
 	}
 
 	if u.relationValidator != nil {

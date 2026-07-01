@@ -224,6 +224,35 @@ func TestScannerCheckIn(t *testing.T) {
 			},
 		},
 		{
+			name:     "Negative_ForwardMissingDestinationService",
+			category: "negative",
+			req: &CheckInRequest{
+				Action:      ActionForward,
+				BranchID:    "b-1",
+				ClientID:    "client-1",
+				APIKey:      "key-1",
+				QueueID:     "q-1",
+				PatientName: "John",
+			},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_RegisterMissingService",
+			category: "negative",
+			req: &CheckInRequest{
+				Action:      ActionRegister,
+				BranchID:    "b-1",
+				ClientID:    "client-1",
+				APIKey:      "key-1",
+				PatientName: "John Doe",
+			},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
 			name:     "Vulnerability_RejectsUnknownAction",
 			category: "vulnerability",
 			req: &CheckInRequest{

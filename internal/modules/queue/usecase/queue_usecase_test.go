@@ -715,6 +715,40 @@ func TestTransitionQueue(t *testing.T) {
 			},
 		},
 		{
+			name:     "Edge_SkipFromCalling",
+			category: "edge",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
+			},
+			queueID:  "q-1",
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionSkip},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+				assert.Equal(t, entity.QueueStatusSkipped, res.Status)
+				assert.Equal(t, entity.JourneyStatusSkipped, repo.j.Status)
+				assert.Equal(t, "skip", repo.visit.EventType)
+			},
+		},
+		{
+			name:     "Edge_CancelFromWaiting",
+			category: "edge",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
+			},
+			queueID:  "q-1",
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+				assert.Equal(t, entity.QueueStatusCanceled, res.Status)
+				assert.Equal(t, entity.JourneyStatusCanceled, repo.j.Status)
+				assert.Equal(t, "cancel", repo.visit.EventType)
+			},
+		},
+		{
 			name:     "Edge_CompleteAfterServing",
 			category: "edge",
 			repo: &stubQueueRepo{
@@ -738,6 +772,32 @@ func TestTransitionQueue(t *testing.T) {
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_ServeFromSkippedRejected",
+			category: "negative",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusSkipped, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusSkipped},
+			},
+			queueID:  "q-1",
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionServe},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_CompleteFromWaitingRejected",
+			category: "negative",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
+			},
+			queueID:  "q-1",
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionComplete},
 			tenantID: "t-1",
 			branchID: "b-1",
 			wantErr:  exception.ErrBadRequest,
@@ -1160,6 +1220,22 @@ func TestGetQueueByID(t *testing.T) {
 			wantID:   "q-1",
 		},
 		{
+			name:     "Negative_MissingBranch",
+			category: "negative",
+			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
+			tenantID: "t-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_EmptyQueueID",
+			category: "negative",
+			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+			wantID:   "",
+		},
+		{
 			name:     "Vulnerability_CrossTenantRejected",
 			category: "vulnerability",
 			repo:     &stubQueueRepo{err: exception.ErrNotFound},
@@ -1184,7 +1260,12 @@ func TestGetQueueByID(t *testing.T) {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 
-			res, err := uc.GetQueueByID(ctx, "q-1")
+			queueID := "q-1"
+			if tt.name == "Negative_EmptyQueueID" {
+				queueID = ""
+			}
+
+			res, err := uc.GetQueueByID(ctx, queueID)
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
