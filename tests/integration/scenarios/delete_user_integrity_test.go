@@ -29,63 +29,81 @@ import (
 )
 
 func TestScenario_TransactionalIntegrity_DeleteRollback(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-	setup.CleanupDatabase(t, env.DB)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "DeleteRollback",
+			category: "integration",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				setup.CleanupDatabase(t, env.DB)
 
-	tm := tx.NewTransactionManager(env.DB, env.Logger)
-	uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
+				tm := tx.NewTransactionManager(env.DB, env.Logger)
+				uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
 
-	realAuditRepo := auditRepo.NewAuditRepository(env.DB, env.Logger)
-	realAuditUC := auditUC.NewAuditUseCase(realAuditRepo, env.Logger, nil, nil)
+				realAuditRepo := auditRepo.NewAuditRepository(env.DB, env.Logger)
+				realAuditUC := auditUC.NewAuditUseCase(realAuditRepo, env.Logger, nil, nil)
 
-	tRepo := authRepo.NewTokenRepositoryRedis(env.Redis, env.Logger, env.DB, &util.RealClock{})
-	jwtManager := jwt.NewJWTManager("secret", "refresh", 60, 60)
-	oRepo := orgRepo.NewOrganizationRepository(env.DB)
-	authz := authRepo.NewCasbinAdapter(env.Enforcer, "role:user", "global")
-	authService := authUC.NewAuthUsecase(5, 30*time.Minute, jwtManager, tRepo, uRepo, oRepo, tm, env.Logger, nil, authz, nil, nil, make(map[string]sso.Provider))
+				tRepo := authRepo.NewTokenRepositoryRedis(env.Redis, env.Logger, env.DB, &util.RealClock{})
+				jwtManager := jwt.NewJWTManager("secret", "refresh", 60, 60)
+				oRepo := orgRepo.NewOrganizationRepository(env.DB)
+				authz := authRepo.NewCasbinAdapter(env.Enforcer, "role:user", "global")
+				authService := authUC.NewAuthUsecase(5, 30*time.Minute, jwtManager, tRepo, uRepo, oRepo, tm, env.Logger, nil, authz, nil, nil, make(map[string]sso.Provider))
 
-	setupService := userUC.NewUserUseCase(tm, env.Logger, uRepo, env.Enforcer, realAuditUC, authService, nil, nil)
-	regReq := &userModel.RegisterUserRequest{
-		Username: "todelete", Email: "delete@test.com", Password: "Pass123!", Name: "To Delete",
+				setupService := userUC.NewUserUseCase(tm, env.Logger, uRepo, env.Enforcer, realAuditUC, authService, nil, nil)
+				regReq := &userModel.RegisterUserRequest{
+					Username: "todelete", Email: "delete@test.com", Password: "Pass123!", Name: "To Delete",
+				}
+				userResp, err := setupService.Create(context.Background(), regReq)
+				require.NoError(t, err)
+
+				// Sync enforcer after transactional changes
+				err = env.Enforcer.LoadPolicy()
+				require.NoError(t, err)
+
+				user, err := uRepo.FindByID(context.Background(), userResp.ID)
+				require.NoError(t, err)
+				require.NotNil(t, user)
+
+				roles, err := env.Enforcer.GetRolesForUser(user.ID, "global")
+				require.NoError(t, err)
+				require.Contains(t, roles, "role:user")
+
+				mockAuditUC := new(mocks.MockAuditUseCase)
+				mockAuditUC.On("LogActivity", mock.Anything, mock.Anything).Return(errors.New("intentional audit failure"))
+
+				targetService := userUC.NewUserUseCase(tm, env.Logger, uRepo, env.Enforcer, mockAuditUC, authService, nil, nil)
+
+				delReq := &userModel.DeleteUserRequest{ID: user.ID}
+				err = targetService.DeleteUser(context.Background(), "admin-id", delReq)
+
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "internal server error")
+
+				// Sync enforcer after rollback (though it should remain same, LoadPolicy ensures we see the actual state)
+				err = env.Enforcer.LoadPolicy()
+				require.NoError(t, err)
+
+				userAfter, err := uRepo.FindByID(context.Background(), user.ID)
+				assert.NoError(t, err)
+				assert.NotNil(t, userAfter)
+				assert.Equal(t, user.ID, userAfter.ID)
+
+				rolesAfter, err := env.Enforcer.GetRolesForUser(user.ID, "global")
+				assert.NoError(t, err)
+
+				assert.Contains(t, rolesAfter, "role:user", "Roles should be restored/preserved on rollback")
+			},
+		},
 	}
-	userResp, err := setupService.Create(context.Background(), regReq)
-	require.NoError(t, err)
 
-	// Sync enforcer after transactional changes
-	err = env.Enforcer.LoadPolicy()
-	require.NoError(t, err)
-
-	user, err := uRepo.FindByID(context.Background(), userResp.ID)
-	require.NoError(t, err)
-	require.NotNil(t, user)
-
-	roles, err := env.Enforcer.GetRolesForUser(user.ID, "global")
-	require.NoError(t, err)
-	require.Contains(t, roles, "role:user")
-
-	mockAuditUC := new(mocks.MockAuditUseCase)
-	mockAuditUC.On("LogActivity", mock.Anything, mock.Anything).Return(errors.New("intentional audit failure"))
-
-	targetService := userUC.NewUserUseCase(tm, env.Logger, uRepo, env.Enforcer, mockAuditUC, authService, nil, nil)
-
-	delReq := &userModel.DeleteUserRequest{ID: user.ID}
-	err = targetService.DeleteUser(context.Background(), "admin-id", delReq)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "internal server error")
-
-	// Sync enforcer after rollback (though it should remain same, LoadPolicy ensures we see the actual state)
-	err = env.Enforcer.LoadPolicy()
-	require.NoError(t, err)
-
-	userAfter, err := uRepo.FindByID(context.Background(), user.ID)
-	assert.NoError(t, err)
-	assert.NotNil(t, userAfter)
-	assert.Equal(t, user.ID, userAfter.ID)
-
-	rolesAfter, err := env.Enforcer.GetRolesForUser(user.ID, "global")
-	assert.NoError(t, err)
-
-	assert.Contains(t, rolesAfter, "role:user", "Roles should be restored/preserved on rollback")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

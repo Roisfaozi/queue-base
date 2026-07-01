@@ -32,10 +32,123 @@ import (
 )
 
 func TestUserLifecycle_FullFlow(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, env *setup.TestEnvironment, deps *lifecycleDeps)
+	}{
+		{
+			name:     "Register new user succeeds",
+			category: "positive",
+			run: func(t *testing.T, env *setup.TestEnvironment, deps *lifecycleDeps) {
+				regReq := &userModel.RegisterUserRequest{
+					Username: "lifecycle", Email: "lifecycle@example.com", Password: "password123", Name: "Life Cycle",
+				}
+				userResp, err := deps.userUC.Create(context.Background(), regReq)
+				require.NoError(t, err)
+				assert.NotEmpty(t, userResp.ID)
+			},
+		},
+		{
+			name:     "Login after registration",
+			category: "positive",
+			run: func(t *testing.T, env *setup.TestEnvironment, deps *lifecycleDeps) {
+				loginReq := authModel.LoginRequest{Username: "lifecycle-login", Password: "password123"}
+				_, _, err := deps.authUC.Login(context.Background(), loginReq)
+				require.NoError(t, err)
+			},
+		},
+		{
+			name:     "Update user profile",
+			category: "positive",
+			run: func(t *testing.T, env *setup.TestEnvironment, deps *lifecycleDeps) {
+				updateReq := &userModel.UpdateUserRequest{
+					ID: deps.userID, Name: "Updated Life",
+				}
+				updateResp, err := deps.userUC.Update(context.Background(), updateReq)
+				require.NoError(t, err)
+				assert.Equal(t, "Updated Life", updateResp.Name)
+			},
+		},
+		{
+			name:     "Delete user soft-deletes",
+			category: "positive",
+			run: func(t *testing.T, env *setup.TestEnvironment, deps *lifecycleDeps) {
+				deleteReq := &userModel.DeleteUserRequest{ID: deps.userID}
+				err := deps.userUC.DeleteUser(context.Background(), deps.userID, deleteReq)
+				require.NoError(t, err)
+
+				err = handlers.NewOutboxTaskHandler(deps.auditRepo, env.Logger).ProcessAuditOutbox(context.Background(), nil)
+				require.NoError(t, err)
+			},
+		},
+		{
+			name:     "Audit logs capture full lifecycle",
+			category: "positive",
+			run: func(t *testing.T, env *setup.TestEnvironment, deps *lifecycleDeps) {
+				var userLogs []auditModel.AuditLogResponse
+				var actions map[string]bool
+
+				require.Eventually(t, func() bool {
+					logs, _, err := deps.auditUC.GetLogsDynamic(context.Background(), &querybuilder.DynamicFilter{
+						Sort: &[]querybuilder.SortModel{{ColId: "CreatedAt", Sort: "asc"}},
+					})
+					if err != nil {
+						return false
+					}
+
+					userLogs = nil
+					actions = make(map[string]bool)
+					for _, l := range logs {
+						if l.UserID == deps.userID || l.EntityID == deps.userID {
+							userLogs = append(userLogs, l)
+							actions[l.Action] = true
+						}
+					}
+
+					return len(userLogs) >= 4 && actions["CREATE"] && actions["LOGIN"] && actions["UPDATE"] && actions["DELETE"]
+				}, 5*time.Second, 100*time.Millisecond, "Should have at least 4 audit entries covering all lifecycle actions")
+
+				assert.True(t, actions["CREATE"], "CREATE log missing")
+				assert.True(t, actions["LOGIN"], "LOGIN log missing")
+				assert.True(t, actions["UPDATE"], "UPDATE log missing")
+				assert.True(t, actions["DELETE"], "DELETE log missing")
+			},
+		},
+	}
+
 	env := setup.SetupIntegrationEnvironment(t)
 	defer env.Cleanup()
 
 	setup.CleanupDatabase(t, env.DB)
+
+	deps := buildLifecycleDeps(t, env)
+
+	ctx := context.Background()
+	regReq := &userModel.RegisterUserRequest{
+		Username: "lifecycle-login", Email: "lifecycle-login@example.com", Password: "password123", Name: "Life Cycle",
+	}
+	userResp, err := deps.userUC.Create(ctx, regReq)
+	require.NoError(t, err)
+	deps.userID = userResp.ID
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t, env, deps)
+		})
+	}
+}
+
+type lifecycleDeps struct {
+	userUC    userUseCase.UserUseCase
+	authUC    authUseCase.AuthUseCase
+	auditUC   auditUseCase.AuditUseCase
+	auditRepo auditUseCase.AuditRepository
+	userID    string
+}
+
+func buildLifecycleDeps(t *testing.T, env *setup.TestEnvironment) *lifecycleDeps {
+	t.Helper()
 
 	jwtManager := jwt.NewJWTManager("lifecycle-secret", "lifecycle-refresh", 15*time.Minute, 24*time.Hour)
 	tokenRepo := authRepository.NewTokenRepositoryRedis(env.Redis, env.Logger, env.DB, &util.RealClock{})
@@ -49,70 +162,18 @@ func TestUserLifecycle_FullFlow(t *testing.T) {
 	redisOpt := asynq.RedisClientOpt{Addr: env.RedisAddr}
 	taskDistributor := worker.NewRedisTaskDistributor(redisOpt)
 
-	// Start worker to process audit logs
 	cleanupHandler := handlers.NewCleanupTaskHandler(tokenRepo, userRepo, auditRepo, env.Logger)
-	workerCfg := worker.WorkerConfig{} // Minimal config
+	workerCfg := worker.WorkerConfig{}
 	processor := worker.NewRedisTaskProcessor(redisOpt, env.Logger, cleanupHandler, nil, auditUC, auditRepo, workerCfg)
 	env.StartWorker(processor)
 
 	authUC := authUseCase.NewAuthUsecase(5, 30*time.Minute, jwtManager, tokenRepo, userRepo, oRepo, tm, env.Logger, nil, authz, taskDistributor, nil, make(map[string]sso.Provider))
 	userUC := userUseCase.NewUserUseCase(tm, env.Logger, userRepo, env.Enforcer, auditUC, authUC, nil, nil)
 
-	ctx := context.Background()
-
-	regReq := &userModel.RegisterUserRequest{
-		Username: "lifecycle", Email: "lifecycle@example.com", Password: "password123", Name: "Life Cycle",
+	return &lifecycleDeps{
+		userUC:    userUC,
+		authUC:    authUC,
+		auditUC:   auditUC,
+		auditRepo: auditRepo,
 	}
-	userResp, err := userUC.Create(ctx, regReq)
-	require.NoError(t, err)
-	userID := userResp.ID
-
-	loginReq := authModel.LoginRequest{Username: regReq.Username, Password: regReq.Password}
-	loginResp, _, err := authUC.Login(ctx, loginReq)
-	require.NoError(t, err)
-	assert.NotEmpty(t, loginResp.AccessToken)
-
-	updateReq := &userModel.UpdateUserRequest{
-		ID: userID, Name: "Updated Life",
-	}
-	updateResp, err := userUC.Update(ctx, updateReq)
-	require.NoError(t, err)
-	assert.Equal(t, "Updated Life", updateResp.Name)
-
-	deleteReq := &userModel.DeleteUserRequest{ID: userID}
-	err = userUC.DeleteUser(ctx, userID, deleteReq)
-	require.NoError(t, err)
-
-	// Manually trigger outbox sync since the worker might be slow
-	err = handlers.NewOutboxTaskHandler(auditRepo, env.Logger).ProcessAuditOutbox(ctx, nil)
-	require.NoError(t, err)
-
-	// Wait for any final async processing using a retry loop instead of fixed sleep
-	var userLogs []auditModel.AuditLogResponse
-	var actions map[string]bool
-
-	require.Eventually(t, func() bool {
-		logs, _, err := auditUC.GetLogsDynamic(ctx, &querybuilder.DynamicFilter{
-			Sort: &[]querybuilder.SortModel{{ColId: "CreatedAt", Sort: "asc"}},
-		})
-		if err != nil {
-			return false
-		}
-
-		userLogs = nil
-		actions = make(map[string]bool)
-		for _, l := range logs {
-			if l.UserID == userID || l.EntityID == userID {
-				userLogs = append(userLogs, l)
-				actions[l.Action] = true
-			}
-		}
-
-		return len(userLogs) >= 4 && actions["CREATE"] && actions["LOGIN"] && actions["UPDATE"] && actions["DELETE"]
-	}, 5*time.Second, 100*time.Millisecond, "Should have at least 4 audit entries and all actions for this lifecycle")
-
-	assert.True(t, actions["CREATE"], "CREATE log missing")
-	assert.True(t, actions["LOGIN"], "LOGIN log missing")
-	assert.True(t, actions["UPDATE"], "UPDATE log missing")
-	assert.True(t, actions["DELETE"], "DELETE log missing")
 }

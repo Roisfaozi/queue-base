@@ -31,77 +31,98 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestScenario_AdminSecurity_AccountSuspension(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-	setup.CleanupDatabase(t, env.DB)
+func TestScenario_AdminSecurity(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "AccountSuspension",
+			category: "security",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				setup.CleanupDatabase(t, env.DB)
 
-	tm := tx.NewTransactionManager(env.DB, env.Logger)
-	uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
-	tRepo := authRepo.NewTokenRepositoryRedis(env.Redis, env.Logger, env.DB, &util.RealClock{})
-	aucRepo := auditRepo.NewAuditRepository(env.DB, env.Logger)
+				tm := tx.NewTransactionManager(env.DB, env.Logger)
+				uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
+				tRepo := authRepo.NewTokenRepositoryRedis(env.Redis, env.Logger, env.DB, &util.RealClock{})
+				aucRepo := auditRepo.NewAuditRepository(env.DB, env.Logger)
 
-	auditService := auditUC.NewAuditUseCase(aucRepo, env.Logger, nil, nil)
-	jwtManager := jwt.NewJWTManager("secret", "refresh", 15*time.Minute, 24*time.Hour)
+				auditService := auditUC.NewAuditUseCase(aucRepo, env.Logger, nil, nil)
+				jwtManager := jwt.NewJWTManager("secret", "refresh", 15*time.Minute, 24*time.Hour)
 
-	oRepo := orgRepo.NewOrganizationRepository(env.DB)
-	authz := authRepo.NewCasbinAdapter(env.Enforcer, "role:user", "global")
-	authService := authUC.NewAuthUsecase(5, 30*time.Minute, jwtManager, tRepo, uRepo, oRepo, tm, env.Logger, nil, authz, nil, nil, make(map[string]sso.Provider))
+				oRepo := orgRepo.NewOrganizationRepository(env.DB)
+				authz := authRepo.NewCasbinAdapter(env.Enforcer, "role:user", "global")
+				authService := authUC.NewAuthUsecase(5, 30*time.Minute, jwtManager, tRepo, uRepo, oRepo, tm, env.Logger, nil, authz, nil, nil, make(map[string]sso.Provider))
 
-	userService := userUC.NewUserUseCase(tm, env.Logger, uRepo, env.Enforcer, auditService, authService, nil, nil)
+				userService := userUC.NewUserUseCase(tm, env.Logger, uRepo, env.Enforcer, auditService, authService, nil, nil)
 
-	password := "Pass123!"
-	user := setup.CreateTestUser(t, env.DB, "suspend_target", "suspend@test.com", password)
+				password := "Pass123!"
+				user := setup.CreateTestUser(t, env.DB, "suspend_target", "suspend@test.com", password)
 
-	loginResp, _, err := authService.Login(context.Background(), authModel.LoginRequest{
-		Username: user.Username, Password: password,
-	})
-	require.NoError(t, err)
-	assert.NotEmpty(t, loginResp.AccessToken)
+				loginResp, _, err := authService.Login(context.Background(), authModel.LoginRequest{
+					Username: user.Username, Password: password,
+				})
+				require.NoError(t, err)
+				assert.NotEmpty(t, loginResp.AccessToken)
 
-	sessions, err := authService.GetUserSessions(context.Background(), user.ID)
-	require.NoError(t, err)
-	assert.NotEmpty(t, sessions)
+				sessions, err := authService.GetUserSessions(context.Background(), user.ID)
+				require.NoError(t, err)
+				assert.NotEmpty(t, sessions)
 
-	err = userService.UpdateStatus(context.Background(), user.ID, userEntity.UserStatusBanned)
-	require.NoError(t, err)
+				err = userService.UpdateStatus(context.Background(), user.ID, userEntity.UserStatusBanned)
+				require.NoError(t, err)
 
-	sessionsAfterBan, err := authService.GetUserSessions(context.Background(), user.ID)
-	require.NoError(t, err)
-	assert.Empty(t, sessionsAfterBan, "All sessions should be revoked after ban")
+				sessionsAfterBan, err := authService.GetUserSessions(context.Background(), user.ID)
+				require.NoError(t, err)
+				assert.Empty(t, sessionsAfterBan, "All sessions should be revoked after ban")
 
-	_, err = authService.ValidateAccessToken(loginResp.AccessToken)
-	assert.Error(t, err, "Token should be invalid after revocation")
-}
+				_, err = authService.ValidateAccessToken(loginResp.AccessToken)
+				assert.Error(t, err, "Token should be invalid after revocation")
+			},
+		},
+		{
+			name:     "RBAC_Lifecycle",
+			category: "security",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				setup.CleanupDatabase(t, env.DB)
 
-func TestScenario_AdminSecurity_RBAC_Lifecycle(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-	setup.CleanupDatabase(t, env.DB)
+				rRepo := roleRepo.NewRoleRepository(env.DB, env.Logger)
+				uRepoData := userRepo.NewUserRepository(env.DB, env.Logger)
+				aRepo := accessRepo.NewAccessRepository(env.DB, env.Logger)
+				tm := tx.NewTransactionManager(env.DB, env.Logger)
+				permService := permissionUC.NewPermissionUseCase(env.Enforcer, env.Logger, rRepo, uRepoData, aRepo, nil)
+				roleService := roleUC.NewRoleUseCase(env.Logger, tm, rRepo, permService)
 
-	rRepo := roleRepo.NewRoleRepository(env.DB, env.Logger)
-	uRepoData := userRepo.NewUserRepository(env.DB, env.Logger)
-	aRepo := accessRepo.NewAccessRepository(env.DB, env.Logger)
-	tm := tx.NewTransactionManager(env.DB, env.Logger)
-	permService := permissionUC.NewPermissionUseCase(env.Enforcer, env.Logger, rRepo, uRepoData, aRepo, nil)
-	roleService := roleUC.NewRoleUseCase(env.Logger, tm, rRepo, permService)
+				roleName := "content_editor"
+				_, err := roleService.Create(context.Background(), &roleModel.CreateRoleRequest{Name: roleName})
+				require.NoError(t, err)
 
-	roleName := "content_editor"
-	_, err := roleService.Create(context.Background(), &roleModel.CreateRoleRequest{Name: roleName})
-	require.NoError(t, err)
+				path, method := "/api/v1/articles", "POST"
+				err = permService.GrantPermissionToRole(context.Background(), roleName, path, method, "global")
+				require.NoError(t, err)
 
-	path, method := "/api/v1/articles", "POST"
-	err = permService.GrantPermissionToRole(context.Background(), roleName, path, method, "global")
-	require.NoError(t, err)
+				user := setup.CreateTestUser(t, env.DB, "editor_user", "editor@test.com", "pass")
+				err = permService.AssignRoleToUser(context.Background(), user.ID, roleName, "global")
+				require.NoError(t, err)
 
-	user := setup.CreateTestUser(t, env.DB, "editor_user", "editor@test.com", "pass")
-	err = permService.AssignRoleToUser(context.Background(), user.ID, roleName, "global")
-	require.NoError(t, err)
+				ok, err := env.Enforcer.Enforce(roleName, "global", path, method)
+				assert.NoError(t, err)
+				assert.True(t, ok, "Role should have permission")
 
-	ok, err := env.Enforcer.Enforce(roleName, "global", path, method)
-	assert.NoError(t, err)
-	assert.True(t, ok, "Role should have permission")
+				userRoles, _ := env.Enforcer.GetRolesForUser(user.ID, "global")
+				assert.Contains(t, userRoles, roleName)
+			},
+		},
+	}
 
-	userRoles, _ := env.Enforcer.GetRolesForUser(user.ID, "global")
-	assert.Contains(t, userRoles, roleName)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

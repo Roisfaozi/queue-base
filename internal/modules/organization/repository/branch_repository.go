@@ -60,12 +60,8 @@ func (r *branchRepository) Update(ctx context.Context, branch *entity.Branch) er
 	res := r.getDB(ctx).
 		Model(&entity.Branch{}).
 		Where("tenant_id = ? AND id = ?", branch.TenantID, branch.ID).
-		Updates(map[string]interface{}{
-			"code":       branch.Code,
-			"name":       branch.Name,
-			"status":     branch.Status,
-			"updated_at": branch.UpdatedAt,
-		})
+		Select("Code", "Name", "Status", "Settings", "UpdatedAt").
+		Updates(branch)
 	if res.Error != nil {
 		return res.Error
 	}

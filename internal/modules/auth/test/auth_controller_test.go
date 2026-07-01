@@ -34,515 +34,1035 @@ func newTestAuthController(mockUseCase *mocks.MockAuthUseCase) *authHandler.Auth
 }
 
 func TestAuthHandler_Login_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/login", handler.Login)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_Login_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	reqBody := model.LoginRequest{Username: "testuser", Password: "password123"}
-	loginRes := &model.LoginResponse{AccessToken: "access_token", TokenType: "Bearer"}
-	refreshToken := "refresh_token"
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/login", handler.Login)
 
-	mockUseCase.On("Login", mock.Anything, mock.MatchedBy(func(r model.LoginRequest) bool {
-		return r.Username == reqBody.Username
-	})).Return(loginRes, refreshToken, nil)
+				reqBody := model.LoginRequest{Username: "testuser", Password: "password123"}
+				loginRes := &model.LoginResponse{AccessToken: "access_token", TokenType: "Bearer"}
+				refreshToken := "refresh_token"
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				mockUseCase.On("Login", mock.Anything, mock.MatchedBy(func(r model.LoginRequest) bool {
+					return r.Username == reqBody.Username
+				})).Return(loginRes, refreshToken, nil)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "refresh_token=refresh_token")
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				assert.Contains(t, w.Header().Get("Set-Cookie"), "refresh_token=refresh_token")
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ForgotPassword_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/forgot-password", handler.ForgotPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ForgotPassword_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	reqBody := model.ForgotPasswordRequest{Email: "test@example.com"}
-	mockUseCase.On("ForgotPassword", mock.Anything, reqBody.Email).Return(nil)
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/forgot-password", handler.ForgotPassword)
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				reqBody := model.ForgotPasswordRequest{Email: "test@example.com"}
+				mockUseCase.On("ForgotPassword", mock.Anything, reqBody.Email).Return(nil)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	var responseBody map[string]interface{}
-	err := json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.NoError(t, err)
-	assert.Contains(t, responseBody["data"].(map[string]interface{})["message"], "reset link will be sent")
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				var responseBody map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &responseBody)
+				assert.NoError(t, err)
+				assert.Contains(t, responseBody["data"].(map[string]interface{})["message"], "reset link will be sent")
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ForgotPassword_InvalidBody(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/forgot-password", handler.ForgotPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ForgotPassword_InvalidBody",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBufferString(`{"email":`)) // Malformed JSON
-	req.Header.Set("Content-Type", "application/json")
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/forgot-password", handler.ForgotPassword)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBufferString(`{"email":`)) // Malformed JSON
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUseCase.AssertNotCalled(t, "ForgotPassword", mock.Anything, mock.Anything)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusBadRequest, w.Code)
+				mockUseCase.AssertNotCalled(t, "ForgotPassword", mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ForgotPassword_ValidationError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/forgot-password", handler.ForgotPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ForgotPassword_ValidationError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	reqBody := model.ForgotPasswordRequest{Email: "invalid-email"} // Invalid format
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/forgot-password", handler.ForgotPassword)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				reqBody := model.ForgotPasswordRequest{Email: "invalid-email"} // Invalid format
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	mockUseCase.AssertNotCalled(t, "ForgotPassword", mock.Anything, mock.Anything)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+				mockUseCase.AssertNotCalled(t, "ForgotPassword", mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ForgotPassword_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/forgot-password", handler.ForgotPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ForgotPassword_UseCaseError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	reqBody := model.ForgotPasswordRequest{Email: "test@example.com"}
-	mockUseCase.On("ForgotPassword", mock.Anything, reqBody.Email).Return(errors.New("db error"))
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/forgot-password", handler.ForgotPassword)
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				reqBody := model.ForgotPasswordRequest{Email: "test@example.com"}
+				mockUseCase.On("ForgotPassword", mock.Anything, reqBody.Email).Return(errors.New("db error"))
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/forgot-password", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	mockUseCase.AssertExpectations(t)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusInternalServerError, w.Code)
+				mockUseCase.AssertExpectations(t)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ResetPassword_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/reset-password", handler.ResetPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ResetPassword_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	reqBody := model.ResetPasswordRequest{
-		Token:       "valid-token",
-		NewPassword: "new-strong-password-123",
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/reset-password", handler.ResetPassword)
+
+				reqBody := model.ResetPasswordRequest{
+					Token:       "valid-token",
+					NewPassword: "new-strong-password-123",
+				}
+				mockUseCase.On("ResetPassword", mock.Anything, reqBody.Token, reqBody.NewPassword).Return(nil)
+
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
+
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+
+			},
+		},
 	}
-	mockUseCase.On("ResetPassword", mock.Anything, reqBody.Token, reqBody.NewPassword).Return(nil)
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ResetPassword_InvalidBody(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/reset-password", handler.ResetPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ResetPassword_InvalidBody",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBufferString(`{"token":`)) // Malformed JSON
-	req.Header.Set("Content-Type", "application/json")
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/reset-password", handler.ResetPassword)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBufferString(`{"token":`)) // Malformed JSON
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUseCase.AssertNotCalled(t, "ResetPassword", mock.Anything, mock.Anything, mock.Anything)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusBadRequest, w.Code)
+				mockUseCase.AssertNotCalled(t, "ResetPassword", mock.Anything, mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ResetPassword_ValidationError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/reset-password", handler.ResetPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ResetPassword_ValidationError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	reqBody := model.ResetPasswordRequest{
-		Token:       "",      // Empty token
-		NewPassword: "short", // Too short
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/reset-password", handler.ResetPassword)
+
+				reqBody := model.ResetPasswordRequest{
+					Token:       "",      // Empty token
+					NewPassword: "short", // Too short
+				}
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
+
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+				mockUseCase.AssertNotCalled(t, "ResetPassword", mock.Anything, mock.Anything, mock.Anything)
+
+			},
+		},
 	}
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	mockUseCase.AssertNotCalled(t, "ResetPassword", mock.Anything, mock.Anything, mock.Anything)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ResetPassword_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/reset-password", handler.ResetPassword)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ResetPassword_UseCaseError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	reqBody := model.ResetPasswordRequest{
-		Token:       "invalid-token",
-		NewPassword: "new-strong-password-123",
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/reset-password", handler.ResetPassword)
+
+				reqBody := model.ResetPasswordRequest{
+					Token:       "invalid-token",
+					NewPassword: "new-strong-password-123",
+				}
+				mockUseCase.On("ResetPassword", mock.Anything, reqBody.Token, reqBody.NewPassword).Return(usecase.ErrInvalidResetToken)
+
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
+
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				// Controller uses HandleError which maps ErrInvalidResetToken (aliased to ErrBadRequest)
+				assert.Equal(t, http.StatusBadRequest, w.Code)
+				mockUseCase.AssertExpectations(t)
+
+			},
+		},
 	}
-	mockUseCase.On("ResetPassword", mock.Anything, reqBody.Token, reqBody.NewPassword).Return(usecase.ErrInvalidResetToken)
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/reset-password", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	// Controller uses HandleError which maps ErrInvalidResetToken (aliased to ErrBadRequest)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUseCase.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_Logout_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_Logout_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	userID := "user-123"
-	sessionID := "session-abc"
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
 
-	mockUseCase.On("RevokeToken", mock.Anything, userID, sessionID).Return(nil)
+				userID := "user-123"
+				sessionID := "session-abc"
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest(http.MethodPost, "/auth/logout", nil)
-	// The controller expects "user_id" and "session_id" (snake_case) not "userID" and "sessionID"
-	c.Set("user_id", userID)
-	c.Set("session_id", sessionID)
+				mockUseCase.On("RevokeToken", mock.Anything, userID, sessionID).Return(nil)
 
-	handler.Logout(c)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				c.Request, _ = http.NewRequest(http.MethodPost, "/auth/logout", nil)
+				// The controller expects "user_id" and "session_id" (snake_case) not "userID" and "sessionID"
+				c.Set("user_id", userID)
+				c.Set("session_id", sessionID)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "refresh_token=")
+				handler.Logout(c)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				assert.Contains(t, w.Header().Get("Set-Cookie"), "refresh_token=")
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_Login_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/login", handler.Login)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_Login_UseCaseError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	reqBody := model.LoginRequest{Username: "testuser", Password: "wrong-password"}
-	mockUseCase.On("Login", mock.Anything, mock.MatchedBy(func(r model.LoginRequest) bool {
-		return r.Username == reqBody.Username
-	})).Return(nil, "", usecase.ErrInvalidCredentials)
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/login", handler.Login)
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				reqBody := model.LoginRequest{Username: "testuser", Password: "wrong-password"}
+				mockUseCase.On("Login", mock.Anything, mock.MatchedBy(func(r model.LoginRequest) bool {
+					return r.Username == reqBody.Username
+				})).Return(nil, "", usecase.ErrInvalidCredentials)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	// ErrInvalidCredentials maps to 401 Unauthorized
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				// ErrInvalidCredentials maps to 401 Unauthorized
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_RefreshToken_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/refresh", handler.RefreshToken)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_RefreshToken_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	refreshToken := "valid-refresh-token"
-	newAccessToken := "new-access-token"
-	newRefreshToken := "new-refresh-token"
-	tokenResp := &model.TokenResponse{AccessToken: newAccessToken, TokenType: "Bearer"}
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/refresh", handler.RefreshToken)
 
-	mockUseCase.On("RefreshToken", mock.Anything, refreshToken).Return(tokenResp, newRefreshToken, nil)
+				refreshToken := "valid-refresh-token"
+				newAccessToken := "new-access-token"
+				newRefreshToken := "new-refresh-token"
+				tokenResp := &model.TokenResponse{AccessToken: newAccessToken, TokenType: "Bearer"}
 
-	req, _ := http.NewRequest(http.MethodPost, "/auth/refresh", nil)
-	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
+				mockUseCase.On("RefreshToken", mock.Anything, refreshToken).Return(tokenResp, newRefreshToken, nil)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/refresh", nil)
+				req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "refresh_token="+newRefreshToken)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				assert.Contains(t, w.Header().Get("Set-Cookie"), "refresh_token="+newRefreshToken)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_RefreshToken_NoCookie(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/refresh", handler.RefreshToken)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_RefreshToken_NoCookie",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	req, _ := http.NewRequest(http.MethodPost, "/auth/refresh", nil)
-	// No cookie set
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/refresh", handler.RefreshToken)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/refresh", nil)
+				// No cookie set
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	mockUseCase.AssertNotCalled(t, "RefreshToken", mock.Anything, mock.Anything)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				mockUseCase.AssertNotCalled(t, "RefreshToken", mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_RefreshToken_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/refresh", handler.RefreshToken)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_RefreshToken_UseCaseError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	refreshToken := "invalid-token"
-	mockUseCase.On("RefreshToken", mock.Anything, refreshToken).Return(nil, "", usecase.ErrInvalidToken)
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/refresh", handler.RefreshToken)
 
-	req, _ := http.NewRequest(http.MethodPost, "/auth/refresh", nil)
-	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
+				refreshToken := "invalid-token"
+				mockUseCase.On("RefreshToken", mock.Anything, refreshToken).Return(nil, "", usecase.ErrInvalidToken)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/refresh", nil)
+				req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
 
-	// ErrInvalidToken maps to 401 Unauthorized
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				// ErrInvalidToken maps to 401 Unauthorized
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_Logout_Unauthorized(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_Logout_Unauthorized",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest(http.MethodPost, "/auth/logout", nil)
-	// Missing user_id and session_id in context
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
 
-	handler.Logout(c)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				c.Request, _ = http.NewRequest(http.MethodPost, "/auth/logout", nil)
+				// Missing user_id and session_id in context
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	mockUseCase.AssertNotCalled(t, "RevokeToken", mock.Anything, mock.Anything, mock.Anything)
+				handler.Logout(c)
+
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				mockUseCase.AssertNotCalled(t, "RevokeToken", mock.Anything, mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_Logout_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_Logout_UseCaseError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	userID := "user-123"
-	sessionID := "session-abc"
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
 
-	mockUseCase.On("RevokeToken", mock.Anything, userID, sessionID).Return(errors.New("redis error"))
+				userID := "user-123"
+				sessionID := "session-abc"
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest(http.MethodPost, "/auth/logout", nil)
-	c.Set("user_id", userID)
-	c.Set("session_id", sessionID)
+				mockUseCase.On("RevokeToken", mock.Anything, userID, sessionID).Return(errors.New("redis error"))
 
-	handler.Logout(c)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				c.Request, _ = http.NewRequest(http.MethodPost, "/auth/logout", nil)
+				c.Set("user_id", userID)
+				c.Set("session_id", sessionID)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+				handler.Logout(c)
+
+				assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 // --- EMAIL VERIFICATION HANDLER TESTS ---
 
 func TestAuthHandler_VerifyEmail_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/verify-email", handler.VerifyEmail)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_VerifyEmail_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	reqBody := model.VerifyEmailRequest{Token: "valid-verification-token"}
-	mockUseCase.On("VerifyEmail", mock.Anything, reqBody.Token).Return(nil)
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/verify-email", handler.VerifyEmail)
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				reqBody := model.VerifyEmailRequest{Token: "valid-verification-token"}
+				mockUseCase.On("VerifyEmail", mock.Anything, reqBody.Token).Return(nil)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	var responseBody map[string]interface{}
-	err := json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.NoError(t, err)
-	assert.Contains(t, responseBody["data"].(map[string]interface{})["message"], "verified successfully")
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				var responseBody map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &responseBody)
+				assert.NoError(t, err)
+				assert.Contains(t, responseBody["data"].(map[string]interface{})["message"], "verified successfully")
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_VerifyEmail_InvalidBody(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/verify-email", handler.VerifyEmail)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_VerifyEmail_InvalidBody",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBufferString(`{invalid`))
-	req.Header.Set("Content-Type", "application/json")
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/verify-email", handler.VerifyEmail)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBufferString(`{invalid`))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUseCase.AssertNotCalled(t, "VerifyEmail", mock.Anything, mock.Anything)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusBadRequest, w.Code)
+				mockUseCase.AssertNotCalled(t, "VerifyEmail", mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_VerifyEmail_ValidationError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/verify-email", handler.VerifyEmail)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_VerifyEmail_ValidationError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	reqBody := model.VerifyEmailRequest{Token: ""} // Empty token
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/verify-email", handler.VerifyEmail)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				reqBody := model.VerifyEmailRequest{Token: ""} // Empty token
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	mockUseCase.AssertNotCalled(t, "VerifyEmail", mock.Anything, mock.Anything)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+				mockUseCase.AssertNotCalled(t, "VerifyEmail", mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_VerifyEmail_UseCaseError(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.POST("/auth/verify-email", handler.VerifyEmail)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_VerifyEmail_UseCaseError",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	reqBody := model.VerifyEmailRequest{Token: "invalid-token"}
-	mockUseCase.On("VerifyEmail", mock.Anything, reqBody.Token).Return(usecase.ErrInvalidVerificationToken)
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.POST("/auth/verify-email", handler.VerifyEmail)
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
+				reqBody := model.VerifyEmailRequest{Token: "invalid-token"}
+				mockUseCase.On("VerifyEmail", mock.Anything, reqBody.Token).Return(usecase.ErrInvalidVerificationToken)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				bodyBytes, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/verify-email", bytes.NewBuffer(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUseCase.AssertExpectations(t)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusBadRequest, w.Code)
+				mockUseCase.AssertExpectations(t)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ResendVerification_Success(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ResendVerification_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	userID := "user-123"
-	mockUseCase.On("RequestVerification", mock.Anything, userID).Return(nil)
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest(http.MethodPost, "/auth/resend-verification", nil)
-	c.Set("user_id", userID)
+				userID := "user-123"
+				mockUseCase.On("RequestVerification", mock.Anything, userID).Return(nil)
 
-	handler.ResendVerification(c)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				c.Request, _ = http.NewRequest(http.MethodPost, "/auth/resend-verification", nil)
+				c.Set("user_id", userID)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockUseCase.AssertExpectations(t)
+				handler.ResendVerification(c)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				mockUseCase.AssertExpectations(t)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ResendVerification_Unauthenticated(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ResendVerification_Unauthenticated",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest(http.MethodPost, "/auth/resend-verification", nil)
-	// Missing user_id in context
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
 
-	handler.ResendVerification(c)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				c.Request, _ = http.NewRequest(http.MethodPost, "/auth/resend-verification", nil)
+				// Missing user_id in context
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	mockUseCase.AssertNotCalled(t, "RequestVerification", mock.Anything, mock.Anything)
+				handler.ResendVerification(c)
+
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				mockUseCase.AssertNotCalled(t, "RequestVerification", mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_ResendVerification_AlreadyVerified(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_ResendVerification_AlreadyVerified",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	userID := "user-123"
-	mockUseCase.On("RequestVerification", mock.Anything, userID).Return(usecase.ErrAlreadyVerified)
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest(http.MethodPost, "/auth/resend-verification", nil)
-	c.Set("user_id", userID)
+				userID := "user-123"
+				mockUseCase.On("RequestVerification", mock.Anything, userID).Return(usecase.ErrAlreadyVerified)
 
-	handler.ResendVerification(c)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				c.Request, _ = http.NewRequest(http.MethodPost, "/auth/resend-verification", nil)
+				c.Set("user_id", userID)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUseCase.AssertExpectations(t)
+				handler.ResendVerification(c)
+
+				assert.Equal(t, http.StatusBadRequest, w.Code)
+				mockUseCase.AssertExpectations(t)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthController_Login_XSS(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthController_Login_XSS",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	// Create request with XSS payload
-	reqBody := model.LoginRequest{
-		Username: "<script>alert('xss')</script>",
-		Password: "password123",
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+
+				// Create request with XSS payload
+				reqBody := model.LoginRequest{
+					Username: "<script>alert('xss')</script>",
+					Password: "password123",
+				}
+				jsonValue, _ := json.Marshal(reqBody)
+				req, _ := http.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(jsonValue))
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				c.Request = req
+
+				// Execute
+				handler.Login(c)
+
+				// Assert
+				assert.Equal(t, 422, w.Code) // Validation Error
+				assert.Contains(t, w.Body.String(), "xss")
+
+			},
+		},
 	}
-	jsonValue, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(jsonValue))
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
 
-	// Execute
-	handler.Login(c)
-
-	// Assert
-	assert.Equal(t, 422, w.Code) // Validation Error
-	assert.Contains(t, w.Body.String(), "xss")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_SSOLogin_SetsStateCookieAndRedirects(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.GET("/auth/sso/:provider", handler.SSOLogin)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_SSOLogin_SetsStateCookieAndRedirects",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	mockUseCase.On(
-		"GetSSORedirectURL",
-		mock.Anything,
-		"google",
-		mock.MatchedBy(func(state string) bool { return state != "" }),
-	).Return("https://accounts.example.com/oauth", nil).Once()
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.GET("/auth/sso/:provider", handler.SSOLogin)
 
-	req, _ := http.NewRequest(http.MethodGet, "/auth/sso/google", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				mockUseCase.On(
+					"GetSSORedirectURL",
+					mock.Anything,
+					"google",
+					mock.MatchedBy(func(state string) bool { return state != "" }),
+				).Return("https://accounts.example.com/oauth", nil).Once()
 
-	assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
-	assert.Equal(t, "https://accounts.example.com/oauth", w.Header().Get("Location"))
-	assert.Contains(t, w.Header().Get("Set-Cookie"), "sso_state=")
-	mockUseCase.AssertExpectations(t)
+				req, _ := http.NewRequest(http.MethodGet, "/auth/sso/google", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
+				assert.Equal(t, "https://accounts.example.com/oauth", w.Header().Get("Location"))
+				assert.Contains(t, w.Header().Get("Set-Cookie"), "sso_state=")
+				mockUseCase.AssertExpectations(t)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthHandler_SSOCallback_InvalidState(t *testing.T) {
-	mockUseCase := new(mocks.MockAuthUseCase)
-	handler := newTestAuthController(mockUseCase)
-	router := setupAuthTestRouter()
-	router.GET("/auth/sso/:provider/callback", handler.SSOCallback)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestAuthHandler_SSOCallback_InvalidState",
+			category: "negative",
+			run: func(t *testing.T) {
 
-	req, _ := http.NewRequest(http.MethodGet, "/auth/sso/google/callback?code=test-code&state=bad-state", nil)
-	req.AddCookie(&http.Cookie{Name: "sso_state", Value: "expected-state"})
+				mockUseCase := new(mocks.MockAuthUseCase)
+				handler := newTestAuthController(mockUseCase)
+				router := setupAuthTestRouter()
+				router.GET("/auth/sso/:provider/callback", handler.SSOCallback)
 
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest(http.MethodGet, "/auth/sso/google/callback?code=test-code&state=bad-state", nil)
+				req.AddCookie(&http.Cookie{Name: "sso_state", Value: "expected-state"})
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	mockUseCase.AssertNotCalled(t, "HandleSSOCallback", mock.Anything, mock.Anything, mock.Anything)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				mockUseCase.AssertNotCalled(t, "HandleSSOCallback", mock.Anything, mock.Anything, mock.Anything)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

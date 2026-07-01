@@ -62,89 +62,155 @@ func newSettingsTestValidator(t *testing.T) *validator.Validate {
 	return v
 }
 
-func TestSettingsController_CreateWorkflowSetting(t *testing.T) {
+func TestSettingsController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	uc := &stubSettingsControllerUseCase{createRes: &model.SettingResponse{ID: "set-1", Key: model.SettingKeyPharmacyFlowEnabled, Value: "true"}}
-	controller := NewSettingsController(uc, newSettingsTestValidator(t))
-	router := gin.New()
-	router.POST("/settings", controller.Create)
 
-	body, _ := json.Marshal(model.CreateSettingRequest{ScopeType: "service", ScopeID: "550e8400-e29b-41d4-a716-446655440000", Key: model.SettingKeyPharmacyFlowEnabled, Value: "true", ValueType: "boolean"})
-	req, _ := http.NewRequest("POST", "/settings", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("Create", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			reqBody  interface{}
+			setup    func() *stubSettingsControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, uc *stubSettingsControllerUseCase)
+		}{
+			{
+				name:    "Positive_CreateWorkflowSetting",
+				reqBody: model.CreateSettingRequest{ScopeType: "service", ScopeID: "550e8400-e29b-41d4-a716-446655440000", Key: model.SettingKeyPharmacyFlowEnabled, Value: "true", ValueType: "boolean"},
+				setup: func() *stubSettingsControllerUseCase {
+					return &stubSettingsControllerUseCase{createRes: &model.SettingResponse{ID: "set-1", Key: model.SettingKeyPharmacyFlowEnabled, Value: "true"}}
+				},
+				wantCode: http.StatusCreated,
+				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
+					require.NotNil(t, uc.createReq)
+					assert.Equal(t, model.SettingKeyPharmacyFlowEnabled, uc.createReq.Key)
+					assert.Equal(t, "service", uc.createReq.ScopeType)
+				},
+			},
+		}
 
-	assert.Equal(t, http.StatusCreated, w.Code)
-	require.NotNil(t, uc.createReq)
-	assert.Equal(t, model.SettingKeyPharmacyFlowEnabled, uc.createReq.Key)
-	assert.Equal(t, "service", uc.createReq.ScopeType)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewSettingsController(uc, newSettingsTestValidator(t))
+				router := gin.New()
+				router.POST("/settings", controller.Create)
 
-func TestSettingsController_ResolveWorkflowSetting(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubSettingsControllerUseCase{resolveRes: &model.SettingResponse{ID: "set-1", Key: model.SettingKeyRequireCounterForService, Value: "true"}}
-	controller := NewSettingsController(uc, newSettingsTestValidator(t))
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+				body, err := json.Marshal(tt.reqBody)
+				require.NoError(t, err)
+				req, _ := http.NewRequest("POST", "/settings", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
 	})
-	router.GET("/settings/resolve", controller.Resolve)
 
-	req, _ := http.NewRequest("GET", "/settings/resolve?Key=require_counter_for_service", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("Resolve", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			query    string
+			setup    func() *stubSettingsControllerUseCase
+			tenantID string
+			wantCode int
+			assert   func(t *testing.T, uc *stubSettingsControllerUseCase)
+		}{
+			{
+				name:  "Positive_ResolveWorkflowSetting",
+				query: "?Key=require_counter_for_service",
+				setup: func() *stubSettingsControllerUseCase {
+					return &stubSettingsControllerUseCase{resolveRes: &model.SettingResponse{ID: "set-1", Key: model.SettingKeyRequireCounterForService, Value: "true"}}
+				},
+				tenantID: "tenant-1",
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
+					require.NotNil(t, uc.resolveReq)
+					assert.Equal(t, model.SettingKeyRequireCounterForService, uc.resolveReq.Key)
+				},
+			},
+			{
+				name:  "Negative_ResolveRejectsInvalidWorkflowScopeIDs",
+				query: "?Key=pharmacy_flow_enabled&ServiceID=bad-id",
+				setup: func() *stubSettingsControllerUseCase {
+					return &stubSettingsControllerUseCase{}
+				},
+				tenantID: "tenant-1",
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
+					assert.Nil(t, uc.resolveReq)
+				},
+			},
+			{
+				name:  "Negative_ResolveRejectsMissingTenantContext",
+				query: "?Key=reset_time",
+				setup: func() *stubSettingsControllerUseCase {
+					return &stubSettingsControllerUseCase{}
+				},
+				tenantID: "",
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
+					assert.Nil(t, uc.resolveReq)
+				},
+			},
+		}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	require.NotNil(t, uc.resolveReq)
-	assert.Equal(t, model.SettingKeyRequireCounterForService, uc.resolveReq.Key)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewSettingsController(uc, newSettingsTestValidator(t))
+				router := gin.New()
+				if tt.tenantID != "" {
+					router.Use(func(c *gin.Context) {
+						ctx := database.SetOrganizationContext(c.Request.Context(), tt.tenantID)
+						c.Request = c.Request.WithContext(ctx)
+						c.Next()
+					})
+				}
+				router.GET("/settings/resolve", controller.Resolve)
 
-func TestSettingsController_ResolveRejectsInvalidWorkflowScopeIDs(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubSettingsControllerUseCase{}
-	controller := NewSettingsController(uc, newSettingsTestValidator(t))
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+				req, _ := http.NewRequest("GET", "/settings/resolve"+tt.query, nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
 	})
-	router.GET("/settings/resolve", controller.Resolve)
 
-	req, _ := http.NewRequest("GET", "/settings/resolve?Key=pharmacy_flow_enabled&ServiceID=bad-id", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("Delete", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubSettingsControllerUseCase
+			wantCode int
+		}{
+			{
+				name: "Positive_DeleteReturnsNoContent",
+				setup: func() *stubSettingsControllerUseCase {
+					return &stubSettingsControllerUseCase{}
+				},
+				wantCode: http.StatusNoContent,
+			},
+		}
 
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	assert.Nil(t, uc.resolveReq)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewSettingsController(uc, newSettingsTestValidator(t))
+				router := gin.New()
+				router.DELETE("/settings/:id", controller.Delete)
 
-func TestSettingsController_DeleteReturnsNoContent(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubSettingsControllerUseCase{}
-	controller := NewSettingsController(uc, newSettingsTestValidator(t))
-	router := gin.New()
-	router.DELETE("/settings/:id", controller.Delete)
+				req, _ := http.NewRequest("DELETE", "/settings/set-1", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-	req, _ := http.NewRequest("DELETE", "/settings/set-1", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNoContent, w.Code)
-}
-
-func TestSettingsController_ResolveRejectsMissingTenantContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubSettingsControllerUseCase{}
-	controller := NewSettingsController(uc, newSettingsTestValidator(t))
-	router := gin.New()
-	router.GET("/settings/resolve", controller.Resolve)
-
-	req, _ := http.NewRequest("GET", "/settings/resolve?Key=reset_time", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+				assert.Equal(t, tt.wantCode, w.Code)
+			})
+		}
+	})
 }

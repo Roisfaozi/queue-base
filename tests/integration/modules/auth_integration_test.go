@@ -125,12 +125,13 @@ func TestAuthIntegration_Login(t *testing.T) {
 
 	t.Run("Fail with Empty Credentials", func(t *testing.T) {
 		tests := []struct {
-			name string
-			un   string
-			pw   string
+			name     string
+			category string
+			un       string
+			pw       string
 		}{
-			{"Empty Username", "", "password123"},
-			{"Empty Password", "authuser", ""},
+			{"Empty Username", "negative", "", "password123"},
+			{"Empty Password", "negative", "authuser", ""},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {

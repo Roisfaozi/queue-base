@@ -147,97 +147,161 @@ func TestRedisTaskDistributor_DistributeTaskSendEmail(t *testing.T) {
 }
 
 func TestRedisTaskDistributor_DistributeTaskAuditLog(t *testing.T) {
-	t.Run("Positive - Enqueue Audit Log", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		payload := model.CreateAuditLogRequest{
-			UserID: "user_123",
-			Action: "LOGIN",
-		}
-
-		err := deps.distributor.DistributeTaskAuditLog(context.Background(), payload)
-		assert.NoError(t, err)
-	})
-
-	t.Run("Negative - Connection Failure", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		if dist, ok := deps.distributor.(*worker.RedisTaskDistributor); ok {
-			_ = dist.Close()
-		}
-
-		err := deps.distributor.DistributeTaskAuditLog(context.Background(), model.CreateAuditLogRequest{})
-		assert.Error(t, err)
-	})
-
-	t.Run("Edge - Large Old/New Values", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		payload := model.CreateAuditLogRequest{
-			UserID: "user_123",
-			OldValues: map[string]interface{}{
-				"data": string(make([]byte, 5000)),
+	tests := []struct {
+		name      string
+		category  string
+		payload   model.CreateAuditLogRequest
+		closeConn bool
+		wantErr   bool
+	}{
+		{
+			name:     "Positive - Enqueue Audit Log",
+			category: "positive",
+			payload: model.CreateAuditLogRequest{
+				UserID: "user_123",
+				Action: "LOGIN",
 			},
-		}
+			closeConn: false,
+			wantErr:   false,
+		},
+		{
+			name:      "Negative - Connection Failure",
+			category:  "negative",
+			payload:   model.CreateAuditLogRequest{},
+			closeConn: true,
+			wantErr:   true,
+		},
+		{
+			name:     "Edge - Large Old/New Values",
+			category: "edge",
+			payload: model.CreateAuditLogRequest{
+				UserID: "user_123",
+				OldValues: map[string]interface{}{
+					"data": string(make([]byte, 5000)),
+				},
+			},
+			closeConn: false,
+			wantErr:   false,
+		},
+	}
 
-		err := deps.distributor.DistributeTaskAuditLog(context.Background(), payload)
-		assert.NoError(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, cleanup := setupDistributorTest(t)
+			defer cleanup()
+
+			if tt.closeConn {
+				if dist, ok := deps.distributor.(*worker.RedisTaskDistributor); ok {
+					_ = dist.Close()
+				}
+			}
+
+			err := deps.distributor.DistributeTaskAuditLog(context.Background(), tt.payload)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestRedisTaskDistributor_DistributeTaskAuditOutboxSync(t *testing.T) {
-	t.Run("Positive - Enqueue Outbox Sync", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		err := deps.distributor.DistributeTaskAuditOutboxSync(context.Background())
-		assert.NoError(t, err)
-	})
+	tests := []struct {
+		name      string
+		category  string
+		closeConn bool
+		wantErr   bool
+	}{
+		{
+			name:      "Positive - Enqueue Outbox Sync",
+			category:  "positive",
+			closeConn: false,
+			wantErr:   false,
+		},
+		{
+			name:      "Negative - Connection Failure",
+			category:  "negative",
+			closeConn: true,
+			wantErr:   true,
+		},
+	}
 
-	t.Run("Negative - Connection Failure", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		if dist, ok := deps.distributor.(*worker.RedisTaskDistributor); ok {
-			_ = dist.Close()
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, cleanup := setupDistributorTest(t)
+			defer cleanup()
 
-		err := deps.distributor.DistributeTaskAuditOutboxSync(context.Background())
-		assert.Error(t, err)
-	})
+			if tt.closeConn {
+				if dist, ok := deps.distributor.(*worker.RedisTaskDistributor); ok {
+					_ = dist.Close()
+				}
+			}
+
+			err := deps.distributor.DistributeTaskAuditOutboxSync(context.Background())
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestRedisTaskDistributor_DistributeTaskAuditLogExport(t *testing.T) {
-	t.Run("Positive - Enqueue Export", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		payload := model.AuditLogExportPayload{
-			UserID:   "user_123",
-			FromDate: time.Now().Add(-24 * time.Hour).Format("2006-01-02"),
-			ToDate:   time.Now().Format("2006-01-02"),
-		}
+	tests := []struct {
+		name      string
+		category  string
+		payload   model.AuditLogExportPayload
+		closeConn bool
+		wantErr   bool
+	}{
+		{
+			name:     "Positive - Enqueue Export",
+			category: "positive",
+			payload: model.AuditLogExportPayload{
+				UserID:   "user_123",
+				FromDate: time.Now().Add(-24 * time.Hour).Format("2006-01-02"),
+				ToDate:   time.Now().Format("2006-01-02"),
+			},
+			closeConn: false,
+			wantErr:   false,
+		},
+		{
+			name:      "Negative - Connection Failure",
+			category:  "negative",
+			payload:   model.AuditLogExportPayload{},
+			closeConn: true,
+			wantErr:   true,
+		},
+		{
+			name:     "Vulnerability - SQLi format injection attempt",
+			category: "security",
+			payload: model.AuditLogExportPayload{
+				UserID: "user_123'; DROP TABLE users;--",
+			},
+			closeConn: false,
+			wantErr:   false,
+		},
+	}
 
-		err := deps.distributor.DistributeTaskAuditLogExport(context.Background(), payload)
-		assert.NoError(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps, cleanup := setupDistributorTest(t)
+			defer cleanup()
 
-	t.Run("Negative - Connection Failure", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		if dist, ok := deps.distributor.(*worker.RedisTaskDistributor); ok {
-			_ = dist.Close()
-		}
+			if tt.closeConn {
+				if dist, ok := deps.distributor.(*worker.RedisTaskDistributor); ok {
+					_ = dist.Close()
+				}
+			}
 
-		err := deps.distributor.DistributeTaskAuditLogExport(context.Background(), model.AuditLogExportPayload{})
-		assert.Error(t, err)
-	})
-
-	t.Run("Vulnerability - SQLi format injection attempt", func(t *testing.T) {
-		deps, cleanup := setupDistributorTest(t)
-		defer cleanup()
-		payload := model.AuditLogExportPayload{
-			UserID: "user_123'; DROP TABLE users;--",
-		}
-
-		err := deps.distributor.DistributeTaskAuditLogExport(context.Background(), payload)
-		assert.NoError(t, err)
-	})
+			err := deps.distributor.DistributeTaskAuditLogExport(context.Background(), tt.payload)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

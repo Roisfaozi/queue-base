@@ -24,77 +24,117 @@ func setupCasbinAdapterTest() (*casbinAdapterTestDeps, repository.AuthzManager) 
 }
 
 func TestCasbinAdapter_AssignDefaultRole(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		deps, adapter := setupCasbinAdapterTest()
-		deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
-		deps.Enforcer.On("AddGroupingPolicy", []interface{}{"user-1", "role:user", "global"}).Return(true, nil)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestCasbinAdapter_AssignDefaultRole",
+			category: "positive",
+			run: func(t *testing.T) {
 
-		err := adapter.AssignDefaultRole(context.Background(), "user-1")
+				t.Run("success", func(t *testing.T) {
+					deps, adapter := setupCasbinAdapterTest()
+					deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
+					deps.Enforcer.On("AddGroupingPolicy", []interface{}{"user-1", "role:user", "global"}).Return(true, nil)
 
-		assert.NoError(t, err)
-		deps.Enforcer.AssertExpectations(t)
-	})
+					err := adapter.AssignDefaultRole(context.Background(), "user-1")
 
-	t.Run("error", func(t *testing.T) {
-		deps, adapter := setupCasbinAdapterTest()
-		deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
-		deps.Enforcer.On("AddGroupingPolicy", []interface{}{"user-1", "role:user", "global"}).Return(false, errors.New("db error"))
+					assert.NoError(t, err)
+					deps.Enforcer.AssertExpectations(t)
+				})
 
-		err := adapter.AssignDefaultRole(context.Background(), "user-1")
+				t.Run("error", func(t *testing.T) {
+					deps, adapter := setupCasbinAdapterTest()
+					deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
+					deps.Enforcer.On("AddGroupingPolicy", []interface{}{"user-1", "role:user", "global"}).Return(false, errors.New("db error"))
 
-		assert.Error(t, err)
-		assert.Equal(t, "db error", err.Error())
-		deps.Enforcer.AssertExpectations(t)
-	})
+					err := adapter.AssignDefaultRole(context.Background(), "user-1")
 
-	t.Run("nil enforcer", func(t *testing.T) {
-		adapter := repository.NewCasbinAdapter(nil, "", "")
-		err := adapter.AssignDefaultRole(context.Background(), "user-1")
+					assert.Error(t, err)
+					assert.Equal(t, "db error", err.Error())
+					deps.Enforcer.AssertExpectations(t)
+				})
 
-		assert.NoError(t, err)
-	})
+				t.Run("nil enforcer", func(t *testing.T) {
+					adapter := repository.NewCasbinAdapter(nil, "", "")
+					err := adapter.AssignDefaultRole(context.Background(), "user-1")
+
+					assert.NoError(t, err)
+				})
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinAdapter_GetRolesForUser(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		deps, adapter := setupCasbinAdapterTest()
-		deps.Enforcer.On("GetRolesForUser", "user-1", []string{"global"}).Return([]string{"role:admin", "role:user"}, nil)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestCasbinAdapter_GetRolesForUser",
+			category: "positive",
+			run: func(t *testing.T) {
 
-		roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "")
+				t.Run("success", func(t *testing.T) {
+					deps, adapter := setupCasbinAdapterTest()
+					deps.Enforcer.On("GetRolesForUser", "user-1", []string{"global"}).Return([]string{"role:admin", "role:user"}, nil)
 
-		assert.NoError(t, err)
-		assert.Equal(t, []string{"role:admin", "role:user"}, roles)
-		deps.Enforcer.AssertExpectations(t)
-	})
+					roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "")
 
-	t.Run("with domain", func(t *testing.T) {
-		deps, adapter := setupCasbinAdapterTest()
-		deps.Enforcer.On("GetRolesForUser", "user-1", []string{"custom_domain"}).Return([]string{"role:custom"}, nil)
+					assert.NoError(t, err)
+					assert.Equal(t, []string{"role:admin", "role:user"}, roles)
+					deps.Enforcer.AssertExpectations(t)
+				})
 
-		roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "custom_domain")
+				t.Run("with domain", func(t *testing.T) {
+					deps, adapter := setupCasbinAdapterTest()
+					deps.Enforcer.On("GetRolesForUser", "user-1", []string{"custom_domain"}).Return([]string{"role:custom"}, nil)
 
-		assert.NoError(t, err)
-		assert.Equal(t, []string{"role:custom"}, roles)
-		deps.Enforcer.AssertExpectations(t)
-	})
+					roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "custom_domain")
 
-	t.Run("error", func(t *testing.T) {
-		deps, adapter := setupCasbinAdapterTest()
-		deps.Enforcer.On("GetRolesForUser", "user-1", []string{"global"}).Return(nil, errors.New("enforcer error"))
+					assert.NoError(t, err)
+					assert.Equal(t, []string{"role:custom"}, roles)
+					deps.Enforcer.AssertExpectations(t)
+				})
 
-		roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "")
+				t.Run("error", func(t *testing.T) {
+					deps, adapter := setupCasbinAdapterTest()
+					deps.Enforcer.On("GetRolesForUser", "user-1", []string{"global"}).Return(nil, errors.New("enforcer error"))
 
-		assert.Error(t, err)
-		assert.Nil(t, roles)
-		assert.Equal(t, "enforcer error", err.Error())
-		deps.Enforcer.AssertExpectations(t)
-	})
+					roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "")
 
-	t.Run("nil enforcer", func(t *testing.T) {
-		adapter := repository.NewCasbinAdapter(nil, "", "")
-		roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "")
+					assert.Error(t, err)
+					assert.Nil(t, roles)
+					assert.Equal(t, "enforcer error", err.Error())
+					deps.Enforcer.AssertExpectations(t)
+				})
 
-		assert.NoError(t, err)
-		assert.Nil(t, roles)
-	})
+				t.Run("nil enforcer", func(t *testing.T) {
+					adapter := repository.NewCasbinAdapter(nil, "", "")
+					roles, err := adapter.GetRolesForUser(context.Background(), "user-1", "")
+
+					assert.NoError(t, err)
+					assert.Nil(t, roles)
+				})
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

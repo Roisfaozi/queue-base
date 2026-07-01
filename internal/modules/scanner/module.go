@@ -4,6 +4,7 @@ import (
 	"context"
 
 	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 
 	counterModulePkg "github.com/Roisfaozi/queue-base/internal/modules/counter"
 	branchModulePkg "github.com/Roisfaozi/queue-base/internal/modules/organization"
@@ -12,8 +13,8 @@ import (
 	scannerUsecase "github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
 	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type ScannerAuthenticator interface {
@@ -60,13 +61,13 @@ func (a APIKeyAuthenticator) Authenticate(ctx context.Context, tenantID, branchI
 	return nil
 }
 
-func NewScannerModule(queueModule *queueModulePkg.QueueModule, branchModule *branchModulePkg.BranchModule, serviceModule *serviceModulePkg.ServiceModule, counterModule *counterModulePkg.CounterModule, settingsModule *settingsModulePkg.SettingsModule, validate *validator.Validate, authenticator ScannerAuthenticator) *ScannerModule {
+func NewScannerModule(queueModule *queueModulePkg.QueueModule, branchModule *branchModulePkg.BranchModule, serviceModule *serviceModulePkg.ServiceModule, counterModule *counterModulePkg.CounterModule, settingsModule *settingsModulePkg.SettingsModule, validate *validator.Validate, authenticator ScannerAuthenticator, log *logrus.Logger) *ScannerModule {
 	var resolver *settingsModulePkg.QueueSettingsResolver
 	if settingsModule != nil {
 		resolver = settingsModule.QueueSettingsResolver
 	}
 	relationValidator := scannerUsecase.NewRelationValidator(branchModule.BranchRepo, serviceModule.ServiceRepo, counterModule.CounterRepo, resolver)
 	uc := scannerUsecase.NewScannerUseCase(queueModule.QueueUseCase, authenticator, relationValidator)
-	ctrl := scannerHttp.NewScannerController(uc, validate)
+	ctrl := scannerHttp.NewScannerControllerWithLogger(uc, validate, log)
 	return &ScannerModule{ScannerController: ctrl, ScannerUseCase: uc}
 }

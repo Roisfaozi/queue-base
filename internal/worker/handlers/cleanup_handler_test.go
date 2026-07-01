@@ -43,101 +43,159 @@ func setupCleanupHandlerTest() *cleanupTestDeps {
 }
 
 func TestProcessCleanupExpiredTokens(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		task := asynq.NewTask(tasks.TypeCleanupExpiredTokens, nil)
+	tests := []struct {
+		name      string
+		category  string
+		setupMock func(deps *cleanupTestDeps)
+		wantErr   bool
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			setupMock: func(deps *cleanupTestDeps) {
+				deps.AuthRepo.On("DeleteExpiredResetTokens", mock.Anything).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:     "Failure",
+			category: "negative",
+			setupMock: func(deps *cleanupTestDeps) {
+				deps.AuthRepo.On("DeleteExpiredResetTokens", mock.Anything).Return(errors.New("db error"))
+			},
+			wantErr: true,
+		},
+	}
 
-		deps.AuthRepo.On("DeleteExpiredResetTokens", mock.Anything).Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps := setupCleanupHandlerTest()
+			tt.setupMock(deps)
+			task := asynq.NewTask(tasks.TypeCleanupExpiredTokens, nil)
 
-		err := deps.Handler.ProcessCleanupExpiredTokens(context.Background(), task)
-		assert.NoError(t, err)
-		deps.AuthRepo.AssertExpectations(t)
-	})
-
-	t.Run("Failure", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		task := asynq.NewTask(tasks.TypeCleanupExpiredTokens, nil)
-
-		deps.AuthRepo.On("DeleteExpiredResetTokens", mock.Anything).Return(errors.New("db error"))
-
-		err := deps.Handler.ProcessCleanupExpiredTokens(context.Background(), task)
-		assert.Error(t, err)
-		deps.AuthRepo.AssertExpectations(t)
-	})
+			err := deps.Handler.ProcessCleanupExpiredTokens(context.Background(), task)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			deps.AuthRepo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestProcessCleanupSoftDeletedEntities(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		payload := tasks.CleanupSoftDeletedEntitiesPayload{RetentionDays: 30}
-		jsonPayload, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypeCleanupSoftDeletedEntities, jsonPayload)
+	tests := []struct {
+		name      string
+		category  string
+		payload   []byte
+		setupMock func(deps *cleanupTestDeps)
+		wantErr   bool
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			payload: func() []byte {
+				p, _ := json.Marshal(tasks.CleanupSoftDeletedEntitiesPayload{RetentionDays: 30})
+				return p
+			}(),
+			setupMock: func(deps *cleanupTestDeps) {
+				deps.UserRepo.On("HardDeleteSoftDeletedUsers", mock.Anything, 30).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:      "UnmarshalError",
+			category:  "negative",
+			payload:   []byte("invalid json"),
+			setupMock: func(deps *cleanupTestDeps) {},
+			wantErr:   true,
+		},
+		{
+			name:     "RepoError",
+			category: "negative",
+			payload: func() []byte {
+				p, _ := json.Marshal(tasks.CleanupSoftDeletedEntitiesPayload{RetentionDays: 30})
+				return p
+			}(),
+			setupMock: func(deps *cleanupTestDeps) {
+				deps.UserRepo.On("HardDeleteSoftDeletedUsers", mock.Anything, 30).Return(errors.New("db error"))
+			},
+			wantErr: true,
+		},
+	}
 
-		deps.UserRepo.On("HardDeleteSoftDeletedUsers", mock.Anything, 30).Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps := setupCleanupHandlerTest()
+			tt.setupMock(deps)
+			task := asynq.NewTask(tasks.TypeCleanupSoftDeletedEntities, tt.payload)
 
-		err := deps.Handler.ProcessCleanupSoftDeletedEntities(context.Background(), task)
-		assert.NoError(t, err)
-		deps.UserRepo.AssertExpectations(t)
-	})
-
-	t.Run("Unmarshal Error", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		task := asynq.NewTask(tasks.TypeCleanupSoftDeletedEntities, []byte("invalid json"))
-
-		err := deps.Handler.ProcessCleanupSoftDeletedEntities(context.Background(), task)
-		assert.Error(t, err)
-	})
-
-	t.Run("Repo Error", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		payload := tasks.CleanupSoftDeletedEntitiesPayload{RetentionDays: 30}
-		jsonPayload, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypeCleanupSoftDeletedEntities, jsonPayload)
-
-		deps.UserRepo.On("HardDeleteSoftDeletedUsers", mock.Anything, 30).Return(errors.New("db error"))
-
-		err := deps.Handler.ProcessCleanupSoftDeletedEntities(context.Background(), task)
-		assert.Error(t, err)
-		deps.UserRepo.AssertExpectations(t)
-	})
+			err := deps.Handler.ProcessCleanupSoftDeletedEntities(context.Background(), task)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			deps.UserRepo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestProcessPruneAuditLogs(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		payload := tasks.PruneAuditLogsPayload{RetentionDays: 180}
-		jsonPayload, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypePruneAuditLogs, jsonPayload)
+	tests := []struct {
+		name      string
+		category  string
+		payload   []byte
+		setupMock func(deps *cleanupTestDeps)
+		wantErr   bool
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			payload: func() []byte {
+				p, _ := json.Marshal(tasks.PruneAuditLogsPayload{RetentionDays: 180})
+				return p
+			}(),
+			setupMock: func(deps *cleanupTestDeps) {
+				deps.AuditRepo.On("DeleteLogsOlderThan", mock.Anything, mock.AnythingOfType("int64")).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:      "UnmarshalError",
+			category:  "negative",
+			payload:   []byte("invalid json"),
+			setupMock: func(deps *cleanupTestDeps) {},
+			wantErr:   true,
+		},
+		{
+			name:     "RepoError",
+			category: "negative",
+			payload: func() []byte {
+				p, _ := json.Marshal(tasks.PruneAuditLogsPayload{RetentionDays: 180})
+				return p
+			}(),
+			setupMock: func(deps *cleanupTestDeps) {
+				deps.AuditRepo.On("DeleteLogsOlderThan", mock.Anything, mock.AnythingOfType("int64")).Return(errors.New("db error"))
+			},
+			wantErr: true,
+		},
+	}
 
-		// We can't easily match the exact timestamp, so we use mock.MatchedBy or just mock.AnythingOfType("int64")
-		// Ideally we mock time.Now but that requires refactoring. For now assume it works if we check logic around it.
-		// Actually, we can check if it is roughly correct.
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deps := setupCleanupHandlerTest()
+			tt.setupMock(deps)
+			task := asynq.NewTask(tasks.TypePruneAuditLogs, tt.payload)
 
-		deps.AuditRepo.On("DeleteLogsOlderThan", mock.Anything, mock.AnythingOfType("int64")).Return(nil)
-
-		err := deps.Handler.ProcessPruneAuditLogs(context.Background(), task)
-		assert.NoError(t, err)
-		deps.AuditRepo.AssertExpectations(t)
-	})
-
-	t.Run("Unmarshal Error", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		task := asynq.NewTask(tasks.TypePruneAuditLogs, []byte("invalid json"))
-
-		err := deps.Handler.ProcessPruneAuditLogs(context.Background(), task)
-		assert.Error(t, err)
-	})
-
-	t.Run("Repo Error", func(t *testing.T) {
-		deps := setupCleanupHandlerTest()
-		payload := tasks.PruneAuditLogsPayload{RetentionDays: 180}
-		jsonPayload, _ := json.Marshal(payload)
-		task := asynq.NewTask(tasks.TypePruneAuditLogs, jsonPayload)
-
-		deps.AuditRepo.On("DeleteLogsOlderThan", mock.Anything, mock.AnythingOfType("int64")).Return(errors.New("db error"))
-
-		err := deps.Handler.ProcessPruneAuditLogs(context.Background(), task)
-		assert.Error(t, err)
-		deps.AuditRepo.AssertExpectations(t)
-	})
+			err := deps.Handler.ProcessPruneAuditLogs(context.Background(), task)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			deps.AuditRepo.AssertExpectations(t)
+		})
+	}
 }

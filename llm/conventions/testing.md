@@ -92,6 +92,17 @@ Guide for choosing the right verification layer, understanding infra assumptions
 - prefer integration tests when change affects DB, Redis, Casbin, worker, or stateful runtime
 - prefer E2E when route-group, cookie, tenant, or full lifecycle behavior is user-visible
 - prefer failing-first bug reproduction when seam is meaningful
+- default to TDD-first when a meaningful seam exists: RED -> GREEN -> REFACTOR
+- prefer table-driven tests for any behavior with more than one scenario
+- for each feature, flow, or endpoint, ensure table-driven coverage includes these categories when meaningful:
+  - positive
+  - negative
+  - edge
+  - security
+  - vulnerability
+- make category visible in test row naming or dedicated `category` field so coverage gaps are reviewable fast
+- when auth, tenant, permission, access, or API-key boundary changes, security and vulnerability cases are mandatory unless the seam truly cannot express them
+- if only one scenario exists today but more are likely, prefer table-driven layout from start to keep future cases aligned
 - before refactor, improve, optimization, or logic rewrite, perform benchmark audit first
 - if no relevant `BenchmarkXxx` exists, report that `make bench` is placeholder-grade for that path unless benchmark cases are added
 

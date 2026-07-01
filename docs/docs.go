@@ -7983,10 +7983,14 @@ const docTemplate = `{
         "github_com_Roisfaozi_queue-base_internal_modules_queue_model.RegisterQueueRequest": {
             "type": "object",
             "required": [
+                "branch_id",
                 "patient_name",
                 "service_id"
             ],
             "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
                 "patient_id": {
                     "type": "string"
                 },
@@ -8043,7 +8047,8 @@ const docTemplate = `{
         "github_com_Roisfaozi_queue-base_internal_modules_scanner_model.CheckInRequest": {
             "type": "object",
             "required": [
-                "action"
+                "action",
+                "branch_id"
             ],
             "properties": {
                 "action": {
@@ -8052,6 +8057,9 @@ const docTemplate = `{
                         "register",
                         "forward"
                     ]
+                },
+                "branch_id": {
+                    "type": "string"
                 },
                 "destination_counter_id": {
                     "type": "string"

@@ -46,249 +46,357 @@ func setupRoleTest() (*roleTestDeps, usecase.RoleUseCase) {
 }
 
 func TestRoleUseCase_Create(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.CreateRoleRequest{Name: "NewRole", Description: "Desc"}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				req := &model.CreateRoleRequest{Name: "NewRole", Description: "Desc"}
 
-		deps.Repo.On("FindByName", ctx, "NewRole").Return(nil, gorm.ErrRecordNotFound)
-		deps.Repo.On("Create", ctx, mock.AnythingOfType("*entity.Role")).Return(nil)
+				deps.Repo.On("FindByName", ctx, req.Name).Return(nil, gorm.ErrRecordNotFound)
+				deps.Repo.On("Create", ctx, mock.AnythingOfType("*entity.Role")).Return(nil)
 
-		res, err := uc.Create(ctx, req)
-		assert.NoError(t, err)
-		assert.NotNil(t, res)
-		assert.Equal(t, "NewRole", res.Name)
-	})
+				res, err := uc.Create(ctx, req)
+				assert.NoError(t, err)
+				assert.NotNil(t, res)
+				assert.Equal(t, "NewRole", res.Name)
+			},
+		},
+		{
+			name:     "Negative_Conflict",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				req := &model.CreateRoleRequest{Name: "ExistingRole", Description: "Desc"}
 
-	t.Run("Conflict", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.CreateRoleRequest{Name: "ExistingRole", Description: "Desc"}
+				deps.Repo.On("FindByName", ctx, req.Name).Return(&entity.Role{}, nil)
 
-		deps.Repo.On("FindByName", ctx, "ExistingRole").Return(&entity.Role{}, nil)
+				res, err := uc.Create(ctx, req)
+				assert.ErrorIs(t, err, exception.ErrConflict)
+				assert.Nil(t, res)
+			},
+		},
+		{
+			name:     "Negative_DBErrorFind",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				req := &model.CreateRoleRequest{Name: "Role", Description: "Desc"}
 
-		res, err := uc.Create(ctx, req)
-		assert.ErrorIs(t, err, exception.ErrConflict)
-		assert.Nil(t, res)
-	})
+				deps.Repo.On("FindByName", ctx, req.Name).Return(nil, errors.New("db error"))
 
-	t.Run("DBErrorFind", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.CreateRoleRequest{Name: "Role", Description: "Desc"}
+				res, err := uc.Create(ctx, req)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+				assert.Nil(t, res)
+			},
+		},
+		{
+			name:     "Negative_DBErrorCreate",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				req := &model.CreateRoleRequest{Name: "Role", Description: "Desc"}
 
-		deps.Repo.On("FindByName", ctx, "Role").Return(nil, errors.New("db error"))
+				deps.Repo.On("FindByName", ctx, req.Name).Return(nil, gorm.ErrRecordNotFound)
+				deps.Repo.On("Create", ctx, mock.AnythingOfType("*entity.Role")).Return(errors.New("db error"))
 
-		res, err := uc.Create(ctx, req)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-		assert.Nil(t, res)
-	})
+				res, err := uc.Create(ctx, req)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+				assert.Nil(t, res)
+			},
+		},
+	}
 
-	t.Run("DBErrorCreate", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.CreateRoleRequest{Name: "Role", Description: "Desc"}
-
-		deps.Repo.On("FindByName", ctx, "Role").Return(nil, gorm.ErrRecordNotFound)
-		deps.Repo.On("Create", ctx, mock.AnythingOfType("*entity.Role")).Return(errors.New("db error"))
-
-		res, err := uc.Create(ctx, req)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-		assert.Nil(t, res)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRoleUseCase_Update(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.UpdateRoleRequest{Description: "NewDesc"}
-		id := "role-1"
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
+				req := &model.UpdateRoleRequest{Description: "NewDesc"}
 
-		role := &entity.Role{ID: id, Name: "Role", Description: "OldDesc"}
-		deps.Repo.On("FindByID", ctx, id).Return(role, nil)
-		deps.Repo.On("Update", ctx, mock.MatchedBy(func(r *entity.Role) bool {
-			return r.Description == "NewDesc"
-		})).Return(nil)
+				deps.Repo.On("FindByID", ctx, id).Return(&entity.Role{ID: id, Name: "Role", Description: "OldDesc"}, nil)
+				deps.Repo.On("Update", ctx, mock.AnythingOfType("*entity.Role")).Return(nil)
 
-		res, err := uc.Update(ctx, id, req)
-		assert.NoError(t, err)
-		assert.NotNil(t, res)
-		assert.Equal(t, "NewDesc", res.Description)
-	})
+				res, err := uc.Update(ctx, id, req)
+				assert.NoError(t, err)
+				assert.NotNil(t, res)
+				assert.Equal(t, "NewDesc", res.Description)
+			},
+		},
+		{
+			name:     "Negative_NotFound",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
+				req := &model.UpdateRoleRequest{Description: "NewDesc"}
 
-	t.Run("NotFound", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.UpdateRoleRequest{Description: "NewDesc"}
-		id := "role-1"
+				deps.Repo.On("FindByID", ctx, id).Return(nil, gorm.ErrRecordNotFound)
 
-		deps.Repo.On("FindByID", ctx, id).Return(nil, gorm.ErrRecordNotFound)
+				res, err := uc.Update(ctx, id, req)
+				assert.ErrorIs(t, err, exception.ErrNotFound)
+				assert.Nil(t, res)
+			},
+		},
+		{
+			name:     "Negative_DBErrorFind",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
+				req := &model.UpdateRoleRequest{Description: "NewDesc"}
 
-		res, err := uc.Update(ctx, id, req)
-		assert.ErrorIs(t, err, exception.ErrNotFound)
-		assert.Nil(t, res)
-	})
+				deps.Repo.On("FindByID", ctx, id).Return(nil, errors.New("db error"))
 
-	t.Run("DBErrorFind", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.UpdateRoleRequest{Description: "NewDesc"}
-		id := "role-1"
+				res, err := uc.Update(ctx, id, req)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+				assert.Nil(t, res)
+			},
+		},
+		{
+			name:     "Negative_DBErrorUpdate",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
+				req := &model.UpdateRoleRequest{Description: "NewDesc"}
 
-		deps.Repo.On("FindByID", ctx, id).Return(nil, errors.New("db error"))
+				deps.Repo.On("FindByID", ctx, id).Return(&entity.Role{ID: id, Name: "Role"}, nil)
+				deps.Repo.On("Update", ctx, mock.AnythingOfType("*entity.Role")).Return(errors.New("db error"))
 
-		res, err := uc.Update(ctx, id, req)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-		assert.Nil(t, res)
-	})
+				res, err := uc.Update(ctx, id, req)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+				assert.Nil(t, res)
+			},
+		},
+	}
 
-	t.Run("DBErrorUpdate", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		req := &model.UpdateRoleRequest{Description: "NewDesc"}
-		id := "role-1"
-
-		role := &entity.Role{ID: id, Name: "Role"}
-		deps.Repo.On("FindByID", ctx, id).Return(role, nil)
-		deps.Repo.On("Update", ctx, mock.AnythingOfType("*entity.Role")).Return(errors.New("db error"))
-
-		res, err := uc.Update(ctx, id, req)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-		assert.Nil(t, res)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRoleUseCase_GetAll(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
 
-		roles := []*entity.Role{
-			{ID: "1", Name: "Role1"},
-			{ID: "2", Name: "Role2"},
-		}
-		deps.Repo.On("FindAll", ctx).Return(roles, nil)
+				deps.Repo.On("FindAll", ctx).Return([]*entity.Role{{ID: "1", Name: "Role1"}, {ID: "2", Name: "Role2"}}, nil)
 
-		res, err := uc.GetAll(ctx)
-		assert.NoError(t, err)
-		assert.Len(t, res, 2)
-	})
+				res, err := uc.GetAll(ctx)
+				assert.NoError(t, err)
+				assert.Len(t, res, 2)
+			},
+		},
+		{
+			name:     "Negative_DBError",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
 
-	t.Run("DBError", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
+				deps.Repo.On("FindAll", ctx).Return(nil, errors.New("db error"))
 
-		deps.Repo.On("FindAll", ctx).Return(nil, errors.New("db error"))
+				res, err := uc.GetAll(ctx)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+				assert.Nil(t, res)
+			},
+		},
+	}
 
-		res, err := uc.GetAll(ctx)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-		assert.Nil(t, res)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRoleUseCase_Delete(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		id := "role-1"
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
+				role := &entity.Role{ID: "role-1", Name: "NormalRole"}
 
-		role := &entity.Role{ID: id, Name: "NormalRole"}
-		deps.Repo.On("FindByID", ctx, id).Return(role, nil)
-		deps.Repo.On("Delete", ctx, id).Return(nil)
-		deps.PermissionUC.On("DeleteRole", ctx, "NormalRole").Return(nil)
+				deps.Repo.On("FindByID", ctx, id).Return(role, nil)
+				deps.Repo.On("Delete", ctx, id).Return(nil)
+				deps.PermissionUC.On("DeleteRole", ctx, role.Name).Return(nil)
 
-		err := uc.Delete(ctx, id)
-		assert.NoError(t, err)
-	})
+				err := uc.Delete(ctx, id)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Security_ForbiddenSuperadmin",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-super"
+				role := &entity.Role{ID: "role-super", Name: "role:superadmin"}
 
-	t.Run("ForbiddenSuperadmin", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		id := "role-super"
+				deps.Repo.On("FindByID", ctx, id).Return(role, nil)
 
-		role := &entity.Role{ID: id, Name: "role:superadmin"}
-		deps.Repo.On("FindByID", ctx, id).Return(role, nil)
+				err := uc.Delete(ctx, id)
+				assert.ErrorIs(t, err, exception.ErrForbidden)
+			},
+		},
+		{
+			name:     "Negative_NotFound",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
 
-		err := uc.Delete(ctx, id)
-		assert.ErrorIs(t, err, exception.ErrForbidden)
-	})
+				deps.Repo.On("FindByID", ctx, id).Return(nil, gorm.ErrRecordNotFound)
 
-	t.Run("NotFound", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		id := "role-1"
+				err := uc.Delete(ctx, id)
+				assert.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
+		{
+			name:     "Negative_DBErrorFind",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
 
-		deps.Repo.On("FindByID", ctx, id).Return(nil, gorm.ErrRecordNotFound)
+				deps.Repo.On("FindByID", ctx, id).Return(nil, errors.New("db error"))
 
-		err := uc.Delete(ctx, id)
-		assert.ErrorIs(t, err, exception.ErrNotFound)
-	})
+				err := uc.Delete(ctx, id)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+			},
+		},
+		{
+			name:     "Negative_DBErrorDelete",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
+				role := &entity.Role{ID: "role-1", Name: "NormalRole"}
 
-	t.Run("DBErrorFind", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		id := "role-1"
+				deps.Repo.On("FindByID", ctx, id).Return(role, nil)
+				deps.Repo.On("Delete", ctx, id).Return(errors.New("db error"))
 
-		deps.Repo.On("FindByID", ctx, id).Return(nil, errors.New("db error"))
+				err := uc.Delete(ctx, id)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+			},
+		},
+		{
+			name:     "Negative_DBErrorPermissionCleanup",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				id := "role-1"
+				role := &entity.Role{ID: "role-1", Name: "NormalRole"}
 
-		err := uc.Delete(ctx, id)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-	})
+				deps.Repo.On("FindByID", ctx, id).Return(role, nil)
+				deps.Repo.On("Delete", ctx, id).Return(nil)
+				deps.PermissionUC.On("DeleteRole", ctx, role.Name).Return(errors.New("perm error"))
 
-	t.Run("DBErrorDelete", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		id := "role-1"
+				err := uc.Delete(ctx, id)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+			},
+		},
+	}
 
-		role := &entity.Role{ID: id, Name: "NormalRole"}
-		deps.Repo.On("FindByID", ctx, id).Return(role, nil)
-		deps.Repo.On("Delete", ctx, id).Return(errors.New("db error"))
-
-		err := uc.Delete(ctx, id)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-	})
-
-	t.Run("DBErrorPermissionCleanup", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		id := "role-1"
-
-		role := &entity.Role{ID: id, Name: "NormalRole"}
-		deps.Repo.On("FindByID", ctx, id).Return(role, nil)
-		deps.Repo.On("Delete", ctx, id).Return(nil)
-		deps.PermissionUC.On("DeleteRole", ctx, "NormalRole").Return(errors.New("perm error"))
-
-		err := uc.Delete(ctx, id)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRoleUseCase_GetAllRolesDynamic(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		filter := &querybuilder.DynamicFilter{}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				filter := &querybuilder.DynamicFilter{}
 
-		roles := []*entity.Role{
-			{ID: "1", Name: "Role1"},
-		}
-		deps.Repo.On("FindAllDynamic", ctx, filter).Return(roles, nil)
+				deps.Repo.On("FindAllDynamic", ctx, filter).Return([]*entity.Role{{ID: "1", Name: "Role1"}}, nil)
 
-		res, err := uc.GetAllRolesDynamic(ctx, filter)
-		assert.NoError(t, err)
-		assert.Len(t, res, 1)
-	})
+				res, err := uc.GetAllRolesDynamic(ctx, filter)
+				assert.NoError(t, err)
+				assert.Len(t, res, 1)
+			},
+		},
+		{
+			name:     "Negative_DBError",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupRoleTest()
+				ctx := context.Background()
+				filter := &querybuilder.DynamicFilter{}
 
-	t.Run("DBError", func(t *testing.T) {
-		deps, uc := setupRoleTest()
-		ctx := context.Background()
-		filter := &querybuilder.DynamicFilter{}
+				deps.Repo.On("FindAllDynamic", ctx, filter).Return(nil, errors.New("db error"))
 
-		deps.Repo.On("FindAllDynamic", ctx, filter).Return(nil, errors.New("db error"))
+				res, err := uc.GetAllRolesDynamic(ctx, filter)
+				assert.ErrorIs(t, err, exception.ErrInternalServer)
+				assert.Nil(t, res)
+			},
+		},
+	}
 
-		res, err := uc.GetAllRolesDynamic(ctx, filter)
-		assert.ErrorIs(t, err, exception.ErrInternalServer)
-		assert.Nil(t, res)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

@@ -15,21 +15,38 @@ import (
 )
 
 func TestScenario_ExceptionHandling_PanicRecovery(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "PanicRecovery",
+			category: "integration",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
 
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	router.Use(middleware.RecoveryMiddleware(env.Logger))
+				gin.SetMode(gin.TestMode)
+				router := gin.New()
+				router.Use(middleware.RecoveryMiddleware(env.Logger))
 
-	router.GET("/panic-trigger", func(c *gin.Context) {
-		panic("intentional crash for testing")
-	})
+				router.GET("/panic-trigger", func(c *gin.Context) {
+					panic("intentional crash for testing")
+				})
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/panic-trigger", nil)
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest("GET", "/panic-trigger", nil)
 
-	router.ServeHTTP(w, req)
+				router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code, "Expected 500 Internal Server Error after panic")
+				assert.Equal(t, http.StatusInternalServerError, w.Code, "Expected 500 Internal Server Error after panic")
+			},
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
