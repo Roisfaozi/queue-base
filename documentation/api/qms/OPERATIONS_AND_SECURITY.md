@@ -300,3 +300,45 @@ Minimum proof before changing this contract:
 - focused QMS integration/E2E pass or skip is reported with Docker blocker
 - security-sensitive changes include cross-tenant or scanner-secret regression tests
 
+## Audit Visibility Matrix Enrichment
+
+Dokumen ini melengkapi matrix audit di Phase 11 slice 11.4.
+
+### Event to actor mapping
+
+| Event | Typical Actor | Entity | Required Core Fields |
+|---|---|---|---|
+| `QUEUE_REGISTER` | authenticated user or `system` | `queue` | `organization_id`, `user_id`, `entity_id`, `branch_id`, `ticket_no` |
+| `QUEUE_FORWARD` | authenticated user or `system` | `queue` | `organization_id`, `user_id`, `entity_id`, `branch_id`, `from_journey_id`, `to_service_id` |
+| `QUEUE_CALL` | authenticated user or `system` | `queue` | `organization_id`, `user_id`, `entity_id`, `branch_id`, `journey_id`, `status` |
+| `QUEUE_SERVE` | authenticated user or `system` | `queue` | `organization_id`, `user_id`, `entity_id`, `branch_id`, `journey_id`, `status` |
+| `QUEUE_COMPLETE` | authenticated user or `system` | `queue` | `organization_id`, `user_id`, `entity_id`, `branch_id`, `journey_id`, `status` |
+| `QUEUE_SKIP` | authenticated user or `system` | `queue` | `organization_id`, `user_id`, `entity_id`, `branch_id`, `journey_id`, `status` |
+| `QUEUE_CANCEL` | authenticated user or `system` | `queue` | `organization_id`, `user_id`, `entity_id`, `branch_id`, `journey_id`, `status` |
+| `SCANNER_REGISTER` | scanner flow under authenticated org context | `scanner` | `organization_id`, `user_id`, `entity_id`, `branch_id` |
+| `SCANNER_FORWARD` | scanner flow under authenticated org context | `scanner` | `organization_id`, `user_id`, `entity_id`, `branch_id` |
+
+### Sensitive-field deny list
+
+Audit payloads untuk QMS tidak boleh menyimpan:
+
+- `X-API-Key`
+- scanner raw secret
+- full patient secret payload yang tidak perlu untuk audit tujuan operasional
+- tenant-switch internal cookies atau session material
+
+### Audit to metrics relationship
+
+Metrics adalah sinyal agregat. Audit adalah detail forensik.
+
+- metrics jawab: spike error apa naik?
+- audit jawab: queue atau scanner event mana yang terpengaruh?
+- audit tidak boleh dipaksa jadi metrics replacement
+
+### Failure policy
+
+Untuk queue/scanner flows yang sudah diuji:
+
+- audit failure tetap non-blocking terhadap business success
+- jika audit write gagal, incident harus terlihat dari application logs atau worker/audit visibility lain
+- jangan ubah policy ini tanpa test regresi eksplisit
