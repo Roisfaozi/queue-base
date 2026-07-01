@@ -64,121 +64,237 @@ func (s *stubServiceControllerUseCase) DeleteService(ctx context.Context, servic
 	return nil
 }
 
-func TestServiceController_CreateIncludesPharmacyFlags(t *testing.T) {
+func TestServiceController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	uc := &stubServiceControllerUseCase{createRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}}
-	controller := NewServiceController(uc, newTestValidator(t))
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+
+	t.Run("Create", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			reqBody  interface{}
+			setup    func() *stubServiceControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, uc *stubServiceControllerUseCase)
+		}{
+			{
+				name:    "Positive_CreateIncludesPharmacyFlags",
+				reqBody: model.CreateServiceRequest{Code: "pha", Name: "Pharmacy", IsPharmacy: true, IsPharmacyReception: true},
+				setup: func() *stubServiceControllerUseCase {
+					return &stubServiceControllerUseCase{createRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}}
+				},
+				wantCode: http.StatusCreated,
+				assert: func(t *testing.T, uc *stubServiceControllerUseCase) {
+					require.NotNil(t, uc.createReq)
+					assert.True(t, uc.createReq.IsPharmacy)
+					assert.True(t, uc.createReq.IsPharmacyReception)
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewServiceController(uc, newTestValidator(t))
+				router := gin.New()
+				router.Use(func(c *gin.Context) {
+					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+					c.Request = c.Request.WithContext(ctx)
+					c.Next()
+				})
+				router.POST("/services", controller.Create)
+
+				body, err := json.Marshal(tt.reqBody)
+				require.NoError(t, err)
+				req, _ := http.NewRequest("POST", "/services", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
 	})
-	router.POST("/services", controller.Create)
 
-	body, err := json.Marshal(model.CreateServiceRequest{Code: "pha", Name: "Pharmacy", IsPharmacy: true, IsPharmacyReception: true})
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/services", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("Update", func(t *testing.T) {
+		flag := false
+		tests := []struct {
+			name     string
+			reqBody  interface{}
+			setup    func() *stubServiceControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, uc *stubServiceControllerUseCase)
+		}{
+			{
+				name:    "Positive_UpdateCanTogglePharmacyFlags",
+				reqBody: model.UpdateServiceRequest{IsPharmacyReception: &flag},
+				setup: func() *stubServiceControllerUseCase {
+					return &stubServiceControllerUseCase{updateRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubServiceControllerUseCase) {
+					require.NotNil(t, uc.updateReq)
+					require.NotNil(t, uc.updateReq.IsPharmacyReception)
+					assert.False(t, *uc.updateReq.IsPharmacyReception)
+				},
+			},
+		}
 
-	assert.Equal(t, http.StatusCreated, w.Code)
-	require.NotNil(t, uc.createReq)
-	assert.True(t, uc.createReq.IsPharmacy)
-	assert.True(t, uc.createReq.IsPharmacyReception)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewServiceController(uc, newTestValidator(t))
+				router := gin.New()
+				router.Use(func(c *gin.Context) {
+					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+					c.Request = c.Request.WithContext(ctx)
+					c.Next()
+				})
+				router.PUT("/services/:id", controller.Update)
 
-func TestServiceController_UpdateCanTogglePharmacyFlags(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubServiceControllerUseCase{updateRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}
-	controller := NewServiceController(uc, newTestValidator(t))
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+				body, err := json.Marshal(tt.reqBody)
+				require.NoError(t, err)
+				req, _ := http.NewRequest("PUT", "/services/svc-1", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
 	})
-	router.PUT("/services/:id", controller.Update)
 
-	flag := false
-	body, err := json.Marshal(model.UpdateServiceRequest{IsPharmacyReception: &flag})
-	require.NoError(t, err)
-	req, _ := http.NewRequest("PUT", "/services/svc-1", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("GetByID", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubServiceControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, body string)
+		}{
+			{
+				name: "Positive_GetByIDReturnsPharmacyFlags",
+				setup: func() *stubServiceControllerUseCase {
+					return &stubServiceControllerUseCase{getRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, body string) {
+					assert.Contains(t, body, `"is_pharmacy":true`)
+					assert.Contains(t, body, `"is_pharmacy_reception":true`)
+				},
+			},
+		}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	require.NotNil(t, uc.updateReq)
-	require.NotNil(t, uc.updateReq.IsPharmacyReception)
-	assert.False(t, *uc.updateReq.IsPharmacyReception)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewServiceController(uc, newTestValidator(t))
+				router := gin.New()
+				router.Use(func(c *gin.Context) {
+					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+					c.Request = c.Request.WithContext(ctx)
+					c.Next()
+				})
+				router.GET("/services/:id", controller.GetByID)
 
-func TestServiceController_GetByIDReturnsPharmacyFlags(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubServiceControllerUseCase{getRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}}
-	controller := NewServiceController(uc, newTestValidator(t))
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+				req, _ := http.NewRequest("GET", "/services/svc-1", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, w.Body.String())
+				}
+			})
+		}
 	})
-	router.GET("/services/:id", controller.GetByID)
 
-	req, _ := http.NewRequest("GET", "/services/svc-1", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("GetAll", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubServiceControllerUseCase
+			tenantID string
+			wantCode int
+			assert   func(t *testing.T, body string)
+		}{
+			{
+				name: "Positive_GetAllReturnsPharmacyFlags",
+				setup: func() *stubServiceControllerUseCase {
+					return &stubServiceControllerUseCase{listRes: []model.ServiceResponse{{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}}
+				},
+				tenantID: "tenant-1",
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, body string) {
+					assert.Contains(t, body, `"is_pharmacy":true`)
+					assert.Contains(t, body, `"is_pharmacy_reception":false`)
+				},
+			},
+			{
+				name: "Negative_GetAllRejectsMissingTenantContext",
+				setup: func() *stubServiceControllerUseCase {
+					return &stubServiceControllerUseCase{}
+				},
+				tenantID: "",
+				wantCode: http.StatusBadRequest,
+				assert:   nil,
+			},
+		}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `"is_pharmacy":true`)
-	assert.Contains(t, w.Body.String(), `"is_pharmacy_reception":true`)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewServiceController(uc, newTestValidator(t))
+				router := gin.New()
+				if tt.tenantID != "" {
+					router.Use(func(c *gin.Context) {
+						ctx := database.SetOrganizationContext(c.Request.Context(), tt.tenantID)
+						c.Request = c.Request.WithContext(ctx)
+						c.Next()
+					})
+				}
+				router.GET("/services", controller.GetAll)
 
-func TestServiceController_GetAllReturnsPharmacyFlags(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubServiceControllerUseCase{listRes: []model.ServiceResponse{{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}}
-	controller := NewServiceController(uc, newTestValidator(t))
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+				req, _ := http.NewRequest("GET", "/services", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, w.Body.String())
+				}
+			})
+		}
 	})
-	router.GET("/services", controller.GetAll)
 
-	req, _ := http.NewRequest("GET", "/services", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("Delete", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubServiceControllerUseCase
+			wantCode int
+		}{
+			{
+				name: "Positive_DeleteReturnsNoContent",
+				setup: func() *stubServiceControllerUseCase {
+					return &stubServiceControllerUseCase{}
+				},
+				wantCode: http.StatusNoContent,
+			},
+		}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `"is_pharmacy":true`)
-	assert.Contains(t, w.Body.String(), `"is_pharmacy_reception":false`)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewServiceController(uc, newTestValidator(t))
+				router := gin.New()
+				router.DELETE("/services/:id", controller.Delete)
 
-func TestServiceController_DeleteReturnsNoContent(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubServiceControllerUseCase{}
-	controller := NewServiceController(uc, newTestValidator(t))
-	router := gin.New()
-	router.DELETE("/services/:id", controller.Delete)
+				req, _ := http.NewRequest("DELETE", "/services/svc-1", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-	req, _ := http.NewRequest("DELETE", "/services/svc-1", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNoContent, w.Code)
-}
-
-func TestServiceController_GetAllRejectsMissingTenantContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubServiceControllerUseCase{}
-	controller := NewServiceController(uc, newTestValidator(t))
-	router := gin.New()
-	router.GET("/services", controller.GetAll)
-
-	req, _ := http.NewRequest("GET", "/services", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+				assert.Equal(t, tt.wantCode, w.Code)
+			})
+		}
+	})
 }

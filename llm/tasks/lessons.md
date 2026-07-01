@@ -30,3 +30,9 @@
 - Proxy behavior in `apps/web` and `apps/client` is part of the real API contract surface and should be audited with backend route changes.
 - Existing `documentation/llm/*` docs are helpful, but live code remains authoritative when there is drift.
 - `documentation/api/AI_STREAMING_CONTRACT.md` currently reads as supporting/planned contract documentation, not confirmed live backend routing.
+
+## TDT Migration Phase 1-3
+- Refactored Repositories (P1), Usecases (P2), and Controllers (P3) to Table-Driven Testing (TDT) format.
+- Targets included `settings`, `counter`, `service`, and `branch` (organization) modules.
+- Migration adheres strictly to standard TDT structure (`t.Run` with `[]struct`).
+- Maintains existing test coverage. All tests pass locally.

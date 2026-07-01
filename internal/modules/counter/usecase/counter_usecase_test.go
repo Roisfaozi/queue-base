@@ -104,7 +104,8 @@ func TestCreateCounter(t *testing.T) {
 		category string
 		req      model.CreateCounterRequest
 		stubRepo struct {
-			err error
+			counter *entity.Counter
+			err     error
 		}
 		stubBranchRepo struct {
 			branch *organizationEntity.Branch
@@ -115,7 +116,7 @@ func TestCreateCounter(t *testing.T) {
 		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo)
 	}{
 		{
-			name:     "Positive_CreatesCounterWithSanitizationAndBranch",
+			name:     "Positive_CreatesCounterWithSanitization",
 			category: "positive",
 			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: " a1 ", Name: " Front Desk "},
 			stubBranchRepo: struct {
@@ -123,8 +124,10 @@ func TestCreateCounter(t *testing.T) {
 				err    error
 			}{
 				branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1"},
+				err:    nil,
 			},
 			tenantID: "tenant-1",
+			wantErr:  nil,
 			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo) {
 				assert.Equal(t, "tenant-1", res.TenantID)
 				assert.Equal(t, "tenant-1", branchRepo.seen.tenantID)
@@ -138,6 +141,7 @@ func TestCreateCounter(t *testing.T) {
 			name:     "Negative_RequiresTenant",
 			category: "negative",
 			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
+			tenantID: "",
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
@@ -148,7 +152,8 @@ func TestCreateCounter(t *testing.T) {
 				branch *organizationEntity.Branch
 				err    error
 			}{
-				err: exception.ErrNotFound,
+				branch: nil,
+				err:    exception.ErrNotFound,
 			},
 			tenantID: "tenant-1",
 			wantErr:  exception.ErrForbidden,
@@ -160,7 +165,10 @@ func TestCreateCounter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubCounterRepo{err: tt.stubRepo.err}
+			repo := &stubCounterRepo{
+				counter: tt.stubRepo.counter,
+				err:     tt.stubRepo.err,
+			}
 			branchRepo := &stubCounterBranchRepo{
 				branch: tt.stubBranchRepo.branch,
 				err:    tt.stubBranchRepo.err,
@@ -192,12 +200,13 @@ func TestCreateCounter(t *testing.T) {
 func TestUpdateCounter(t *testing.T) {
 	code := " b2 "
 	name := " Front Office "
+
 	tests := []struct {
-		name     string
-		category string
-		id       string
-		req      model.UpdateCounterRequest
-		stubRepo struct {
+		name      string
+		category  string
+		counterID string
+		req       model.UpdateCounterRequest
+		stubRepo  struct {
 			counter *entity.Counter
 			err     error
 		}
@@ -206,17 +215,19 @@ func TestUpdateCounter(t *testing.T) {
 		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo)
 	}{
 		{
-			name:     "Positive_SanitizesFields",
-			category: "positive",
-			id:       "counter-1",
-			req:      model.UpdateCounterRequest{Code: &code, Name: &name},
+			name:      "Positive_SanitizesFieldsOnUpdate",
+			category:  "positive",
+			counterID: "counter-1",
+			req:       model.UpdateCounterRequest{Code: &code, Name: &name},
 			stubRepo: struct {
 				counter *entity.Counter
 				err     error
 			}{
 				counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk", Status: entity.CounterStatusActive},
+				err:     nil,
 			},
 			tenantID: "tenant-1",
+			wantErr:  nil,
 			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo) {
 				assert.Equal(t, "B2", res.Code)
 				assert.Equal(t, "Front Office", res.Name)
@@ -230,18 +241,20 @@ func TestUpdateCounter(t *testing.T) {
 				counter: tt.stubRepo.counter,
 				err:     tt.stubRepo.err,
 			}
-			branchRepo := &stubCounterBranchRepo{}
-			uc := NewCounterUseCase(repo, branchRepo)
+			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{})
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
 			}
 
-			res, err := uc.UpdateCounter(ctx, tt.id, &tt.req)
+			res, err := uc.UpdateCounter(ctx, tt.counterID, &tt.req)
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
+				if tt.wantRes != nil {
+					tt.wantRes(t, res, repo)
+				}
 				return
 			}
 			require.NoError(t, err)

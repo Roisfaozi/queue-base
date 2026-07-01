@@ -9,6 +9,8 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type stubServiceRepo struct {
@@ -43,145 +45,396 @@ func (s *stubServiceRepo) Update(_ context.Context, service *entity.Service) err
 
 func (s *stubServiceRepo) Delete(_ context.Context, _, _ string) error { return s.err }
 
-func TestCreateServiceUsesTenantContext(t *testing.T) {
-	repo := &stubServiceRepo{}
-	uc := NewServiceUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	res, err := uc.CreateService(ctx, &model.CreateServiceRequest{Code: "reg", Name: "Registration"})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
+func TestCreateService(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		req      model.CreateServiceRequest
+		tenantID string
+		wantErr  error
+		wantRes  func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo)
+	}{
+		{
+			name:     "Positive_UsesTenantContext",
+			category: "positive",
+			req:      model.CreateServiceRequest{Code: "reg", Name: "Registration"},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo) {
+				assert.Equal(t, "tenant-1", res.TenantID)
+			},
+		},
+		{
+			name:     "Positive_IncludesPharmacyFlags",
+			category: "positive",
+			req: model.CreateServiceRequest{
+				Code:                "pha",
+				Name:                "Pharmacy",
+				IsPharmacy:          true,
+				IsPharmacyReception: true,
+			},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo) {
+				assert.True(t, res.IsPharmacy)
+				assert.True(t, res.IsPharmacyReception)
+				require.NotNil(t, repo.service)
+				assert.True(t, repo.service.IsPharmacy)
+				assert.True(t, repo.service.IsPharmacyReception)
+			},
+		},
+		{
+			name:     "Positive_SanitizesCodeAndName",
+			category: "positive",
+			req:      model.CreateServiceRequest{Code: " reg ", Name: " Registration "},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo) {
+				require.NotNil(t, repo.service)
+				assert.Equal(t, "REG", repo.service.Code)
+			},
+		},
+		{
+			name:     "Negative_RequiresTenantContextForPharmacyFlags",
+			category: "negative",
+			req: model.CreateServiceRequest{
+				Code:       "pha",
+				Name:       "Pharmacy",
+				IsPharmacy: true,
+			},
+			tenantID: "", // empty tenant
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Vulnerability_EmptyTenant",
+			category: "vulnerability",
+			req:      model.CreateServiceRequest{Code: "reg", Name: "Registration"},
+			tenantID: "",
+			wantErr:  exception.ErrBadRequest,
+		},
 	}
-	if res.TenantID != "tenant-1" {
-		t.Fatalf("expected tenant-1, got %s", res.TenantID)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubServiceRepo{}
+			uc := NewServiceUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.CreateService(ctx, &tt.req)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo)
+			}
+		})
 	}
 }
 
-func TestGetServiceRequiresTenantAndID(t *testing.T) {
-	uc := NewServiceUseCase(&stubServiceRepo{})
-	_, err := uc.GetService(context.Background(), "")
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
+func TestGetService(t *testing.T) {
+	tests := []struct {
+		name      string
+		category  string
+		serviceID string
+		tenantID  string
+		stubErr   error
+		stubRes   *entity.Service
+		wantErr   error
+		wantRes   func(t *testing.T, res *model.ServiceResponse)
+	}{
+		{
+			name:      "Negative_RequiresTenantAndID_EmptyID",
+			category:  "negative",
+			serviceID: "",
+			tenantID:  "tenant-1",
+			wantErr:   exception.ErrBadRequest,
+		},
+		{
+			name:      "Vulnerability_EmptyTenant",
+			category:  "vulnerability",
+			serviceID: "svc-1",
+			tenantID:  "",
+			wantErr:   exception.ErrBadRequest,
+		},
+		{
+			name:      "Positive_Found",
+			category:  "positive",
+			serviceID: "svc-1",
+			tenantID:  "tenant-1",
+			stubRes:   &entity.Service{ID: "svc-1", TenantID: "tenant-1"},
+			wantErr:   nil,
+			wantRes: func(t *testing.T, res *model.ServiceResponse) {
+				assert.Equal(t, "svc-1", res.ID)
+			},
+		},
+		{
+			name:      "Negative_NotFound",
+			category:  "negative",
+			serviceID: "svc-1",
+			tenantID:  "tenant-1",
+			stubErr:   errors.New("db error"),
+			wantErr:   exception.ErrNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubServiceRepo{err: tt.stubErr, service: tt.stubRes}
+			uc := NewServiceUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.GetService(ctx, tt.serviceID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res)
+			}
+		})
 	}
 }
 
-func TestCreateServiceIncludesPharmacyFlags(t *testing.T) {
-	repo := &stubServiceRepo{}
-	uc := NewServiceUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+func TestListServices(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		tenantID string
+		stubErr  error
+		stubRes  []*entity.Service
+		wantErr  error
+		wantRes  func(t *testing.T, res []model.ServiceResponse)
+	}{
+		{
+			name:     "Negative_RequiresTenant",
+			category: "negative",
+			tenantID: "",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Positive_Found",
+			category: "positive",
+			tenantID: "tenant-1",
+			stubRes:  []*entity.Service{{ID: "svc-1"}, {ID: "svc-2"}},
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res []model.ServiceResponse) {
+				assert.Len(t, res, 2)
+			},
+		},
+		{
+			name:     "Negative_RepoError",
+			category: "negative",
+			tenantID: "tenant-1",
+			stubErr:  errors.New("db error"),
+			wantErr:  errors.New("db error"),
+		},
+	}
 
-	res, err := uc.CreateService(ctx, &model.CreateServiceRequest{
-		Code:                "pha",
-		Name:                "Pharmacy",
-		IsPharmacy:          true,
-		IsPharmacyReception: true,
-	})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-	if !res.IsPharmacy {
-		t.Fatalf("expected service response pharmacy flag true")
-	}
-	if !res.IsPharmacyReception {
-		t.Fatalf("expected service response pharmacy reception flag true")
-	}
-	if repo.service == nil || !repo.service.IsPharmacy || !repo.service.IsPharmacyReception {
-		t.Fatalf("expected persisted service pharmacy flags true")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubServiceRepo{err: tt.stubErr, list: tt.stubRes}
+			uc := NewServiceUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.ListServices(ctx)
+
+			if tt.wantErr != nil {
+				if errors.Is(tt.wantErr, exception.ErrBadRequest) || errors.Is(tt.wantErr, exception.ErrNotFound) {
+					assert.ErrorIs(t, err, tt.wantErr)
+				} else {
+					assert.EqualError(t, err, tt.wantErr.Error())
+				}
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res)
+			}
+		})
 	}
 }
 
-func TestUpdateServiceCanDisablePharmacyReception(t *testing.T) {
-	repo := &stubServiceRepo{service: &entity.Service{
-		ID:                  "svc-1",
-		TenantID:            "tenant-1",
-		Code:                "PHA",
-		Name:                "Pharmacy",
-		Status:              entity.ServiceStatusActive,
-		IsPharmacy:          true,
-		IsPharmacyReception: true,
-	}}
-	uc := NewServiceUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	flag := false
+func TestUpdateService(t *testing.T) {
+	flagFalse := false
+	codeNew := " new "
 
-	res, err := uc.UpdateService(ctx, "svc-1", &model.UpdateServiceRequest{IsPharmacyReception: &flag})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
+	tests := []struct {
+		name      string
+		category  string
+		serviceID string
+		req       model.UpdateServiceRequest
+		tenantID  string
+		stubErr   error
+		stubRes   *entity.Service
+		wantErr   error
+		wantRes   func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo)
+	}{
+		{
+			name:      "Negative_EmptyID",
+			category:  "negative",
+			serviceID: "",
+			tenantID:  "tenant-1",
+			wantErr:   exception.ErrBadRequest,
+		},
+		{
+			name:      "Vulnerability_EmptyTenant",
+			category:  "vulnerability",
+			serviceID: "svc-1",
+			tenantID:  "",
+			wantErr:   exception.ErrBadRequest,
+		},
+		{
+			name:      "Negative_NotFound",
+			category:  "negative",
+			serviceID: "svc-1",
+			tenantID:  "tenant-1",
+			stubErr:   errors.New("not found"),
+			wantErr:   exception.ErrNotFound,
+		},
+		{
+			name:      "Positive_CanDisablePharmacyReception",
+			category:  "positive",
+			serviceID: "svc-1",
+			tenantID:  "tenant-1",
+			req:       model.UpdateServiceRequest{IsPharmacyReception: &flagFalse},
+			stubRes: &entity.Service{
+				ID:                  "svc-1",
+				TenantID:            "tenant-1",
+				Code:                "PHA",
+				Name:                "Pharmacy",
+				Status:              entity.ServiceStatusActive,
+				IsPharmacy:          true,
+				IsPharmacyReception: true,
+			},
+			wantErr: nil,
+			wantRes: func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo) {
+				assert.False(t, res.IsPharmacyReception)
+				require.NotNil(t, repo.service)
+				assert.False(t, repo.service.IsPharmacyReception)
+			},
+		},
+		{
+			name:      "Positive_SanitizesCode",
+			category:  "positive",
+			serviceID: "svc-1",
+			tenantID:  "tenant-1",
+			req:       model.UpdateServiceRequest{Code: &codeNew},
+			stubRes: &entity.Service{
+				ID:       "svc-1",
+				TenantID: "tenant-1",
+				Code:     "OLD",
+				Name:     "Old",
+				Status:   entity.ServiceStatusActive,
+			},
+			wantErr: nil,
+			wantRes: func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo) {
+				assert.Equal(t, "NEW", res.Code)
+			},
+		},
 	}
-	if res.IsPharmacyReception {
-		t.Fatalf("expected pharmacy reception false after update")
-	}
-	if repo.service == nil || repo.service.IsPharmacyReception {
-		t.Fatalf("expected persisted pharmacy reception false after update")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubServiceRepo{err: tt.stubErr, service: tt.stubRes}
+			uc := NewServiceUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.UpdateService(ctx, tt.serviceID, &tt.req)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo)
+			}
+		})
 	}
 }
 
-func TestCreateServiceRequiresTenantContextForPharmacyFlags(t *testing.T) {
-	uc := NewServiceUseCase(&stubServiceRepo{})
-	_, err := uc.CreateService(context.Background(), &model.CreateServiceRequest{
-		Code:       "pha",
-		Name:       "Pharmacy",
-		IsPharmacy: true,
-	})
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
+func TestDeleteService(t *testing.T) {
+	tests := []struct {
+		name      string
+		category  string
+		serviceID string
+		tenantID  string
+		stubErr   error
+		wantErr   error
+	}{
+		{
+			name:      "Negative_EmptyID",
+			category:  "negative",
+			serviceID: "",
+			tenantID:  "tenant-1",
+			wantErr:   exception.ErrBadRequest,
+		},
+		{
+			name:      "Vulnerability_EmptyTenant",
+			category:  "vulnerability",
+			serviceID: "svc-1",
+			tenantID:  "",
+			wantErr:   exception.ErrBadRequest,
+		},
+		{
+			name:      "Positive_DeleteSuccess",
+			category:  "positive",
+			serviceID: "svc-1",
+			tenantID:  "tenant-1",
+			wantErr:   nil,
+		},
+		{
+			name:      "Negative_RepoError",
+			category:  "negative",
+			serviceID: "svc-1",
+			tenantID:  "tenant-1",
+			stubErr:   errors.New("db error"),
+			wantErr:   errors.New("db error"),
+		},
 	}
-}
 
-func TestListServicesRequiresTenant(t *testing.T) {
-	uc := NewServiceUseCase(&stubServiceRepo{})
-	_, err := uc.ListServices(context.Background())
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubServiceRepo{err: tt.stubErr}
+			uc := NewServiceUseCase(repo)
 
-func TestDeleteServiceRequiresTenantAndID(t *testing.T) {
-	uc := NewServiceUseCase(&stubServiceRepo{})
-	err := uc.DeleteService(context.Background(), "svc-1")
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest no tenant, got %v", err)
-	}
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	err = uc.DeleteService(ctx, "")
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest empty id, got %v", err)
-	}
-}
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
 
-func TestUpdateServiceNotFoundReturnsError(t *testing.T) {
-	repo := &stubServiceRepo{err: errors.New("not found")}
-	uc := NewServiceUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	_, err := uc.UpdateService(ctx, "svc-1", &model.UpdateServiceRequest{})
-	if !errors.Is(err, exception.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got %v", err)
-	}
-}
+			err := uc.DeleteService(ctx, tt.serviceID)
 
-func TestCreateServiceSanitizesCodeAndName(t *testing.T) {
-	repo := &stubServiceRepo{}
-	uc := NewServiceUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	_, err := uc.CreateService(ctx, &model.CreateServiceRequest{Code: " reg ", Name: " Registration "})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-	if repo.service == nil || repo.service.Code != "REG" {
-		t.Fatalf("expected sanitized code REG, got %v", repo.service)
-	}
-}
-
-func TestUpdateServiceSanitizesCode(t *testing.T) {
-	existing := &entity.Service{ID: "svc-1", TenantID: "tenant-1", Code: "OLD", Name: "Old", Status: entity.ServiceStatusActive}
-	repo := &stubServiceRepo{service: existing}
-	uc := NewServiceUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	code := " new "
-	res, err := uc.UpdateService(ctx, "svc-1", &model.UpdateServiceRequest{Code: &code})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-	if res.Code != "NEW" {
-		t.Fatalf("expected sanitized code NEW, got %s", res.Code)
+			if tt.wantErr != nil {
+				if errors.Is(tt.wantErr, exception.ErrBadRequest) || errors.Is(tt.wantErr, exception.ErrNotFound) {
+					assert.ErrorIs(t, err, tt.wantErr)
+				} else {
+					assert.EqualError(t, err, tt.wantErr.Error())
+				}
+				return
+			}
+			require.NoError(t, err)
+		})
 	}
 }

@@ -64,105 +64,217 @@ func (s *stubCounterControllerUseCase) DeleteCounter(ctx context.Context, counte
 	return nil
 }
 
-func TestCounterController_CreateIncludesBranchID(t *testing.T) {
+func TestCounterController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	uc := &stubCounterControllerUseCase{createRes: &model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}}
-	controller := NewCounterController(uc, newCounterTestValidator(t))
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+
+	t.Run("Create", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			reqBody  interface{}
+			setup    func() *stubCounterControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, uc *stubCounterControllerUseCase)
+		}{
+			{
+				name:    "Positive_CreateIncludesBranchID",
+				reqBody: model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Front Desk"},
+				setup: func() *stubCounterControllerUseCase {
+					return &stubCounterControllerUseCase{createRes: &model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}}
+				},
+				wantCode: http.StatusCreated,
+				assert: func(t *testing.T, uc *stubCounterControllerUseCase) {
+					require.NotNil(t, uc.createReq)
+					assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.createReq.BranchID)
+				},
+			},
+			{
+				name:    "Negative_CreateRejectsInvalidBranchID",
+				reqBody: map[string]interface{}{"branch_id": "bad-id", "code": "A1", "name": "Front Desk"},
+				setup: func() *stubCounterControllerUseCase {
+					return &stubCounterControllerUseCase{}
+				},
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubCounterControllerUseCase) {
+					assert.Nil(t, uc.createReq)
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewCounterController(uc, newCounterTestValidator(t))
+				router := gin.New()
+				router.Use(func(c *gin.Context) {
+					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+					c.Request = c.Request.WithContext(ctx)
+					c.Next()
+				})
+				router.POST("/counters", controller.Create)
+
+				body, err := json.Marshal(tt.reqBody)
+				require.NoError(t, err)
+				req, _ := http.NewRequest("POST", "/counters", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
 	})
-	router.POST("/counters", controller.Create)
 
-	body, err := json.Marshal(model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Front Desk"})
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/counters", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("GetByID", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubCounterControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, body string)
+		}{
+			{
+				name: "Positive_GetByIDReturnsBranchID",
+				setup: func() *stubCounterControllerUseCase {
+					return &stubCounterControllerUseCase{getRes: &model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, body string) {
+					assert.Contains(t, body, `"branch_id":"550e8400-e29b-41d4-a716-446655440000"`)
+				},
+			},
+		}
 
-	assert.Equal(t, http.StatusCreated, w.Code)
-	require.NotNil(t, uc.createReq)
-	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.createReq.BranchID)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewCounterController(uc, newCounterTestValidator(t))
+				router := gin.New()
+				router.GET("/counters/:id", controller.GetByID)
 
-func TestCounterController_CreateRejectsInvalidBranchID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubCounterControllerUseCase{}
-	controller := NewCounterController(uc, newCounterTestValidator(t))
-	router := gin.New()
-	router.POST("/counters", controller.Create)
+				req, _ := http.NewRequest("GET", "/counters/counter-1", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-	body := []byte(`{"branch_id":"bad-id","code":"A1","name":"Front Desk"}`)
-	req, _ := http.NewRequest("POST", "/counters", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, w.Body.String())
+				}
+			})
+		}
+	})
 
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	assert.Nil(t, uc.createReq)
-}
+	t.Run("Update", func(t *testing.T) {
+		status := "inactive"
+		tests := []struct {
+			name     string
+			reqBody  interface{}
+			setup    func() *stubCounterControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, uc *stubCounterControllerUseCase)
+		}{
+			{
+				name:    "Positive_UpdateCanToggleStatus",
+				reqBody: model.UpdateCounterRequest{Status: &status},
+				setup: func() *stubCounterControllerUseCase {
+					return &stubCounterControllerUseCase{updateRes: &model.CounterResponse{ID: "counter-1", Status: status}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubCounterControllerUseCase) {
+					require.NotNil(t, uc.updateReq)
+					require.NotNil(t, uc.updateReq.Status)
+					assert.Equal(t, "inactive", *uc.updateReq.Status)
+				},
+			},
+		}
 
-func TestCounterController_GetByIDReturnsBranchID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubCounterControllerUseCase{getRes: &model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}}
-	controller := NewCounterController(uc, newCounterTestValidator(t))
-	router := gin.New()
-	router.GET("/counters/:id", controller.GetByID)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewCounterController(uc, newCounterTestValidator(t))
+				router := gin.New()
+				router.PUT("/counters/:id", controller.Update)
 
-	req, _ := http.NewRequest("GET", "/counters/counter-1", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				body, err := json.Marshal(tt.reqBody)
+				require.NoError(t, err)
+				req, _ := http.NewRequest("PUT", "/counters/counter-1", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `"branch_id":"550e8400-e29b-41d4-a716-446655440000"`)
-}
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
+	})
 
-func TestCounterController_UpdateCanToggleStatus(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	status := "inactive"
-	uc := &stubCounterControllerUseCase{updateRes: &model.CounterResponse{ID: "counter-1", Status: status}}
-	controller := NewCounterController(uc, newCounterTestValidator(t))
-	router := gin.New()
-	router.PUT("/counters/:id", controller.Update)
+	t.Run("GetAll", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubCounterControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, body string)
+		}{
+			{
+				name: "Positive_GetAllReturnsCounters",
+				setup: func() *stubCounterControllerUseCase {
+					return &stubCounterControllerUseCase{listRes: []model.CounterResponse{{ID: "counter-1", BranchID: "b-1", Code: "A1"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, body string) {
+					assert.Contains(t, body, `"counter-1"`)
+				},
+			},
+		}
 
-	body, err := json.Marshal(model.UpdateCounterRequest{Status: &status})
-	require.NoError(t, err)
-	req, _ := http.NewRequest("PUT", "/counters/counter-1", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewCounterController(uc, newCounterTestValidator(t))
+				router := gin.New()
+				router.GET("/counters", controller.GetAll)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	require.NotNil(t, uc.updateReq)
-	require.NotNil(t, uc.updateReq.Status)
-	assert.Equal(t, "inactive", *uc.updateReq.Status)
-}
+				req, _ := http.NewRequest("GET", "/counters", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-func TestCounterController_GetAllReturnsCounters(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubCounterControllerUseCase{listRes: []model.CounterResponse{{ID: "counter-1", BranchID: "b-1", Code: "A1"}}}
-	controller := NewCounterController(uc, newCounterTestValidator(t))
-	router := gin.New()
-	router.GET("/counters", controller.GetAll)
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, w.Body.String())
+				}
+			})
+		}
+	})
 
-	req, _ := http.NewRequest("GET", "/counters", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("Delete", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubCounterControllerUseCase
+			wantCode int
+		}{
+			{
+				name: "Positive_DeleteReturnsNoContent",
+				setup: func() *stubCounterControllerUseCase {
+					return &stubCounterControllerUseCase{}
+				},
+				wantCode: http.StatusNoContent,
+			},
+		}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `"counter-1"`)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				controller := NewCounterController(uc, newCounterTestValidator(t))
+				router := gin.New()
+				router.DELETE("/counters/:id", controller.Delete)
 
-func TestCounterController_DeleteReturnsNoContent(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubCounterControllerUseCase{}
-	controller := NewCounterController(uc, newCounterTestValidator(t))
-	router := gin.New()
-	router.DELETE("/counters/:id", controller.Delete)
+				req, _ := http.NewRequest("DELETE", "/counters/counter-1", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-	req, _ := http.NewRequest("DELETE", "/counters/counter-1", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNoContent, w.Code)
+				assert.Equal(t, tt.wantCode, w.Code)
+			})
+		}
+	})
 }

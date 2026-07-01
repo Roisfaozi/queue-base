@@ -65,110 +65,225 @@ func newBranchTestValidator(t *testing.T) *validator.Validate {
 	return v
 }
 
-func TestBranchController_CreateUsesTenantContext(t *testing.T) {
+func TestBranchController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	log := logrus.New()
-	uc := &stubBranchControllerUseCase{createRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1"}}
-	controller := NewBranchController(uc, newBranchTestValidator(t), log)
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+
+	t.Run("Create", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			reqBody  interface{}
+			setup    func() *stubBranchControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, uc *stubBranchControllerUseCase)
+		}{
+			{
+				name:    "Positive_CreateUsesTenantContext",
+				reqBody: model.CreateBranchRequest{Code: "main", Name: "Main Branch"},
+				setup: func() *stubBranchControllerUseCase {
+					return &stubBranchControllerUseCase{createRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1"}}
+				},
+				wantCode: http.StatusCreated,
+				assert: func(t *testing.T, uc *stubBranchControllerUseCase) {
+					require.NotNil(t, uc.createReq)
+					assert.Equal(t, "main", uc.createReq.Code)
+				},
+			},
+			{
+				name:    "Negative_CreateRejectsInvalidBody",
+				reqBody: map[string]interface{}{"code": "", "name": ""},
+				setup: func() *stubBranchControllerUseCase {
+					return &stubBranchControllerUseCase{}
+				},
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubBranchControllerUseCase) {
+					assert.Nil(t, uc.createReq)
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				log := logrus.New()
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
+				router := gin.New()
+				router.Use(func(c *gin.Context) {
+					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+					c.Request = c.Request.WithContext(ctx)
+					c.Next()
+				})
+				router.POST("/branches", controller.Create)
+
+				body, err := json.Marshal(tt.reqBody)
+				require.NoError(t, err)
+				req, _ := http.NewRequest("POST", "/branches", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
 	})
-	router.POST("/branches", controller.Create)
 
-	body, err := json.Marshal(model.CreateBranchRequest{Code: "main", Name: "Main Branch"})
-	require.NoError(t, err)
-	req, _ := http.NewRequest("POST", "/branches", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("GetByID", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubBranchControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, body string)
+		}{
+			{
+				name: "Positive_GetByIDReturnsBranch",
+				setup: func() *stubBranchControllerUseCase {
+					return &stubBranchControllerUseCase{getRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, body string) {
+					assert.Contains(t, body, `"code":"MAIN"`)
+				},
+			},
+		}
 
-	assert.Equal(t, http.StatusCreated, w.Code)
-	require.NotNil(t, uc.createReq)
-	assert.Equal(t, "main", uc.createReq.Code)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				log := logrus.New()
+				uc := tt.setup()
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
+				router := gin.New()
+				router.GET("/branches/:id", controller.GetByID)
 
-func TestBranchController_CreateRejectsInvalidBody(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubBranchControllerUseCase{}
-	log := logrus.New()
-	controller := NewBranchController(uc, newBranchTestValidator(t), log)
-	router := gin.New()
-	router.POST("/branches", controller.Create)
+				req, _ := http.NewRequest("GET", "/branches/branch-1", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-	req, _ := http.NewRequest("POST", "/branches", bytes.NewBuffer([]byte(`{"code":"","name":""}`)))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, w.Body.String())
+				}
+			})
+		}
+	})
 
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	assert.Nil(t, uc.createReq)
-}
+	t.Run("Update", func(t *testing.T) {
+		name := " Main Office "
+		tests := []struct {
+			name     string
+			reqBody  interface{}
+			setup    func() *stubBranchControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, uc *stubBranchControllerUseCase)
+		}{
+			{
+				name:    "Positive_UpdateSanitizesFields",
+				reqBody: model.UpdateBranchRequest{Name: &name},
+				setup: func() *stubBranchControllerUseCase {
+					return &stubBranchControllerUseCase{updateRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubBranchControllerUseCase) {
+					require.NotNil(t, uc.updateReq)
+					require.NotNil(t, uc.updateReq.Name)
+					assert.Equal(t, " Main Office ", *uc.updateReq.Name)
+				},
+			},
+		}
 
-func TestBranchController_GetByIDReturnsBranch(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubBranchControllerUseCase{getRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
-	log := logrus.New()
-	controller := NewBranchController(uc, newBranchTestValidator(t), log)
-	router := gin.New()
-	router.GET("/branches/:id", controller.GetByID)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				log := logrus.New()
 
-	req, _ := http.NewRequest("GET", "/branches/branch-1", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
+				router := gin.New()
+				router.PUT("/branches/:id", controller.Update)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `"code":"MAIN"`)
-}
+				body, err := json.Marshal(tt.reqBody)
+				require.NoError(t, err)
+				req, _ := http.NewRequest("PUT", "/branches/branch-1", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-func TestBranchController_UpdateSanitizesFields(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	name := " Main Office "
-	uc := &stubBranchControllerUseCase{updateRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
-	log := logrus.New()
-	controller := NewBranchController(uc, newBranchTestValidator(t), log)
-	router := gin.New()
-	router.PUT("/branches/:id", controller.Update)
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, uc)
+				}
+			})
+		}
+	})
 
-	body, err := json.Marshal(model.UpdateBranchRequest{Name: &name})
-	require.NoError(t, err)
-	req, _ := http.NewRequest("PUT", "/branches/branch-1", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	t.Run("GetAll", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubBranchControllerUseCase
+			wantCode int
+			assert   func(t *testing.T, body string)
+		}{
+			{
+				name: "Positive_GetAllReturnsBranches",
+				setup: func() *stubBranchControllerUseCase {
+					return &stubBranchControllerUseCase{listRes: []model.BranchResponse{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, body string) {
+					assert.Contains(t, body, `"branch-1"`)
+				},
+			},
+		}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	require.NotNil(t, uc.updateReq)
-	require.NotNil(t, uc.updateReq.Name)
-	assert.Equal(t, " Main Office ", *uc.updateReq.Name)
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				log := logrus.New()
 
-func TestBranchController_GetAllReturnsBranches(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubBranchControllerUseCase{listRes: []model.BranchResponse{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}}
-	log := logrus.New()
-	controller := NewBranchController(uc, newBranchTestValidator(t), log)
-	router := gin.New()
-	router.GET("/branches", controller.GetAll)
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
+				router := gin.New()
+				router.GET("/branches", controller.GetAll)
 
-	req, _ := http.NewRequest("GET", "/branches", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+				req, _ := http.NewRequest("GET", "/branches", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `"branch-1"`)
-}
+				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.assert != nil {
+					tt.assert(t, w.Body.String())
+				}
+			})
+		}
+	})
 
-func TestBranchController_DeleteReturnsNoContent(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := &stubBranchControllerUseCase{}
-	log := logrus.New()
-	controller := NewBranchController(uc, newBranchTestValidator(t), log)
-	router := gin.New()
-	router.DELETE("/branches/:id", controller.Delete)
+	t.Run("Delete", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			setup    func() *stubBranchControllerUseCase
+			wantCode int
+		}{
+			{
+				name: "Positive_DeleteReturnsNoContent",
+				setup: func() *stubBranchControllerUseCase {
+					return &stubBranchControllerUseCase{}
+				},
+				wantCode: http.StatusNoContent,
+			},
+		}
 
-	req, _ := http.NewRequest("DELETE", "/branches/branch-1", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup()
+				log := logrus.New()
 
-	assert.Equal(t, http.StatusNoContent, w.Code)
+				controller := NewBranchController(uc, newBranchTestValidator(t), log)
+				router := gin.New()
+				router.DELETE("/branches/:id", controller.Delete)
+
+				req, _ := http.NewRequest("DELETE", "/branches/branch-1", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
+			})
+		}
+	})
 }

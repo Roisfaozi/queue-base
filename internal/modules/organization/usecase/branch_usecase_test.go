@@ -2,13 +2,14 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type stubBranchRepo struct {
@@ -54,101 +55,344 @@ func (s *stubBranchRepo) Delete(_ context.Context, tenantID, branchID string) er
 	return s.err
 }
 
-func TestResolveBranchUsesTenantScope(t *testing.T) {
-	repo := &stubBranchRepo{branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive}}
-	uc := NewBranchUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+func TestResolveBranch(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		branchID string
+		stubRepo struct {
+			branch *entity.Branch
+			err    error
+		}
+		tenantID string
+		wantErr  error
+		wantRes  func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo)
+	}{
+		{
+			name:     "Positive_ResolveBranchUsesTenantScope",
+			category: "positive",
+			branchID: "branch-1",
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive},
+				err:    nil,
+			},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, "tenant-1", res.TenantID)
+				assert.Equal(t, "tenant-1", repo.seen.tenantID)
+				assert.Equal(t, "branch-1", repo.seen.branchID)
+			},
+		},
+		{
+			name:     "Negative_RequiresTenantAndBranch",
+			category: "negative",
+			branchID: "",
+			tenantID: "",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_RejectsCrossTenantLookup",
+			category: "negative",
+			branchID: "branch-2",
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				err: exception.ErrNotFound,
+			},
+			tenantID: "tenant-1",
+			wantErr:  exception.ErrNotFound,
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, "tenant-1", repo.seen.tenantID)
+				assert.Equal(t, "branch-2", repo.seen.branchID)
+			},
+		},
+	}
 
-	res, err := uc.ResolveBranch(ctx, "branch-1")
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-	if res.TenantID != "tenant-1" {
-		t.Fatalf("expected tenant-1, got %s", res.TenantID)
-	}
-	if repo.seen.tenantID != "tenant-1" || repo.seen.branchID != "branch-1" {
-		t.Fatalf("unexpected repo args: %+v", repo.seen)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubBranchRepo{
+				branch: tt.stubRepo.branch,
+				err:    tt.stubRepo.err,
+			}
+			uc := NewBranchUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.ResolveBranch(ctx, tt.branchID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				if tt.wantRes != nil {
+					tt.wantRes(t, res, repo)
+				}
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo)
+			}
+		})
 	}
 }
 
-func TestResolveBranchRequiresTenantAndBranch(t *testing.T) {
-	uc := NewBranchUseCase(&stubBranchRepo{})
+func TestCreateBranch(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		req      model.CreateBranchRequest
+		tenantID string
+		wantErr  error
+		wantRes  func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo)
+	}{
+		{
+			name:     "Positive_CreateBranchUsesTenantContext",
+			category: "positive",
+			req:      model.CreateBranchRequest{Code: "main", Name: "Main Branch"},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, "tenant-1", res.TenantID)
+				require.NotNil(t, repo.branch)
+				assert.Equal(t, "MAIN", repo.branch.Code)
+				assert.Equal(t, "Main Branch", repo.branch.Name)
+			},
+		},
+		{
+			name:     "Negative_MissingTenantContext",
+			category: "negative",
+			req:      model.CreateBranchRequest{Code: "main", Name: "Main Branch"},
+			tenantID: "",
+			wantErr:  exception.ErrBadRequest,
+		},
+	}
 
-	_, err := uc.ResolveBranch(context.Background(), "")
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubBranchRepo{}
+			uc := NewBranchUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.CreateBranch(ctx, &tt.req)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo)
+			}
+		})
 	}
 }
 
-func TestCreateBranchUsesTenantContext(t *testing.T) {
-	repo := &stubBranchRepo{}
-	uc := NewBranchUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	res, err := uc.CreateBranch(ctx, &model.CreateBranchRequest{Code: "main", Name: "Main Branch"})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
+func TestListBranches(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		stubRepo struct {
+			list []*entity.Branch
+		}
+		tenantID string
+		wantErr  error
+		wantRes  func(t *testing.T, res []model.BranchResponse, repo *stubBranchRepo)
+	}{
+		{
+			name:     "Positive_ListBranchesUsesTenantScope",
+			category: "positive",
+			stubRepo: struct {
+				list []*entity.Branch
+			}{
+				list: []*entity.Branch{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main"}},
+			},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res []model.BranchResponse, repo *stubBranchRepo) {
+				require.Len(t, res, 1)
+				assert.Equal(t, "tenant-1", res[0].TenantID)
+				assert.Equal(t, "tenant-1", repo.seen.tenantID)
+			},
+		},
+		{
+			name:     "Negative_MissingTenantContext",
+			category: "negative",
+			tenantID: "",
+			wantErr:  exception.ErrBadRequest,
+		},
 	}
-	if res.TenantID != "tenant-1" {
-		t.Fatalf("expected tenant-1, got %s", res.TenantID)
-	}
-	if repo.branch == nil || repo.branch.Code != "MAIN" || repo.branch.Name != "Main Branch" {
-		t.Fatalf("expected sanitized branch, got %+v", repo.branch)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubBranchRepo{
+				list: tt.stubRepo.list,
+			}
+			uc := NewBranchUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.ListBranches(ctx)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo)
+			}
+		})
 	}
 }
 
-func TestListBranchesUsesTenantScope(t *testing.T) {
-	repo := &stubBranchRepo{list: []*entity.Branch{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main"}}}
-	uc := NewBranchUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-
-	res, err := uc.ListBranches(ctx)
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-	if len(res) != 1 || res[0].TenantID != "tenant-1" {
-		t.Fatalf("unexpected list response: %+v", res)
-	}
-	if repo.seen.tenantID != "tenant-1" {
-		t.Fatalf("expected tenant scope, got %+v", repo.seen)
-	}
-}
-
-func TestUpdateBranchSanitizesFields(t *testing.T) {
+func TestUpdateBranch(t *testing.T) {
 	code := " sub "
 	name := " Branch Office "
-	repo := &stubBranchRepo{branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive}}
-	uc := NewBranchUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-
-	res, err := uc.UpdateBranch(ctx, "branch-1", &model.UpdateBranchRequest{Code: &code, Name: &name})
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
+	tests := []struct {
+		name     string
+		category string
+		branchID string
+		req      model.UpdateBranchRequest
+		stubRepo struct {
+			branch *entity.Branch
+			err    error
+		}
+		tenantID string
+		wantErr  error
+		wantRes  func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo)
+	}{
+		{
+			name:     "Positive_UpdateBranchSanitizesFields",
+			category: "positive",
+			branchID: "branch-1",
+			req:      model.UpdateBranchRequest{Code: &code, Name: &name},
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive},
+				err:    nil,
+			},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, "SUB", res.Code)
+				assert.Equal(t, "Branch Office", res.Name)
+			},
+		},
+		{
+			name:     "Negative_MissingTenantOrBranch",
+			category: "negative",
+			branchID: "",
+			req:      model.UpdateBranchRequest{Code: &code, Name: &name},
+			tenantID: "tenant-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_NotFound",
+			category: "negative",
+			branchID: "branch-1",
+			req:      model.UpdateBranchRequest{Code: &code, Name: &name},
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				err: exception.ErrNotFound,
+			},
+			tenantID: "tenant-1",
+			wantErr:  exception.ErrNotFound,
+		},
 	}
-	if res.Code != "SUB" || res.Name != "Branch Office" {
-		t.Fatalf("expected sanitized response, got %+v", res)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubBranchRepo{
+				branch: tt.stubRepo.branch,
+				err:    tt.stubRepo.err,
+			}
+			uc := NewBranchUseCase(repo)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			res, err := uc.UpdateBranch(ctx, tt.branchID, &tt.req)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantRes != nil {
+				tt.wantRes(t, res, repo)
+			}
+		})
 	}
 }
 
-func TestDeleteBranchRequiresBranchID(t *testing.T) {
-	uc := NewBranchUseCase(&stubBranchRepo{})
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-
-	err := uc.DeleteBranch(ctx, "")
-	if !errors.Is(err, exception.ErrBadRequest) {
-		t.Fatalf("expected ErrBadRequest, got %v", err)
+func TestDeleteBranch(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		branchID string
+		tenantID string
+		wantErr  error
+	}{
+		{
+			name:     "Positive_DeleteBranch",
+			category: "positive",
+			branchID: "branch-1",
+			tenantID: "tenant-1",
+			wantErr:  nil,
+		},
+		{
+			name:     "Negative_DeleteBranchRequiresBranchID",
+			category: "negative",
+			branchID: "",
+			tenantID: "tenant-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_MissingTenantContext",
+			category: "negative",
+			branchID: "branch-1",
+			tenantID: "",
+			wantErr:  exception.ErrBadRequest,
+		},
 	}
-}
 
-func TestResolveBranchRejectsCrossTenantLookup(t *testing.T) {
-	repo := &stubBranchRepo{err: exception.ErrNotFound}
-	uc := NewBranchUseCase(repo)
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubBranchRepo{}
+			uc := NewBranchUseCase(repo)
 
-	_, err := uc.ResolveBranch(ctx, "branch-2")
-	if !errors.Is(err, exception.ErrNotFound) {
-		t.Fatalf("expected ErrNotFound, got %v", err)
-	}
-	if repo.seen.tenantID != "tenant-1" || repo.seen.branchID != "branch-2" {
-		t.Fatalf("unexpected repo args: %+v", repo.seen)
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			err := uc.DeleteBranch(ctx, tt.branchID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
 	}
 }

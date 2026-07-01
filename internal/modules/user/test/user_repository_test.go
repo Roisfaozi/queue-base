@@ -32,120 +32,180 @@ func setupUserRepositoryTest(t *testing.T) (repository.UserRepository, sqlmock.S
 }
 
 func TestUserRepository_GetByOrganization(t *testing.T) {
-	repo, mock := setupUserRepositoryTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestUserRepository_GetByOrganization",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	t.Run("Success", func(t *testing.T) {
-		orgID := "org-1"
-		rows := sqlmock.NewRows([]string{"id", "email", "username"}).
-			AddRow("user-1", "user1@example.com", "user1").
-			AddRow("user-2", "user2@example.com", "user2")
+				repo, mock := setupUserRepositoryTest(t)
 
-		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "users" WHERE users.id IN (SELECT organization_members.user_id FROM "organization_members" WHERE organization_members.organization_id = $1 AND (organization_members.deleted_at = 0 OR organization_members.deleted_at IS NULL)) AND "users"."deleted_at" = $2`)).
-			WithArgs(orgID, 0).
-			WillReturnRows(rows)
+				t.Run("Success", func(t *testing.T) {
+					orgID := "org-1"
+					rows := sqlmock.NewRows([]string{"id", "email", "username"}).
+						AddRow("user-1", "user1@example.com", "user1").
+						AddRow("user-2", "user2@example.com", "user2")
 
-		users, err := repo.GetByOrganization(context.Background(), orgID)
+					mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "users" WHERE users.id IN (SELECT organization_members.user_id FROM "organization_members" WHERE organization_members.organization_id = $1 AND (organization_members.deleted_at = 0 OR organization_members.deleted_at IS NULL)) AND "users"."deleted_at" = $2`)).
+						WithArgs(orgID, 0).
+						WillReturnRows(rows)
 
-		assert.NoError(t, err)
-		if assert.Len(t, users, 2) {
-			assert.Equal(t, "user-1", users[0].ID)
-			assert.Equal(t, "user-2", users[1].ID)
-		}
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
+					users, err := repo.GetByOrganization(context.Background(), orgID)
 
-	t.Run("DBError", func(t *testing.T) {
-		orgID := "org-1"
+					assert.NoError(t, err)
+					if assert.Len(t, users, 2) {
+						assert.Equal(t, "user-1", users[0].ID)
+						assert.Equal(t, "user-2", users[1].ID)
+					}
+					assert.NoError(t, mock.ExpectationsWereMet())
+				})
 
-		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "users" WHERE users.id IN (SELECT organization_members.user_id FROM "organization_members" WHERE organization_members.organization_id = $1 AND (organization_members.deleted_at = 0 OR organization_members.deleted_at IS NULL)) AND "users"."deleted_at" = $2`)).
-			WithArgs(orgID, 0).
-			WillReturnError(gorm.ErrInvalidDB)
+				t.Run("DBError", func(t *testing.T) {
+					orgID := "org-1"
 
-		users, err := repo.GetByOrganization(context.Background(), orgID)
+					mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "users" WHERE users.id IN (SELECT organization_members.user_id FROM "organization_members" WHERE organization_members.organization_id = $1 AND (organization_members.deleted_at = 0 OR organization_members.deleted_at IS NULL)) AND "users"."deleted_at" = $2`)).
+						WithArgs(orgID, 0).
+						WillReturnError(gorm.ErrInvalidDB)
 
-		assert.Error(t, err)
-		assert.Nil(t, users)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
+					users, err := repo.GetByOrganization(context.Background(), orgID)
+
+					assert.Error(t, err)
+					assert.Nil(t, users)
+					assert.NoError(t, mock.ExpectationsWereMet())
+				})
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestUserRepository_FindBySSOIdentity(t *testing.T) {
-	repo, mock := setupUserRepositoryTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestUserRepository_FindBySSOIdentity",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	t.Run("Success", func(t *testing.T) {
-		provider := "google"
-		providerID := "12345"
+				repo, mock := setupUserRepositoryTest(t)
 
-		rows := sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_id"}).
-			AddRow("sso-1", "user-1", provider, providerID)
+				t.Run("Success", func(t *testing.T) {
+					provider := "google"
+					providerID := "12345"
 
-		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "user_sso_identities" WHERE provider = $1 AND provider_id = $2 ORDER BY "user_sso_identities"."id" LIMIT $3`)).
-			WithArgs(provider, providerID, 1).
-			WillReturnRows(rows)
+					rows := sqlmock.NewRows([]string{"id", "user_id", "provider", "provider_id"}).
+						AddRow("sso-1", "user-1", provider, providerID)
 
-		identity, err := repo.FindBySSOIdentity(context.Background(), provider, providerID)
+					mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "user_sso_identities" WHERE provider = $1 AND provider_id = $2 ORDER BY "user_sso_identities"."id" LIMIT $3`)).
+						WithArgs(provider, providerID, 1).
+						WillReturnRows(rows)
 
-		assert.NoError(t, err)
-		if assert.NotNil(t, identity) {
-			assert.Equal(t, "sso-1", identity.ID)
-			assert.Equal(t, "user-1", identity.UserID)
-		}
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
+					identity, err := repo.FindBySSOIdentity(context.Background(), provider, providerID)
 
-	t.Run("DBError", func(t *testing.T) {
-		provider := "google"
-		providerID := "12345"
+					assert.NoError(t, err)
+					if assert.NotNil(t, identity) {
+						assert.Equal(t, "sso-1", identity.ID)
+						assert.Equal(t, "user-1", identity.UserID)
+					}
+					assert.NoError(t, mock.ExpectationsWereMet())
+				})
 
-		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "user_sso_identities" WHERE provider = $1 AND provider_id = $2 ORDER BY "user_sso_identities"."id" LIMIT $3`)).
-			WithArgs(provider, providerID, 1).
-			WillReturnError(gorm.ErrRecordNotFound)
+				t.Run("DBError", func(t *testing.T) {
+					provider := "google"
+					providerID := "12345"
 
-		identity, err := repo.FindBySSOIdentity(context.Background(), provider, providerID)
+					mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "user_sso_identities" WHERE provider = $1 AND provider_id = $2 ORDER BY "user_sso_identities"."id" LIMIT $3`)).
+						WithArgs(provider, providerID, 1).
+						WillReturnError(gorm.ErrRecordNotFound)
 
-		assert.Error(t, err)
-		assert.Nil(t, identity)
-		assert.Equal(t, gorm.ErrRecordNotFound, err)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
+					identity, err := repo.FindBySSOIdentity(context.Background(), provider, providerID)
+
+					assert.Error(t, err)
+					assert.Nil(t, identity)
+					assert.Equal(t, gorm.ErrRecordNotFound, err)
+					assert.NoError(t, mock.ExpectationsWereMet())
+				})
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestUserRepository_CreateSSOIdentity(t *testing.T) {
-	repo, mock := setupUserRepositoryTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "TestUserRepository_CreateSSOIdentity",
+			category: "positive",
+			run: func(t *testing.T) {
 
-	t.Run("Success", func(t *testing.T) {
-		identity := &entity.UserSSOIdentity{
-			ID:         "sso-1",
-			UserID:     "user-1",
-			Provider:   "google",
-			ProviderID: "12345",
-		}
+				repo, mock := setupUserRepositoryTest(t)
 
-		mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO "user_sso_identities" ("id","user_id","provider","provider_id","created_at","updated_at") VALUES ($1,$2,$3,$4,$5,$6)`)).
-			WithArgs(identity.ID, identity.UserID, identity.Provider, identity.ProviderID, sqlmock.AnyArg(), sqlmock.AnyArg()).
-			WillReturnResult(sqlmock.NewResult(1, 1))
+				t.Run("Success", func(t *testing.T) {
+					identity := &entity.UserSSOIdentity{
+						ID:         "sso-1",
+						UserID:     "user-1",
+						Provider:   "google",
+						ProviderID: "12345",
+					}
 
-		err := repo.CreateSSOIdentity(context.Background(), identity)
+					mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO "user_sso_identities" ("id","user_id","provider","provider_id","created_at","updated_at") VALUES ($1,$2,$3,$4,$5,$6)`)).
+						WithArgs(identity.ID, identity.UserID, identity.Provider, identity.ProviderID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+						WillReturnResult(sqlmock.NewResult(1, 1))
 
-		assert.NoError(t, err)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
+					err := repo.CreateSSOIdentity(context.Background(), identity)
 
-	t.Run("DBError", func(t *testing.T) {
-		identity := &entity.UserSSOIdentity{
-			ID:         "sso-1",
-			UserID:     "user-1",
-			Provider:   "google",
-			ProviderID: "12345",
-		}
+					assert.NoError(t, err)
+					assert.NoError(t, mock.ExpectationsWereMet())
+				})
 
-		mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO "user_sso_identities" ("id","user_id","provider","provider_id","created_at","updated_at") VALUES ($1,$2,$3,$4,$5,$6)`)).
-			WithArgs(identity.ID, identity.UserID, identity.Provider, identity.ProviderID, sqlmock.AnyArg(), sqlmock.AnyArg()).
-			WillReturnError(gorm.ErrInvalidDB)
+				t.Run("DBError", func(t *testing.T) {
+					identity := &entity.UserSSOIdentity{
+						ID:         "sso-1",
+						UserID:     "user-1",
+						Provider:   "google",
+						ProviderID: "12345",
+					}
 
-		err := repo.CreateSSOIdentity(context.Background(), identity)
+					mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO "user_sso_identities" ("id","user_id","provider","provider_id","created_at","updated_at") VALUES ($1,$2,$3,$4,$5,$6)`)).
+						WithArgs(identity.ID, identity.UserID, identity.Provider, identity.ProviderID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+						WillReturnError(gorm.ErrInvalidDB)
 
-		assert.Error(t, err)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
+					err := repo.CreateSSOIdentity(context.Background(), identity)
+
+					assert.Error(t, err)
+					assert.NoError(t, mock.ExpectationsWereMet())
+				})
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

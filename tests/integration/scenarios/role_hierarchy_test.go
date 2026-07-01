@@ -46,14 +46,22 @@ func TestScenario_RoleHierarchy(t *testing.T) {
 	err = permService.GrantPermissionToRole(ctx, childRole, path, method, "global")
 	require.NoError(t, err)
 
+	checks := []struct {
+		name     string
+		expected bool
+	}{
+		{name: "BeforeInheritance", expected: false},
+		{name: "AfterInheritance", expected: true},
+	}
+
 	ok, err := env.Enforcer.Enforce(parentRole, "global", path, method)
 	require.NoError(t, err)
-	assert.False(t, ok, "Parent role should not have access yet")
+	assert.Equal(t, checks[0].expected, ok, "Parent role should not have access yet")
 
 	err = permService.AddParentRole(ctx, parentRole, childRole, "global")
 	require.NoError(t, err)
 
 	ok, err = env.Enforcer.Enforce(parentRole, "global", path, method)
 	require.NoError(t, err)
-	assert.True(t, ok, "Parent role (Manager) should inherit permissions from Child role (Staff)")
+	assert.Equal(t, checks[1].expected, ok, "Parent role (Manager) should inherit permissions from Child role (Staff)")
 }

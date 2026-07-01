@@ -39,172 +39,213 @@ func newTestAuditController(mockUC usecase.AuditUseCase) *auditHttp.AuditControl
 	return auditHttp.NewAuditController(mockUC, v, logger)
 }
 
-func TestGetLogsDynamicController(t *testing.T) {
-	mockUC := new(mocks.MockAuditUseCase)
-	handler := newTestAuditController(mockUC)
-	router := setupAuditTestRouter()
-	router.POST("/audit-logs/search", handler.GetLogsDynamic)
+func TestAuditController(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "GetLogsDynamic_Positive_Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				mockUC := new(mocks.MockAuditUseCase)
+				handler := newTestAuditController(mockUC)
+				router := setupAuditTestRouter()
+				router.POST("/audit-logs/search", handler.GetLogsDynamic)
 
-	t.Run("Success", func(t *testing.T) {
-		filter := querybuilder.DynamicFilter{
-			Filter: map[string]querybuilder.Filter{"user_id": {Type: "equals", From: "u1"}},
-		}
-		body, _ := json.Marshal(filter)
+				filter := querybuilder.DynamicFilter{
+					Filter: map[string]querybuilder.Filter{"user_id": {Type: "equals", From: "u1"}},
+				}
+				body, _ := json.Marshal(filter)
 
-		respData := []model.AuditLogResponse{
-			{ID: "1", UserID: "u1"},
-		}
-		mockUC.On("GetLogsDynamic", mock.Anything, &filter).Return(respData, int64(1), nil)
+				respData := []model.AuditLogResponse{
+					{ID: "1", UserID: "u1"},
+				}
+				mockUC.On("GetLogsDynamic", mock.Anything, &filter).Return(respData, int64(1), nil)
 
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/audit-logs/search", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		router.ServeHTTP(w, req)
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest("POST", "/audit-logs/search", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+				router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+				assert.Equal(t, http.StatusOK, w.Code)
 
-		var webResp response.WebResponseSuccess[[]model.AuditLogResponse]
-		err := json.Unmarshal(w.Body.Bytes(), &webResp)
-		assert.NoError(t, err, "Failed to unmarshal response")
-		assert.Len(t, webResp.Data, 1)
-		assert.Equal(t, int64(1), webResp.Paging.Total)
-		mockUC.AssertExpectations(t)
-	})
+				var webResp response.WebResponseSuccess[[]model.AuditLogResponse]
+				err := json.Unmarshal(w.Body.Bytes(), &webResp)
+				assert.NoError(t, err, "Failed to unmarshal response")
+				assert.Len(t, webResp.Data, 1)
+				assert.Equal(t, int64(1), webResp.Paging.Total)
+				mockUC.AssertExpectations(t)
+			},
+		},
+		{
+			name:     "GetLogsDynamic_Negative_BindError",
+			category: "negative",
+			run: func(t *testing.T) {
+				mockUC := new(mocks.MockAuditUseCase)
+				handler := newTestAuditController(mockUC)
+				router := setupAuditTestRouter()
+				router.POST("/audit-logs/search", handler.GetLogsDynamic)
 
-	t.Run("Bind Error", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/audit-logs/search", bytes.NewBufferString("{invalid json"))
-		router.ServeHTTP(w, req)
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest("POST", "/audit-logs/search", bytes.NewBufferString("{invalid json"))
+				router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
+				assert.Equal(t, http.StatusBadRequest, w.Code)
+			},
+		},
+		{
+			name:     "GetLogsDynamic_Negative_UseCaseError",
+			category: "negative",
+			run: func(t *testing.T) {
+				mockUC := new(mocks.MockAuditUseCase)
+				handler := newTestAuditController(mockUC)
+				router := setupAuditTestRouter()
+				router.POST("/audit-logs/search", handler.GetLogsDynamic)
 
-	t.Run("UseCase Error", func(t *testing.T) {
-		mockUC.ExpectedCalls = nil
-		filter := querybuilder.DynamicFilter{}
-		body, _ := json.Marshal(filter)
+				mockUC.ExpectedCalls = nil
+				filter := querybuilder.DynamicFilter{}
+				body, _ := json.Marshal(filter)
 
-		mockUC.On("GetLogsDynamic", mock.Anything, &filter).Return(nil, int64(0), errors.New("fail"))
+				mockUC.On("GetLogsDynamic", mock.Anything, &filter).Return(nil, int64(0), errors.New("fail"))
 
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/audit-logs/search", bytes.NewBuffer(body))
-		router.ServeHTTP(w, req)
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest("POST", "/audit-logs/search", bytes.NewBuffer(body))
+				router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-}
+				assert.Equal(t, http.StatusInternalServerError, w.Code)
+			},
+		},
+		{
+			name:     "GetLogsDynamic_Security_XSS",
+			category: "security",
+			run: func(t *testing.T) {
+				mockUC := new(mocks.MockAuditUseCase)
+				controller := newTestAuditController(mockUC)
 
-func TestAuditController_Export_Serialization(t *testing.T) {
-	mockUC := new(mocks.MockAuditUseCase)
-	controller := newTestAuditController(mockUC)
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
 
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
+				payload := querybuilder.DynamicFilter{
+					Page:     1,
+					PageSize: 10,
+					Sort: &[]querybuilder.SortModel{
+						{
+							ColId: "<script>alert(1)</script>",
+							Sort:  "asc",
+						},
+					},
+				}
 
-	c.Request, _ = http.NewRequest("GET", "/audit/export?from_date=2023-01-01&to_date=2023-01-31", nil)
+				jsonBytes, _ := json.Marshal(payload)
+				c.Request, _ = http.NewRequest("POST", "/audit/search", bytes.NewBuffer(jsonBytes))
+				c.Request.Header.Set("Content-Type", "application/json")
 
-	fmt.Println("Setting up mock expectations...")
-	mockUC.On("ExportLogs", mock.Anything, "2023-01-01", "2023-01-31", mock.Anything).
-		Run(func(args mock.Arguments) {
-			fmt.Println("Mock ExportLogs called!")
-			iterator := args.Get(3).(func([]model.AuditLogResponse) error)
-			logs := []model.AuditLogResponse{
-				{
-					ID:        "log-1",
-					UserID:    "user-1",
-					Action:    "LOGIN",
-					OldValues: map[string]interface{}{"a": 1},
-					NewValues: map[string]interface{}{"b": 2},
-					CreatedAt: 1672531200,
-				},
-			}
-			if err := iterator(logs); err != nil {
-				fmt.Printf("Iterator returned error: %v\n", err)
-			} else {
-				fmt.Println("Iterator success")
-			}
-		}).Return(nil)
+				controller.GetLogsDynamic(c)
 
-	fmt.Println("Calling controller.Export...")
-	controller.Export(c)
-	fmt.Println("Controller returned.")
+				assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+				assert.Contains(t, w.Body.String(), "validation failed")
+			},
+		},
+		{
+			name:     "Export_Positive_Serialization",
+			category: "positive",
+			run: func(t *testing.T) {
+				mockUC := new(mocks.MockAuditUseCase)
+				controller := newTestAuditController(mockUC)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	body := w.Body.String()
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
 
-	if !assert.Contains(t, body, "ID,UserID") {
-		t.Log("Missing CSV Header")
-	}
+				c.Request, _ = http.NewRequest("GET", "/audit/export?from_date=2023-01-01&to_date=2023-01-31", nil)
 
-	if !assert.Contains(t, body, "log-1") {
-		t.Log("Missing CSV Record ID")
-	}
+				fmt.Println("Setting up mock expectations...")
+				mockUC.On("ExportLogs", mock.Anything, "2023-01-01", "2023-01-31", mock.Anything).
+					Run(func(args mock.Arguments) {
+						fmt.Println("Mock ExportLogs called!")
+						iterator := args.Get(3).(func([]model.AuditLogResponse) error)
+						logs := []model.AuditLogResponse{
+							{
+								ID:        "log-1",
+								UserID:    "user-1",
+								Action:    "LOGIN",
+								OldValues: map[string]interface{}{"a": 1},
+								NewValues: map[string]interface{}{"b": 2},
+								CreatedAt: 1672531200,
+							},
+						}
+						if err := iterator(logs); err != nil {
+							fmt.Printf("Iterator returned error: %v\n", err)
+						} else {
+							fmt.Println("Iterator success")
+						}
+					}).Return(nil)
 
-	assert.Contains(t, body, "LOGIN")
-	assert.Contains(t, body, `""a"":1`)
-}
+				fmt.Println("Calling controller.Export...")
+				controller.Export(c)
+				fmt.Println("Controller returned.")
 
-func TestAuditController_Export_CSVInjection(t *testing.T) {
-	mockUC := new(mocks.MockAuditUseCase)
-	controller := newTestAuditController(mockUC)
+				assert.Equal(t, http.StatusOK, w.Code)
+				body := w.Body.String()
 
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, err := http.NewRequest("GET", "/audit/export", nil)
-	require.NoError(t, err)
-	c.Request = req
+				if !assert.Contains(t, body, "ID,UserID") {
+					t.Log("Missing CSV Header")
+				}
 
-	mockUC.On("ExportLogs", mock.Anything, "", "", mock.Anything).
-		Run(func(args mock.Arguments) {
-			iterator, ok := args.Get(3).(func([]model.AuditLogResponse) error)
-			require.True(t, ok, "fourth argument should be an iterator function")
-			logs := []model.AuditLogResponse{
-				{
-					ID:     "log-bad",
-					UserID: "=cmd|' /C calc'!A0",
-					Action: "HACK",
-				},
-			}
-			err := iterator(logs)
-			assert.NoError(t, err)
-		}).Return(nil)
+				if !assert.Contains(t, body, "log-1") {
+					t.Log("Missing CSV Record ID")
+				}
 
-	controller.Export(c)
+				assert.Contains(t, body, "LOGIN")
+				assert.Contains(t, body, `""a"":1`)
+			},
+		},
+		{
+			name:     "Export_Security_CSVInjection",
+			category: "security",
+			run: func(t *testing.T) {
+				mockUC := new(mocks.MockAuditUseCase)
+				controller := newTestAuditController(mockUC)
 
-	csvOutput := w.Body.String()
-	assert.Contains(t, csvOutput, "ID,UserID,Action", "CSV header missing")
-	assert.Contains(t, csvOutput, "'=cmd|' /C calc'!A0", "Malicious payload should be sanitized/escaped")
-	assert.NotContains(t, csvOutput, "\n=cmd|' /C calc'!A0", "Unsafe payload found (start of line)")
-	assert.NotContains(t, csvOutput, ",=cmd|' /C calc'!A0", "Unsafe payload found (after comma)")
-}
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, err := http.NewRequest("GET", "/audit/export", nil)
+				require.NoError(t, err)
+				c.Request = req
 
-func TestAuditController_GetLogsDynamic_XSS(t *testing.T) {
-	mockUC := new(mocks.MockAuditUseCase)
-	controller := newTestAuditController(mockUC)
+				mockUC.On("ExportLogs", mock.Anything, "", "", mock.Anything).
+					Run(func(args mock.Arguments) {
+						iterator, ok := args.Get(3).(func([]model.AuditLogResponse) error)
+						require.True(t, ok, "fourth argument should be an iterator function")
+						logs := []model.AuditLogResponse{
+							{
+								ID:     "log-bad",
+								UserID: "=cmd|' /C calc'!A0",
+								Action: "HACK",
+							},
+						}
+						err := iterator(logs)
+						assert.NoError(t, err)
+					}).Return(nil)
 
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
+				controller.Export(c)
 
-	payload := querybuilder.DynamicFilter{
-		Page:     1,
-		PageSize: 10,
-		Sort: &[]querybuilder.SortModel{
-			{
-				ColId: "<script>alert(1)</script>",
-				Sort:  "asc",
+				csvOutput := w.Body.String()
+				assert.Contains(t, csvOutput, "ID,UserID,Action", "CSV header missing")
+				assert.Contains(t, csvOutput, "'=cmd|' /C calc'!A0", "Malicious payload should be sanitized/escaped")
+				assert.NotContains(t, csvOutput, "\n=cmd|' /C calc'!A0", "Unsafe payload found (start of line)")
+				assert.NotContains(t, csvOutput, ",=cmd|' /C calc'!A0", "Unsafe payload found (after comma)")
 			},
 		},
 	}
 
-	jsonBytes, _ := json.Marshal(payload)
-	c.Request, _ = http.NewRequest("POST", "/audit/search", bytes.NewBuffer(jsonBytes))
-	c.Request.Header.Set("Content-Type", "application/json")
-
-	controller.GetLogsDynamic(c)
-
-	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	assert.Contains(t, w.Body.String(), "validation failed")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
