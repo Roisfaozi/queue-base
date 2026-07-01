@@ -8,7 +8,9 @@
       "Bash(git push)",
       "Bash(npx *)",
       "Bash(pre-commit *)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(file *)",
+      "Bash(chmod *)"
     ]
   },
   "$version": 4
