@@ -39,72 +39,123 @@ func setupTestDB(t *testing.T) (*gorm.DB, error) {
 }
 
 func TestTransactionManager_WithinTransaction_Commit(t *testing.T) {
-	db, err := setupTestDB(t)
-	assert.NoError(t, err)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Within Transaction Commit",
+			category: "positive",
+			run: func(t *testing.T) {
+				db, err := setupTestDB(t)
+				assert.NoError(t, err)
 
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	tm := tx.NewTransactionManager(db, logger)
+				tm := tx.NewTransactionManager(db, logger)
 
-	err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
-		txDB, ok := tx.DBFromContext(ctx)
-		assert.True(t, ok)
+				err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
+					txDB, ok := tx.DBFromContext(ctx)
+					assert.True(t, ok)
 
-		if err := txDB.Create(&User{Name: "Alice"}).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+					if err := txDB.Create(&User{Name: "Alice"}).Error; err != nil {
+						return err
+					}
+					return nil
+				})
 
-	assert.NoError(t, err)
+				assert.NoError(t, err)
 
-	var count int64
-	db.Model(&User{}).Count(&count)
-	assert.Equal(t, int64(1), count)
+				var count int64
+				db.Model(&User{}).Count(&count)
+				assert.Equal(t, int64(1), count)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestTransactionManager_WithinTransaction_Rollback(t *testing.T) {
-	db, err := setupTestDB(t)
-	assert.NoError(t, err)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Within Transaction Rollback",
+			category: "negative",
+			run: func(t *testing.T) {
+				db, err := setupTestDB(t)
+				assert.NoError(t, err)
 
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	tm := tx.NewTransactionManager(db, logger)
+				tm := tx.NewTransactionManager(db, logger)
 
-	err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
-		txDB, ok := tx.DBFromContext(ctx)
-		assert.True(t, ok)
+				err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
+					txDB, ok := tx.DBFromContext(ctx)
+					assert.True(t, ok)
 
-		txDB.Create(&User{Name: "Bob"})
+					txDB.Create(&User{Name: "Bob"})
 
-		return errors.New("simulated error")
-	})
+					return errors.New("simulated error")
+				})
 
-	assert.Error(t, err)
+				assert.Error(t, err)
 
-	var count int64
-	db.Model(&User{}).Count(&count)
-	assert.Equal(t, int64(0), count)
+				var count int64
+				db.Model(&User{}).Count(&count)
+				assert.Equal(t, int64(0), count)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestTransactionManager_WithinTransaction_PanicRollback(t *testing.T) {
-	db, err := setupTestDB(t)
-	assert.NoError(t, err)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Within Transaction Panic Rollback",
+			category: "edge",
+			run: func(t *testing.T) {
+				db, err := setupTestDB(t)
+				assert.NoError(t, err)
 
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	tm := tx.NewTransactionManager(db, logger)
+				tm := tx.NewTransactionManager(db, logger)
 
-	assert.PanicsWithValue(t, "panic inside transaction", func() {
-		_ = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
-			panic("panic inside transaction")
+				assert.PanicsWithValue(t, "panic inside transaction", func() {
+					_ = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
+						panic("panic inside transaction")
+					})
+				})
+
+				var count int64
+				db.Model(&User{}).Count(&count)
+				assert.Equal(t, int64(0), count)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
 		})
-	})
-
-	var count int64
-	db.Model(&User{}).Count(&count)
-	assert.Equal(t, int64(0), count)
+	}
 }

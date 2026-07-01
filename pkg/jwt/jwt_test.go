@@ -17,91 +17,175 @@ const (
 )
 
 func TestNewJWTManager(t *testing.T) {
-	manager := NewJWTManager(testAccessSecret, testRefreshSecret, time.Hour, 24*time.Hour)
-	assert.NotNil(t, manager)
-	assert.Equal(t, testAccessSecret, manager.accessTokenSecret)
-	assert.Equal(t, testRefreshSecret, manager.refreshTokenSecret)
-	assert.Equal(t, time.Hour, manager.accessTokenDuration)
-	assert.Equal(t, 24*time.Hour, manager.refreshTokenDuration)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				manager := NewJWTManager(testAccessSecret, testRefreshSecret, time.Hour, 24*time.Hour)
+				assert.NotNil(t, manager)
+				assert.Equal(t, testAccessSecret, manager.accessTokenSecret)
+				assert.Equal(t, testRefreshSecret, manager.refreshTokenSecret)
+				assert.Equal(t, time.Hour, manager.accessTokenDuration)
+				assert.Equal(t, 24*time.Hour, manager.refreshTokenDuration)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestGenerateAndValidateTokenPair_Success(t *testing.T) {
-	manager := NewJWTManager(testAccessSecret, testRefreshSecret, time.Minute*15, time.Hour*72)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				manager := NewJWTManager(testAccessSecret, testRefreshSecret, time.Minute*15, time.Hour*72)
 
-	accessToken, refreshToken, err := manager.GenerateTokenPair(UserContext{
-		UserID:    testUserID,
-		SessionID: testSessionID,
-		Role:      testRole,
-		Username:  testUsername,
-	})
+				accessToken, refreshToken, err := manager.GenerateTokenPair(UserContext{
+					UserID:    testUserID,
+					SessionID: testSessionID,
+					Role:      testRole,
+					Username:  testUsername,
+				})
 
-	assert.NoError(t, err)
-	assert.NotEmpty(t, accessToken)
-	assert.NotEmpty(t, refreshToken)
+				assert.NoError(t, err)
+				assert.NotEmpty(t, accessToken)
+				assert.NotEmpty(t, refreshToken)
 
-	accessClaims, err := manager.ValidateAccessToken(accessToken)
-	assert.NoError(t, err)
-	assert.NotNil(t, accessClaims)
-	assert.Equal(t, testUserID, accessClaims.UserID)
-	assert.Equal(t, testSessionID, accessClaims.SessionID)
-	assert.Equal(t, testRole, accessClaims.Role)
-	assert.Equal(t, testUsername, accessClaims.Username)
-	assert.Equal(t, testUserID, accessClaims.Subject)
-	assert.WithinDuration(t, time.Now().Add(time.Minute*15), accessClaims.ExpiresAt.Time, time.Second*5)
+				accessClaims, err := manager.ValidateAccessToken(accessToken)
+				assert.NoError(t, err)
+				assert.NotNil(t, accessClaims)
+				assert.Equal(t, testUserID, accessClaims.UserID)
+				assert.Equal(t, testSessionID, accessClaims.SessionID)
+				assert.Equal(t, testRole, accessClaims.Role)
+				assert.Equal(t, testUsername, accessClaims.Username)
+				assert.Equal(t, testUserID, accessClaims.Subject)
+				assert.WithinDuration(t, time.Now().Add(time.Minute*15), accessClaims.ExpiresAt.Time, time.Second*5)
 
-	refreshClaims, err := manager.ValidateRefreshToken(refreshToken)
-	assert.NoError(t, err)
-	assert.NotNil(t, refreshClaims)
-	assert.Equal(t, testUserID, refreshClaims.UserID)
-	assert.Equal(t, testSessionID, refreshClaims.SessionID)
-	assert.Equal(t, testRole, refreshClaims.Role)
-	assert.Equal(t, testUsername, refreshClaims.Username)
-	assert.WithinDuration(t, time.Now().Add(time.Hour*72), refreshClaims.ExpiresAt.Time, time.Second*5)
+				refreshClaims, err := manager.ValidateRefreshToken(refreshToken)
+				assert.NoError(t, err)
+				assert.NotNil(t, refreshClaims)
+				assert.Equal(t, testUserID, refreshClaims.UserID)
+				assert.Equal(t, testSessionID, refreshClaims.SessionID)
+				assert.Equal(t, testRole, refreshClaims.Role)
+				assert.Equal(t, testUsername, refreshClaims.Username)
+				assert.WithinDuration(t, time.Now().Add(time.Hour*72), refreshClaims.ExpiresAt.Time, time.Second*5)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestValidateToken_Expired(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Expired",
+			category: "negative",
+			run: func(t *testing.T) {
+				manager := NewJWTManager(testAccessSecret, testRefreshSecret, -time.Second, -time.Second)
 
-	manager := NewJWTManager(testAccessSecret, testRefreshSecret, -time.Second, -time.Second)
+				accessToken, _, err := manager.GenerateTokenPair(UserContext{
+					UserID:    testUserID,
+					SessionID: testSessionID,
+					Role:      testRole,
+					Username:  testUsername,
+				})
+				assert.NoError(t, err)
 
-	accessToken, _, err := manager.GenerateTokenPair(UserContext{
-		UserID:    testUserID,
-		SessionID: testSessionID,
-		Role:      testRole,
-		Username:  testUsername,
-	})
-	assert.NoError(t, err)
+				time.Sleep(10 * time.Millisecond)
 
-	time.Sleep(10 * time.Millisecond)
-
-	claims, err := manager.ValidateAccessToken(accessToken)
-	assert.Error(t, err, "Validation should fail for an expired token")
-	assert.Nil(t, claims)
-	assert.Contains(t, err.Error(), "token is expired")
+				claims, err := manager.ValidateAccessToken(accessToken)
+				assert.Error(t, err, "Validation should fail for an expired token")
+				assert.Nil(t, claims)
+				assert.Contains(t, err.Error(), "token is expired")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestValidateToken_InvalidSignature(t *testing.T) {
-	manager1 := NewJWTManager("secret-one", "refresh-one", time.Minute, time.Hour)
-	manager2 := NewJWTManager("secret-two", "refresh-two", time.Minute, time.Hour)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Invalid Signature",
+			category: "negative",
+			run: func(t *testing.T) {
+				manager1 := NewJWTManager("secret-one", "refresh-one", time.Minute, time.Hour)
+				manager2 := NewJWTManager("secret-two", "refresh-two", time.Minute, time.Hour)
 
-	accessToken, _, err := manager1.GenerateTokenPair(UserContext{
-		UserID:    testUserID,
-		SessionID: testSessionID,
-		Role:      testRole,
-		Username:  testUsername,
-	})
-	assert.NoError(t, err)
+				accessToken, _, err := manager1.GenerateTokenPair(UserContext{
+					UserID:    testUserID,
+					SessionID: testSessionID,
+					Role:      testRole,
+					Username:  testUsername,
+				})
+				assert.NoError(t, err)
 
-	claims, err := manager2.ValidateAccessToken(accessToken)
-	assert.Error(t, err, "Validation should fail for a token with a wrong signature")
-	assert.Nil(t, claims)
-	assert.Contains(t, err.Error(), "signature is invalid")
+				claims, err := manager2.ValidateAccessToken(accessToken)
+				assert.Error(t, err, "Validation should fail for a token with a wrong signature")
+				assert.Nil(t, claims)
+				assert.Contains(t, err.Error(), "signature is invalid")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestValidateToken_MalformedToken(t *testing.T) {
-	manager := NewJWTManager(testAccessSecret, testRefreshSecret, time.Minute, time.Hour)
-	malformedToken := "this.is.not.a.valid.jwt"
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Malformed Token",
+			category: "negative",
+			run: func(t *testing.T) {
+				manager := NewJWTManager(testAccessSecret, testRefreshSecret, time.Minute, time.Hour)
+				malformedToken := "this.is.not.a.valid.jwt"
 
-	claims, err := manager.ValidateAccessToken(malformedToken)
-	assert.Error(t, err, "Validation should fail for a malformed token")
-	assert.Nil(t, claims)
+				claims, err := manager.ValidateAccessToken(malformedToken)
+				assert.Error(t, err, "Validation should fail for a malformed token")
+				assert.Nil(t, claims)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

@@ -13,161 +13,229 @@ import (
 )
 
 func TestGitHubProvider_GetUserInfo_SuccessWithPublicEmail(t *testing.T) {
-	server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/user", r.URL.Path)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success With Public Email",
+			category: "positive",
+			run: func(t *testing.T) {
+				server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "/user", r.URL.Path)
 
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-			"id": 12345,
-			"login": "octocat",
-			"name": "Octocat",
-			"email": "octocat@github.com",
-			"avatar_url": "https://github.com/images/error/octocat_happy.gif"
-		}`))
-	}))
-	if err != nil {
-		t.Skip("socket listeners not permitted in this environment")
-	}
-	defer server.Close()
+					w.WriteHeader(http.StatusOK)
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{
+						"id": 12345,
+						"login": "octocat",
+						"name": "Octocat",
+						"email": "octocat@github.com",
+						"avatar_url": "https://github.com/images/error/octocat_happy.gif"
+					}`))
+				}))
+				if err != nil {
+					t.Skip("socket listeners not permitted in this environment")
+				}
+				defer server.Close()
 
-	provider := NewGitHubProvider(ProviderConfig{})
+				provider := NewGitHubProvider(ProviderConfig{})
 
-	hijackClient := &http.Client{
-		Transport: &MockTransport{
-			ServerURL: server.URL,
+				hijackClient := &http.Client{
+					Transport: &MockTransport{
+						ServerURL: server.URL,
+					},
+				}
+				ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
+
+				token := &oauth2.Token{AccessToken: "mock-token"}
+				userInfo, err := provider.GetUserInfo(ctx, token)
+
+				require.NoError(t, err)
+				assert.NotNil(t, userInfo)
+				assert.Equal(t, "octocat@github.com", userInfo.Email)
+				assert.Equal(t, "12345", userInfo.ProviderID)
+				assert.Equal(t, "Octocat", userInfo.Name)
+			},
 		},
 	}
-	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
-
-	token := &oauth2.Token{AccessToken: "mock-token"}
-	userInfo, err := provider.GetUserInfo(ctx, token)
-
-	require.NoError(t, err)
-	assert.NotNil(t, userInfo)
-	assert.Equal(t, "octocat@github.com", userInfo.Email)
-	assert.Equal(t, "12345", userInfo.ProviderID)
-	assert.Equal(t, "Octocat", userInfo.Name)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestGitHubProvider_GetUserInfo_FallbackToEmailEndpoint(t *testing.T) {
-	server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/user" {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{
-				"id": 67890,
-				"login": "private_user"
-			}`))
-			return
-		}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Fallback To Email Endpoint",
+			category: "positive",
+			run: func(t *testing.T) {
+				server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/user" {
+						w.WriteHeader(http.StatusOK)
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`{
+							"id": 67890,
+							"login": "private_user"
+						}`))
+						return
+					}
 
-		if r.URL.Path == "/user/emails" {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`[
-				{
-					"email": "secondary@example.com",
-					"primary": false,
-					"verified": true
-				},
-				{
-					"email": "primary@example.com",
-					"primary": true,
-					"verified": true
+					if r.URL.Path == "/user/emails" {
+						w.WriteHeader(http.StatusOK)
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`[
+							{
+								"email": "secondary@example.com",
+								"primary": false,
+								"verified": true
+							},
+							{
+								"email": "primary@example.com",
+								"primary": true,
+								"verified": true
+							}
+						]`))
+						return
+					}
+
+					w.WriteHeader(http.StatusNotFound)
+				}))
+				if err != nil {
+					t.Skip("socket listeners not permitted in this environment")
 				}
-			]`))
-			return
-		}
+				defer server.Close()
 
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	if err != nil {
-		t.Skip("socket listeners not permitted in this environment")
-	}
-	defer server.Close()
+				provider := NewGitHubProvider(ProviderConfig{})
 
-	provider := NewGitHubProvider(ProviderConfig{})
+				hijackClient := &http.Client{
+					Transport: &MockTransport{
+						ServerURL: server.URL,
+					},
+				}
+				ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
 
-	hijackClient := &http.Client{
-		Transport: &MockTransport{
-			ServerURL: server.URL,
+				token := &oauth2.Token{AccessToken: "mock-token"}
+				userInfo, err := provider.GetUserInfo(ctx, token)
+
+				require.NoError(t, err)
+				assert.NotNil(t, userInfo)
+				assert.Equal(t, "primary@example.com", userInfo.Email)
+				assert.Equal(t, "67890", userInfo.ProviderID)
+				assert.Equal(t, "private_user", userInfo.Name)
+			},
 		},
 	}
-	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
-
-	token := &oauth2.Token{AccessToken: "mock-token"}
-	userInfo, err := provider.GetUserInfo(ctx, token)
-
-	require.NoError(t, err)
-	assert.NotNil(t, userInfo)
-	assert.Equal(t, "primary@example.com", userInfo.Email)
-	assert.Equal(t, "67890", userInfo.ProviderID)
-	assert.Equal(t, "private_user", userInfo.Name)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestGitHubProvider_GetUserInfo_ErrorNoEmail(t *testing.T) {
-	server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/user" {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"id": 111, "login": "noemail"}`))
-			return
-		}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Error No Email",
+			category: "negative",
+			run: func(t *testing.T) {
+				server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/user" {
+						w.WriteHeader(http.StatusOK)
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`{"id": 111, "login": "noemail"}`))
+						return
+					}
 
-		if r.URL.Path == "/user/emails" {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`[{"email": "unverified@example.com", "primary": true, "verified": false}]`))
-			return
-		}
+					if r.URL.Path == "/user/emails" {
+						w.WriteHeader(http.StatusOK)
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`[{"email": "unverified@example.com", "primary": true, "verified": false}]`))
+						return
+					}
 
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	if err != nil {
-		t.Skip("socket listeners not permitted in this environment")
-	}
-	defer server.Close()
+					w.WriteHeader(http.StatusNotFound)
+				}))
+				if err != nil {
+					t.Skip("socket listeners not permitted in this environment")
+				}
+				defer server.Close()
 
-	provider := NewGitHubProvider(ProviderConfig{})
+				provider := NewGitHubProvider(ProviderConfig{})
 
-	hijackClient := &http.Client{
-		Transport: &MockTransport{
-			ServerURL: server.URL,
+				hijackClient := &http.Client{
+					Transport: &MockTransport{
+						ServerURL: server.URL,
+					},
+				}
+				ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
+
+				token := &oauth2.Token{AccessToken: "mock-token"}
+				_, err = provider.GetUserInfo(ctx, token)
+
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "no verified email found")
+			},
 		},
 	}
-	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
-
-	token := &oauth2.Token{AccessToken: "mock-token"}
-	_, err = provider.GetUserInfo(ctx, token)
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no verified email found")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestGitHubProvider_GetUserInfo_APIError(t *testing.T) {
-	server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	if err != nil {
-		t.Skip("socket listeners not permitted in this environment")
-	}
-	defer server.Close()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "API Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				server, err := newPermissiveGitHubServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusInternalServerError)
+				}))
+				if err != nil {
+					t.Skip("socket listeners not permitted in this environment")
+				}
+				defer server.Close()
 
-	provider := NewGitHubProvider(ProviderConfig{})
+				provider := NewGitHubProvider(ProviderConfig{})
 
-	hijackClient := &http.Client{
-		Transport: &MockTransport{
-			ServerURL: server.URL,
+				hijackClient := &http.Client{
+					Transport: &MockTransport{
+						ServerURL: server.URL,
+					},
+				}
+				ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
+
+				token := &oauth2.Token{AccessToken: "mock-token"}
+				_, err = provider.GetUserInfo(ctx, token)
+
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "status code 500")
+			},
 		},
 	}
-	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, hijackClient)
-
-	token := &oauth2.Token{AccessToken: "mock-token"}
-	_, err = provider.GetUserInfo(ctx, token)
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "status code 500")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func newPermissiveGitHubServer(handler http.Handler) (server *httptest.Server, err error) {
