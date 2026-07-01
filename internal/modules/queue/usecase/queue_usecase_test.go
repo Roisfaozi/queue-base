@@ -1165,6 +1165,15 @@ func TestGetVisitJourneys(t *testing.T) {
 			},
 		},
 		{
+			name:     "Negative_QueueLookupFailureStopsVisitsRead",
+			category: "negative",
+			repo:     &stubQueueRepo{err: exception.ErrNotFound, visits: []*entity.VisitJourney{{ID: "v-1"}}},
+			queueID:  "q-1",
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrNotFound,
+		},
+		{
 			name:     "Vulnerability_CrossTenantRejected",
 			category: "vulnerability",
 			repo:     &stubQueueRepo{err: exception.ErrNotFound},

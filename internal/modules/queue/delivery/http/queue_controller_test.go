@@ -538,15 +538,6 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.getCalled)
 				},
 			},
-			{
-				name:     "Negative_GetVisitJourneysPropagatesNotFound",
-				category: "negative",
-				queueID:  "q-404",
-				setup: func() *stubQueueControllerUseCase {
-					return &stubQueueControllerUseCase{}
-				},
-				wantCode: http.StatusOK,
-			},
 		}
 
 		for _, tt := range tests {
@@ -598,6 +589,16 @@ func TestQueueController(t *testing.T) {
 			},
 			{
 				name:     "Negative_RejectsMissingBranchID",
+				category: "negative",
+				branchID: "",
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.statsCalled)
+				},
+			},
+			{
+				name:     "Negative_RejectsMissingBranchPathParam",
 				category: "negative",
 				branchID: "",
 				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },

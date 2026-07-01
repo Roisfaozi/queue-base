@@ -148,7 +148,16 @@ func (h *QueueController) Forward(c *gin.Context) {
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
-	res, err := h.useCase.ForwardQueue(c.Request.Context(), c.Param("id"), &req)
+
+	// Add branch context here to ensure that tenant ID + branch ID gets passed all the way down
+	ctx := c.Request.Context()
+
+	queue, err := h.useCase.GetQueueByID(ctx, c.Param("id"))
+	if err == nil && queue != nil {
+		ctx = database.SetBranchContext(ctx, queue.BranchID)
+	}
+
+	res, err := h.useCase.ForwardQueue(ctx, c.Param("id"), &req)
 	if err != nil {
 		h.log.WithError(err).Error("failed to forward queue")
 
