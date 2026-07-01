@@ -16,63 +16,97 @@ import (
 )
 
 func TestWebhookController_Create(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := new(mocks.MockWebhookUseCase)
-	controller := webhookHttp.NewWebhookController(uc)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_Create",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				uc := new(mocks.MockWebhookUseCase)
+				controller := webhookHttp.NewWebhookController(uc)
 
-	r := gin.Default()
-	r.Use(func(c *gin.Context) {
-		c.Set("organization_id", "org-1")
-		c.Next()
-	})
-	r.POST("/webhooks", controller.Create)
+				r := gin.Default()
+				r.Use(func(c *gin.Context) {
+					c.Set("organization_id", "org-1")
+					c.Next()
+				})
+				r.POST("/webhooks", controller.Create)
 
-	reqPayload := model.CreateWebhookRequest{
-		Name:           "Test Webhook",
-		OrganizationID: "org-1",
-		URL:            "http://example.com",
-		Events:         []string{"user.created"},
-		Secret:         "secret123",
+				reqPayload := model.CreateWebhookRequest{
+					Name:           "Test Webhook",
+					OrganizationID: "org-1",
+					URL:            "http://example.com",
+					Events:         []string{"user.created"},
+					Secret:         "secret123",
+				}
+
+				uc.On("Create", mock.Anything, reqPayload).Return(&model.WebhookResponse{
+					ID:   "wh-1",
+					Name: "Test Webhook",
+				}, nil)
+
+				body, _ := json.Marshal(reqPayload)
+				req, _ := http.NewRequest("POST", "/webhooks", bytes.NewBuffer(body))
+				w := httptest.NewRecorder()
+				r.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusCreated, w.Code)
+				uc.AssertExpectations(t)
+			},
+		},
 	}
-
-	uc.On("Create", mock.Anything, reqPayload).Return(&model.WebhookResponse{
-		ID:   "wh-1",
-		Name: "Test Webhook",
-	}, nil)
-
-	body, _ := json.Marshal(reqPayload)
-	req, _ := http.NewRequest("POST", "/webhooks", bytes.NewBuffer(body))
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusCreated, w.Code)
-	uc.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookController_FindByID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	uc := new(mocks.MockWebhookUseCase)
-	controller := webhookHttp.NewWebhookController(uc)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_FindByID",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				uc := new(mocks.MockWebhookUseCase)
+				controller := webhookHttp.NewWebhookController(uc)
 
-	r := gin.Default()
-	r.Use(func(c *gin.Context) {
-		c.Set("organization_id", "org-1")
-		c.Next()
-	})
-	r.GET("/webhooks/:id", controller.FindByID)
+				r := gin.Default()
+				r.Use(func(c *gin.Context) {
+					c.Set("organization_id", "org-1")
+					c.Next()
+				})
+				r.GET("/webhooks/:id", controller.FindByID)
 
-	webhookID := "wh-1"
-	orgID := "org-1"
+				webhookID := "wh-1"
+				orgID := "org-1"
 
-	uc.On("FindByID", mock.Anything, webhookID, orgID).Return(&model.WebhookResponse{
-		ID:   webhookID,
-		Name: "Test Webhook",
-	}, nil)
+				uc.On("FindByID", mock.Anything, webhookID, orgID).Return(&model.WebhookResponse{
+					ID:   webhookID,
+					Name: "Test Webhook",
+				}, nil)
 
-	req, _ := http.NewRequest("GET", "/webhooks/"+webhookID, nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+				req, _ := http.NewRequest("GET", "/webhooks/"+webhookID, nil)
+				w := httptest.NewRecorder()
+				r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	uc.AssertExpectations(t)
+				assert.Equal(t, http.StatusOK, w.Code)
+				uc.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
