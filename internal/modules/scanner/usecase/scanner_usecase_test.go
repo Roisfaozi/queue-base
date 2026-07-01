@@ -115,6 +115,25 @@ func TestScannerAuditLogging(t *testing.T) {
 		require.Equal("SCANNER_FORWARD", audit.entries[0].Action)
 		require.Equal("q-1", audit.entries[0].EntityID)
 	})
+
+	t.Run("Register_DoesNotLeakPatientData", func(t *testing.T) {
+		qh := &stubQueueHandler{registerRes: &queueModel.QueueResponse{ID: "q-1"}}
+		audit := &stubAuditLogger{}
+		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionRegister, BranchID: "b-1", ClientID: "c-1", APIKey: "k-1", ServiceID: "svc-1", PatientID: "p-1", PatientName: "Sensitive Patient"})
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.Len(t, audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		assert.True(t, ok)
+		assert.NotContains(t, values, "patient_id")
+		assert.NotContains(t, values, "patient_name")
+	})
+
 	t.Run("RejectsBranchMismatch", func(t *testing.T) {
 		uc := NewScannerUseCase(&stubQueueHandler{}, stubScannerAuthenticator{}, &stubRelationValidator{}, &stubAuditLogger{})
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
@@ -403,6 +422,27 @@ func TestScannerCheckIn(t *testing.T) {
 			wantRes: func(t *testing.T, qh *stubQueueHandler, v *stubRelationValidator, res *CheckInResponse) {
 				assert.Equal(t, ActionRegister, res.Action)
 				assert.True(t, qh.registerCalled)
+			},
+		},
+		{
+			name:     "Edge_CaseInsensitiveForwardAction",
+			category: "edge",
+			req: &CheckInRequest{
+				Action:               "FORWARD",
+				BranchID:             "b-1",
+				ClientID:             "c-1",
+				APIKey:               "k-1",
+				QueueID:              "q-1",
+				DestinationServiceID: "s-2",
+			},
+			queueHandler: &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}},
+			validator:    &stubRelationValidator{},
+			tenantID:     "t-1",
+			branchID:     "b-1",
+			wantRes: func(t *testing.T, qh *stubQueueHandler, v *stubRelationValidator, res *CheckInResponse) {
+				assert.Equal(t, ActionForward, res.Action)
+				assert.True(t, qh.forwardCalled)
+				assert.Equal(t, "s-2", qh.forwardReq.DestinationServiceID)
 			},
 		},
 	}
