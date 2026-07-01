@@ -82,46 +82,70 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 	// 5. Use API Keys
 	server.Client.Token = ""
 
-	t.Run("API key is rejected on session-only endpoint", func(t *testing.T) {
-		meResp := server.Client.GET("/api/v1/users/me", func(r *http.Request) {
-			r.Header.Set("X-API-Key", readOnlyAPIKey)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Failure_ApiKeyRejectedOnSessionOnlyEndpoint",
+			category: "negative",
+			run: func(t *testing.T) {
+				meResp := server.Client.GET("/api/v1/users/me", func(r *http.Request) {
+					r.Header.Set("X-API-Key", readOnlyAPIKey)
+				})
+
+				require.Equal(t, http.StatusForbidden, meResp.StatusCode)
+			},
+		},
+		{
+			name:     "Success_ReadScopedApiKeyCanListProjects",
+			category: "positive",
+			run: func(t *testing.T) {
+				listResp := server.Client.GET("/api/v1/projects", func(r *http.Request) {
+					r.Header.Set("X-API-Key", readOnlyAPIKey)
+					r.Header.Set("X-Organization-ID", "global")
+				})
+
+				require.Equal(t, http.StatusOK, listResp.StatusCode)
+			},
+		},
+		{
+			name:     "Failure_ReadScopedApiKeyCannotCreateProject",
+			category: "negative",
+			run: func(t *testing.T) {
+				createProjectResp := server.Client.POST("/api/v1/projects", map[string]string{
+					"name":   "blocked-project",
+					"domain": "blocked.example.com",
+				}, func(r *http.Request) {
+					r.Header.Set("X-API-Key", readOnlyAPIKey)
+					r.Header.Set("X-Organization-ID", "global")
+				})
+
+				require.Equal(t, http.StatusForbidden, createProjectResp.StatusCode)
+			},
+		},
+		{
+			name:     "Success_ManageScopedApiKeyCanCreateProject",
+			category: "positive",
+			run: func(t *testing.T) {
+				createProjectResp := server.Client.POST("/api/v1/projects", map[string]string{
+					"name":   "managed-project",
+					"domain": "managed.example.com",
+				}, func(r *http.Request) {
+					r.Header.Set("X-API-Key", manageAPIKey)
+					r.Header.Set("X-Organization-ID", "global")
+				})
+
+				require.Equal(t, http.StatusCreated, createProjectResp.StatusCode)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
 		})
-
-		require.Equal(t, http.StatusForbidden, meResp.StatusCode)
-	})
-
-	t.Run("Read-scoped API key can list projects", func(t *testing.T) {
-		listResp := server.Client.GET("/api/v1/projects", func(r *http.Request) {
-			r.Header.Set("X-API-Key", readOnlyAPIKey)
-			r.Header.Set("X-Organization-ID", "global")
-		})
-
-		require.Equal(t, http.StatusOK, listResp.StatusCode)
-	})
-
-	t.Run("Read-scoped API key cannot create project", func(t *testing.T) {
-		createProjectResp := server.Client.POST("/api/v1/projects", map[string]string{
-			"name":   "blocked-project",
-			"domain": "blocked.example.com",
-		}, func(r *http.Request) {
-			r.Header.Set("X-API-Key", readOnlyAPIKey)
-			r.Header.Set("X-Organization-ID", "global")
-		})
-
-		require.Equal(t, http.StatusForbidden, createProjectResp.StatusCode)
-	})
-
-	t.Run("Manage-scoped API key can create project", func(t *testing.T) {
-		createProjectResp := server.Client.POST("/api/v1/projects", map[string]string{
-			"name":   "managed-project",
-			"domain": "managed.example.com",
-		}, func(r *http.Request) {
-			r.Header.Set("X-API-Key", manageAPIKey)
-			r.Header.Set("X-Organization-ID", "global")
-		})
-
-		require.Equal(t, http.StatusCreated, createProjectResp.StatusCode)
-	})
+	}
 
 	// 6. Revoke API Keys (Needs admin token again)
 	server.Client.Token = loginData.Data.AccessToken
