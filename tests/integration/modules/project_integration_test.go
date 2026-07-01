@@ -47,7 +47,6 @@ func TestProjectIntegration_Create_Success(t *testing.T) {
 				}
 
 				result, err := uc.CreateProject(ctx, owner.ID, org.ID, req)
-
 				require.NoError(t, err)
 				assert.NotNil(t, result)
 				assert.NotEmpty(t, result.ID)
@@ -86,7 +85,6 @@ func TestProjectIntegration_CRUD_Lifecycle(t *testing.T) {
 				orgID := org.ID
 				userID := user.ID
 
-				// 1. Create
 				req := model.CreateProjectRequest{
 					Name:   "Lifecycle Project",
 					Domain: "lifecycle.example.com",
@@ -96,13 +94,11 @@ func TestProjectIntegration_CRUD_Lifecycle(t *testing.T) {
 				require.NotNil(t, created)
 				projectID := created.ID
 
-				// 2. Read by ID
 				fetched, err := uc.GetProjectByID(ctx, projectID)
 				require.NoError(t, err)
 				assert.Equal(t, "Lifecycle Project", fetched.Name)
 				assert.Equal(t, "lifecycle.example.com", fetched.Domain)
 
-				// 3. Update
 				name := "Updated Lifecycle"
 				domain := "updated.example.com"
 				status := "inactive"
@@ -117,11 +113,9 @@ func TestProjectIntegration_CRUD_Lifecycle(t *testing.T) {
 				assert.Equal(t, "updated.example.com", updated.Domain)
 				assert.Equal(t, "inactive", updated.Status)
 
-				// 4. Delete
 				err = uc.DeleteProject(ctx, projectID)
 				require.NoError(t, err)
 
-				// 5. Verify deleted (soft delete - GetByID should fail)
 				_, err = uc.GetProjectByID(ctx, projectID)
 				assert.Error(t, err, "Should not find deleted project")
 			},
@@ -154,24 +148,18 @@ func TestProjectIntegration_GetByOrgID(t *testing.T) {
 				orgA := setup.CreateTestOrganization(t, env.DB, userA.ID, "Project Org A", "project-org-a-"+uuid.NewString()[:8]).ID
 				orgB := setup.CreateTestOrganization(t, env.DB, userB.ID, "Project Org B", "project-org-b-"+uuid.NewString()[:8]).ID
 
-				// Create 2 projects in Org A
 				uc.CreateProject(ctx, "user-1", orgA, model.CreateProjectRequest{Name: "Org A Proj 1", Domain: "a1.com"})
 				uc.CreateProject(ctx, "user-1", orgA, model.CreateProjectRequest{Name: "Org A Proj 2", Domain: "a2.com"})
-
-				// Create 1 project in Org B
 				uc.CreateProject(ctx, "user-2", orgB, model.CreateProjectRequest{Name: "Org B Proj 1", Domain: "b1.com"})
 
-				// Fetch Org A projects
 				projectsA, err := uc.GetProjects(ctx, orgA)
 				require.NoError(t, err)
 				assert.Len(t, projectsA, 2)
 
-				// Fetch Org B projects
 				projectsB, err := uc.GetProjects(ctx, orgB)
 				require.NoError(t, err)
 				assert.Len(t, projectsB, 1)
 
-				// Fetch nonexistent org
 				projectsNone, err := uc.GetProjects(ctx, "org-nonexistent")
 				require.NoError(t, err)
 				assert.Len(t, projectsNone, 0)
@@ -203,14 +191,12 @@ func TestProjectIntegration_PartialUpdate(t *testing.T) {
 				user := setup.CreateTestUser(t, env.DB, "project_partial", "project_partial@test.com", "Password123!")
 				org := setup.CreateTestOrganization(t, env.DB, user.ID, "Project Partial Org", "project-partial-org-"+uuid.NewString()[:8])
 
-				// Create
 				created, err := uc.CreateProject(ctx, user.ID, org.ID, model.CreateProjectRequest{
 					Name:   "Partial Update Project",
 					Domain: "partial.example.com",
 				})
 				require.NoError(t, err)
 
-				// Partial update - only name
 				nameStr := "Updated Name Only"
 				updated, err := uc.UpdateProject(ctx, created.ID, model.UpdateProjectRequest{
 					Name: &nameStr,
@@ -247,17 +233,14 @@ func TestProjectIntegration_Security_SQLInjection(t *testing.T) {
 				user := setup.CreateTestUser(t, env.DB, "project_sqli", "project_sqli@test.com", "Password123!")
 				org := setup.CreateTestOrganization(t, env.DB, user.ID, "Project SQLi Org", "project-sqli-org-"+uuid.NewString()[:8])
 
-				// Attempt SQL injection via project name
 				result, err := uc.CreateProject(ctx, user.ID, org.ID, model.CreateProjectRequest{
 					Name:   "'; DROP TABLE projects; --",
 					Domain: "sqli.example.com",
 				})
 
-				// Should succeed (GORM parameterizes queries)
 				require.NoError(t, err)
 				assert.NotNil(t, result)
 
-				// Verify the projects table still exists
 				var count int64
 				env.DB.Model(&projectEntity.Project{}).Count(&count)
 				assert.GreaterOrEqual(t, count, int64(1), "Projects table should still exist")
@@ -292,7 +275,6 @@ func TestProjectIntegration_OrganizationScopeIsolation(t *testing.T) {
 				orgA := setup.CreateTestOrganization(t, env.DB, userA.ID, "Project Repo Iso A", "project-repo-iso-a-"+uuid.NewString()[:8]).ID
 				orgB := setup.CreateTestOrganization(t, env.DB, userB.ID, "Project Repo Iso B", "project-repo-iso-b-"+uuid.NewString()[:8]).ID
 
-				// Create project in Org A directly via repo
 				projA := &projectEntity.Project{
 					OrganizationID: orgA,
 					UserID:         "user-a",
@@ -303,7 +285,6 @@ func TestProjectIntegration_OrganizationScopeIsolation(t *testing.T) {
 				err := repo.Create(ctx, projA)
 				require.NoError(t, err)
 
-				// Try to get the project using Org B's context scope
 				ctxOrgB := database.SetOrganizationContext(ctx, orgB)
 				_, err = repo.GetByID(ctxOrgB, projA.ID)
 				assert.Error(t, err, "Org B should not be able to access Org A's project")
@@ -339,7 +320,6 @@ func TestProjectIsolation_UseCase(t *testing.T) {
 				orgA := setup.CreateTestOrganization(t, env.DB, userA.ID, "Project UseCase Iso A", "project-uc-iso-a-"+uuid.NewString()[:8]).ID
 				orgB := setup.CreateTestOrganization(t, env.DB, userB.ID, "Project UseCase Iso B", "project-uc-iso-b-"+uuid.NewString()[:8]).ID
 
-				// 1. Create project in Org A context
 				ctxOrgA := database.SetOrganizationContext(ctx, orgA)
 				created, err := uc.CreateProject(ctxOrgA, userA.ID, orgA, model.CreateProjectRequest{
 					Name:   "Org A Private Project",
@@ -362,7 +342,6 @@ func TestProjectIsolation_UseCase(t *testing.T) {
 					})
 					assert.Error(t, err, "Should not be able to update project from another organization")
 
-					// Verify name was not changed
 					refetched, _ := uc.GetProjectByID(ctxOrgA, created.ID)
 					assert.Equal(t, "Org A Private Project", refetched.Name)
 				})
@@ -370,12 +349,8 @@ func TestProjectIsolation_UseCase(t *testing.T) {
 				t.Run("Cross-tenant DELETE should fail", func(t *testing.T) {
 					ctxOrgB := database.SetOrganizationContext(ctx, orgB)
 					err := uc.DeleteProject(ctxOrgB, created.ID)
-					// Note: Delete in GORM might not return error if 0 rows affected unless checked,
-					// but since we use Scopes, it will just do 'DELETE ... WHERE id = X AND org_id = B'
-					// which affects 0 rows.
-					assert.NoError(t, err) // It doesn't error, but it shouldn't delete the record
+					assert.NoError(t, err)
 
-					// Verify project still exists in Org A
 					refetched, err := uc.GetProjectByID(ctxOrgA, created.ID)
 					assert.NoError(t, err)
 					assert.NotNil(t, refetched)

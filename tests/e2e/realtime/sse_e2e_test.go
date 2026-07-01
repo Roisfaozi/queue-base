@@ -47,67 +47,85 @@ func TestSSE_EventSubscription(t *testing.T) {
 	resp.JSON(&loginRes)
 	userToken := loginRes.Data.AccessToken
 
-	t.Run("Success - Connect to SSE endpoint", func(t *testing.T) {
-		// Create SSE request
-		req, err := http.NewRequest("GET", server.BaseURL+"/api/v1/events", nil)
-		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer "+userToken)
-		req.Header.Set("Accept", "text/event-stream")
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_ConnectToSSEEndpoint",
+			category: "positive",
+			run: func(t *testing.T) {
+				// Create SSE request
+				req, err := http.NewRequest("GET", server.BaseURL+"/api/v1/events", nil)
+				require.NoError(t, err)
+				req.Header.Set("Authorization", "Bearer "+userToken)
+				req.Header.Set("Accept", "text/event-stream")
 
-		// Use raw http.Client with timeout
-		client := &http.Client{Timeout: 5 * time.Second}
-		sseResp, err := client.Do(req)
+				// Use raw http.Client with timeout
+				client := &http.Client{Timeout: 5 * time.Second}
+				sseResp, err := client.Do(req)
 
-		// SSE endpoint may not be implemented yet, so we check for reasonable responses
-		if err != nil {
-			t.Logf("SSE connection error (may be expected if not implemented): %v", err)
-			t.Skip("SSE endpoint not available")
-			return
-		}
-		defer sseResp.Body.Close()
-
-		// Check content type for SSE
-		contentType := sseResp.Header.Get("Content-Type")
-		if strings.Contains(contentType, "text/event-stream") {
-			assert.Equal(t, 200, sseResp.StatusCode)
-			t.Log("SSE connection established successfully")
-
-			// Try to read first event with timeout
-			scanner := bufio.NewScanner(sseResp.Body)
-			done := make(chan bool)
-			go func() {
-				if scanner.Scan() {
-					line := scanner.Text()
-					t.Logf("Received SSE line: %s", line)
+				// SSE endpoint may not be implemented yet, so we check for reasonable responses
+				if err != nil {
+					t.Logf("SSE connection error (may be expected if not implemented): %v", err)
+					t.Skip("SSE endpoint not available")
+					return
 				}
-				done <- true
-			}()
+				defer sseResp.Body.Close()
 
-			select {
-			case <-done:
-				// Event received
-			case <-time.After(2 * time.Second):
-				t.Log("No events received within timeout (expected for test)")
-			}
-		} else {
-			t.Logf("SSE endpoint returned non-SSE content type: %s", contentType)
-		}
-	})
+				// Check content type for SSE
+				contentType := sseResp.Header.Get("Content-Type")
+				if strings.Contains(contentType, "text/event-stream") {
+					assert.Equal(t, 200, sseResp.StatusCode)
+					t.Log("SSE connection established successfully")
 
-	t.Run("Negative - Unauthorized SSE", func(t *testing.T) {
-		req, err := http.NewRequest("GET", server.BaseURL+"/api/v1/events", nil)
-		require.NoError(t, err)
-		// No auth header
+					// Try to read first event with timeout
+					scanner := bufio.NewScanner(sseResp.Body)
+					done := make(chan bool)
+					go func() {
+						if scanner.Scan() {
+							line := scanner.Text()
+							t.Logf("Received SSE line: %s", line)
+						}
+						done <- true
+					}()
 
-		client := &http.Client{Timeout: 5 * time.Second}
-		sseResp, err := client.Do(req)
-		if err != nil {
-			t.Skip("SSE endpoint not available")
-			return
-		}
-		defer sseResp.Body.Close()
+					select {
+					case <-done:
+						// Event received
+					case <-time.After(2 * time.Second):
+						t.Log("No events received within timeout (expected for test)")
+					}
+				} else {
+					t.Logf("SSE endpoint returned non-SSE content type: %s", contentType)
+				}
+			},
+		},
+		{
+			name:     "Failure_UnauthorizedSSE",
+			category: "negative",
+			run: func(t *testing.T) {
+				req, err := http.NewRequest("GET", server.BaseURL+"/api/v1/events", nil)
+				require.NoError(t, err)
+				// No auth header
 
-		// Should be unauthorized
-		assert.Equal(t, 401, sseResp.StatusCode)
-	})
+				client := &http.Client{Timeout: 5 * time.Second}
+				sseResp, err := client.Do(req)
+				if err != nil {
+					t.Skip("SSE endpoint not available")
+					return
+				}
+				defer sseResp.Body.Close()
+
+				// Should be unauthorized
+				assert.Equal(t, 401, sseResp.StatusCode)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

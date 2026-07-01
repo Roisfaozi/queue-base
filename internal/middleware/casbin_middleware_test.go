@@ -23,198 +23,334 @@ func (m *MockCasbinEnforcer) Enforce(rvals ...interface{}) (bool, error) {
 }
 
 func TestCasbinMiddleware_Authorized(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Authorized",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
+				c.Request = req
 
-	// Set user info in context (user_id is the key AuthMiddleware sets)
-	// For testing, we simulate that the user_id (UUID) maps to "role:admin" in Casbin via grouping policy
-	// But Enforce takes the SUBJECT, which is what we pass from middleware.
-	// Our middleware passes `user_id`.
-	userID := "user-uuid-123"
-	c.Set("user_id", userID)
+				// Set user info in context (user_id is the key AuthMiddleware sets)
+				// For testing, we simulate that the user_id (UUID) maps to "role:admin" in Casbin via grouping policy
+				// But Enforce takes the SUBJECT, which is what we pass from middleware.
+				// Our middleware passes `user_id`.
+				userID := "user-uuid-123"
+				c.Set("user_id", userID)
 
-	mockEnforcer := new(MockCasbinEnforcer)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockEnforcer := new(MockCasbinEnforcer)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockEnforcer.On("Enforce", userID, "global", "/api/v1/users", "GET").Return(true, nil)
+				mockEnforcer.On("Enforce", userID, "global", "/api/v1/users", "GET").Return(true, nil)
 
-	casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
+				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 
-	casbinMiddleware(c)
+				casbinMiddleware(c)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockEnforcer.AssertExpectations(t)
+				assert.Equal(t, http.StatusOK, w.Code)
+				mockEnforcer.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinMiddleware_Unauthorized(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/users", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Unauthorized",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodPost, "/api/v1/users", nil)
+				c.Request = req
 
-	userID := "user-uuid-456"
-	c.Set("user_id", userID)
+				userID := "user-uuid-456"
+				c.Set("user_id", userID)
 
-	mockEnforcer := new(MockCasbinEnforcer)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockEnforcer := new(MockCasbinEnforcer)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockEnforcer.On("Enforce", userID, "global", "/api/v1/users", "POST").Return(false, nil)
+				mockEnforcer.On("Enforce", userID, "global", "/api/v1/users", "POST").Return(false, nil)
 
-	casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
+				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 
-	casbinMiddleware(c)
+				casbinMiddleware(c)
 
-	assert.Equal(t, http.StatusForbidden, w.Code)
-	assert.Contains(t, w.Body.String(), "forbidden")
-	mockEnforcer.AssertExpectations(t)
+				assert.Equal(t, http.StatusForbidden, w.Code)
+				assert.Contains(t, w.Body.String(), "forbidden")
+				mockEnforcer.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinMiddleware_EnforcerError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "EnforcerError",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
+				c.Request = req
 
-	userID := "user-uuid-789"
-	c.Set("user_id", userID)
+				userID := "user-uuid-789"
+				c.Set("user_id", userID)
 
-	mockEnforcer := new(MockCasbinEnforcer)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockEnforcer := new(MockCasbinEnforcer)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockEnforcer.On("Enforce", userID, "global", "/api/v1/users", "GET").Return(false, errors.New("casbin error"))
+				mockEnforcer.On("Enforce", userID, "global", "/api/v1/users", "GET").Return(false, errors.New("casbin error"))
 
-	casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
+				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 
-	casbinMiddleware(c)
+				casbinMiddleware(c)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "internal server error")
-	mockEnforcer.AssertExpectations(t)
+				assert.Equal(t, http.StatusInternalServerError, w.Code)
+				assert.Contains(t, w.Body.String(), "internal server error")
+				mockEnforcer.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinMiddleware_NoRoleInContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "NoRoleInContext",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
+				c.Request = req
 
-	// No role or user-id set
+				// No role or user-id set
 
-	mockEnforcer := new(MockCasbinEnforcer)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockEnforcer := new(MockCasbinEnforcer)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
+				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 
-	casbinMiddleware(c)
+				casbinMiddleware(c)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "unauthorized")
-	mockEnforcer.AssertNotCalled(t, "Enforce")
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				assert.Contains(t, w.Body.String(), "unauthorized")
+				mockEnforcer.AssertNotCalled(t, "Enforce")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinMiddleware_ReleaseModeNilEnforcer(t *testing.T) {
-	oldMode := gin.Mode()
-	gin.SetMode(gin.ReleaseMode)
-	defer gin.SetMode(oldMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "ReleaseModeNilEnforcer",
+			category: "edge",
+			run: func(t *testing.T) {
+				oldMode := gin.Mode()
+				gin.SetMode(gin.ReleaseMode)
+				defer gin.SetMode(oldMode)
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
-	c.Request = req
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/users", nil)
+				c.Request = req
 
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	// Pass nil enforcer in release mode - should panic
-	assert.Panics(t, func() {
-		casbinMiddleware := middleware.CasbinMiddleware(nil, logger)
-		casbinMiddleware(c)
-	})
+				// Pass nil enforcer in release mode - should panic
+				assert.Panics(t, func() {
+					casbinMiddleware := middleware.CasbinMiddleware(nil, logger)
+					casbinMiddleware(c)
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinMiddleware_WithOrganizationContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/org/data", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "WithOrganizationContext",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/org/data", nil)
+				c.Request = req
 
-	userID := "user-uuid-123"
-	orgID := "org-uuid-456"
-	c.Set("user_id", userID)
-	c.Set("organization_id", orgID)
+				userID := "user-uuid-123"
+				orgID := "org-uuid-456"
+				c.Set("user_id", userID)
+				c.Set("organization_id", orgID)
 
-	mockEnforcer := new(MockCasbinEnforcer)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockEnforcer := new(MockCasbinEnforcer)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockEnforcer.On("Enforce", userID, orgID, "/api/v1/org/data", "GET").Return(true, nil)
+				mockEnforcer.On("Enforce", userID, orgID, "/api/v1/org/data", "GET").Return(true, nil)
 
-	casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
+				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 
-	casbinMiddleware(c)
+				casbinMiddleware(c)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockEnforcer.AssertExpectations(t)
+				assert.Equal(t, http.StatusOK, w.Code)
+				mockEnforcer.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinMiddleware_StripsTrailingSlashBeforeEnforce(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/projects/", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "StripsTrailingSlashBeforeEnforce",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/projects/", nil)
+				c.Request = req
 
-	userID := "user-uuid-123"
-	c.Set("user_id", userID)
+				userID := "user-uuid-123"
+				c.Set("user_id", userID)
 
-	mockEnforcer := new(MockCasbinEnforcer)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockEnforcer := new(MockCasbinEnforcer)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockEnforcer.On("Enforce", userID, "global", "/api/v1/projects", "GET").Return(true, nil)
+				mockEnforcer.On("Enforce", userID, "global", "/api/v1/projects", "GET").Return(true, nil)
 
-	casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
+				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 
-	casbinMiddleware(c)
+				casbinMiddleware(c)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockEnforcer.AssertExpectations(t)
+				assert.Equal(t, http.StatusOK, w.Code)
+				mockEnforcer.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestCasbinMiddleware_WithInvalidOrganizationContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/org/data", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "WithInvalidOrganizationContext",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/org/data", nil)
+				c.Request = req
 
-	userID := "user-uuid-123"
-	// Set invalid type for organization_id
-	c.Set("user_id", userID)
-	c.Set("organization_id", 456)
+				userID := "user-uuid-123"
+				// Set invalid type for organization_id
+				c.Set("user_id", userID)
+				c.Set("organization_id", 456)
 
-	mockEnforcer := new(MockCasbinEnforcer)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockEnforcer := new(MockCasbinEnforcer)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	// Should fallback to "global" domain
-	mockEnforcer.On("Enforce", userID, "global", "/api/v1/org/data", "GET").Return(true, nil)
+				// Should fallback to "global" domain
+				mockEnforcer.On("Enforce", userID, "global", "/api/v1/org/data", "GET").Return(true, nil)
 
-	casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
+				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 
-	casbinMiddleware(c)
+				casbinMiddleware(c)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockEnforcer.AssertExpectations(t)
+				assert.Equal(t, http.StatusOK, w.Code)
+				mockEnforcer.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

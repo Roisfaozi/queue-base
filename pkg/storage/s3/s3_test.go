@@ -48,128 +48,197 @@ func (m *MockS3Presigner) PresignGetObject(ctx context.Context, params *awsS3.Ge
 }
 
 func TestUploadFile(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		mockClient := new(MockS3Client)
-		mockPresigner := new(MockS3Presigner)
-		storage := &s3.S3Storage{
-			Client:    mockClient,
-			Presigner: mockPresigner,
-			Bucket:    "test-bucket",
-		}
-		filename := "test.txt"
-		content := "content"
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				mockClient := new(MockS3Client)
+				mockPresigner := new(MockS3Presigner)
+				storage := &s3.S3Storage{
+					Client:    mockClient,
+					Presigner: mockPresigner,
+					Bucket:    "test-bucket",
+				}
+				filename := "test.txt"
+				content := "content"
 
-		mockClient.On("PutObject", mock.Anything, mock.MatchedBy(func(input *awsS3.PutObjectInput) bool {
-			return *input.Bucket == "test-bucket" && *input.Key == filename
-		}), mock.Anything).Return(&awsS3.PutObjectOutput{}, nil)
+				mockClient.On("PutObject", mock.Anything, mock.MatchedBy(func(input *awsS3.PutObjectInput) bool {
+					return *input.Bucket == "test-bucket" && *input.Key == filename
+				}), mock.Anything).Return(&awsS3.PutObjectOutput{}, nil)
 
-		mockPresigner.On("PresignGetObject", mock.Anything, mock.MatchedBy(func(input *awsS3.GetObjectInput) bool {
-			return *input.Bucket == "test-bucket" && *input.Key == filename
-		}), mock.Anything).Return(&v4.PresignedHTTPRequest{URL: "http://presigned.url/test.txt"}, nil)
+				mockPresigner.On("PresignGetObject", mock.Anything, mock.MatchedBy(func(input *awsS3.GetObjectInput) bool {
+					return *input.Bucket == "test-bucket" && *input.Key == filename
+				}), mock.Anything).Return(&v4.PresignedHTTPRequest{URL: "http://presigned.url/test.txt"}, nil)
 
-		url, err := storage.UploadFile(context.Background(), strings.NewReader(content), filename, "text/plain")
+				url, err := storage.UploadFile(context.Background(), strings.NewReader(content), filename, "text/plain")
 
-		assert.NoError(t, err)
-		assert.Equal(t, "http://presigned.url/test.txt", url)
-		mockClient.AssertExpectations(t)
-		mockPresigner.AssertExpectations(t)
-	})
+				assert.NoError(t, err)
+				assert.Equal(t, "http://presigned.url/test.txt", url)
+				mockClient.AssertExpectations(t)
+				mockPresigner.AssertExpectations(t)
+			},
+		},
+		{
+			name:     "Upload Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				mockClient := new(MockS3Client)
+				storage := &s3.S3Storage{
+					Client: mockClient,
+					Bucket: "test-bucket",
+				}
+				filename := "fail.txt"
 
-	t.Run("Upload Error", func(t *testing.T) {
-		mockClient := new(MockS3Client)
-		storage := &s3.S3Storage{
-			Client: mockClient,
-			Bucket: "test-bucket",
-		}
-		filename := "fail.txt"
+				mockClient.On("PutObject", mock.Anything, mock.MatchedBy(func(input *awsS3.PutObjectInput) bool {
+					return *input.Key == filename
+				}), mock.Anything).Return(nil, errors.New("upload failed"))
 
-		mockClient.On("PutObject", mock.Anything, mock.MatchedBy(func(input *awsS3.PutObjectInput) bool {
-			return *input.Key == filename
-		}), mock.Anything).Return(nil, errors.New("upload failed"))
+				_, err := storage.UploadFile(context.Background(), strings.NewReader(""), filename, "text/plain")
 
-		_, err := storage.UploadFile(context.Background(), strings.NewReader(""), filename, "text/plain")
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to upload file to s3")
-	})
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "failed to upload file to s3")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestDeleteFile(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		mockClient := new(MockS3Client)
-		storage := &s3.S3Storage{
-			Client: mockClient,
-			Bucket: "test-bucket",
-		}
-		mockClient.On("DeleteObject", mock.Anything, mock.MatchedBy(func(input *awsS3.DeleteObjectInput) bool {
-			return *input.Bucket == "test-bucket" && *input.Key == "del.txt"
-		}), mock.Anything).Return(&awsS3.DeleteObjectOutput{}, nil)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				mockClient := new(MockS3Client)
+				storage := &s3.S3Storage{
+					Client: mockClient,
+					Bucket: "test-bucket",
+				}
+				mockClient.On("DeleteObject", mock.Anything, mock.MatchedBy(func(input *awsS3.DeleteObjectInput) bool {
+					return *input.Bucket == "test-bucket" && *input.Key == "del.txt"
+				}), mock.Anything).Return(&awsS3.DeleteObjectOutput{}, nil)
 
-		err := storage.DeleteFile(context.Background(), "del.txt")
-		assert.NoError(t, err)
-		mockClient.AssertExpectations(t)
-	})
+				err := storage.DeleteFile(context.Background(), "del.txt")
+				assert.NoError(t, err)
+				mockClient.AssertExpectations(t)
+			},
+		},
+		{
+			name:     "Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				mockClient := new(MockS3Client)
+				storage := &s3.S3Storage{
+					Client: mockClient,
+					Bucket: "test-bucket",
+				}
+				mockClient.On("DeleteObject", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("delete failed"))
 
-	t.Run("Error", func(t *testing.T) {
-		mockClient := new(MockS3Client)
-		storage := &s3.S3Storage{
-			Client: mockClient,
-			Bucket: "test-bucket",
-		}
-		mockClient.On("DeleteObject", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("delete failed"))
-
-		err := storage.DeleteFile(context.Background(), "del.txt")
-		assert.Error(t, err)
-	})
+				err := storage.DeleteFile(context.Background(), "del.txt")
+				assert.Error(t, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestNewS3Storage(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		cfg := s3.S3Config{
-			Endpoint:       "http://localhost:9000",
-			Region:         "us-east-1",
-			Bucket:         "test-bucket",
-			AccessKey:      "minioadmin",
-			SecretKey:      "minioadmin",
-			UseSSL:         false,
-			ForcePathStyle: true,
-		}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				cfg := s3.S3Config{
+					Endpoint:       "http://localhost:9000",
+					Region:         "us-east-1",
+					Bucket:         "test-bucket",
+					AccessKey:      "minioadmin",
+					SecretKey:      "minioadmin",
+					UseSSL:         false,
+					ForcePathStyle: true,
+				}
 
-		storage, err := s3.NewS3Storage(cfg)
-		assert.NoError(t, err)
-		assert.NotNil(t, storage)
-		assert.Equal(t, "test-bucket", storage.Bucket)
-		assert.Equal(t, "http://localhost:9000", storage.Endpoint)
-		assert.NotNil(t, storage.Client)
-		assert.NotNil(t, storage.Presigner)
-	})
+				storage, err := s3.NewS3Storage(cfg)
+				assert.NoError(t, err)
+				assert.NotNil(t, storage)
+				assert.Equal(t, "test-bucket", storage.Bucket)
+				assert.Equal(t, "http://localhost:9000", storage.Endpoint)
+				assert.NotNil(t, storage.Client)
+				assert.NotNil(t, storage.Presigner)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestGetFileUrl(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		mockPresigner := new(MockS3Presigner)
-		storage := &s3.S3Storage{
-			Presigner: mockPresigner,
-			Bucket:    "test-bucket",
-		}
-		mockPresigner.On("PresignGetObject", mock.Anything, mock.MatchedBy(func(input *awsS3.GetObjectInput) bool {
-			return *input.Bucket == "test-bucket" && *input.Key == "test.png"
-		}), mock.Anything).Return(&v4.PresignedHTTPRequest{URL: "http://url.com/test.png"}, nil)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				mockPresigner := new(MockS3Presigner)
+				storage := &s3.S3Storage{
+					Presigner: mockPresigner,
+					Bucket:    "test-bucket",
+				}
+				mockPresigner.On("PresignGetObject", mock.Anything, mock.MatchedBy(func(input *awsS3.GetObjectInput) bool {
+					return *input.Bucket == "test-bucket" && *input.Key == "test.png"
+				}), mock.Anything).Return(&v4.PresignedHTTPRequest{URL: "http://url.com/test.png"}, nil)
 
-		url, err := storage.GetFileUrl(context.Background(), "test.png")
-		assert.NoError(t, err)
-		assert.Equal(t, "http://url.com/test.png", url)
-	})
+				url, err := storage.GetFileUrl(context.Background(), "test.png")
+				assert.NoError(t, err)
+				assert.Equal(t, "http://url.com/test.png", url)
+			},
+		},
+		{
+			name:     "Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				mockPresigner := new(MockS3Presigner)
+				storage := &s3.S3Storage{
+					Presigner: mockPresigner,
+					Bucket:    "test-bucket",
+				}
+				mockPresigner.On("PresignGetObject", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("presign failed"))
 
-	t.Run("Error", func(t *testing.T) {
-		mockPresigner := new(MockS3Presigner)
-		storage := &s3.S3Storage{
-			Presigner: mockPresigner,
-			Bucket:    "test-bucket",
-		}
-		mockPresigner.On("PresignGetObject", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("presign failed"))
-
-		_, err := storage.GetFileUrl(context.Background(), "test.png")
-		assert.Error(t, err)
-	})
+				_, err := storage.GetFileUrl(context.Background(), "test.png")
+				assert.Error(t, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

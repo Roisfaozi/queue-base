@@ -62,151 +62,338 @@ func setupStatsTest(t *testing.T) (*gorm.DB, usecase.StatsUseCase) {
 }
 
 func TestStatsUseCase_GetDashboardSummary_Success(t *testing.T) {
-	db, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_WithSeededData",
+			category: "positive",
+			run: func(t *testing.T) {
+				db, uc := setupStatsTest(t)
 
-	// Seed test data
-	db.Create(&testUser{ID: "u1", Name: "Alice"})
-	db.Create(&testUser{ID: "u2", Name: "Bob"})
-	db.Create(&testRole{ID: "r1", Name: "admin"})
-	db.Create(&testAuditLog{ID: "a1", Action: "LOGIN", CreatedAt: 1000})
-	db.Create(&testAuditLog{ID: "a2", Action: "LOGOUT", CreatedAt: 2000})
-	db.Create(&testAuditLog{ID: "a3", Action: "LOGIN", CreatedAt: 3000})
-	db.Create(&testOrgMember{ID: "m1"})
-	db.Create(&testOrgMember{ID: "m2"})
+				// Seed test data
+				db.Create(&testUser{ID: "u1", Name: "Alice"})
+				db.Create(&testUser{ID: "u2", Name: "Bob"})
+				db.Create(&testRole{ID: "r1", Name: "admin"})
+				db.Create(&testAuditLog{ID: "a1", Action: "LOGIN", CreatedAt: 1000})
+				db.Create(&testAuditLog{ID: "a2", Action: "LOGOUT", CreatedAt: 2000})
+				db.Create(&testAuditLog{ID: "a3", Action: "LOGIN", CreatedAt: 3000})
+				db.Create(&testOrgMember{ID: "m1"})
+				db.Create(&testOrgMember{ID: "m2"})
 
-	summary, err := uc.GetDashboardSummary(context.Background())
+				summary, err := uc.GetDashboardSummary(context.Background())
 
-	assert.NoError(t, err)
-	assert.NotNil(t, summary)
-	assert.Equal(t, int64(2), summary.TotalUsers)
-	assert.Equal(t, int64(1), summary.TotalRoles)
-	assert.Equal(t, int64(3), summary.TotalAuditLogs)
-	assert.Equal(t, int64(2), summary.TotalOrgMembers)
+				assert.NoError(t, err)
+				assert.NotNil(t, summary)
+				assert.Equal(t, int64(2), summary.TotalUsers)
+				assert.Equal(t, int64(1), summary.TotalRoles)
+				assert.Equal(t, int64(3), summary.TotalAuditLogs)
+				assert.Equal(t, int64(2), summary.TotalOrgMembers)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetDashboardSummary_EmptyDB(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Edge_EmptyDB",
+			category: "edge",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	summary, err := uc.GetDashboardSummary(context.Background())
+				summary, err := uc.GetDashboardSummary(context.Background())
 
-	assert.NoError(t, err)
-	assert.NotNil(t, summary)
-	assert.Equal(t, int64(0), summary.TotalUsers)
-	assert.Equal(t, int64(0), summary.TotalRoles)
-	assert.Equal(t, int64(0), summary.TotalAuditLogs)
-	assert.Equal(t, int64(0), summary.TotalOrgMembers)
+				assert.NoError(t, err)
+				assert.NotNil(t, summary)
+				assert.Equal(t, int64(0), summary.TotalUsers)
+				assert.Equal(t, int64(0), summary.TotalRoles)
+				assert.Equal(t, int64(0), summary.TotalAuditLogs)
+				assert.Equal(t, int64(0), summary.TotalOrgMembers)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetDashboardSummary_WithOrgScope(t *testing.T) {
-	db, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Edge_WithOrgScope",
+			category: "edge",
+			run: func(t *testing.T) {
+				db, uc := setupStatsTest(t)
 
-	// Seed data (without org scoping column, scope is a no-op on base context)
-	db.Create(&testUser{ID: "u1", Name: "Alice"})
+				// Seed data (without org scoping column, scope is a no-op on base context)
+				db.Create(&testUser{ID: "u1", Name: "Alice"})
 
-	ctx := database.SetOrganizationContext(context.Background(), "org-1")
-	summary, err := uc.GetDashboardSummary(ctx)
+				ctx := database.SetOrganizationContext(context.Background(), "org-1")
+				summary, err := uc.GetDashboardSummary(ctx)
 
-	// Should not error - scope is applied gracefully
-	assert.NoError(t, err)
-	assert.NotNil(t, summary)
+				// Should not error - scope is applied gracefully
+				assert.NoError(t, err)
+				assert.NotNil(t, summary)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetDashboardActivity_DefaultDays(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Edge_DefaultDays",
+			category: "edge",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	// days = 0 should default to 7
-	activity, err := uc.GetDashboardActivity(context.Background(), 0)
+				// days = 0 should default to 7
+				activity, err := uc.GetDashboardActivity(context.Background(), 0)
 
-	assert.NoError(t, err)
-	assert.NotNil(t, activity)
-	assert.Len(t, activity.Points, 7)
+				assert.NoError(t, err)
+				assert.NotNil(t, activity)
+				assert.Len(t, activity.Points, 7)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetDashboardActivity_NegativeDays(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Edge_NegativeDays",
+			category: "edge",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	// Negative days should default to 7
-	activity, err := uc.GetDashboardActivity(context.Background(), -5)
+				// Negative days should default to 7
+				activity, err := uc.GetDashboardActivity(context.Background(), -5)
 
-	assert.NoError(t, err)
-	assert.NotNil(t, activity)
-	assert.Len(t, activity.Points, 7)
+				assert.NoError(t, err)
+				assert.NotNil(t, activity)
+				assert.Len(t, activity.Points, 7)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetDashboardActivity_CustomDays(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_CustomDays",
+			category: "positive",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	activity, err := uc.GetDashboardActivity(context.Background(), 14)
+				activity, err := uc.GetDashboardActivity(context.Background(), 14)
 
-	assert.NoError(t, err)
-	assert.NotNil(t, activity)
-	assert.Len(t, activity.Points, 14)
+				assert.NoError(t, err)
+				assert.NotNil(t, activity)
+				assert.Len(t, activity.Points, 14)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetDashboardActivity_SingleDay(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Edge_SingleDay",
+			category: "edge",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	activity, err := uc.GetDashboardActivity(context.Background(), 1)
+				activity, err := uc.GetDashboardActivity(context.Background(), 1)
 
-	assert.NoError(t, err)
-	assert.NotNil(t, activity)
-	assert.Len(t, activity.Points, 1)
-	assert.NotEmpty(t, activity.Points[0].Date)
+				assert.NoError(t, err)
+				assert.NotNil(t, activity)
+				assert.Len(t, activity.Points, 1)
+				assert.NotEmpty(t, activity.Points[0].Date)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetDashboardActivity_PointsHaveDates(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_PointsHaveDates",
+			category: "positive",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	activity, err := uc.GetDashboardActivity(context.Background(), 3)
+				activity, err := uc.GetDashboardActivity(context.Background(), 3)
 
-	assert.NoError(t, err)
-	require.Len(t, activity.Points, 3)
+				assert.NoError(t, err)
+				require.Len(t, activity.Points, 3)
 
-	// All points should have non-empty dates
-	for _, point := range activity.Points {
-		assert.NotEmpty(t, point.Date)
-		assert.GreaterOrEqual(t, point.Audits, int64(0))
-		assert.GreaterOrEqual(t, point.Logins, int64(0))
+				// All points should have non-empty dates
+				for _, point := range activity.Points {
+					assert.NotEmpty(t, point.Date)
+					assert.GreaterOrEqual(t, point.Audits, int64(0))
+					assert.GreaterOrEqual(t, point.Logins, int64(0))
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
 	}
 }
 
 func TestStatsUseCase_GetDashboardActivity_PointsAreChronological(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_PointsAreChronological",
+			category: "positive",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	activity, err := uc.GetDashboardActivity(context.Background(), 5)
+				activity, err := uc.GetDashboardActivity(context.Background(), 5)
 
-	assert.NoError(t, err)
-	require.Len(t, activity.Points, 5)
+				assert.NoError(t, err)
+				require.Len(t, activity.Points, 5)
 
-	// Points should be in chronological order (oldest first, newest last)
-	for i := 1; i < len(activity.Points); i++ {
-		assert.Less(t, activity.Points[i-1].Date, activity.Points[i].Date,
-			"Points should be in chronological order")
+				// Points should be in chronological order (oldest first, newest last)
+				for i := 1; i < len(activity.Points); i++ {
+					assert.Less(t, activity.Points[i-1].Date, activity.Points[i].Date,
+						"Points should be in chronological order")
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
 	}
 }
 
 func TestStatsUseCase_GetSystemInsights_Success(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_GetSystemInsights",
+			category: "positive",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	insights, err := uc.GetSystemInsights(context.Background())
+				insights, err := uc.GetSystemInsights(context.Background())
 
-	assert.NoError(t, err)
-	assert.NotNil(t, insights)
-	assert.Greater(t, insights.AvgLatencyMs, float64(0))
-	assert.GreaterOrEqual(t, insights.ErrorRate, float64(0))
-	assert.NotEmpty(t, insights.Uptime)
-	assert.NotEmpty(t, insights.MostActiveRole)
+				assert.NoError(t, err)
+				assert.NotNil(t, insights)
+				assert.Greater(t, insights.AvgLatencyMs, float64(0))
+				assert.GreaterOrEqual(t, insights.ErrorRate, float64(0))
+				assert.NotEmpty(t, insights.Uptime)
+				assert.NotEmpty(t, insights.MostActiveRole)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsUseCase_GetSystemInsights_ReturnsExpectedStructure(t *testing.T) {
-	_, uc := setupStatsTest(t)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_ReturnsExpectedStructure",
+			category: "positive",
+			run: func(t *testing.T) {
+				_, uc := setupStatsTest(t)
 
-	insights, err := uc.GetSystemInsights(context.Background())
+				insights, err := uc.GetSystemInsights(context.Background())
 
-	assert.NoError(t, err)
-	assert.IsType(t, &model.SystemInsights{}, insights)
-	assert.Equal(t, 24.5, insights.AvgLatencyMs)
-	assert.Equal(t, 0.02, insights.ErrorRate)
-	assert.Equal(t, "99.99%", insights.Uptime)
-	assert.Equal(t, "role:admin", insights.MostActiveRole)
+				assert.NoError(t, err)
+				assert.IsType(t, &model.SystemInsights{}, insights)
+				assert.Equal(t, 24.5, insights.AvgLatencyMs)
+				assert.Equal(t, 0.02, insights.ErrorRate)
+				assert.Equal(t, "99.99%", insights.Uptime)
+				assert.Equal(t, "role:admin", insights.MostActiveRole)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

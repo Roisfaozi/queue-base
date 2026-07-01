@@ -70,36 +70,60 @@ func (u *fakeTerminatableUpload) Terminate(ctx context.Context) error {
 }
 
 func TestCleanupFailedCompletedUpload(t *testing.T) {
-	t.Run("terminates upload when store supports termination", func(t *testing.T) {
-		upload := &fakeTerminatableUpload{}
-		store := &fakeTerminatableStore{upload: upload}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "terminates upload when store supports termination",
+			category: "positive",
+			run: func(t *testing.T) {
+				upload := &fakeTerminatableUpload{}
+				store := &fakeTerminatableStore{upload: upload}
 
-		cleanupFailedCompletedUpload(context.Background(), store, "upload-1", nil)
+				cleanupFailedCompletedUpload(context.Background(), store, "upload-1", nil)
 
-		assert.True(t, upload.terminated)
-	})
+				assert.True(t, upload.terminated)
+			},
+		},
+		{
+			name:     "no panic when store does not support termination",
+			category: "positive",
+			run: func(t *testing.T) {
+				assert.NotPanics(t, func() {
+					cleanupFailedCompletedUpload(context.Background(), &fakeCoreStore{}, "upload-1", nil)
+				})
+			},
+		},
+		{
+			name:     "no panic when upload lookup fails",
+			category: "edge",
+			run: func(t *testing.T) {
+				store := &fakeTerminatableStore{getErr: errors.New("not found")}
 
-	t.Run("no panic when store does not support termination", func(t *testing.T) {
-		assert.NotPanics(t, func() {
-			cleanupFailedCompletedUpload(context.Background(), &fakeCoreStore{}, "upload-1", nil)
+				assert.NotPanics(t, func() {
+					cleanupFailedCompletedUpload(context.Background(), store, "upload-1", nil)
+				})
+			},
+		},
+		{
+			name:     "no panic when termination fails",
+			category: "edge",
+			run: func(t *testing.T) {
+				upload := &fakeTerminatableUpload{terminateErr: errors.New("delete failed")}
+				store := &fakeTerminatableStore{upload: upload}
+
+				assert.NotPanics(t, func() {
+					cleanupFailedCompletedUpload(context.Background(), store, "upload-1", nil)
+				})
+				assert.False(t, upload.terminated)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
 		})
-	})
-
-	t.Run("no panic when upload lookup fails", func(t *testing.T) {
-		store := &fakeTerminatableStore{getErr: errors.New("not found")}
-
-		assert.NotPanics(t, func() {
-			cleanupFailedCompletedUpload(context.Background(), store, "upload-1", nil)
-		})
-	})
-
-	t.Run("no panic when termination fails", func(t *testing.T) {
-		upload := &fakeTerminatableUpload{terminateErr: errors.New("delete failed")}
-		store := &fakeTerminatableStore{upload: upload}
-
-		assert.NotPanics(t, func() {
-			cleanupFailedCompletedUpload(context.Background(), store, "upload-1", nil)
-		})
-		assert.False(t, upload.terminated)
-	})
+	}
 }
