@@ -272,6 +272,27 @@ func TestScannerCheckIn(t *testing.T) {
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
+			name:     "Edge_ForwardMissingCounterIDAllowed",
+			category: "edge",
+			req: &CheckInRequest{
+				Action:               ActionForward,
+				BranchID:             "b-1",
+				ClientID:             "client-1",
+				APIKey:               "key-1",
+				QueueID:              "q-1",
+				DestinationServiceID: "service-2",
+			},
+			queueHandler: &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}},
+			validator:    &stubRelationValidator{},
+			tenantID:     "t-1",
+			branchID:     "b-1",
+			wantRes: func(t *testing.T, qh *stubQueueHandler, v *stubRelationValidator, res *CheckInResponse) {
+				assert.Equal(t, ActionForward, res.Action)
+				assert.True(t, qh.forwardCalled)
+				assert.Equal(t, "", v.counterID)
+			},
+		},
+		{
 			name:     "Negative_RegisterMissingService",
 			category: "negative",
 			req: &CheckInRequest{

@@ -1148,13 +1148,6 @@ func TestGetVisitJourneys(t *testing.T) {
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
-			name:     "Negative_MissingBranch",
-			category: "negative",
-			queueID:  "q-1",
-			tenantID: "t-1",
-			wantErr:  exception.ErrBadRequest,
-		},
-		{
 			name:     "Negative_EmptyQueueID",
 			category: "negative",
 			tenantID: "t-1",

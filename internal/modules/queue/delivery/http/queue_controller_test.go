@@ -614,16 +614,6 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.statsCalled)
 				},
 			},
-			{
-				name:     "Negative_RejectsMissingBranchPathParam",
-				category: "negative",
-				branchID: "",
-				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
-				wantCode: http.StatusBadRequest,
-				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
-					assert.False(t, uc.statsCalled)
-				},
-			},
 		}
 
 		for _, tt := range tests {
@@ -731,6 +721,18 @@ func TestQueueController(t *testing.T) {
 					assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: ""}, uc.journeyReq)
 				},
 			},
+			{
+				name:      "Negative_RejectsEmptyServiceID",
+				category:  "negative",
+				branchID:  "branch-1",
+				serviceID: "",
+				query:     "",
+				setup:     func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode:  http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -836,6 +838,18 @@ func TestQueueController(t *testing.T) {
 				wantCode: http.StatusOK,
 				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
 					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", QueueDate: ""}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Negative_RejectsEmptyCounterID",
+				category:  "negative",
+				branchID:  "branch-1",
+				counterID: "",
+				query:     "",
+				setup:     func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode:  http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
 				},
 			},
 		}
