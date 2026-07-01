@@ -86,6 +86,10 @@ help:
 	@echo "  dev-down          - Stop worktree-local docker compose stack."
 	@echo "  dev-reset         - Stop stack and remove worktree-local volumes."
 	@echo "  dev-status        - Show current worktree/dev stack status."
+	@echo "  web-dev           - Run apps/web with worktree-local frontend env."
+	@echo "  client-dev        - Run apps/client with worktree-local frontend env."
+	@echo "  front-dev         - Show frontend dev commands and worktree ports."
+	@echo "  front-status      - Show generated frontend worktree env."
 	@echo "  migrate-up-local  - Run migrations against .env.local database."
 	@echo "  migrate-down-local - Roll back migrations against .env.local database."
 	@echo "  test-local        - Run narrow local tests, optional TEST_PKG=..."
@@ -416,6 +420,48 @@ doctor:
 		echo "env_local=missing"; \
 	fi
 
+.PHONY: web-dev
+web-dev:
+	@if [ ! -f "apps/web/.env.local" ]; then \
+		echo "apps/web/.env.local missing, syncing worktree env..."; \
+		$(MAKE) env-sync >/dev/null; \
+	fi
+	@cd apps/web && pnpm dev
+
+.PHONY: client-dev
+client-dev:
+	@if [ ! -f "apps/client/.env.local" ]; then \
+		echo "apps/client/.env.local missing, syncing worktree env..."; \
+		$(MAKE) env-sync >/dev/null; \
+	fi
+	@cd apps/client && pnpm dev
+
+.PHONY: front-dev
+front-dev:
+	@if [ ! -f "apps/web/.env.local" ] || [ ! -f "apps/client/.env.local" ]; then \
+		echo "Frontend env missing, syncing worktree env..."; \
+		$(MAKE) env-sync >/dev/null; \
+	fi
+	@web_port="$$(grep '^PORT=' apps/web/.env.local | tail -n1 | cut -d= -f2-)"; \
+	client_port="$$(grep '^VITE_DEV_PORT=' apps/client/.env.local | tail -n1 | cut -d= -f2-)"; \
+	echo "Start frontend in separate terminals:"; \
+	echo "  apps/web    -> pnpm dev (PORT=$$web_port)"; \
+	echo "  apps/client -> pnpm dev (VITE_DEV_PORT=$$client_port)"
+
+.PHONY: front-status
+front-status:
+	@if [ -f "apps/web/.env.local" ]; then \
+		echo "apps/web/.env.local"; \
+		grep -E '^(NEXT_PUBLIC_API_URL|NEXT_PUBLIC_WS_URL|NEXT_PUBLIC_APP_URL|PORT)=' apps/web/.env.local; \
+	else \
+		echo "apps/web/.env.local missing"; \
+	fi
+	@if [ -f "apps/client/.env.local" ]; then \
+		echo "apps/client/.env.local"; \
+		grep -E '^(NEXT_PUBLIC_API_URL|VITE_API_PROXY_TARGET|VITE_DEV_PORT)=' apps/client/.env.local; \
+	else \
+		echo "apps/client/.env.local missing"; \
+	fi
 
 # Generate docs and run the application
 .PHONY: run
