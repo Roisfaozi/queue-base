@@ -219,6 +219,13 @@ Before making claims in docs or patches:
 - verify route/auth/tenant behavior against `internal/router/router.go` and middleware/usecase code
 - prefer live code over README when they differ
 
+When task is non-trivial or multi-step:
+
+- always create or update an active plan with `update_plan`
+- always send short progress updates before large or latency-heavy work
+- keep plan current as steps complete or shift
+- do not finish without a final plan state that matches work done
+
 When task touches architecture-heavy areas:
 
 - inspect `internal/config/app.go` first
