@@ -46,494 +46,766 @@ func (m *MockTicketManager) ValidateTicket(ctx context.Context, ticket string) (
 }
 
 func TestAuthMiddleware_ValidToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer valid_token")
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "ValidToken",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Authorization", "Bearer valid_token")
+				c.Request = req
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	claims := &jwt.Claims{
-		UserID:    "user123",
-		SessionID: "session456",
-		Role:      "role:user",
-		Username:  "testuser",
+				claims := &jwt.Claims{
+					UserID:    "user123",
+					SessionID: "session456",
+					Role:      "role:user",
+					Username:  "testuser",
+				}
+
+				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
+				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(&model.Auth{ID: claims.SessionID}, nil)
+
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+
+				authMiddleware.ValidateToken()(c)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				assert.Equal(t, claims.UserID, c.GetString("user_id"))
+				assert.Equal(t, claims.SessionID, c.GetString("session_id"))
+				assert.Equal(t, claims.Role, c.GetString("user_role"))
+				assert.Equal(t, claims.Username, c.GetString("username"))
+				mockAuthUseCase.AssertExpectations(t)
+			},
+		},
 	}
-
-	mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
-	mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(&model.Auth{ID: claims.SessionID}, nil)
-
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
-
-	authMiddleware.ValidateToken()(c)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, claims.UserID, c.GetString("user_id"))
-	assert.Equal(t, claims.SessionID, c.GetString("session_id"))
-	assert.Equal(t, claims.Role, c.GetString("user_role"))
-	assert.Equal(t, claims.Username, c.GetString("username"))
-	mockAuthUseCase.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_NoToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "NoToken",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				c.Request = req
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
-	authMiddleware.ValidateToken()(c)
+				authMiddleware.ValidateToken()(c)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "unauthorized")
-	mockAuthUseCase.AssertNotCalled(t, "ValidateAccessToken")
-	mockAuthUseCase.AssertNotCalled(t, "Verify")
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				assert.Contains(t, w.Body.String(), "unauthorized")
+				mockAuthUseCase.AssertNotCalled(t, "ValidateAccessToken")
+				mockAuthUseCase.AssertNotCalled(t, "Verify")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_InvalidTokenFormat(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "InvalidToken")
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "InvalidTokenFormat",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Authorization", "InvalidToken")
+				c.Request = req
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
-	authMiddleware.ValidateToken()(c)
+				authMiddleware.ValidateToken()(c)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "unauthorized")
-	mockAuthUseCase.AssertNotCalled(t, "ValidateAccessToken")
-	mockAuthUseCase.AssertNotCalled(t, "Verify")
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				assert.Contains(t, w.Body.String(), "unauthorized")
+				mockAuthUseCase.AssertNotCalled(t, "ValidateAccessToken")
+				mockAuthUseCase.AssertNotCalled(t, "Verify")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_InvalidTokenSignature(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer invalid.signature.token")
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "InvalidTokenSignature",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Authorization", "Bearer invalid.signature.token")
+				c.Request = req
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockAuthUseCase.On("ValidateAccessToken", "invalid.signature.token").Return(nil, errors.New("invalid signature"))
+				mockAuthUseCase.On("ValidateAccessToken", "invalid.signature.token").Return(nil, errors.New("invalid signature"))
 
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
-	authMiddleware.ValidateToken()(c)
+				authMiddleware.ValidateToken()(c)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "unauthorized")
-	mockAuthUseCase.AssertExpectations(t)
-	mockAuthUseCase.AssertNotCalled(t, "Verify")
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				assert.Contains(t, w.Body.String(), "unauthorized")
+				mockAuthUseCase.AssertExpectations(t)
+				mockAuthUseCase.AssertNotCalled(t, "Verify")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_ExpiredToken(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer expired_token")
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "ExpiredToken",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Authorization", "Bearer expired_token")
+				c.Request = req
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockAuthUseCase.On("ValidateAccessToken", "expired_token").Return(nil, errors.New("token is expired"))
+				mockAuthUseCase.On("ValidateAccessToken", "expired_token").Return(nil, errors.New("token is expired"))
 
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
-	authMiddleware.ValidateToken()(c)
+				authMiddleware.ValidateToken()(c)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "unauthorized")
-	mockAuthUseCase.AssertExpectations(t)
-	mockAuthUseCase.AssertNotCalled(t, "Verify")
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				assert.Contains(t, w.Body.String(), "unauthorized")
+				mockAuthUseCase.AssertExpectations(t)
+				mockAuthUseCase.AssertNotCalled(t, "Verify")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_SessionRevoked(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer valid_token")
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "SessionRevoked",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Authorization", "Bearer valid_token")
+				c.Request = req
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	claims := &jwt.Claims{
-		UserID:    "user123",
-		SessionID: "session456",
-		Role:      "role:user",
-		Username:  "testuser",
+				claims := &jwt.Claims{
+					UserID:    "user123",
+					SessionID: "session456",
+					Role:      "role:user",
+					Username:  "testuser",
+				}
+
+				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
+				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(nil, nil) // Return nil session = revoked
+
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+
+				authMiddleware.ValidateToken()(c)
+
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				assert.Contains(t, w.Body.String(), "unauthorized")
+				mockAuthUseCase.AssertExpectations(t)
+			},
+		},
 	}
-
-	mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
-	mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(nil, nil) // Return nil session = revoked
-
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
-
-	authMiddleware.ValidateToken()(c)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "unauthorized")
-	mockAuthUseCase.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_SessionVerifyError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer valid_token")
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "SessionVerifyError",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Authorization", "Bearer valid_token")
+				c.Request = req
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	claims := &jwt.Claims{
-		UserID:    "user123",
-		SessionID: "session456",
-		Role:      "role:user",
-		Username:  "testuser",
+				claims := &jwt.Claims{
+					UserID:    "user123",
+					SessionID: "session456",
+					Role:      "role:user",
+					Username:  "testuser",
+				}
+
+				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
+				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(nil, errors.New("database error"))
+
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+
+				authMiddleware.ValidateToken()(c)
+
+				assert.Equal(t, http.StatusInternalServerError, w.Code)
+				assert.Contains(t, w.Body.String(), "internal server error")
+				mockAuthUseCase.AssertExpectations(t)
+			},
+		},
 	}
-
-	mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
-	mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(nil, errors.New("database error"))
-
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
-
-	authMiddleware.ValidateToken()(c)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "internal server error")
-	mockAuthUseCase.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_ContextSet(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "ContextSet",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	claims := &jwt.Claims{
-		UserID:    "user123",
-		SessionID: "session456",
-		Role:      "role:admin",
-		Username:  "adminuser",
+				claims := &jwt.Claims{
+					UserID:    "user123",
+					SessionID: "session456",
+					Role:      "role:admin",
+					Username:  "adminuser",
+				}
+
+				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
+				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(&model.Auth{ID: claims.SessionID}, nil)
+
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+
+				r := gin.New()
+				r.Use(authMiddleware.ValidateToken())
+
+				r.GET("/test", func(c *gin.Context) {
+					assert.Equal(t, claims.UserID, c.GetString("user_id"))
+					assert.Equal(t, claims.SessionID, c.GetString("session_id"))
+					assert.Equal(t, claims.Role, c.GetString("user_role"))
+					assert.Equal(t, claims.Username, c.GetString("username"))
+					c.Status(http.StatusOK)
+				})
+
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+				req.Header.Set("Authorization", "Bearer valid_token")
+
+				r.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				mockAuthUseCase.AssertExpectations(t)
+			},
+		},
 	}
-
-	mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
-	mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(&model.Auth{ID: claims.SessionID}, nil)
-
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
-
-	r := gin.New()
-	r.Use(authMiddleware.ValidateToken())
-
-	r.GET("/test", func(c *gin.Context) {
-		assert.Equal(t, claims.UserID, c.GetString("user_id"))
-		assert.Equal(t, claims.SessionID, c.GetString("session_id"))
-		assert.Equal(t, claims.Role, c.GetString("user_role"))
-		assert.Equal(t, claims.Username, c.GetString("username"))
-		c.Status(http.StatusOK)
-	})
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Authorization", "Bearer valid_token")
-
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockAuthUseCase.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_SkipsJWTValidationForAPIKeyAuth(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "SkipsJWTValidationForAPIKeyAuth",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	mockAuthUseCase := new(authMocks.MockAuthUseCase)
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
+				mockAuthUseCase := new(authMocks.MockAuthUseCase)
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set("auth_method", "api_key")
-		c.Set("user_id", "api-key-user")
-		c.Next()
-	})
-	r.Use(authMiddleware.ValidateToken())
-	r.GET("/test", func(c *gin.Context) {
-		assert.Equal(t, "api-key-user", c.GetString("user_id"))
-		c.Status(http.StatusOK)
-	})
+				r := gin.New()
+				r.Use(func(c *gin.Context) {
+					c.Set("auth_method", "api_key")
+					c.Set("user_id", "api-key-user")
+					c.Next()
+				})
+				r.Use(authMiddleware.ValidateToken())
+				r.GET("/test", func(c *gin.Context) {
+					assert.Equal(t, "api-key-user", c.GetString("user_id"))
+					c.Status(http.StatusOK)
+				})
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+				w := httptest.NewRecorder()
+				req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 
-	r.ServeHTTP(w, req)
+				r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	mockAuthUseCase.AssertNotCalled(t, "ValidateAccessToken")
-	mockAuthUseCase.AssertNotCalled(t, "Verify")
+				assert.Equal(t, http.StatusOK, w.Code)
+				mockAuthUseCase.AssertNotCalled(t, "ValidateAccessToken")
+				mockAuthUseCase.AssertNotCalled(t, "Verify")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_ValidateWebSocketToken_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/ws?ticket=valid_ticket", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "ValidateWebSocketToken_Success",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/ws?ticket=valid_ticket", nil)
+				c.Request = req
 
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	userCtx := &ws.UserContext{
-		UserID:         "user123",
-		SessionID:      "session456",
-		Role:           "role:user",
-		Username:       "testuser",
-		OrganizationID: "org789",
+				userCtx := &ws.UserContext{
+					UserID:         "user123",
+					SessionID:      "session456",
+					Role:           "role:user",
+					Username:       "testuser",
+					OrganizationID: "org789",
+				}
+
+				mockTicketManager := new(MockTicketManager)
+				mockTicketManager.On("ValidateTicket", mock.Anything, "valid_ticket").Return(userCtx, nil)
+
+				authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
+				authMiddleware.ValidateWebSocketToken()(c)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				assert.Equal(t, userCtx.UserID, c.GetString("user_id"))
+				assert.Equal(t, userCtx.SessionID, c.GetString("session_id"))
+				assert.Equal(t, userCtx.Role, c.GetString("user_role"))
+				assert.Equal(t, userCtx.Username, c.GetString("username"))
+				assert.Equal(t, userCtx.OrganizationID, c.GetString("organization_id"))
+				mockTicketManager.AssertExpectations(t)
+			},
+		},
 	}
-
-	mockTicketManager := new(MockTicketManager)
-	mockTicketManager.On("ValidateTicket", mock.Anything, "valid_ticket").Return(userCtx, nil)
-
-	authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
-	authMiddleware.ValidateWebSocketToken()(c)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, userCtx.UserID, c.GetString("user_id"))
-	assert.Equal(t, userCtx.SessionID, c.GetString("session_id"))
-	assert.Equal(t, userCtx.Role, c.GetString("user_role"))
-	assert.Equal(t, userCtx.Username, c.GetString("username"))
-	assert.Equal(t, userCtx.OrganizationID, c.GetString("organization_id"))
-	mockTicketManager.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_ValidateWebSocketToken_NoTicket(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/ws", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "ValidateWebSocketToken_NoTicket",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/ws", nil)
+				c.Request = req
 
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockTicketManager := new(MockTicketManager)
-	authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
-	authMiddleware.ValidateWebSocketToken()(c)
+				mockTicketManager := new(MockTicketManager)
+				authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
+				authMiddleware.ValidateWebSocketToken()(c)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	mockTicketManager.AssertNotCalled(t, "ValidateTicket")
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				mockTicketManager.AssertNotCalled(t, "ValidateTicket")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_ValidateWebSocketToken_InvalidTicket(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/ws?ticket=invalid_ticket", nil)
-	c.Request = req
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "ValidateWebSocketToken_InvalidTicket",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				req, _ := http.NewRequest(http.MethodGet, "/ws?ticket=invalid_ticket", nil)
+				c.Request = req
 
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
 
-	mockTicketManager := new(MockTicketManager)
-	mockTicketManager.On("ValidateTicket", mock.Anything, "invalid_ticket").Return(nil, errors.New("invalid ticket"))
+				mockTicketManager := new(MockTicketManager)
+				mockTicketManager.On("ValidateTicket", mock.Anything, "invalid_ticket").Return(nil, errors.New("invalid ticket"))
 
-	authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
-	authMiddleware.ValidateWebSocketToken()(c)
+				authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
+				authMiddleware.ValidateWebSocketToken()(c)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	mockTicketManager.AssertExpectations(t)
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				mockTicketManager.AssertExpectations(t)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestGetUserIDFromContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "GetUserIDFromContext_Tests",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	t.Run("exists and valid", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("user_id", "user123")
+				t.Run("exists and valid", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("user_id", "user123")
 
-		val, ok := middleware.GetUserIDFromContext(c)
-		assert.True(t, ok)
-		assert.Equal(t, "user123", val)
-	})
+					val, ok := middleware.GetUserIDFromContext(c)
+					assert.True(t, ok)
+					assert.Equal(t, "user123", val)
+				})
 
-	t.Run("not exists", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+				t.Run("not exists", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		val, ok := middleware.GetUserIDFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetUserIDFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("wrong type", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("user_id", 123)
+				t.Run("wrong type", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("user_id", 123)
 
-		val, ok := middleware.GetUserIDFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetUserIDFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("empty string", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("user_id", "")
+				t.Run("empty string", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("user_id", "")
 
-		val, ok := middleware.GetUserIDFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetUserIDFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_GetSessionIDFromContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "GetSessionIDFromContext_Tests",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	t.Run("exists and valid", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("session_id", "session123")
+				t.Run("exists and valid", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("session_id", "session123")
 
-		val, ok := middleware.GetSessionIDFromContext(c)
-		assert.True(t, ok)
-		assert.Equal(t, "session123", val)
-	})
+					val, ok := middleware.GetSessionIDFromContext(c)
+					assert.True(t, ok)
+					assert.Equal(t, "session123", val)
+				})
 
-	t.Run("not exists", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+				t.Run("not exists", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		val, ok := middleware.GetSessionIDFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetSessionIDFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("wrong type", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("session_id", 123)
+				t.Run("wrong type", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("session_id", 123)
 
-		val, ok := middleware.GetSessionIDFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetSessionIDFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("empty string", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("session_id", "")
+				t.Run("empty string", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("session_id", "")
 
-		val, ok := middleware.GetSessionIDFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetSessionIDFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_GetRoleFromContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "GetRoleFromContext_Tests",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	t.Run("exists and valid", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("user_role", "admin")
+				t.Run("exists and valid", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("user_role", "admin")
 
-		val, ok := middleware.GetRoleFromContext(c)
-		assert.True(t, ok)
-		assert.Equal(t, "admin", val)
-	})
+					val, ok := middleware.GetRoleFromContext(c)
+					assert.True(t, ok)
+					assert.Equal(t, "admin", val)
+				})
 
-	t.Run("not exists", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+				t.Run("not exists", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		val, ok := middleware.GetRoleFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetRoleFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("wrong type", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("user_role", 123)
+				t.Run("wrong type", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("user_role", 123)
 
-		val, ok := middleware.GetRoleFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetRoleFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("empty string", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("user_role", "")
+				t.Run("empty string", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("user_role", "")
 
-		val, ok := middleware.GetRoleFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetRoleFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthMiddleware_GetUsernameFromContext(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "GetUsernameFromContext_Tests",
+			category: "edge",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	t.Run("exists and valid", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("username", "testuser")
+				t.Run("exists and valid", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("username", "testuser")
 
-		val, ok := middleware.GetUsernameFromContext(c)
-		assert.True(t, ok)
-		assert.Equal(t, "testuser", val)
-	})
+					val, ok := middleware.GetUsernameFromContext(c)
+					assert.True(t, ok)
+					assert.Equal(t, "testuser", val)
+				})
 
-	t.Run("not exists", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+				t.Run("not exists", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		val, ok := middleware.GetUsernameFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetUsernameFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("wrong type", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("username", 123)
+				t.Run("wrong type", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("username", 123)
 
-		val, ok := middleware.GetUsernameFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetUsernameFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
 
-	t.Run("empty string", func(t *testing.T) {
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Set("username", "")
+				t.Run("empty string", func(t *testing.T) {
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Set("username", "")
 
-		val, ok := middleware.GetUsernameFromContext(c)
-		assert.False(t, ok)
-		assert.Empty(t, val)
-	})
+					val, ok := middleware.GetUsernameFromContext(c)
+					assert.False(t, ok)
+					assert.Empty(t, val)
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
