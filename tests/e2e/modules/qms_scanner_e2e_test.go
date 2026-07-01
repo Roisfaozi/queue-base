@@ -21,7 +21,6 @@ import (
 )
 
 func TestScannerE2E_APIKeyCheckInFlow(t *testing.T) {
-	// 1. Setup Environment
 	server := setup.SetupTestServer(t)
 	defer server.Server.Close()
 
@@ -70,126 +69,146 @@ func TestScannerE2E_APIKeyCheckInFlow(t *testing.T) {
 	// Give the server time to start up and cache to be ready (Redis delay mitigation if any)
 	time.Sleep(100 * time.Millisecond)
 
-	// 3. Test CheckIn via Registration (Positive)
-	t.Run("Register via Scanner Success", func(t *testing.T) {
-		req := model.CheckInRequest{
-			Action:      usecase.ActionRegister,
-			BranchID:    branchID,
-			ServiceID:   regServiceID,
-			PatientName: "John Doe Scanner",
-		}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_RegisterViaScanner",
+			category: "positive",
+			run: func(t *testing.T) {
+				req := model.CheckInRequest{
+					Action:      usecase.ActionRegister,
+					BranchID:    branchID,
+					ServiceID:   regServiceID,
+					PatientName: "John Doe Scanner",
+				}
 
-		resp := server.Client.POST("/api/v1/scanner/check-in", req, func(r *http.Request) {
-			r.Header.Set("X-Client-ID", clientID)
-			r.Header.Set("X-API-Key", rawAPIKey)
-			r.Header.Set("X-Organization-ID", tenantID)
+				resp := server.Client.POST("/api/v1/scanner/check-in", req, func(r *http.Request) {
+					r.Header.Set("X-Client-ID", clientID)
+					r.Header.Set("X-API-Key", rawAPIKey)
+					r.Header.Set("X-Organization-ID", tenantID)
+				})
+
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var resData struct {
+					Data struct {
+						Action string `json:"action"`
+						Queue  struct {
+							ID          string `json:"id"`
+							PatientName string `json:"patient_name"`
+						} `json:"queue"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&resData)
+				require.NoError(t, err)
+
+				assert.Equal(t, usecase.ActionRegister, resData.Data.Action)
+				assert.NotEmpty(t, resData.Data.Queue.ID)
+				assert.Equal(t, "John Doe Scanner", resData.Data.Queue.PatientName)
+			},
+		},
+		{
+			name:     "Failure_MissingHeaders",
+			category: "negative",
+			run: func(t *testing.T) {
+				req := model.CheckInRequest{
+					Action:      usecase.ActionRegister,
+					BranchID:    branchID,
+					ServiceID:   regServiceID,
+					PatientName: "No Headers",
+				}
+
+				resp := server.Client.POST("/api/v1/scanner/check-in", req) // No headers added
+				assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+			},
+		},
+		{
+			name:     "Failure_InvalidAPIKey",
+			category: "negative",
+			run: func(t *testing.T) {
+				req := model.CheckInRequest{
+					Action:      usecase.ActionRegister,
+					BranchID:    branchID,
+					ServiceID:   regServiceID,
+					PatientName: "Invalid Key",
+				}
+
+				resp := server.Client.POST("/api/v1/scanner/check-in", req, func(r *http.Request) {
+					r.Header.Set("X-Client-ID", clientID)
+					r.Header.Set("X-API-Key", "sk_live_invalid_key")
+				})
+
+				assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+			},
+		},
+		{
+			name:     "Success_ForwardViaScanner",
+			category: "positive",
+			run: func(t *testing.T) {
+				// First register to get a Queue ID
+				regReq := model.CheckInRequest{
+					Action:      usecase.ActionRegister,
+					BranchID:    branchID,
+					ServiceID:   regServiceID,
+					PatientName: "To Be Forwarded",
+				}
+				regResp := server.Client.POST("/api/v1/scanner/check-in", regReq, func(r *http.Request) {
+					r.Header.Set("X-Client-ID", clientID)
+					r.Header.Set("X-API-Key", rawAPIKey)
+					r.Header.Set("X-Organization-ID", tenantID)
+				})
+				require.Equal(t, http.StatusOK, regResp.StatusCode)
+
+				var regResData struct {
+					Data struct {
+						Queue struct {
+							ID string `json:"id"`
+						} `json:"queue"`
+					} `json:"data"`
+				}
+				_ = regResp.JSON(&regResData)
+				queueID := regResData.Data.Queue.ID
+				require.NotEmpty(t, queueID)
+
+				// Now forward it
+				forwardReq := model.CheckInRequest{
+					Action:               usecase.ActionForward,
+					BranchID:             branchID,
+					QueueID:              queueID,
+					DestinationServiceID: pharmacyServiceID,
+					DestinationCounterID: counterID,
+				}
+
+				forwardResp := server.Client.POST("/api/v1/scanner/check-in", forwardReq, func(r *http.Request) {
+					r.Header.Set("X-Client-ID", clientID)
+					r.Header.Set("X-API-Key", rawAPIKey)
+					r.Header.Set("X-Organization-ID", tenantID)
+				})
+
+				require.Equal(t, http.StatusOK, forwardResp.StatusCode)
+
+				var fwdResData struct {
+					Data struct {
+						Action string `json:"action"`
+						Queue  struct {
+							ID string `json:"id"`
+						} `json:"queue"`
+					} `json:"data"`
+				}
+				err := forwardResp.JSON(&fwdResData)
+				require.NoError(t, err)
+
+				assert.Equal(t, usecase.ActionForward, fwdResData.Data.Action)
+				assert.Equal(t, queueID, fwdResData.Data.Queue.ID)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
 		})
-
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-
-		var resData struct {
-			Data struct {
-				Action string `json:"action"`
-				Queue  struct {
-					ID          string `json:"id"`
-					PatientName string `json:"patient_name"`
-				} `json:"queue"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&resData)
-		require.NoError(t, err)
-
-		assert.Equal(t, usecase.ActionRegister, resData.Data.Action)
-		assert.NotEmpty(t, resData.Data.Queue.ID)
-		assert.Equal(t, "John Doe Scanner", resData.Data.Queue.PatientName)
-	})
-
-	// 4. Test CheckIn with Missing Headers (Negative)
-	t.Run("CheckIn Missing Headers", func(t *testing.T) {
-		req := model.CheckInRequest{
-			Action:      usecase.ActionRegister,
-			BranchID:    branchID,
-			ServiceID:   regServiceID,
-			PatientName: "No Headers",
-		}
-
-		resp := server.Client.POST("/api/v1/scanner/check-in", req) // No headers added
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	})
-
-	// 5. Test CheckIn with Invalid API Key (Negative)
-	t.Run("CheckIn Invalid API Key", func(t *testing.T) {
-		req := model.CheckInRequest{
-			Action:      usecase.ActionRegister,
-			BranchID:    branchID,
-			ServiceID:   regServiceID,
-			PatientName: "Invalid Key",
-		}
-
-		resp := server.Client.POST("/api/v1/scanner/check-in", req, func(r *http.Request) {
-			r.Header.Set("X-Client-ID", clientID)
-			r.Header.Set("X-API-Key", "sk_live_invalid_key")
-		})
-
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	})
-
-	// 6. Test Forward via Scanner (Positive)
-	t.Run("Forward via Scanner Success", func(t *testing.T) {
-		// First register to get a Queue ID
-		regReq := model.CheckInRequest{
-			Action:      usecase.ActionRegister,
-			BranchID:    branchID,
-			ServiceID:   regServiceID,
-			PatientName: "To Be Forwarded",
-		}
-		regResp := server.Client.POST("/api/v1/scanner/check-in", regReq, func(r *http.Request) {
-			r.Header.Set("X-Client-ID", clientID)
-			r.Header.Set("X-API-Key", rawAPIKey)
-			r.Header.Set("X-Organization-ID", tenantID)
-		})
-		require.Equal(t, http.StatusOK, regResp.StatusCode)
-		
-		var regResData struct {
-			Data struct {
-				Queue struct {
-					ID string `json:"id"`
-				} `json:"queue"`
-			} `json:"data"`
-		}
-		_ = regResp.JSON(&regResData)
-		queueID := regResData.Data.Queue.ID
-		require.NotEmpty(t, queueID)
-
-		// Now forward it
-		forwardReq := model.CheckInRequest{
-			Action:               usecase.ActionForward,
-			BranchID:             branchID,
-			QueueID:              queueID,
-			DestinationServiceID: pharmacyServiceID,
-			DestinationCounterID: counterID,
-		}
-
-		forwardResp := server.Client.POST("/api/v1/scanner/check-in", forwardReq, func(r *http.Request) {
-			r.Header.Set("X-Client-ID", clientID)
-			r.Header.Set("X-API-Key", rawAPIKey)
-			r.Header.Set("X-Organization-ID", tenantID)
-		})
-
-		require.Equal(t, http.StatusOK, forwardResp.StatusCode)
-
-		var fwdResData struct {
-			Data struct {
-				Action string `json:"action"`
-				Queue  struct {
-					ID string `json:"id"`
-				} `json:"queue"`
-			} `json:"data"`
-		}
-		err := forwardResp.JSON(&fwdResData)
-		require.NoError(t, err)
-
-		assert.Equal(t, usecase.ActionForward, fwdResData.Data.Action)
-		assert.Equal(t, queueID, fwdResData.Data.Queue.ID)
-	})
+	}
 }
