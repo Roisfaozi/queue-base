@@ -7,9 +7,11 @@ import (
 	"strings"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/repository"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
@@ -21,6 +23,10 @@ type SettingsResolver interface {
 
 type RelationValidator interface {
 	Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error
+}
+
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
 }
 
 type QueueUseCase interface {
@@ -38,10 +44,15 @@ type queueUseCase struct {
 	repo             repository.QueueRepository
 	settingsResolver SettingsResolver
 	validator        RelationValidator
+	audit            AuditLogger
 }
 
-func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver, validator RelationValidator) QueueUseCase {
-	return &queueUseCase{repo: repo, settingsResolver: settingsResolver, validator: validator}
+func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver, validator RelationValidator, audit ...AuditLogger) QueueUseCase {
+	var auditLogger AuditLogger
+	if len(audit) > 0 {
+		auditLogger = audit[0]
+	}
+	return &queueUseCase{repo: repo, settingsResolver: settingsResolver, validator: validator, audit: auditLogger}
 }
 
 func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
@@ -247,6 +258,7 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		return nil, err
 	}
 
+	u.tryAudit(ctx, "QUEUE_REGISTER", q.ID, map[string]string{"branch_id": branchID, "ticket_no": q.TicketNo})
 	res := mapQueueResponse(q)
 	return &res, nil
 }
@@ -358,6 +370,7 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		return nil, err
 	}
 
+	u.tryAudit(ctx, "QUEUE_FORWARD", queue.ID, map[string]string{"branch_id": branchID, "from_journey_id": currentJourney.ID, "to_service_id": req.DestinationServiceID})
 	res := mapQueueResponse(queue)
 	return &res, nil
 }
@@ -431,8 +444,27 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		return nil, err
 	}
 
+	u.tryAudit(ctx, "QUEUE_"+strings.ToUpper(req.Action), queue.ID, map[string]string{"branch_id": branchID, "journey_id": currentJourney.ID, "status": queue.Status})
 	res := mapQueueResponse(queue)
 	return &res, nil
+}
+
+func (u *queueUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
+	if u.audit == nil {
+		return
+	}
+	userID, ok := authcontext.UserIDFromContext(ctx)
+	if !ok || userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		OrganizationID: database.GetTenantID(ctx),
+		UserID:         userID,
+		Action:         action,
+		Entity:         "queue",
+		EntityID:       entityID,
+		NewValues:      values,
+	})
 }
 
 func mapQueueResponse(queue *entity.Queue) model.QueueResponse {
