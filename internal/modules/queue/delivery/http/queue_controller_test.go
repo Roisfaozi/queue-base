@@ -614,6 +614,16 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.statsCalled)
 				},
 			},
+			{
+				name:     "Negative_RejectsMissingBranchPathParam",
+				category: "negative",
+				branchID: "",
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.statsCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -707,6 +717,20 @@ func TestQueueController(t *testing.T) {
 					assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
 				},
 			},
+			{
+				name:      "Negative_RejectsMalformedQuery",
+				category:  "negative",
+				branchID:  "branch-1",
+				serviceID: "svc-1",
+				query:     "?queue_date=%",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: ""}, uc.journeyReq)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -798,6 +822,20 @@ func TestQueueController(t *testing.T) {
 				wantCode:  http.StatusBadRequest,
 				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
 					assert.Equal(t, model.QueueJourneyListRequest{}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Negative_RejectsMalformedQuery",
+				category:  "negative",
+				branchID:  "branch-1",
+				counterID: "c-1",
+				query:     "?queue_date=%",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", QueueDate: ""}, uc.journeyReq)
 				},
 			},
 		}
