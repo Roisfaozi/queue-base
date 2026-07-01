@@ -305,7 +305,7 @@ func TestProjectIsolation_UseCase(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Negative_UseCaseIsolation",
+			name:     "Negative_CrossTenantGET",
 			category: "vulnerability",
 			run: func(t *testing.T) {
 				env := setup.SetupIntegrationEnvironment(t)
@@ -328,33 +328,77 @@ func TestProjectIsolation_UseCase(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, created)
 
-				t.Run("Cross-tenant GET should fail", func(t *testing.T) {
-					ctxOrgB := database.SetOrganizationContext(ctx, orgB)
-					_, err := uc.GetProjectByID(ctxOrgB, created.ID)
-					assert.Error(t, err, "Should not be able to fetch project from another organization")
+				ctxOrgB := database.SetOrganizationContext(ctx, orgB)
+				_, err = uc.GetProjectByID(ctxOrgB, created.ID)
+				assert.Error(t, err, "Should not be able to fetch project from another organization")
+			},
+		},
+		{
+			name:     "Negative_CrossTenantUPDATE",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+
+				repo := repository.NewProjectRepository(env.DB)
+				uc := usecase.NewProjectUseCase(repo)
+				ctx := context.Background()
+
+				userA := setup.CreateTestUser(t, env.DB, "project_uc_upd_a", "project_uc_upd_a@test.com", "Password123!")
+				userB := setup.CreateTestUser(t, env.DB, "project_uc_upd_b", "project_uc_upd_b@test.com", "Password123!")
+				orgA := setup.CreateTestOrganization(t, env.DB, userA.ID, "Project UC Upd A", "project-uc-upd-a-"+uuid.NewString()[:8]).ID
+				orgB := setup.CreateTestOrganization(t, env.DB, userB.ID, "Project UC Upd B", "project-uc-upd-b-"+uuid.NewString()[:8]).ID
+
+				ctxOrgA := database.SetOrganizationContext(ctx, orgA)
+				created, err := uc.CreateProject(ctxOrgA, userA.ID, orgA, model.CreateProjectRequest{
+					Name:   "Org A Private Project",
+					Domain: "a.example.com",
 				})
+				require.NoError(t, err)
+				require.NotNil(t, created)
 
-				t.Run("Cross-tenant UPDATE should fail", func(t *testing.T) {
-					ctxOrgB := database.SetOrganizationContext(ctx, orgB)
-					newName := "Hacked Name"
-					_, err := uc.UpdateProject(ctxOrgB, created.ID, model.UpdateProjectRequest{
-						Name: &newName,
-					})
-					assert.Error(t, err, "Should not be able to update project from another organization")
-
-					refetched, _ := uc.GetProjectByID(ctxOrgA, created.ID)
-					assert.Equal(t, "Org A Private Project", refetched.Name)
+				ctxOrgB := database.SetOrganizationContext(ctx, orgB)
+				newName := "Hacked Name"
+				_, err = uc.UpdateProject(ctxOrgB, created.ID, model.UpdateProjectRequest{
+					Name: &newName,
 				})
+				assert.Error(t, err, "Should not be able to update project from another organization")
 
-				t.Run("Cross-tenant DELETE should fail", func(t *testing.T) {
-					ctxOrgB := database.SetOrganizationContext(ctx, orgB)
-					err := uc.DeleteProject(ctxOrgB, created.ID)
-					assert.NoError(t, err)
+				refetched, _ := uc.GetProjectByID(ctxOrgA, created.ID)
+				assert.Equal(t, "Org A Private Project", refetched.Name)
+			},
+		},
+		{
+			name:     "Negative_CrossTenantDELETE",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
 
-					refetched, err := uc.GetProjectByID(ctxOrgA, created.ID)
-					assert.NoError(t, err)
-					assert.NotNil(t, refetched)
+				repo := repository.NewProjectRepository(env.DB)
+				uc := usecase.NewProjectUseCase(repo)
+				ctx := context.Background()
+
+				userA := setup.CreateTestUser(t, env.DB, "project_uc_del_a", "project_uc_del_a@test.com", "Password123!")
+				userB := setup.CreateTestUser(t, env.DB, "project_uc_del_b", "project_uc_del_b@test.com", "Password123!")
+				orgA := setup.CreateTestOrganization(t, env.DB, userA.ID, "Project UC Del A", "project-uc-del-a-"+uuid.NewString()[:8]).ID
+				orgB := setup.CreateTestOrganization(t, env.DB, userB.ID, "Project UC Del B", "project-uc-del-b-"+uuid.NewString()[:8]).ID
+
+				ctxOrgA := database.SetOrganizationContext(ctx, orgA)
+				created, err := uc.CreateProject(ctxOrgA, userA.ID, orgA, model.CreateProjectRequest{
+					Name:   "Org A Private Project",
+					Domain: "a.example.com",
 				})
+				require.NoError(t, err)
+				require.NotNil(t, created)
+
+				ctxOrgB := database.SetOrganizationContext(ctx, orgB)
+				err = uc.DeleteProject(ctxOrgB, created.ID)
+				assert.NoError(t, err)
+
+				refetched, err := uc.GetProjectByID(ctxOrgA, created.ID)
+				assert.NoError(t, err)
+				assert.NotNil(t, refetched)
 			},
 		},
 	}

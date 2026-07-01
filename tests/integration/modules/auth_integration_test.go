@@ -63,7 +63,6 @@ func setupAuthIntegrationWithJWT(env *setup.TestEnvironment, jwtManager *jwt.JWT
 
 	ticketManager := ws.NewRedisTicketManager(env.Redis, 30*time.Second)
 
-	// Adapters for IoC
 	publisher := delivery.NewEventPublisher(wsManager, sseManager, env.Logger)
 	authz := authRepository.NewCasbinAdapter(enforcer, "role:user", "global")
 
@@ -85,255 +84,418 @@ func setupAuthIntegrationWithJWT(env *setup.TestEnvironment, jwtManager *jwt.JWT
 }
 
 func TestAuthIntegration_Login(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_ValidCredentials",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				password := "SecurePass123!"
+				testUser := setup.CreateTestUser(t, env.DB, "authuser1", "auth1@example.com", password)
+				_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
 
-	authUC, _ := setupAuthIntegration(env)
-	password := "SecurePass123!"
-	testUser := setup.CreateTestUser(t, env.DB, "authuser", "auth@example.com", password)
-	_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
+				loginReq := model.LoginRequest{Username: "authuser1", Password: password, IPAddress: "127.0.0.1", UserAgent: "Mozilla/5.0"}
+				resp, refreshToken, err := authUC.Login(context.Background(), loginReq)
 
-	t.Run("Success with Valid Credentials", func(t *testing.T) {
-		loginReq := model.LoginRequest{Username: "authuser", Password: password, IPAddress: "127.0.0.1", UserAgent: "Mozilla/5.0"}
-		resp, refreshToken, err := authUC.Login(context.Background(), loginReq)
+				require.NoError(t, err)
+				assert.NotNil(t, resp)
+				assert.NotEmpty(t, resp.AccessToken)
+				assert.NotEmpty(t, refreshToken)
+				assert.Equal(t, "Bearer", resp.TokenType)
+				assert.Equal(t, testUser.ID, resp.User.ID)
+				assert.Greater(t, int64(resp.ExpiresIn), int64(0))
 
-		require.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.NotEmpty(t, resp.AccessToken)
-		assert.NotEmpty(t, refreshToken)
-		assert.Equal(t, "Bearer", resp.TokenType)
-		assert.Equal(t, testUser.ID, resp.User.ID)
-		assert.Greater(t, int64(resp.ExpiresIn), int64(0))
+				sessionKeys, err := env.Redis.SMembers(context.Background(), fmt.Sprintf("session_index:%s", testUser.ID)).Result()
+				require.NoError(t, err)
+				assert.NotEmpty(t, sessionKeys)
+			},
+		},
+		{
+			name:     "Negative_InvalidPassword",
+			category: "negative",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				setup.CreateTestUser(t, env.DB, "authuser2", "auth2@example.com", "SecurePass123!")
 
-		sessionKeys, err := env.Redis.SMembers(context.Background(), fmt.Sprintf("session_index:%s", testUser.ID)).Result()
-		require.NoError(t, err)
-		assert.NotEmpty(t, sessionKeys)
-	})
-
-	t.Run("Fail with Invalid Password", func(t *testing.T) {
-		loginReq := model.LoginRequest{Username: "authuser", Password: "wrongpassword"}
-		resp, _, err := authUC.Login(context.Background(), loginReq)
-		assert.Error(t, err)
-		assert.Nil(t, resp)
-	})
-
-	t.Run("Fail with Non-Existent User", func(t *testing.T) {
-		loginReq := model.LoginRequest{Username: "nonexistent", Password: "password123"}
-		_, _, err := authUC.Login(context.Background(), loginReq)
-		assert.Error(t, err)
-	})
-
-	t.Run("Fail with Empty Credentials", func(t *testing.T) {
-		tests := []struct {
-			name     string
-			category string
-			un       string
-			pw       string
-		}{
-			{"Empty Username", "negative", "", "password123"},
-			{"Empty Password", "negative", "authuser", ""},
-		}
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				_, _, err := authUC.Login(context.Background(), model.LoginRequest{Username: tt.un, Password: tt.pw})
+				loginReq := model.LoginRequest{Username: "authuser2", Password: "wrongpassword"}
+				resp, _, err := authUC.Login(context.Background(), loginReq)
 				assert.Error(t, err)
-			})
-		}
-	})
+				assert.Nil(t, resp)
+			},
+		},
+		{
+			name:     "Negative_NonExistentUser",
+			category: "negative",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-	t.Run("Edge - Special Characters in Username", func(t *testing.T) {
-		specialUN := "user-@#$%^&*()"
-		setup.CreateTestUser(t, env.DB, specialUN, "special@example.com", "password123")
-		loginReq := model.LoginRequest{Username: specialUN, Password: "password123"}
-		_, _, err := authUC.Login(context.Background(), loginReq)
-		assert.NoError(t, err)
-	})
+				loginReq := model.LoginRequest{Username: "nonexistent", Password: "password123"}
+				_, _, err := authUC.Login(context.Background(), loginReq)
+				assert.Error(t, err)
+			},
+		},
+		{
+			name:     "Negative_EmptyCredentials",
+			category: "negative",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-	t.Run("Edge - Very Long Password (Bcrypt Limit 72)", func(t *testing.T) {
-		longPW := strings.Repeat("a", 72)
-		setup.CreateTestUser(t, env.DB, "longpw", "long@example.com", longPW)
-		loginReq := model.LoginRequest{Username: "longpw", Password: longPW}
-		_, _, err := authUC.Login(context.Background(), loginReq)
-		assert.NoError(t, err)
-	})
+				_, _, err1 := authUC.Login(context.Background(), model.LoginRequest{Username: "", Password: "password123"})
+				assert.Error(t, err1)
 
-	t.Run("Edge - Unicode Characters", func(t *testing.T) {
-		unicodeUN := "用户名测试"
-		setup.CreateTestUser(t, env.DB, unicodeUN, "unicode@example.com", "password123")
-		loginReq := model.LoginRequest{Username: unicodeUN, Password: "password123"}
-		_, _, err := authUC.Login(context.Background(), loginReq)
-		assert.NoError(t, err)
-	})
+				_, _, err2 := authUC.Login(context.Background(), model.LoginRequest{Username: "authuser", Password: ""})
+				assert.Error(t, err2)
+			},
+		},
+		{
+			name:     "Edge_SpecialCharactersUsername",
+			category: "edge",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				specialUN := "user-@#$%^&*()"
+				setup.CreateTestUser(t, env.DB, specialUN, "special@example.com", "password123")
 
-	t.Run("Edge - Case Sensitivity", func(t *testing.T) {
-		setup.CreateTestUser(t, env.DB, "CaseUser", "case@example.com", "password123")
-		loginReq := model.LoginRequest{Username: "caseuser", Password: "password123"}
-		_, loginResp, err := authUC.Login(context.Background(), loginReq)
-		if err == nil {
-			assert.NotEmpty(t, loginResp)
-		}
-	})
+				loginReq := model.LoginRequest{Username: specialUN, Password: "password123"}
+				_, _, err := authUC.Login(context.Background(), loginReq)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Edge_LongPassword",
+			category: "edge",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				longPW := strings.Repeat("a", 72)
+				setup.CreateTestUser(t, env.DB, "longpw", "long@example.com", longPW)
+
+				loginReq := model.LoginRequest{Username: "longpw", Password: longPW}
+				_, _, err := authUC.Login(context.Background(), loginReq)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Edge_UnicodeCharacters",
+			category: "edge",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				unicodeUN := "用户名测试"
+				setup.CreateTestUser(t, env.DB, unicodeUN, "unicode@example.com", "password123")
+
+				loginReq := model.LoginRequest{Username: unicodeUN, Password: "password123"}
+				_, _, err := authUC.Login(context.Background(), loginReq)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Edge_CaseSensitivity",
+			category: "edge",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				setup.CreateTestUser(t, env.DB, "CaseUser", "case@example.com", "password123")
+
+				loginReq := model.LoginRequest{Username: "caseuser", Password: "password123"}
+				_, loginResp, err := authUC.Login(context.Background(), loginReq)
+				if err == nil {
+					assert.NotEmpty(t, loginResp)
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthIntegration_TokenLifecycle(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_RefreshToken",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				password := "password123"
+				testUser := setup.CreateTestUser(t, env.DB, "tokenuser1", "token1@example.com", password)
+				_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
+				_, refreshToken, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "tokenuser1", Password: password})
 
-	authUC, jwtManager := setupAuthIntegration(env)
-	password := "password123"
-	testUser := setup.CreateTestUser(t, env.DB, "tokenuser", "token@example.com", password)
-	_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
+				time.Sleep(1 * time.Second)
+				newToken, newRefresh, err := authUC.RefreshToken(context.Background(), refreshToken)
+				require.NoError(t, err)
+				assert.NotEmpty(t, newToken.AccessToken)
+				assert.NotEqual(t, refreshToken, newRefresh)
+			},
+		},
+		{
+			name:     "Success_MultipleRefreshInSequence",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
+				password := "password123"
+				testUser := setup.CreateTestUser(t, env.DB, "tokenuser2", "token2@example.com", password)
+				_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
+				_, refreshToken, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "tokenuser2", Password: password})
 
-	_, refreshToken, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "tokenuser", Password: password})
+				currRefresh := refreshToken
+				for i := 0; i < 3; i++ {
+					time.Sleep(100 * time.Millisecond)
+					_, nextRefresh, err := authUC.RefreshToken(context.Background(), currRefresh)
+					require.NoError(t, err, "Refresh iteration %d failed", i+1)
+					currRefresh = nextRefresh
+				}
+			},
+		},
+		{
+			name:     "Negative_RefreshInvalidToken",
+			category: "negative",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-	t.Run("Success Refresh Token", func(t *testing.T) {
-		time.Sleep(1 * time.Second)
-		newToken, newRefresh, err := authUC.RefreshToken(context.Background(), refreshToken)
-		require.NoError(t, err)
-		assert.NotEmpty(t, newToken.AccessToken)
-		assert.NotEqual(t, refreshToken, newRefresh)
+				_, _, err := authUC.RefreshToken(context.Background(), "invalid.token.here")
+				assert.Error(t, err)
+			},
+		},
+		{
+			name:     "Negative_RefreshExpiredToken",
+			category: "negative",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
 
-		refreshToken = newRefresh
-	})
+				shortJWT := jwt.NewJWTManager("secret", "refresh", time.Minute, 1*time.Millisecond)
+				customUC := setupAuthIntegrationWithJWT(env, shortJWT)
+				testUser := setup.CreateTestUser(t, env.DB, "tokenuser3", "token3@example.com", "pass")
 
-	t.Run("Multiple Refresh In Sequence", func(t *testing.T) {
-		currRefresh := refreshToken
-		for i := 0; i < 3; i++ {
-			time.Sleep(100 * time.Millisecond)
-			_, nextRefresh, err := authUC.RefreshToken(context.Background(), currRefresh)
-			require.NoError(t, err, "Refresh iteration %d failed", i+1)
-			currRefresh = nextRefresh
-		}
-	})
+				expToken, _, _ := shortJWT.GenerateTokenPair(jwt.UserContext{
+					UserID:    testUser.ID,
+					SessionID: "sid",
+					Role:      "role:user",
+					Username:  "tokenuser",
+				})
+				time.Sleep(10 * time.Millisecond)
 
-	t.Run("Fail Refresh with Invalid Token", func(t *testing.T) {
-		_, _, err := authUC.RefreshToken(context.Background(), "invalid.token.here")
-		assert.Error(t, err)
-	})
+				_, _, err := customUC.RefreshToken(context.Background(), expToken)
+				assert.Error(t, err)
+			},
+		},
+		{
+			name:     "Success_LogoutRevoke",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, jwtManager := setupAuthIntegration(env)
+				password := "password123"
+				testUser := setup.CreateTestUser(t, env.DB, "tokenuser4", "token4@example.com", password)
+				_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
 
-	t.Run("Fail Refresh with Expired Token", func(t *testing.T) {
-		shortJWT := jwt.NewJWTManager("secret", "refresh", time.Minute, 1*time.Millisecond)
-		expToken, _, _ := shortJWT.GenerateTokenPair(jwt.UserContext{
-			UserID:    testUser.ID,
-			SessionID: "sid",
-			Role:      "role:user",
-			Username:  "tokenuser",
+				lr, _, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "tokenuser4", Password: password})
+				claims, _ := jwtManager.ValidateAccessToken(lr.AccessToken)
+
+				err := authUC.RevokeToken(context.Background(), testUser.ID, claims.SessionID)
+				require.NoError(t, err)
+
+				sessionKey := fmt.Sprintf("session:%s:%s", testUser.ID, claims.SessionID)
+				exists, err := env.Redis.Exists(context.Background(), sessionKey).Result()
+				require.NoError(t, err)
+				assert.Zero(t, exists, "Session key should be deleted from Redis")
+
+				indexKey := fmt.Sprintf("session_index:%s", testUser.ID)
+				member, err := env.Redis.SIsMember(context.Background(), indexKey, sessionKey).Result()
+				require.NoError(t, err)
+				assert.False(t, member, "Session index should not contain revoked session")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
 		})
-		time.Sleep(10 * time.Millisecond)
-
-		customUC := setupAuthIntegrationWithJWT(env, shortJWT)
-		_, _, err := customUC.RefreshToken(context.Background(), expToken)
-		assert.Error(t, err)
-	})
-
-	t.Run("Success Logout (Revoke)", func(t *testing.T) {
-
-		lr, _, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "tokenuser", Password: password})
-		claims, _ := jwtManager.ValidateAccessToken(lr.AccessToken)
-
-		err := authUC.RevokeToken(context.Background(), testUser.ID, claims.SessionID)
-		require.NoError(t, err)
-
-		sessionKey := fmt.Sprintf("session:%s:%s", testUser.ID, claims.SessionID)
-		exists, err := env.Redis.Exists(context.Background(), sessionKey).Result()
-		require.NoError(t, err)
-		assert.Zero(t, exists, "Session key should be deleted from Redis")
-
-		indexKey := fmt.Sprintf("session_index:%s", testUser.ID)
-		member, err := env.Redis.SIsMember(context.Background(), indexKey, sessionKey).Result()
-		require.NoError(t, err)
-		assert.False(t, member, "Session index should not contain revoked session")
-	})
+	}
 }
 
 func TestAuthIntegration_PasswordRecovery(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_ForgotPassword",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-	authUC, _ := setupAuthIntegration(env)
+				email := "forgot@example.com"
+				setup.CreateTestUser(t, env.DB, "forgotuser", email, "old-pass")
 
-	t.Run("Success Forgot Password", func(t *testing.T) {
-		email := "forgot@example.com"
-		setup.CreateTestUser(t, env.DB, "forgotuser", email, "old-pass")
+				err := authUC.ForgotPassword(context.Background(), email)
+				require.NoError(t, err)
 
-		err := authUC.ForgotPassword(context.Background(), email)
-		require.NoError(t, err)
+				var token authEntity.PasswordResetToken
+				err = env.DB.Where("email = ?", email).First(&token).Error
+				require.NoError(t, err)
+				assert.NotEmpty(t, token.Token)
+			},
+		},
+		{
+			name:     "Success_ResetPassword",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-		var token authEntity.PasswordResetToken
-		err = env.DB.Where("email = ?", email).First(&token).Error
-		require.NoError(t, err)
-		assert.NotEmpty(t, token.Token)
-	})
+				email := "reset_unique@example.com"
+				testUser := setup.CreateTestUser(t, env.DB, "resetuser", email, "oldpass")
 
-	t.Run("Success Reset Password", func(t *testing.T) {
-		email := "reset_unique@example.com"
-		testUser := setup.CreateTestUser(t, env.DB, "resetuser", email, "oldpass")
+				resetToken := "secret-token-unique-123"
+				err := env.DB.Create(&authEntity.PasswordResetToken{
+					Email: email, Token: resetToken, ExpiresAt: time.Now().Add(time.Hour),
+				}).Error
+				require.NoError(t, err)
 
-		resetToken := "secret-token-unique-123"
-		err := env.DB.Create(&authEntity.PasswordResetToken{
-			Email: email, Token: resetToken, ExpiresAt: time.Now().Add(time.Hour),
-		}).Error
-		require.NoError(t, err)
+				err = authUC.ResetPassword(context.Background(), resetToken, "NewPass123!")
+				require.NoError(t, err)
 
-		err = authUC.ResetPassword(context.Background(), resetToken, "NewPass123!")
-		require.NoError(t, err)
-
-		_, _, err = authUC.Login(context.Background(), model.LoginRequest{Username: testUser.Username, Password: "oldpass"})
-		assert.Error(t, err)
-		_, _, err = authUC.Login(context.Background(), model.LoginRequest{Username: testUser.Username, Password: "NewPass123!"})
-		assert.NoError(t, err)
-	})
+				_, _, err = authUC.Login(context.Background(), model.LoginRequest{Username: testUser.Username, Password: "oldpass"})
+				assert.Error(t, err)
+				_, _, err = authUC.Login(context.Background(), model.LoginRequest{Username: testUser.Username, Password: "NewPass123!"})
+				assert.NoError(t, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAuthIntegration_Security(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Security_SQLInjection",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-	authUC, _ := setupAuthIntegration(env)
+				injections := []string{"admin' OR '1'='1", "admin'--", "admin'; DROP TABLE users--"}
+				for _, inj := range injections {
+					_, _, err := authUC.Login(context.Background(), model.LoginRequest{Username: inj, Password: "p"})
+					assert.Error(t, err)
+				}
+			},
+		},
+		{
+			name:     "Security_BruteForceProtection",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-	t.Run("SQL Injection Prevention", func(t *testing.T) {
-		injections := []string{"admin' OR '1'='1", "admin'--", "admin'; DROP TABLE users--"}
-		for _, inj := range injections {
-			_, _, err := authUC.Login(context.Background(), model.LoginRequest{Username: inj, Password: "p"})
-			assert.Error(t, err)
-		}
-	})
+				setup.CreateTestUser(t, env.DB, "brute", "brute@example.com", "pass")
+				for i := 0; i < 5; i++ {
+					_, _, err := authUC.Login(context.Background(), model.LoginRequest{Username: "brute", Password: "w"})
+					assert.Error(t, err)
+				}
+			},
+		},
+		{
+			name:     "Security_TokenRotationReuse",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-	t.Run("Brute Force Protection Simulation", func(t *testing.T) {
-		setup.CreateTestUser(t, env.DB, "brute", "brute@example.com", "pass")
-		for i := 0; i < 5; i++ {
-			_, _, err := authUC.Login(context.Background(), model.LoginRequest{Username: "brute", Password: "w"})
-			assert.Error(t, err)
-		}
-	})
+				testUser := setup.CreateTestUser(t, env.DB, "reuse", "reuse@example.com", "pass")
+				_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
+				_, rt1, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "reuse", Password: "pass"})
 
-	t.Run("Token Rotation Reuse Protection", func(t *testing.T) {
-		testUser := setup.CreateTestUser(t, env.DB, "reuse", "reuse@example.com", "pass")
-		_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
-		_, rt1, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "reuse", Password: "pass"})
+				_, rt2, _ := authUC.RefreshToken(context.Background(), rt1)
 
-		_, rt2, _ := authUC.RefreshToken(context.Background(), rt1)
+				_, _, err := authUC.RefreshToken(context.Background(), rt1)
+				assert.Error(t, err)
 
-		_, _, err := authUC.RefreshToken(context.Background(), rt1)
-		assert.Error(t, err)
+				_, _, err = authUC.RefreshToken(context.Background(), rt2)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Security_SessionHijacking",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-		_, _, err = authUC.RefreshToken(context.Background(), rt2)
-		assert.NoError(t, err)
-	})
+				testUser := setup.CreateTestUser(t, env.DB, "hijack", "hijack@example.com", "pass")
+				_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
 
-	t.Run("Session Hijacking Prevention (Device Differentiation)", func(t *testing.T) {
-		testUser := setup.CreateTestUser(t, env.DB, "hijack", "hijack@example.com", "pass")
-		_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
+				r1, _, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "hijack", Password: "pass", UserAgent: "D1"})
+				r2, _, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "hijack", Password: "pass", UserAgent: "D2"})
+				assert.NotEqual(t, r1.AccessToken, r2.AccessToken)
+			},
+		},
+		{
+			name:     "Security_XSSUserAgent",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				authUC, _ := setupAuthIntegration(env)
 
-		r1, _, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "hijack", Password: "pass", UserAgent: "D1"})
-		r2, _, _ := authUC.Login(context.Background(), model.LoginRequest{Username: "hijack", Password: "pass", UserAgent: "D2"})
-		assert.NotEqual(t, r1.AccessToken, r2.AccessToken)
-	})
-
-	t.Run("XSS in UserAgent Handling", func(t *testing.T) {
-		testUser := setup.CreateTestUser(t, env.DB, "xss", "xss@example.com", "pass")
-		_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
-		_, _, err := authUC.Login(context.Background(), model.LoginRequest{Username: "xss", Password: "pass", UserAgent: "<script>alert(1)</script>"})
-		assert.NoError(t, err)
-	})
+				testUser := setup.CreateTestUser(t, env.DB, "xss", "xss@example.com", "pass")
+				_, _ = env.Enforcer.AddGroupingPolicy(testUser.ID, "role:user", "global")
+				_, _, err := authUC.Login(context.Background(), model.LoginRequest{Username: "xss", Password: "pass", UserAgent: "<script>alert(1)</script>"})
+				assert.NoError(t, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

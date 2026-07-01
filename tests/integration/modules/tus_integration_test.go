@@ -83,7 +83,7 @@ func TestTUS_Integration_Lifecycle(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success",
+			name:     "Success_UploadLifecycle",
 			category: "positive",
 			run: func(t *testing.T) {
 				env := setup.SetupIntegrationEnvironment(t)
@@ -116,63 +116,60 @@ func TestTUS_Integration_Lifecycle(t *testing.T) {
 				router.PATCH("/files/*any", gin.WrapH(http.StripPrefix("/files/", tusHandler)))
 				router.HEAD("/files/*any", gin.WrapH(http.StripPrefix("/files/", tusHandler)))
 
-				t.Run("Create Upload", func(t *testing.T) {
-					req, _ := http.NewRequest("POST", "/files/", nil)
-					req.Header.Set("Tus-Resumable", "1.0.0")
-					req.Header.Set("Upload-Length", "5")
-					req = req.WithContext(authcontext.WithUserID(req.Context(), userID))
+				// Create Upload
+				req, _ := http.NewRequest("POST", "/files/", nil)
+				req.Header.Set("Tus-Resumable", "1.0.0")
+				req.Header.Set("Upload-Length", "5")
+				req = req.WithContext(authcontext.WithUserID(req.Context(), userID))
 
-					userIDBase64 := base64.StdEncoding.EncodeToString([]byte(userID))
-					req.Header.Set("Upload-Metadata", fmt.Sprintf("filename dGVzdC50eHQ=,type YXZhdGFy,user_id %s", userIDBase64))
+				userIDBase64 := base64.StdEncoding.EncodeToString([]byte(userID))
+				req.Header.Set("Upload-Metadata", fmt.Sprintf("filename dGVzdC50eHQ=,type YXZhdGFy,user_id %s", userIDBase64))
 
-					w := httptest.NewRecorder()
-					router.ServeHTTP(w, req)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-					require.Equal(t, http.StatusCreated, w.Code)
-					location := w.Header().Get("Location")
-					require.NotEmpty(t, location)
+				require.Equal(t, http.StatusCreated, w.Code)
+				location := w.Header().Get("Location")
+				require.NotEmpty(t, location)
 
-					parts := strings.Split(location, "/")
-					uploadID := parts[len(parts)-1]
-					require.NotEmpty(t, uploadID)
+				parts := strings.Split(location, "/")
+				uploadID := parts[len(parts)-1]
+				require.NotEmpty(t, uploadID)
 
-					t.Run("Upload Chunk", func(t *testing.T) {
-						body := []byte("hello")
-						req, _ := http.NewRequest("PATCH", location, bytes.NewReader(body))
-						req.Header.Set("Tus-Resumable", "1.0.0")
-						req.Header.Set("Upload-Offset", "0")
-						req.Header.Set("Content-Type", "application/offset+octet-stream")
+				// Upload Chunk
+				body := []byte("hello")
+				reqPatch, _ := http.NewRequest("PATCH", location, bytes.NewReader(body))
+				reqPatch.Header.Set("Tus-Resumable", "1.0.0")
+				reqPatch.Header.Set("Upload-Offset", "0")
+				reqPatch.Header.Set("Content-Type", "application/offset+octet-stream")
 
-						w := httptest.NewRecorder()
-						router.ServeHTTP(w, req)
+				wPatch := httptest.NewRecorder()
+				router.ServeHTTP(wPatch, reqPatch)
 
-						require.Equal(t, http.StatusNoContent, w.Code)
-						offset := w.Header().Get("Upload-Offset")
-						assert.Equal(t, "5", offset)
+				require.Equal(t, http.StatusNoContent, wPatch.Code)
+				offset := wPatch.Header().Get("Upload-Offset")
+				assert.Equal(t, "5", offset)
 
-						time.Sleep(2 * time.Second)
+				time.Sleep(2 * time.Second)
 
-						var user struct{ AvatarURL string }
-						err := env.DB.Table("users").Select("avatar_url").Where("id = ?", userID).Scan(&user).Error
-						require.NoError(t, err)
+				var user struct{ AvatarURL string }
+				err = env.DB.Table("users").Select("avatar_url").Where("id = ?", userID).Scan(&user).Error
+				require.NoError(t, err)
 
-						assert.Contains(t, user.AvatarURL, rustfsBucket)
-						assert.Contains(t, user.AvatarURL, uploadID)
-					})
+				assert.Contains(t, user.AvatarURL, rustfsBucket)
+				assert.Contains(t, user.AvatarURL, uploadID)
 
-					t.Run("Invalid Chunk Offset", func(t *testing.T) {
-						body := []byte("world")
-						req, _ := http.NewRequest("PATCH", location, bytes.NewReader(body))
-						req.Header.Set("Tus-Resumable", "1.0.0")
-						req.Header.Set("Upload-Offset", "0")
-						req.Header.Set("Content-Type", "application/offset+octet-stream")
+				// Invalid Chunk Offset
+				bodyInvalid := []byte("world")
+				reqInvalid, _ := http.NewRequest("PATCH", location, bytes.NewReader(bodyInvalid))
+				reqInvalid.Header.Set("Tus-Resumable", "1.0.0")
+				reqInvalid.Header.Set("Upload-Offset", "0")
+				reqInvalid.Header.Set("Content-Type", "application/offset+octet-stream")
 
-						w := httptest.NewRecorder()
-						router.ServeHTTP(w, req)
+				wInvalid := httptest.NewRecorder()
+				router.ServeHTTP(wInvalid, reqInvalid)
 
-						assert.Equal(t, http.StatusConflict, w.Code)
-					})
-				})
+				assert.Equal(t, http.StatusConflict, wInvalid.Code)
 			},
 		},
 	}
