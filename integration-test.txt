@@ -1,0 +1,595 @@
+Running integration tests...
+go test -v ./tests/integration/... -tags=integration -p 1 -timeout=10m
+=== RUN   TestAccessIntegration_CreateAccessRight
+=== RUN   TestAccessIntegration_CreateAccessRight/Success
+2026/07/01 13:37:33 github.com/testcontainers/testcontainers-go - Connected to docker: 
+  Server Version: 29.6.0
+  API Version: 1.55
+  Operating System: Ubuntu 24.04.4 LTS
+  Total Memory: 15225 MB
+  Testcontainers for Go Version: v0.43.0
+  Resolved Docker Host: unix:///var/run/docker.sock
+  Resolved Docker Socket Path: /var/run/docker.sock
+  Test SessionID: cead1e4576cd251f13c0337399215367e0186378a87c872d0a083e4b1b166d35
+  Test ProcessID: 84f44a4e-7b50-49ab-8dfa-75baa759b394
+2026/07/01 13:37:33 🐳 Creating container for image mysql:lts
+2026/07/01 13:37:34 🐳 Creating container for image testcontainers/ryuk:0.14.0
+2026/07/01 13:37:34 ✅ Container created: 551051efc9d4
+2026/07/01 13:37:34 🐳 Starting container: 551051efc9d4
+2026/07/01 13:37:34 ✅ Container started: 551051efc9d4
+2026/07/01 13:37:34 ⏳ Waiting for container id 551051efc9d4 image: testcontainers/ryuk:0.14.0. Waiting for: all of: [log message "Started", port 8080/tcp to be listening]
+2026/07/01 13:37:34 Shell not found in container
+2026/07/01 13:37:34 🔔 Container is ready: 551051efc9d4
+2026/07/01 13:37:34 ✅ Container created: 801dc619c1b8
+2026/07/01 13:37:34 🐳 Starting container: 801dc619c1b8
+2026/07/01 13:37:35 ✅ Container started: 801dc619c1b8
+2026/07/01 13:37:35 ⏳ Waiting for container id 801dc619c1b8 image: mysql:lts. Waiting for: all of: [log message "port: 3306  MySQL Community Server"]
+2026/07/01 13:37:47 🔔 Container is ready: 801dc619c1b8
+2026/07/01 13:37:47 🐳 Creating container for image redis:7.2-alpine
+2026/07/01 13:37:47 ✅ Container created: bcc82f203925
+2026/07/01 13:37:47 🐳 Starting container: bcc82f203925
+2026/07/01 13:37:48 ✅ Container started: bcc82f203925
+2026/07/01 13:37:48 ⏳ Waiting for container id bcc82f203925 image: redis:7.2-alpine. Waiting for: all of: [log message "Ready to accept connections"]
+2026/07/01 13:37:48 🔔 Container is ready: bcc82f203925
+=== RUN   TestAccessIntegration_CreateAccessRight/Fail_Duplicate
+=== RUN   TestAccessIntegration_CreateAccessRight/Security_SQLInjectionPrevention
+--- PASS: TestAccessIntegration_CreateAccessRight (20.06s)
+    --- PASS: TestAccessIntegration_CreateAccessRight/Success (17.19s)
+    --- PASS: TestAccessIntegration_CreateAccessRight/Fail_Duplicate (1.57s)
+    --- PASS: TestAccessIntegration_CreateAccessRight/Security_SQLInjectionPrevention (1.30s)
+=== RUN   TestAccessIntegration_DeleteAccessRight
+=== RUN   TestAccessIntegration_DeleteAccessRight/Success
+=== RUN   TestAccessIntegration_DeleteAccessRight/Fail_NotFound
+--- PASS: TestAccessIntegration_DeleteAccessRight (2.62s)
+    --- PASS: TestAccessIntegration_DeleteAccessRight/Success (1.36s)
+    --- PASS: TestAccessIntegration_DeleteAccessRight/Fail_NotFound (1.26s)
+=== RUN   TestAccessIntegration_EndpointLinkFlow
+=== RUN   TestAccessIntegration_EndpointLinkFlow/CreateEndpoint_LinkToAccessRight
+=== RUN   TestAccessIntegration_EndpointLinkFlow/LinkEndpoint_Negative_DuplicateLink
+    access_integration_test.go:180: Duplicate link error (expected idempotent or conflict): <nil>
+=== RUN   TestAccessIntegration_EndpointLinkFlow/UnlinkEndpointFromAccessRight_Success
+=== RUN   TestAccessIntegration_EndpointLinkFlow/UnlinkEndpointFromAccessRight_Negative_NonExistent
+--- PASS: TestAccessIntegration_EndpointLinkFlow (5.59s)
+    --- PASS: TestAccessIntegration_EndpointLinkFlow/CreateEndpoint_LinkToAccessRight (1.67s)
+    --- PASS: TestAccessIntegration_EndpointLinkFlow/LinkEndpoint_Negative_DuplicateLink (1.31s)
+    --- PASS: TestAccessIntegration_EndpointLinkFlow/UnlinkEndpointFromAccessRight_Success (1.26s)
+    --- PASS: TestAccessIntegration_EndpointLinkFlow/UnlinkEndpointFromAccessRight_Negative_NonExistent (1.35s)
+=== RUN   TestAccessIntegration_DeleteEndpoint
+=== RUN   TestAccessIntegration_DeleteEndpoint/Success
+=== RUN   TestAccessIntegration_DeleteEndpoint/Idempotent_NotFound
+--- PASS: TestAccessIntegration_DeleteEndpoint (3.15s)
+    --- PASS: TestAccessIntegration_DeleteEndpoint/Success (1.44s)
+    --- PASS: TestAccessIntegration_DeleteEndpoint/Idempotent_NotFound (1.71s)
+=== RUN   TestAccessIntegration_DynamicSearch_AccessRights
+--- PASS: TestAccessIntegration_DynamicSearch_AccessRights (1.71s)
+=== RUN   TestApiKeyIntegration_Lifecycle
+=== RUN   TestApiKeyIntegration_Lifecycle/Create_and_Authenticate_with_Caching
+=== RUN   TestApiKeyIntegration_Lifecycle/Revoke_should_invalidate_Cache
+--- PASS: TestApiKeyIntegration_Lifecycle (4.17s)
+    --- PASS: TestApiKeyIntegration_Lifecycle/Create_and_Authenticate_with_Caching (2.65s)
+    --- PASS: TestApiKeyIntegration_Lifecycle/Revoke_should_invalidate_Cache (1.52s)
+=== RUN   TestAuditIntegration_LogActivity
+=== RUN   TestAuditIntegration_LogActivity/LogActivity_And_Query
+=== RUN   TestAuditIntegration_LogActivity/LogActivity_MissingRequiredFields
+=== RUN   TestAuditIntegration_LogActivity/LogActivity_NilValues
+=== RUN   TestAuditIntegration_LogActivity/Security_SQLInjectionInEntity
+--- PASS: TestAuditIntegration_LogActivity (5.49s)
+    --- PASS: TestAuditIntegration_LogActivity/LogActivity_And_Query (1.58s)
+    --- PASS: TestAuditIntegration_LogActivity/LogActivity_MissingRequiredFields (1.29s)
+    --- PASS: TestAuditIntegration_LogActivity/LogActivity_NilValues (1.33s)
+    --- PASS: TestAuditIntegration_LogActivity/Security_SQLInjectionInEntity (1.28s)
+=== RUN   TestAuthIntegration_Login
+=== RUN   TestAuthIntegration_Login/Success_with_Valid_Credentials
+=== RUN   TestAuthIntegration_Login/Fail_with_Invalid_Password
+=== RUN   TestAuthIntegration_Login/Fail_with_Non-Existent_User
+=== RUN   TestAuthIntegration_Login/Fail_with_Empty_Credentials
+=== RUN   TestAuthIntegration_Login/Fail_with_Empty_Credentials/Empty_Username
+=== RUN   TestAuthIntegration_Login/Fail_with_Empty_Credentials/Empty_Password
+=== RUN   TestAuthIntegration_Login/Edge_-_Special_Characters_in_Username
+=== RUN   TestAuthIntegration_Login/Edge_-_Very_Long_Password_(Bcrypt_Limit_72)
+=== RUN   TestAuthIntegration_Login/Edge_-_Unicode_Characters
+=== RUN   TestAuthIntegration_Login/Edge_-_Case_Sensitivity
+--- PASS: TestAuthIntegration_Login (3.61s)
+    --- PASS: TestAuthIntegration_Login/Success_with_Valid_Credentials (0.19s)
+    --- PASS: TestAuthIntegration_Login/Fail_with_Invalid_Password (0.16s)
+    --- PASS: TestAuthIntegration_Login/Fail_with_Non-Existent_User (0.16s)
+    --- PASS: TestAuthIntegration_Login/Fail_with_Empty_Credentials (0.31s)
+        --- PASS: TestAuthIntegration_Login/Fail_with_Empty_Credentials/Empty_Username (0.15s)
+        --- PASS: TestAuthIntegration_Login/Fail_with_Empty_Credentials/Empty_Password (0.16s)
+    --- PASS: TestAuthIntegration_Login/Edge_-_Special_Characters_in_Username (0.33s)
+    --- PASS: TestAuthIntegration_Login/Edge_-_Very_Long_Password_(Bcrypt_Limit_72) (0.30s)
+    --- PASS: TestAuthIntegration_Login/Edge_-_Unicode_Characters (0.30s)
+    --- PASS: TestAuthIntegration_Login/Edge_-_Case_Sensitivity (0.32s)
+=== RUN   TestAuthIntegration_TokenLifecycle
+=== RUN   TestAuthIntegration_TokenLifecycle/Success_Refresh_Token
+=== RUN   TestAuthIntegration_TokenLifecycle/Multiple_Refresh_In_Sequence
+=== RUN   TestAuthIntegration_TokenLifecycle/Fail_Refresh_with_Invalid_Token
+=== RUN   TestAuthIntegration_TokenLifecycle/Fail_Refresh_with_Expired_Token
+=== RUN   TestAuthIntegration_TokenLifecycle/Success_Logout_(Revoke)
+--- PASS: TestAuthIntegration_TokenLifecycle (3.34s)
+    --- PASS: TestAuthIntegration_TokenLifecycle/Success_Refresh_Token (1.01s)
+    --- PASS: TestAuthIntegration_TokenLifecycle/Multiple_Refresh_In_Sequence (0.31s)
+    --- PASS: TestAuthIntegration_TokenLifecycle/Fail_Refresh_with_Invalid_Token (0.00s)
+    --- PASS: TestAuthIntegration_TokenLifecycle/Fail_Refresh_with_Expired_Token (0.15s)
+    --- PASS: TestAuthIntegration_TokenLifecycle/Success_Logout_(Revoke) (0.14s)
+=== RUN   TestAuthIntegration_PasswordRecovery
+=== RUN   TestAuthIntegration_PasswordRecovery/Success_Forgot_Password
+=== RUN   TestAuthIntegration_PasswordRecovery/Success_Reset_Password
+--- PASS: TestAuthIntegration_PasswordRecovery (2.54s)
+    --- PASS: TestAuthIntegration_PasswordRecovery/Success_Forgot_Password (0.18s)
+    --- PASS: TestAuthIntegration_PasswordRecovery/Success_Reset_Password (0.60s)
+=== RUN   TestAuthIntegration_Security
+=== RUN   TestAuthIntegration_Security/SQL_Injection_Prevention
+=== RUN   TestAuthIntegration_Security/Brute_Force_Protection_Simulation
+=== RUN   TestAuthIntegration_Security/Token_Rotation_Reuse_Protection
+=== RUN   TestAuthIntegration_Security/Session_Hijacking_Prevention_(Device_Differentiation)
+=== RUN   TestAuthIntegration_Security/XSS_in_UserAgent_Handling
+--- PASS: TestAuthIntegration_Security (3.92s)
+    --- PASS: TestAuthIntegration_Security/SQL_Injection_Prevention (0.44s)
+    --- PASS: TestAuthIntegration_Security/Brute_Force_Protection_Simulation (0.95s)
+    --- PASS: TestAuthIntegration_Security/Token_Rotation_Reuse_Protection (0.33s)
+    --- PASS: TestAuthIntegration_Security/Session_Hijacking_Prevention_(Device_Differentiation) (0.46s)
+    --- PASS: TestAuthIntegration_Security/XSS_in_UserAgent_Handling (0.32s)
+=== RUN   TestDataIsolation_User_FindAll
+=== RUN   TestDataIsolation_User_FindAll/Scope_to_Org_A_returns_user_A_only
+=== RUN   TestDataIsolation_User_FindAll/Scope_to_Org_B_returns_user_B_only
+=== RUN   TestDataIsolation_User_FindAll/GetByOrganization_returns_org_A_users
+--- PASS: TestDataIsolation_User_FindAll (1.65s)
+    --- PASS: TestDataIsolation_User_FindAll/Scope_to_Org_A_returns_user_A_only (0.01s)
+    --- PASS: TestDataIsolation_User_FindAll/Scope_to_Org_B_returns_user_B_only (0.00s)
+    --- PASS: TestDataIsolation_User_FindAll/GetByOrganization_returns_org_A_users (0.00s)
+=== RUN   TestOrganizationRepository_Integration
+=== RUN   TestOrganizationRepository_Integration/Create_Organization_Success
+=== RUN   TestOrganizationRepository_Integration/Slug_Uniqueness
+=== RUN   TestOrganizationRepository_Integration/Data_Isolation
+=== RUN   TestOrganizationRepository_Integration/Check_Membership
+=== RUN   TestOrganizationRepository_Integration/Banned_Member_Denied
+=== RUN   TestOrganizationRepository_Integration/Atomic_Create
+=== RUN   TestOrganizationRepository_Integration/Find_User_Organizations
+--- PASS: TestOrganizationRepository_Integration (12.17s)
+    --- PASS: TestOrganizationRepository_Integration/Create_Organization_Success (1.42s)
+    --- PASS: TestOrganizationRepository_Integration/Slug_Uniqueness (1.44s)
+    --- PASS: TestOrganizationRepository_Integration/Data_Isolation (1.54s)
+    --- PASS: TestOrganizationRepository_Integration/Check_Membership (1.55s)
+    --- PASS: TestOrganizationRepository_Integration/Banned_Member_Denied (2.15s)
+    --- PASS: TestOrganizationRepository_Integration/Atomic_Create (1.56s)
+    --- PASS: TestOrganizationRepository_Integration/Find_User_Organizations (2.50s)
+=== RUN   TestPermissionIntegration_AssignRoleToUser
+=== RUN   TestPermissionIntegration_AssignRoleToUser/Success
+=== RUN   TestPermissionIntegration_AssignRoleToUser/Negative_AssignRoleToNonExistentUser
+--- PASS: TestPermissionIntegration_AssignRoleToUser (4.25s)
+    --- PASS: TestPermissionIntegration_AssignRoleToUser/Success (1.95s)
+    --- PASS: TestPermissionIntegration_AssignRoleToUser/Negative_AssignRoleToNonExistentUser (2.30s)
+=== RUN   TestPermissionIntegration_GrantPermissionToRole
+=== RUN   TestPermissionIntegration_GrantPermissionToRole/Success
+=== RUN   TestPermissionIntegration_GrantPermissionToRole/Negative_GrantNonExistentRole
+--- PASS: TestPermissionIntegration_GrantPermissionToRole (6.31s)
+    --- PASS: TestPermissionIntegration_GrantPermissionToRole/Success (2.92s)
+    --- PASS: TestPermissionIntegration_GrantPermissionToRole/Negative_GrantNonExistentRole (3.38s)
+=== RUN   TestPermissionIntegration_RolePermissionMutation
+=== RUN   TestPermissionIntegration_RolePermissionMutation/RevokePermission
+=== RUN   TestPermissionIntegration_RolePermissionMutation/UpdatePermission
+=== RUN   TestPermissionIntegration_RolePermissionMutation/Negative_RevokeNonExistentPermission
+=== RUN   TestPermissionIntegration_RolePermissionMutation/FullLifecycle
+--- PASS: TestPermissionIntegration_RolePermissionMutation (28.40s)
+    --- PASS: TestPermissionIntegration_RolePermissionMutation/RevokePermission (2.19s)
+    --- PASS: TestPermissionIntegration_RolePermissionMutation/UpdatePermission (2.13s)
+    --- PASS: TestPermissionIntegration_RolePermissionMutation/Negative_RevokeNonExistentPermission (4.76s)
+    --- PASS: TestPermissionIntegration_RolePermissionMutation/FullLifecycle (19.30s)
+=== RUN   TestPermissionIntegration_QueryPermissions
+=== RUN   TestPermissionIntegration_QueryPermissions/GetAllPermissions
+=== RUN   TestPermissionIntegration_QueryPermissions/GetPermissionsForRole
+--- PASS: TestPermissionIntegration_QueryPermissions (3.57s)
+    --- PASS: TestPermissionIntegration_QueryPermissions/GetAllPermissions (1.75s)
+    --- PASS: TestPermissionIntegration_QueryPermissions/GetPermissionsForRole (1.81s)
+=== RUN   TestProjectIntegration_Create_Success
+--- PASS: TestProjectIntegration_Create_Success (4.52s)
+=== RUN   TestProjectIntegration_CRUD_Lifecycle
+--- PASS: TestProjectIntegration_CRUD_Lifecycle (4.82s)
+=== RUN   TestProjectIntegration_GetByOrgID
+--- PASS: TestProjectIntegration_GetByOrgID (4.42s)
+=== RUN   TestProjectIntegration_PartialUpdate
+--- PASS: TestProjectIntegration_PartialUpdate (4.51s)
+=== RUN   TestProjectIntegration_Security_SQLInjection
+--- PASS: TestProjectIntegration_Security_SQLInjection (4.78s)
+=== RUN   TestProjectIntegration_OrganizationScopeIsolation
+--- PASS: TestProjectIntegration_OrganizationScopeIsolation (5.17s)
+=== RUN   TestProjectIsolation_UseCase
+=== RUN   TestProjectIsolation_UseCase/Cross-tenant_GET_should_fail
+=== RUN   TestProjectIsolation_UseCase/Cross-tenant_UPDATE_should_fail
+=== RUN   TestProjectIsolation_UseCase/Cross-tenant_DELETE_should_fail
+--- PASS: TestProjectIsolation_UseCase (5.09s)
+    --- PASS: TestProjectIsolation_UseCase/Cross-tenant_GET_should_fail (0.00s)
+    --- PASS: TestProjectIsolation_UseCase/Cross-tenant_UPDATE_should_fail (0.00s)
+    --- PASS: TestProjectIsolation_UseCase/Cross-tenant_DELETE_should_fail (0.00s)
+=== RUN   TestQMSQueueIntegration
+=== RUN   TestQMSQueueIntegration/Positive_RegisterAndForwardQueue
+=== RUN   TestQMSQueueIntegration/Negative_ForwardWithoutRequiredCounterFails
+=== RUN   TestQMSQueueIntegration/Positive_TransitionsAndVisits
+=== RUN   TestQMSQueueIntegration/Positive_StatsCountActiveJourneys
+--- PASS: TestQMSQueueIntegration (4.88s)
+    --- PASS: TestQMSQueueIntegration/Positive_RegisterAndForwardQueue (0.08s)
+    --- PASS: TestQMSQueueIntegration/Negative_ForwardWithoutRequiredCounterFails (0.05s)
+    --- PASS: TestQMSQueueIntegration/Positive_TransitionsAndVisits (0.09s)
+    --- PASS: TestQMSQueueIntegration/Positive_StatsCountActiveJourneys (0.01s)
+=== RUN   TestQMSScannerIntegration
+=== RUN   TestQMSScannerIntegration/Positive_RegisterViaScanner
+=== RUN   TestQMSScannerIntegration/Positive_ForwardViaScanner
+=== RUN   TestQMSScannerIntegration/Negative_InvalidAPIKey
+=== RUN   TestQMSScannerIntegration/Negative_MissingBranchID
+=== RUN   TestQMSScannerIntegration/Vulnerability_CrossTenantAccessRejected
+--- PASS: TestQMSScannerIntegration (4.80s)
+    --- PASS: TestQMSScannerIntegration/Positive_RegisterViaScanner (0.05s)
+    --- PASS: TestQMSScannerIntegration/Positive_ForwardViaScanner (0.06s)
+    --- PASS: TestQMSScannerIntegration/Negative_InvalidAPIKey (0.00s)
+    --- PASS: TestQMSScannerIntegration/Negative_MissingBranchID (0.00s)
+    --- PASS: TestQMSScannerIntegration/Vulnerability_CrossTenantAccessRejected (0.00s)
+=== RUN   TestRoleIntegration_Create
+=== RUN   TestRoleIntegration_Create/Success
+=== RUN   TestRoleIntegration_Create/Negative_DuplicateName
+=== RUN   TestRoleIntegration_Create/Negative_EmptyName
+=== RUN   TestRoleIntegration_Create/Edge_Create_LongName
+=== RUN   TestRoleIntegration_Create/Edge_MinimumNameLength
+--- PASS: TestRoleIntegration_Create (22.86s)
+    --- PASS: TestRoleIntegration_Create/Success (4.58s)
+    --- PASS: TestRoleIntegration_Create/Negative_DuplicateName (4.80s)
+    --- PASS: TestRoleIntegration_Create/Negative_EmptyName (4.27s)
+    --- PASS: TestRoleIntegration_Create/Edge_Create_LongName (4.53s)
+    --- PASS: TestRoleIntegration_Create/Edge_MinimumNameLength (4.68s)
+=== RUN   TestRoleIntegration_Query
+=== RUN   TestRoleIntegration_Query/GetAll_Success
+=== RUN   TestRoleIntegration_Query/DynamicSearch_Success
+--- PASS: TestRoleIntegration_Query (9.45s)
+    --- PASS: TestRoleIntegration_Query/GetAll_Success (4.87s)
+    --- PASS: TestRoleIntegration_Query/DynamicSearch_Success (4.58s)
+=== RUN   TestRoleIntegration_Delete
+=== RUN   TestRoleIntegration_Delete/Success
+=== RUN   TestRoleIntegration_Delete/Negative_NonExistentRole
+=== RUN   TestRoleIntegration_Delete/Security_Delete_SuperadminForbidden
+=== RUN   TestRoleIntegration_Delete/WithActiveUsers_DocumentsBehavior
+    role_integration_test.go:237: Post-delete Casbin grouping contains deleted role 'RoleWithUsers': false
+--- PASS: TestRoleIntegration_Delete (18.63s)
+    --- PASS: TestRoleIntegration_Delete/Success (4.50s)
+    --- PASS: TestRoleIntegration_Delete/Negative_NonExistentRole (4.72s)
+    --- PASS: TestRoleIntegration_Delete/Security_Delete_SuperadminForbidden (4.53s)
+    --- PASS: TestRoleIntegration_Delete/WithActiveUsers_DocumentsBehavior (4.89s)
+=== RUN   TestRoleIntegration_Update
+=== RUN   TestRoleIntegration_Update/Success
+--- PASS: TestRoleIntegration_Update (4.43s)
+    --- PASS: TestRoleIntegration_Update/Success (4.43s)
+=== RUN   TestRoleIntegration_Edge_SpecialCharactersInName
+=== RUN   TestRoleIntegration_Edge_SpecialCharactersInName/AdminSymbols
+=== RUN   TestRoleIntegration_Edge_SpecialCharactersInName/Dashes
+=== RUN   TestRoleIntegration_Edge_SpecialCharactersInName/Underscores
+=== RUN   TestRoleIntegration_Edge_SpecialCharactersInName/Dots
+=== RUN   TestRoleIntegration_Edge_SpecialCharactersInName/Parentheses
+--- PASS: TestRoleIntegration_Edge_SpecialCharactersInName (23.35s)
+    --- PASS: TestRoleIntegration_Edge_SpecialCharactersInName/AdminSymbols (4.64s)
+    --- PASS: TestRoleIntegration_Edge_SpecialCharactersInName/Dashes (4.76s)
+    --- PASS: TestRoleIntegration_Edge_SpecialCharactersInName/Underscores (4.85s)
+    --- PASS: TestRoleIntegration_Edge_SpecialCharactersInName/Dots (4.58s)
+    --- PASS: TestRoleIntegration_Edge_SpecialCharactersInName/Parentheses (4.52s)
+=== RUN   TestRoleIntegration_Edge_UnicodeInName
+=== RUN   TestRoleIntegration_Edge_UnicodeInName/Chinese
+=== RUN   TestRoleIntegration_Edge_UnicodeInName/Cyrillic
+=== RUN   TestRoleIntegration_Edge_UnicodeInName/Arabic
+=== RUN   TestRoleIntegration_Edge_UnicodeInName/Japanese
+--- PASS: TestRoleIntegration_Edge_UnicodeInName (18.57s)
+    --- PASS: TestRoleIntegration_Edge_UnicodeInName/Chinese (4.91s)
+    --- PASS: TestRoleIntegration_Edge_UnicodeInName/Cyrillic (4.55s)
+    --- PASS: TestRoleIntegration_Edge_UnicodeInName/Arabic (4.68s)
+    --- PASS: TestRoleIntegration_Edge_UnicodeInName/Japanese (4.43s)
+=== RUN   TestRoleIntegration_Security_SQLInjectionInName
+=== RUN   TestRoleIntegration_Security_SQLInjectionInName/BooleanBypass
+=== RUN   TestRoleIntegration_Security_SQLInjectionInName/DropTable
+=== RUN   TestRoleIntegration_Security_SQLInjectionInName/Comment
+=== RUN   TestRoleIntegration_Security_SQLInjectionInName/Union
+--- PASS: TestRoleIntegration_Security_SQLInjectionInName (18.64s)
+    --- PASS: TestRoleIntegration_Security_SQLInjectionInName/BooleanBypass (4.58s)
+    --- PASS: TestRoleIntegration_Security_SQLInjectionInName/DropTable (4.70s)
+    --- PASS: TestRoleIntegration_Security_SQLInjectionInName/Comment (4.82s)
+    --- PASS: TestRoleIntegration_Security_SQLInjectionInName/Union (4.54s)
+=== RUN   TestRoleIntegration_Security_XSSInDescription
+=== RUN   TestRoleIntegration_Security_XSSInDescription/ScriptTag
+=== RUN   TestRoleIntegration_Security_XSSInDescription/ImageOnError
+--- PASS: TestRoleIntegration_Security_XSSInDescription (9.29s)
+    --- PASS: TestRoleIntegration_Security_XSSInDescription/ScriptTag (4.52s)
+    --- PASS: TestRoleIntegration_Security_XSSInDescription/ImageOnError (4.77s)
+=== RUN   TestStatsIntegration_DashboardSummary_RealCounts
+--- PASS: TestStatsIntegration_DashboardSummary_RealCounts (4.91s)
+=== RUN   TestStatsIntegration_DashboardActivity_WithAuditLogs
+--- PASS: TestStatsIntegration_DashboardActivity_WithAuditLogs (4.62s)
+=== RUN   TestStatsIntegration_DashboardActivity_EmptyData
+--- PASS: TestStatsIntegration_DashboardActivity_EmptyData (4.42s)
+=== RUN   TestStatsIntegration_SystemInsights
+--- PASS: TestStatsIntegration_SystemInsights (4.58s)
+=== RUN   TestStatsIntegration_OrganizationScoping
+--- PASS: TestStatsIntegration_OrganizationScoping (4.65s)
+=== RUN   TestTUS_Integration_Lifecycle
+2026/07/01 13:42:42 🐳 Creating container for image rustfs/rustfs:latest
+2026/07/01 13:42:42 ✅ Container created: 68cb4c7766ca
+2026/07/01 13:42:42 🐳 Starting container: 68cb4c7766ca
+2026/07/01 13:42:43 ✅ Container started: 68cb4c7766ca
+2026/07/01 13:42:43 ⏳ Waiting for container id 68cb4c7766ca image: rustfs/rustfs:latest. Waiting for: port 9000/tcp to be listening
+2026/07/01 13:42:43 🔔 Container is ready: 68cb4c7766ca
+=== RUN   TestTUS_Integration_Lifecycle/Create_Upload
+2026/07/01 13:42:45 WARN NetworkControlError method=POST path="" requestId="" error="feature not supported"
+2026/07/01 13:42:45 WARN NetworkControlError method=POST path="" requestId="" error="feature not supported"
+2026/07/01 13:42:45 INFO RequestIncoming method=POST path="" requestId=""
+2026/07/01 13:42:45 INFO UploadCreated method=POST path="" requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 size=5 url=http:///files/b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4
+2026/07/01 13:42:45 INFO ResponseOutgoing method=POST path="" requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 status=201 body=""
+=== RUN   TestTUS_Integration_Lifecycle/Create_Upload/Upload_Chunk
+2026/07/01 13:42:45 WARN NetworkControlError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" error="feature not supported"
+2026/07/01 13:42:45 WARN NetworkControlError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" error="feature not supported"
+2026/07/01 13:42:45 INFO RequestIncoming method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId=""
+2026/07/01 13:42:45 INFO ChunkWriteStart method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 maxSize=5 offset=0
+2026/07/01 13:42:45 WARN NetworkTimeoutError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 error="feature not supported"
+2026/07/01 13:42:45 WARN NetworkTimeoutError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 error="feature not supported"
+2026/07/01 13:42:45 WARN NetworkTimeoutError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 error="feature not supported"
+2026/07/01 13:42:45 WARN NetworkTimeoutError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 error="feature not supported"
+2026/07/01 13:42:45 WARN NetworkTimeoutError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 error="feature not supported"
+2026/07/01 13:42:45 WARN NetworkTimeoutError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 error="feature not supported"
+2026/07/01 13:42:45 INFO ChunkWriteComplete method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 bytesWritten=5
+2026/07/01 13:42:45 INFO UploadFinished method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 size=5
+2026/07/01 13:42:45 INFO ResponseOutgoing method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 status=204 body=""
+=== RUN   TestTUS_Integration_Lifecycle/Create_Upload/Invalid_Chunk_Offset
+2026/07/01 13:42:47 WARN NetworkControlError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" error="feature not supported"
+2026/07/01 13:42:47 WARN NetworkControlError method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" error="feature not supported"
+2026/07/01 13:42:47 INFO RequestIncoming method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId=""
+2026/07/01 13:42:47 INFO ResponseOutgoing method=PATCH path=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 requestId="" id=b193a27c1914510a9524425f0ef44144+ZDdjZTNlNGYtZmI5Ni00MTVlLTk1NWEtNjMyNzE3ZWRlYTg1LjQzYTI1NzRjLTljZjktNDU2Ny04NWI5LTQxZDNlOGFjM2NkNXgxNzgyODg4MTY1NzM4MzU0NDA4 status=409 body="ERR_MISMATCHED_OFFSET: mismatched offset\n"
+2026/07/01 13:42:47 🐳 Stopping container: 68cb4c7766ca
+2026/07/01 13:42:48 ✅ Container stopped: 68cb4c7766ca
+2026/07/01 13:42:48 🐳 Terminating container: 68cb4c7766ca
+2026/07/01 13:42:48 🚫 Container terminated: 68cb4c7766ca
+--- PASS: TestTUS_Integration_Lifecycle (11.31s)
+    --- PASS: TestTUS_Integration_Lifecycle/Create_Upload (2.06s)
+        --- PASS: TestTUS_Integration_Lifecycle/Create_Upload/Upload_Chunk (2.03s)
+        --- PASS: TestTUS_Integration_Lifecycle/Create_Upload/Invalid_Chunk_Offset (0.01s)
+=== RUN   TestUserIntegration_Lifecycle
+=== RUN   TestUserIntegration_Lifecycle/Positive_ValidData
+=== RUN   TestUserIntegration_Lifecycle/Positive_WithRoleAssignment
+=== RUN   TestUserIntegration_Lifecycle/Positive_Update
+=== RUN   TestUserIntegration_Lifecycle/Positive_GetByID
+=== RUN   TestUserIntegration_Lifecycle/Positive_Delete
+=== RUN   TestUserIntegration_Lifecycle/Negative_DuplicateUsername
+=== RUN   TestUserIntegration_Lifecycle/Negative_DuplicateEmail
+=== RUN   TestUserIntegration_Lifecycle/Negative_NonExistentUserUpdate
+=== RUN   TestUserIntegration_Lifecycle/Negative_NonExistentUserDelete
+--- PASS: TestUserIntegration_Lifecycle (44.36s)
+    --- PASS: TestUserIntegration_Lifecycle/Positive_ValidData (4.75s)
+    --- PASS: TestUserIntegration_Lifecycle/Positive_WithRoleAssignment (4.97s)
+    --- PASS: TestUserIntegration_Lifecycle/Positive_Update (5.02s)
+    --- PASS: TestUserIntegration_Lifecycle/Positive_GetByID (5.06s)
+    --- PASS: TestUserIntegration_Lifecycle/Positive_Delete (4.99s)
+    --- PASS: TestUserIntegration_Lifecycle/Negative_DuplicateUsername (4.82s)
+    --- PASS: TestUserIntegration_Lifecycle/Negative_DuplicateEmail (5.10s)
+    --- PASS: TestUserIntegration_Lifecycle/Negative_NonExistentUserUpdate (4.72s)
+    --- PASS: TestUserIntegration_Lifecycle/Negative_NonExistentUserDelete (4.93s)
+=== RUN   TestUserIntegration_Edge
+=== RUN   TestUserIntegration_Edge/MinimumUsernameLength
+=== RUN   TestUserIntegration_Edge/MaximumUsernameLength
+=== RUN   TestUserIntegration_Edge/SpecialCharactersInName
+=== RUN   TestUserIntegration_Edge/UnicodeInName
+=== RUN   TestUserIntegration_Edge/EmptyOptionalFields
+=== RUN   TestUserIntegration_Edge/EmailWithPlusSign
+--- PASS: TestUserIntegration_Edge (31.37s)
+    --- PASS: TestUserIntegration_Edge/MinimumUsernameLength (4.78s)
+    --- PASS: TestUserIntegration_Edge/MaximumUsernameLength (4.85s)
+    --- PASS: TestUserIntegration_Edge/SpecialCharactersInName (5.14s)
+    --- PASS: TestUserIntegration_Edge/UnicodeInName (5.37s)
+    --- PASS: TestUserIntegration_Edge/EmptyOptionalFields (5.52s)
+    --- PASS: TestUserIntegration_Edge/EmailWithPlusSign (5.69s)
+=== RUN   TestUserIntegration_Security
+=== RUN   TestUserIntegration_Security/SQLInjectionInUsername
+=== RUN   TestUserIntegration_Security/XSSInName
+=== RUN   TestUserIntegration_Security/PathTraversalInUsername
+=== RUN   TestUserIntegration_Security/NoSQLInjection
+=== RUN   TestUserIntegration_Security/PasswordNotInResponse
+--- PASS: TestUserIntegration_Security (27.95s)
+    --- PASS: TestUserIntegration_Security/SQLInjectionInUsername (6.12s)
+    --- PASS: TestUserIntegration_Security/XSSInName (5.64s)
+    --- PASS: TestUserIntegration_Security/PathTraversalInUsername (5.88s)
+    --- PASS: TestUserIntegration_Security/NoSQLInjection (5.07s)
+    --- PASS: TestUserIntegration_Security/PasswordNotInResponse (5.23s)
+=== RUN   TestUserRepository_Integration
+=== RUN   TestUserRepository_Integration/GetByOrganization
+=== RUN   TestUserRepository_Integration/SSOIdentity
+--- PASS: TestUserRepository_Integration (17.43s)
+    --- PASS: TestUserRepository_Integration/GetByOrganization (9.01s)
+    --- PASS: TestUserRepository_Integration/SSOIdentity (8.42s)
+=== RUN   TestWebhookIntegration
+=== RUN   TestWebhookIntegration/Positive_TriggerAndDelivery
+=== RUN   TestWebhookIntegration/Negative_TargetServerError
+=== RUN   TestWebhookIntegration/Edge_InactiveWebhook
+=== RUN   TestWebhookIntegration/Security_HMACSignature
+--- PASS: TestWebhookIntegration (27.21s)
+    --- PASS: TestWebhookIntegration/Positive_TriggerAndDelivery (6.89s)
+    --- PASS: TestWebhookIntegration/Negative_TargetServerError (7.34s)
+    --- PASS: TestWebhookIntegration/Edge_InactiveWebhook (6.10s)
+    --- PASS: TestWebhookIntegration/Security_HMACSignature (6.86s)
+=== RUN   TestWorkerIntegration
+=== RUN   TestWorkerIntegration/EmailTask_EnqueueAndInspect
+=== RUN   TestWorkerIntegration/CleanupExpiredTokens
+=== RUN   TestWorkerIntegration/CleanupSoftDeletedUsers
+=== RUN   TestWorkerIntegration/PruneAuditLogs
+=== RUN   TestWorkerIntegration/TaskRetry_OnTransientFailure
+=== RUN   TestWorkerIntegration/TaskFailure_DeadLetterQueue
+=== RUN   TestWorkerIntegration/SchedulerRegistration
+    worker_integration_test.go:354: Scheduled tasks registered successfully without errors
+    worker_integration_test.go:371: Scheduler shutdown completed
+=== RUN   TestWorkerIntegration/MultipleTaskEnqueue
+=== RUN   TestWorkerIntegration/ProcessorStartShutdown
+--- PASS: TestWorkerIntegration (76.06s)
+    --- PASS: TestWorkerIntegration/EmailTask_EnqueueAndInspect (5.00s)
+    --- PASS: TestWorkerIntegration/CleanupExpiredTokens (7.00s)
+    --- PASS: TestWorkerIntegration/CleanupSoftDeletedUsers (6.92s)
+    --- PASS: TestWorkerIntegration/PruneAuditLogs (7.10s)
+    --- PASS: TestWorkerIntegration/TaskRetry_OnTransientFailure (15.00s)
+    --- PASS: TestWorkerIntegration/TaskFailure_DeadLetterQueue (15.92s)
+    --- PASS: TestWorkerIntegration/SchedulerRegistration (8.00s)
+    --- PASS: TestWorkerIntegration/MultipleTaskEnqueue (4.91s)
+    --- PASS: TestWorkerIntegration/ProcessorStartShutdown (6.18s)
+PASS
+ok  	github.com/Roisfaozi/queue-base/tests/integration/modules	539.853s
+=== RUN   TestScenario_AdminSecurity
+=== RUN   TestScenario_AdminSecurity/AccountSuspension
+2026/07/01 13:28:14 github.com/testcontainers/testcontainers-go - Connected to docker: 
+  Server Version: 29.6.0
+  API Version: 1.55
+  Operating System: Ubuntu 24.04.4 LTS
+  Total Memory: 15225 MB
+  Testcontainers for Go Version: v0.43.0
+  Resolved Docker Host: unix:///var/run/docker.sock
+  Resolved Docker Socket Path: /var/run/docker.sock
+  Test SessionID: 68bab07da26e89432fd0dfe625acd12e17cb52b88eeea707e552bc1c9432f88c
+  Test ProcessID: 056a54fb-85c7-4836-a263-6d06d01ce158
+2026/07/01 13:28:14 🐳 Creating container for image mysql:lts
+2026/07/01 13:28:14 🐳 Creating container for image testcontainers/ryuk:0.14.0
+2026/07/01 13:28:15 ✅ Container created: 1c7fe97a52fe
+2026/07/01 13:28:15 🐳 Starting container: 1c7fe97a52fe
+2026/07/01 13:28:15 ✅ Container started: 1c7fe97a52fe
+2026/07/01 13:28:15 ⏳ Waiting for container id 1c7fe97a52fe image: testcontainers/ryuk:0.14.0. Waiting for: all of: [log message "Started", port 8080/tcp to be listening]
+2026/07/01 13:28:15 Shell not found in container
+2026/07/01 13:28:15 🔔 Container is ready: 1c7fe97a52fe
+2026/07/01 13:28:15 ✅ Container created: 80bafc350014
+2026/07/01 13:28:15 🐳 Starting container: 80bafc350014
+2026/07/01 13:28:15 ✅ Container started: 80bafc350014
+2026/07/01 13:28:15 ⏳ Waiting for container id 80bafc350014 image: mysql:lts. Waiting for: all of: [log message "port: 3306  MySQL Community Server"]
+2026/07/01 13:28:25 🔔 Container is ready: 80bafc350014
+2026/07/01 13:28:25 🐳 Creating container for image redis:7.2-alpine
+2026/07/01 13:28:25 ✅ Container created: 9f971f6b718e
+2026/07/01 13:28:25 🐳 Starting container: 9f971f6b718e
+2026/07/01 13:28:25 ✅ Container started: 9f971f6b718e
+2026/07/01 13:28:25 ⏳ Waiting for container id 9f971f6b718e image: redis:7.2-alpine. Waiting for: all of: [log message "Ready to accept connections"]
+2026/07/01 13:28:25 🔔 Container is ready: 9f971f6b718e
+=== RUN   TestScenario_AdminSecurity/RBAC_Lifecycle
+--- PASS: TestScenario_AdminSecurity (17.15s)
+    --- PASS: TestScenario_AdminSecurity/AccountSuspension (14.69s)
+    --- PASS: TestScenario_AdminSecurity/RBAC_Lifecycle (2.46s)
+=== RUN   TestScenario_AdvancedRateLimit_Tiers
+2026/07/01 13:28:31 🐳 Creating container for image redis:7.2-alpine
+2026/07/01 13:28:31 ✅ Container created: cb16a0bba9e0
+2026/07/01 13:28:31 🐳 Starting container: cb16a0bba9e0
+2026/07/01 13:28:32 ✅ Container started: cb16a0bba9e0
+2026/07/01 13:28:32 ⏳ Waiting for container id cb16a0bba9e0 image: redis:7.2-alpine. Waiting for: all of: [log message "Ready to accept connections"]
+2026/07/01 13:28:32 🔔 Container is ready: cb16a0bba9e0
+=== RUN   TestScenario_AdvancedRateLimit_Tiers/Public_API_Limit
+=== RUN   TestScenario_AdvancedRateLimit_Tiers/Critical_Endpoint_Limit
+=== RUN   TestScenario_AdvancedRateLimit_Tiers/Authenticated_User_Limit
+2026/07/01 13:28:32 🐳 Stopping container: cb16a0bba9e0
+2026/07/01 13:28:32 ✅ Container stopped: cb16a0bba9e0
+2026/07/01 13:28:32 🐳 Terminating container: cb16a0bba9e0
+2026/07/01 13:28:32 🚫 Container terminated: cb16a0bba9e0
+--- PASS: TestScenario_AdvancedRateLimit_Tiers (1.19s)
+    --- PASS: TestScenario_AdvancedRateLimit_Tiers/Public_API_Limit (0.01s)
+    --- PASS: TestScenario_AdvancedRateLimit_Tiers/Critical_Endpoint_Limit (0.00s)
+    --- PASS: TestScenario_AdvancedRateLimit_Tiers/Authenticated_User_Limit (0.00s)
+=== RUN   TestApiKeyLifecycle_Integration
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/Access_with_Valid_API_Key
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/Read_scoped_API_key_passes_scoped_read_route
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/Read_scoped_API_key_is_blocked_from_scoped_write_route
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/API_key_is_blocked_from_session-only_route
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/Access_with_Invalid_API_Key
+time="2026-07-01T13:28:35+07:00" level=warning msg="API key not found during authentication"
+time="2026-07-01T13:28:35+07:00" level=warning msg="API Key authentication failed" error=unauthorized
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/Access_after_Organization_soft_delete_is_blocked
+time="2026-07-01T13:28:35+07:00" level=warning msg="Organization not accessible for API key authentication" organization_id=019f1c5d-772b-7d0c-957f-42ec5c28ff5d
+time="2026-07-01T13:28:35+07:00" level=warning msg="API Key authentication failed" error=unauthorized
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/Access_after_Organization_restore_succeeds
+=== RUN   TestApiKeyLifecycle_Integration/FullLifecycle/Access_after_Revocation
+time="2026-07-01T13:28:35+07:00" level=warning msg="API key not found during authentication"
+time="2026-07-01T13:28:35+07:00" level=warning msg="API Key authentication failed" error=unauthorized
+--- PASS: TestApiKeyLifecycle_Integration (2.44s)
+    --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle (2.44s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/Access_with_Valid_API_Key (0.01s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/Read_scoped_API_key_passes_scoped_read_route (0.00s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/Read_scoped_API_key_is_blocked_from_scoped_write_route (0.00s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/API_key_is_blocked_from_session-only_route (0.00s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/Access_with_Invalid_API_Key (0.01s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/Access_after_Organization_soft_delete_is_blocked (0.01s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/Access_after_Organization_restore_succeeds (0.01s)
+        --- PASS: TestApiKeyLifecycle_Integration/FullLifecycle/Access_after_Revocation (0.00s)
+=== RUN   TestScenario_Auth_ConcurrentSessions
+=== RUN   TestScenario_Auth_ConcurrentSessions/ConcurrentSessions_Lifecycle
+--- PASS: TestScenario_Auth_ConcurrentSessions (2.72s)
+    --- PASS: TestScenario_Auth_ConcurrentSessions/ConcurrentSessions_Lifecycle (2.72s)
+=== RUN   TestScenario_TransactionalIntegrity_DeleteRollback
+=== RUN   TestScenario_TransactionalIntegrity_DeleteRollback/DeleteRollback
+--- PASS: TestScenario_TransactionalIntegrity_DeleteRollback (2.68s)
+    --- PASS: TestScenario_TransactionalIntegrity_DeleteRollback/DeleteRollback (2.68s)
+=== RUN   TestScenario_ExceptionHandling_PanicRecovery
+=== RUN   TestScenario_ExceptionHandling_PanicRecovery/PanicRecovery
+--- PASS: TestScenario_ExceptionHandling_PanicRecovery (1.26s)
+    --- PASS: TestScenario_ExceptionHandling_PanicRecovery/PanicRecovery (1.26s)
+=== RUN   TestScenario_PasswordRecovery_Lifecycle
+--- PASS: TestScenario_PasswordRecovery_Lifecycle (2.88s)
+=== RUN   TestScenario_PermissionBatchCheck
+=== RUN   TestScenario_PermissionBatchCheck/ArticlesRead
+=== RUN   TestScenario_PermissionBatchCheck/ArticlesWrite
+=== RUN   TestScenario_PermissionBatchCheck/ArticlesDelete
+=== RUN   TestScenario_PermissionBatchCheck/UsersRead
+--- PASS: TestScenario_PermissionBatchCheck (2.48s)
+    --- PASS: TestScenario_PermissionBatchCheck/ArticlesRead (0.00s)
+    --- PASS: TestScenario_PermissionBatchCheck/ArticlesWrite (0.00s)
+    --- PASS: TestScenario_PermissionBatchCheck/ArticlesDelete (0.00s)
+    --- PASS: TestScenario_PermissionBatchCheck/UsersRead (0.00s)
+=== RUN   TestScenario_RateLimit_Redis_Distributed
+--- PASS: TestScenario_RateLimit_Redis_Distributed (2.41s)
+=== RUN   TestScenario_RBAC_Orchestration
+--- PASS: TestScenario_RBAC_Orchestration (2.51s)
+=== RUN   TestScenario_RealTime_LoginBroadcast
+--- PASS: TestScenario_RealTime_LoginBroadcast (3.15s)
+=== RUN   TestScenario_RoleHierarchy
+--- PASS: TestScenario_RoleHierarchy (2.38s)
+=== RUN   TestScenario_TransactionalIntegrity_RegisterRollback
+--- PASS: TestScenario_TransactionalIntegrity_RegisterRollback (2.59s)
+=== RUN   TestTransactionalEnforcer_PersistsCompleteGroupingPolicy
+--- PASS: TestTransactionalEnforcer_PersistsCompleteGroupingPolicy (1.48s)
+=== RUN   TestOrganizationUseCase_CreateOrganization_PersistsCompletePolicies
+--- PASS: TestOrganizationUseCase_CreateOrganization_PersistsCompletePolicies (1.49s)
+=== RUN   TestAuthRegister_DoesNotPersistMalformedGroupingPolicies
+time="2026-07-01T13:29:04+07:00" level=warning msg="Invalid log level ''. Defaulting to 'info'."
+{"file":"redis.go:35","func":"github.com/Roisfaozi/queue-base/internal/config.NewRedisConfig()","level":"info","msg":"Redis connection established: localhost:32809","time":"2026-07-01 13:29:04.673"}
+{"file":"app.go:118","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"Shared dependencies initialized.","time":"2026-07-01 13:29:04.681"}
+{"file":"app.go:121","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"SSE Manager initialized.","time":"2026-07-01 13:29:04.681"}
+{"file":"ws_manager.go:92","func":"github.com/Roisfaozi/queue-base/pkg/ws.(*WebSocketManager).Run()","level":"info","msg":"WebSocket Manager started","time":"2026-07-01 13:29:04.682"}
+{"file":"casbin.go:55","func":"github.com/Roisfaozi/queue-base/internal/config.NewCasbinEnforcer()","level":"info","msg":"Casbin enforcer initialized and policies loaded.","time":"2026-07-01 13:29:04.694"}
+{"file":"app.go:154","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"Storage provider initialized: local","time":"2026-07-01 13:29:04.694"}
+{"file":"app.go:226","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"Application modules initialized.","time":"2026-07-01 13:29:04.807"}
+{"file":"scheduler.go:64","func":"github.com/Roisfaozi/queue-base/internal/worker.(*Scheduler).RegisterScheduledTasks()","level":"info","msg":"Scheduled tasks registered successfully","time":"2026-07-01 13:29:04.808"}
+{"file":"app.go:308","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"Middleware initialized.","time":"2026-07-01 13:29:04.808"}
+{"file":"app.go:342","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"TUS Handler initialized.","time":"2026-07-01 13:29:04.813"}
+{"file":"app.go:395","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"Router setup complete.","time":"2026-07-01 13:29:04.816"}
+{"file":"app.go:402","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication()","level":"info","msg":"Server configured to run on port :0","time":"2026-07-01 13:29:04.816"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Scheduler starting","time":"2026-07-01 13:29:04.816"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Scheduler timezone is set to Asia/Jakarta","time":"2026-07-01 13:29:04.817"}
+{"file":"app.go:405","func":"github.com/Roisfaozi/queue-base/internal/config.NewApplication.func3()","level":"info","msg":"Starting Background Worker Processor...","time":"2026-07-01 13:29:04.816"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Starting processing","time":"2026-07-01 13:29:04.817"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Send signal TERM or INT to stop the scheduler","time":"2026-07-01 13:29:04.817"}
+{"client_ip":"127.0.0.1","data_length":1214,"file":"request_logger.go:53","func":"github.com/Roisfaozi/queue-base/internal/router.SetupRouter.RequestLogger.func3()","latency_ms":250.777611,"latency_ns":250777611,"level":"info","method":"POST","msg":"Request Processed","path":"/api/v1/auth/register","request_id":"019f1c5d-eab3-77fd-bcbc-6cee5fac4b31","status":201,"time":"2026-07-01 13:29:05.070","type":"http_request","user_agent":"Go-http-client/1.1"}
+    transactional_enforcer_regression_test.go:124: grouping row: ptype=g v0="019f1c5d-eb25-755e-a6e9-9f118f59004f" v1="role:user" v2="global"
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Scheduler shutting down","time":"2026-07-01 13:29:05.071"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Scheduler stopped","time":"2026-07-01 13:29:05.074"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Starting graceful shutdown","time":"2026-07-01 13:29:05.074"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Waiting for all workers to finish...","time":"2026-07-01 13:29:06.106"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"All workers have finished","time":"2026-07-01 13:29:06.108"}
+{"file":"processor.go:139","func":"github.com/Roisfaozi/queue-base/internal/worker.(*AsynqLogger).Info()","level":"info","msg":"Exiting","time":"2026-07-01 13:29:06.110"}
+--- PASS: TestAuthRegister_DoesNotPersistMalformedGroupingPolicies (2.78s)
+=== RUN   TestUserLifecycle_FullFlow
+=== RUN   TestUserLifecycle_FullFlow/Register_new_user_succeeds
+=== RUN   TestUserLifecycle_FullFlow/Login_after_registration
+=== RUN   TestUserLifecycle_FullFlow/Update_user_profile
+=== RUN   TestUserLifecycle_FullFlow/Delete_user_soft-deletes
+=== RUN   TestUserLifecycle_FullFlow/Audit_logs_capture_full_lifecycle
+--- PASS: TestUserLifecycle_FullFlow (3.60s)
+    --- PASS: TestUserLifecycle_FullFlow/Register_new_user_succeeds (0.14s)
+    --- PASS: TestUserLifecycle_FullFlow/Login_after_registration (0.12s)
+    --- PASS: TestUserLifecycle_FullFlow/Update_user_profile (0.03s)
+    --- PASS: TestUserLifecycle_FullFlow/Delete_user_soft-deletes (0.05s)
+    --- PASS: TestUserLifecycle_FullFlow/Audit_logs_capture_full_lifecycle (0.20s)
+=== RUN   TestScenario_WorkerIntegration_SendEmail
+--- PASS: TestScenario_WorkerIntegration_SendEmail (1.37s)
+PASS
+ok  	github.com/Roisfaozi/queue-base/tests/integration/scenarios	(cached)
+?   	github.com/Roisfaozi/queue-base/tests/integration/setup	[no test files]

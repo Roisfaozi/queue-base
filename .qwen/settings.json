@@ -302,7 +302,10 @@
       "Bash(t.log)",
       "Bash(tt.run)",
       "Bash(ioutil.writefile)",
-      "Bash(make *)"
+      "Bash(make *)",
+      "Bash(gofmt *)",
+      "Bash(/usr/local/go/bin/go *)",
+      "Bash(timeout *)"
     ]
   },
   "$version": 4

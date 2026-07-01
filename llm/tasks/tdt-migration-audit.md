@@ -35,9 +35,9 @@
 | `tests/integration/scenarios/admin_security_test.go`                    | 2                 | DONE     |
 | `tests/integration/scenarios/adv_rate_limit_test.go`                    | 2                 | Low      |
 | `tests/integration/scenarios/api_key_lifecycle_test.go`                 | 3                 | DONE     |
-| `tests/integration/scenarios/concurrent_session_test.go`                | 2                 | Medium   |
-| `tests/integration/scenarios/delete_user_integrity_test.go`             | 2                 | Medium   |
-| `tests/integration/scenarios/exception_handling_test.go`                | 3                 | Medium   |
+| `tests/integration/scenarios/concurrent_session_test.go`                | 2                 | DONE     |
+| `tests/integration/scenarios/delete_user_integrity_test.go`             | 2                 | DONE     |
+| `tests/integration/scenarios/exception_handling_test.go`                | 3                 | DONE     |
 | `tests/integration/scenarios/password_recovery_test.go`                 | 1                 | Low      |
 | `tests/integration/scenarios/rate_limit_integration_test.go`            | 2                 | Low      |
 | `tests/integration/scenarios/rbac_orchestration_test.go`                | 2                 | Medium   |
