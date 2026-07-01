@@ -117,6 +117,21 @@ func TestScannerCheckIn(t *testing.T) {
 			wantErr:       exception.ErrUnauthorized,
 		},
 		{
+			name:     "Security_AuthenticatorInternalErrorMapsToUnauthorized",
+			category: "security",
+			req: &CheckInRequest{
+				Action:      ActionRegister,
+				ClientID:    "client-1",
+				APIKey:      "bad",
+				ServiceID:   "service-1",
+				PatientName: "John Doe",
+			},
+			authenticator: stubScannerAuthenticator{err: assert.AnError},
+			tenantID:      "t-1",
+			branchID:      "b-1",
+			wantErr:       exception.ErrUnauthorized,
+		},
+		{
 			name:     "Edge_WhitespaceAction",
 			category: "edge",
 			req: &CheckInRequest{

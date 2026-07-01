@@ -74,7 +74,7 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 
 	if u.authenticator != nil {
 		if err := u.authenticator.Authenticate(ctx, tenantID, branchID, req.ClientID, req.APIKey); err != nil {
-			return nil, fmt.Errorf("authenticator failed: %w", err)
+			return nil, fmt.Errorf("authenticator failed (%v): %w", err, exception.ErrUnauthorized)
 		}
 	}
 

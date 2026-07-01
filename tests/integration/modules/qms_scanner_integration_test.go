@@ -110,7 +110,7 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	apiKeyMod := apiKeyModulePkg.NewApiKeyModule(env.DB, userRepository.NewUserRepository(env.DB, env.Logger), env.Redis, env.Logger, v)
 	authenticator := scannerModulePkg.NewAPIKeyAuthenticator(apiKeyMod.UseCase)
 
-	deps.scannerMod = scannerModulePkg.NewScannerModule(queueMod, branchMod, serviceMod, counterMod, settingsMod, v, authenticator)
+	deps.scannerMod = scannerModulePkg.NewScannerModule(queueMod, branchMod, serviceMod, counterMod, settingsMod, v, authenticator, env.Logger)
 
 	return deps
 }

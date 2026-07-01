@@ -96,9 +96,10 @@ func createTestUser(password string) (*entity.User, string) {
 }
 
 func simulateWithinTransaction(deps *testDependencies, errToReturn error) {
-	deps.tm.On("WithinTransaction", context.Background(), mock.AnythingOfType("func(context.Context) error")).
+	deps.tm.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
 		Run(func(args mock.Arguments) {
+			ctx := args.Get(0).(context.Context)
 			fn := args.Get(1).(func(context.Context) error)
-			_ = fn(context.Background())
+			_ = fn(ctx)
 		}).Return(errToReturn)
 }

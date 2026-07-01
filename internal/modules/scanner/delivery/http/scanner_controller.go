@@ -1,8 +1,6 @@
 package http
 
 import (
-	"fmt"
-
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -11,15 +9,24 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type ScannerController struct {
 	useCase  usecase.ScannerUseCase
 	validate *validator.Validate
+	log      *logrus.Logger
 }
 
 func NewScannerController(useCase usecase.ScannerUseCase, validate *validator.Validate) *ScannerController {
-	return &ScannerController{useCase: useCase, validate: validate}
+	return NewScannerControllerWithLogger(useCase, validate, logrus.New())
+}
+
+func NewScannerControllerWithLogger(useCase usecase.ScannerUseCase, validate *validator.Validate, log *logrus.Logger) *ScannerController {
+	if log == nil {
+		log = logrus.New()
+	}
+	return &ScannerController{useCase: useCase, validate: validate, log: log}
 }
 
 // CheckIn godoc
@@ -68,7 +75,7 @@ func (h *ScannerController) CheckIn(c *gin.Context) {
 		DestinationCounterID: req.DestinationCounterID,
 	})
 	if err != nil {
-		fmt.Printf("Scanner CheckIn failed: %v\n", err)
+		h.log.Errorf("Scanner CheckIn failed: %v", err)
 		response.HandleError(c, err, "failed to process scanner check-in")
 		return
 	}

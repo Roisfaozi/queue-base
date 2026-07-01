@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Roisfaozi/queue-base/internal/mocking"
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	authEntity "github.com/Roisfaozi/queue-base/internal/modules/auth/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/auth/usecase"
@@ -209,6 +210,22 @@ func TestAuthUsecase_ResetPassword(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSimulateWithinTransaction_PassesOriginalContext(t *testing.T) {
+	deps := &testDependencies{tm: new(mocking.MockWithTransactionManager)}
+	simulateWithinTransaction(deps, nil)
+
+	type ctxKey string
+	key := ctxKey("trace_id")
+	ctx := context.WithValue(context.Background(), key, "trace-123")
+
+	err := deps.tm.WithinTransaction(ctx, func(txCtx context.Context) error {
+		assert.Equal(t, "trace-123", txCtx.Value(key))
+		return nil
+	})
+
+	assert.NoError(t, err)
 }
 
 func TestAuthUsecase_RequestVerificationEmail(t *testing.T) {

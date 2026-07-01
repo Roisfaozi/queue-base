@@ -28,12 +28,12 @@ func NewRelationValidator(branchRepo branchRepository.BranchRepository, serviceR
 
 func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
 	if _, err := v.branchRepo.FindByID(ctx, tenantID, branchID); err != nil {
-		return fmt.Errorf("branchRepo.FindByID failed: %w", err)
+		return fmt.Errorf("branchRepo.FindByID failed (%v): %w", err, exception.ErrForbidden)
 	}
 	if serviceID != "" {
 		service, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID)
 		if err != nil {
-			return fmt.Errorf("serviceRepo.FindByID failed: %w", err)
+			return fmt.Errorf("serviceRepo.FindByID failed (%v): %w", err, exception.ErrForbidden)
 		}
 		requireCounter := service.IsPharmacy
 		pharmacyFlowEnabled := service.IsPharmacy
@@ -55,7 +55,7 @@ func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, se
 	if counterID != "" {
 		counter, err := v.counterRepo.FindByID(ctx, tenantID, counterID)
 		if err != nil {
-			return fmt.Errorf("counterRepo.FindByID failed: %w", err)
+			return fmt.Errorf("counterRepo.FindByID failed (%v): %w", err, exception.ErrForbidden)
 		}
 		if counter.BranchID != branchID {
 			return fmt.Errorf("counter branch mismatch: %w", exception.ErrForbidden)
