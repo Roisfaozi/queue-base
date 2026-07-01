@@ -97,7 +97,7 @@ help:
 	@echo "  gen-module        - Generate boilerplate code for a new module."
 
 .PHONY: wt-new
-wt-new:
+.PHONY: wt-new
 wt-new:
 	@branch_input="$(strip $(WORKTREE_BRANCH_ARG))"; \
 	base_input="$(strip $(WORKTREE_BASE_ARG))"; \
@@ -164,22 +164,6 @@ wt-new:
 	echo "Next:"; \
 	echo "  cd $$rel_path"; \
 	echo "  make dev-up"
-			exit 1; \
-		fi; \
-	fi; \
-	if [ ! -d "$$path" ]; then \
-		echo "Worktree path missing after create: $$path"; \
-		exit 1; \
-	fi; \
-	$(MAKE) -C "$$path" env-init >/dev/null; \
-	$(MAKE) -C "$$path" env-sync >/dev/null; \
-	rel_path=".worktrees/$$slug"; \
-	echo "Worktree ready: $$path"; \
-	echo "Next:"; \
-	echo "  cd $$rel_path"; \
-	echo "  make dev-up"
-WORKTREE_COMMANDS := wt-new wt-path wt-enter wt-rm
-WORKTREE_EXTRA_GOALS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
 ifneq ($(filter $(WORKTREE_COMMANDS),$(firstword $(MAKECMDGOALS))),)
 $(WORKTREE_EXTRA_GOALS):
