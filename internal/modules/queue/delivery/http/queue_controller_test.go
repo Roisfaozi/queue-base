@@ -36,33 +36,40 @@ func newQueueTestValidator() *validator.Validate {
 }
 
 type stubQueueControllerUseCase struct {
-	registerCalled   bool
-	registerReq      *model.RegisterQueueRequest
-	registerBranchID string
-	listCalled       bool
-	listReq          model.ListQueuesRequest
-	listBranchID     string
-	getCalled        bool
-	getID            string
-	forwardCalled    bool
-	forwardReq       *model.ForwardQueueRequest
-	forwardID        string
-	forwardRes       *model.QueueResponse
-	forwardErr       error
-	listRes          []model.QueueResponse
-	getRes           *model.QueueResponse
-	transitionCalled bool
-	transitionReq    *model.QueueTransitionRequest
-	transitionID     string
-	transitionRes    *model.QueueResponse
-	transitionErr    error
-	journeyReq       model.QueueJourneyListRequest
-	journeyRes       []model.QueueJourneyResponse
-	visitRes         []model.VisitJourneyResponse
-	statsRes         *model.QueueStatsResponse
-	statsCalled      bool
+	ResolveQueueBranchIDFunc func(ctx context.Context, queueID string) (string, error)
+	registerCalled           bool
+	registerReq              *model.RegisterQueueRequest
+	registerBranchID         string
+	listCalled               bool
+	listReq                  model.ListQueuesRequest
+	listBranchID             string
+	getCalled                bool
+	getID                    string
+	forwardCalled            bool
+	forwardReq               *model.ForwardQueueRequest
+	forwardID                string
+	forwardRes               *model.QueueResponse
+	forwardErr               error
+	listRes                  []model.QueueResponse
+	getRes                   *model.QueueResponse
+	transitionCalled         bool
+	transitionReq            *model.QueueTransitionRequest
+	transitionID             string
+	transitionRes            *model.QueueResponse
+	transitionErr            error
+	journeyReq               model.QueueJourneyListRequest
+	journeyRes               []model.QueueJourneyResponse
+	visitRes                 []model.VisitJourneyResponse
+	statsRes                 *model.QueueStatsResponse
+	statsCalled              bool
 }
 
+func (s *stubQueueControllerUseCase) ResolveQueueBranchID(ctx context.Context, queueID string) (string, error) {
+	if s.ResolveQueueBranchIDFunc != nil {
+		return s.ResolveQueueBranchIDFunc(ctx, queueID)
+	}
+	return "branch-id", nil
+}
 func (s *stubQueueControllerUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error) {
 	s.registerCalled = true
 	s.registerReq = req
@@ -661,6 +668,34 @@ func TestQueueController(t *testing.T) {
 				},
 			},
 			{
+				name:      "Edge_ServiceJourneysPreserveStatusFilter",
+				category:  "edge",
+				branchID:  "branch-1",
+				serviceID: "svc-1",
+				query:     "?status=calling",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1", Status: entity.JourneyStatusCalling}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", Status: "calling"}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Edge_ServiceJourneysPreserveAllFilters",
+				category:  "edge",
+				branchID:  "branch-1",
+				serviceID: "svc-1",
+				query:     "?queue_date=2026-06-24&status=serving",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", ServiceID: "svc-1", Status: entity.JourneyStatusServing}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: "2026-06-24", Status: "serving"}, uc.journeyReq)
+				},
+			},
+			{
 				name:      "Negative_RejectsMissingPathIDs",
 				category:  "negative",
 				branchID:  "",
@@ -723,6 +758,34 @@ func TestQueueController(t *testing.T) {
 				wantCode: http.StatusOK,
 				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
 					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", Status: "calling"}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Edge_CounterJourneysPreserveQueueDateFilter",
+				category:  "edge",
+				branchID:  "branch-1",
+				counterID: "c-1",
+				query:     "?queue_date=2026-06-24",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1"}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", QueueDate: "2026-06-24"}, uc.journeyReq)
+				},
+			},
+			{
+				name:      "Edge_CounterJourneysPreserveAllFilters",
+				category:  "edge",
+				branchID:  "branch-1",
+				counterID: "c-1",
+				query:     "?queue_date=2026-06-24&status=serving",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{journeyRes: []model.QueueJourneyResponse{{ID: "j-1", CounterID: "c-1", Status: entity.JourneyStatusServing}}}
+				},
+				wantCode: http.StatusOK,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.Equal(t, model.QueueJourneyListRequest{CounterID: "c-1", QueueDate: "2026-06-24", Status: "serving"}, uc.journeyReq)
 				},
 			},
 			{

@@ -21,21 +21,22 @@ import (
 // =============================================================================
 
 type stubQueueRepo struct {
-	q               *entity.Queue
-	queues          []*entity.Queue
-	j               *entity.QueueJourney
-	visit           *entity.VisitJourney
-	err             error
-	seenNum         int
-	exists          bool
-	listReq         model.ListQueuesRequest
-	journeyReq      model.QueueJourneyListRequest
-	journeyTenantID string
-	journeyBranchID string
-	journeyList     []*entity.QueueJourney
-	lastPrefix      string
-	visits          []*entity.VisitJourney
-	statsRes        model.QueueStatsResponse
+	FindQueueByTenantIDFunc func(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
+	q                       *entity.Queue
+	queues                  []*entity.Queue
+	j                       *entity.QueueJourney
+	visit                   *entity.VisitJourney
+	err                     error
+	seenNum                 int
+	exists                  bool
+	listReq                 model.ListQueuesRequest
+	journeyReq              model.QueueJourneyListRequest
+	journeyTenantID         string
+	journeyBranchID         string
+	journeyList             []*entity.QueueJourney
+	lastPrefix              string
+	visits                  []*entity.VisitJourney
+	statsRes                model.QueueStatsResponse
 }
 
 type stubSettingsResolver struct {
@@ -232,6 +233,13 @@ func (s *stubQueueRepo) GetQueueStats(ctx context.Context, tenantID, branchID, q
 		return s.statsRes, s.err
 	}
 	return s.statsRes, nil
+}
+
+func (s *stubQueueRepo) FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
+	if s.FindQueueByTenantIDFunc != nil {
+		return s.FindQueueByTenantIDFunc(ctx, tenantID, queueID)
+	}
+	return nil, nil
 }
 
 func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error) {
