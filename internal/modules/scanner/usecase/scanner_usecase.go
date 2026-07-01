@@ -10,6 +10,7 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/telemetry"
 )
 
 const (
@@ -75,19 +76,23 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 	tenantID := database.GetTenantID(ctx)
 	branchID := database.GetBranchID(ctx)
 	if tenantID == "" || branchID == "" || req == nil {
+		telemetry.ScannerCheckInsTotal.WithLabelValues("unknown", "bad_request").Inc()
 		return nil, exception.ErrBadRequest
 	}
 	if req.BranchID == "" || req.BranchID != branchID {
+		telemetry.ScannerCheckInsTotal.WithLabelValues("unknown", "forbidden").Inc()
 		return nil, exception.ErrForbidden
 	}
 
 	action := strings.TrimSpace(strings.ToLower(req.Action))
 	if action != ActionRegister && action != ActionForward {
+		telemetry.ScannerCheckInsTotal.WithLabelValues("unknown", "bad_request").Inc()
 		return nil, exception.ErrBadRequest
 	}
 
 	if u.authenticator != nil {
 		if err := u.authenticator.Authenticate(ctx, tenantID, branchID, req.ClientID, req.APIKey); err != nil {
+			telemetry.ScannerCheckInsTotal.WithLabelValues(action, "unauthorized").Inc()
 			return nil, fmt.Errorf("authenticator failed (%v): %w", err, exception.ErrUnauthorized)
 		}
 	}
@@ -95,15 +100,18 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 	serviceID := req.ServiceID
 	if action == ActionForward {
 		if req.QueueID == "" || req.DestinationServiceID == "" {
+			telemetry.ScannerCheckInsTotal.WithLabelValues(action, "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
 		serviceID = req.DestinationServiceID
 	} else if serviceID == "" {
+		telemetry.ScannerCheckInsTotal.WithLabelValues(action, "bad_request").Inc()
 		return nil, exception.ErrBadRequest
 	}
 
 	if u.relationValidator != nil {
 		if err := u.relationValidator.Validate(ctx, tenantID, branchID, serviceID, req.DestinationCounterID); err != nil {
+			telemetry.ScannerCheckInsTotal.WithLabelValues(action, "forbidden").Inc()
 			return nil, fmt.Errorf("relation validator failed: %w", err)
 		}
 	}
@@ -117,9 +125,11 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 			PatientName: req.PatientName,
 		})
 		if err != nil {
+			telemetry.ScannerCheckInsTotal.WithLabelValues(ActionRegister, "failed").Inc()
 			return nil, err
 		}
 		u.tryAudit(ctx, "SCANNER_REGISTER", queueRes.ID, req.BranchID)
+		telemetry.ScannerCheckInsTotal.WithLabelValues(ActionRegister, "success").Inc()
 		return &CheckInResponse{Action: ActionRegister, Queue: queueRes}, nil
 	case ActionForward:
 		queueRes, err := u.queueHandler.ForwardQueue(ctx, req.QueueID, &queueModel.ForwardQueueRequest{
@@ -127,11 +137,14 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 			DestinationCounterID: req.DestinationCounterID,
 		})
 		if err != nil {
+			telemetry.ScannerCheckInsTotal.WithLabelValues(ActionForward, "failed").Inc()
 			return nil, err
 		}
 		u.tryAudit(ctx, "SCANNER_FORWARD", queueRes.ID, req.BranchID)
+		telemetry.ScannerCheckInsTotal.WithLabelValues(ActionForward, "success").Inc()
 		return &CheckInResponse{Action: ActionForward, Queue: queueRes}, nil
 	default:
+		telemetry.ScannerCheckInsTotal.WithLabelValues(action, "bad_request").Inc()
 		return nil, exception.ErrBadRequest
 	}
 }
