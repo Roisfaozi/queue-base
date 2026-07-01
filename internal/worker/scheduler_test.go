@@ -44,40 +44,64 @@ func setupSchedulerTest(t *testing.T) (*schedulerTestDeps, func()) {
 }
 
 func TestScheduler_RegisterScheduledTasks(t *testing.T) {
-	t.Run("Positive - Register tasks successfully", func(t *testing.T) {
-		deps, cleanup := setupSchedulerTest(t)
-		defer cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_RegisterTasksSuccessfully",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, cleanup := setupSchedulerTest(t)
+				defer cleanup()
 
-		// Should not panic or error during registration
-		deps.scheduler.RegisterScheduledTasks()
-	})
+				// Should not panic or error during registration
+				deps.scheduler.RegisterScheduledTasks()
+			},
+		},
+		{
+			name:     "Negative_BadRedisOption",
+			category: "negative",
+			run: func(t *testing.T) {
+				logger := logrus.New()
+				logger.SetOutput(new(mockWriter))
+				scheduler := worker.NewScheduler(asynq.RedisClientOpt{Addr: "invalid:9999"}, logger)
 
-	t.Run("Negative - Bad Redis Option should still register in memory for asynq until Started", func(t *testing.T) {
-		logger := logrus.New()
-		logger.SetOutput(new(mockWriter))
-		scheduler := worker.NewScheduler(asynq.RedisClientOpt{Addr: "invalid:9999"}, logger)
+				scheduler.RegisterScheduledTasks()
+				// asynq.Scheduler.Register only parses crons and saves them in memory, doesn't immediately connect
+			},
+		},
+		{
+			name:     "Edge_ReRegisteringTasks",
+			category: "edge",
+			run: func(t *testing.T) {
+				deps, cleanup := setupSchedulerTest(t)
+				defer cleanup()
 
-		scheduler.RegisterScheduledTasks()
-		// asynq.Scheduler.Register only parses crons and saves them in memory, doesn't immediately connect
-	})
+				// Registers without crashing
+				deps.scheduler.RegisterScheduledTasks()
 
-	t.Run("Edge - Re-registering tasks", func(t *testing.T) {
-		deps, cleanup := setupSchedulerTest(t)
-		defer cleanup()
+				// Attempting to register again might fail since same entry ID, let's see how it behaves
+				deps.scheduler.RegisterScheduledTasks()
+				// We just assert it doesn't panic
+			},
+		},
+		{
+			name:     "Vulnerability_VerifyTimeLocationSetup",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				deps, cleanup := setupSchedulerTest(t)
+				defer cleanup()
 
-		// Registers without crashing
-		deps.scheduler.RegisterScheduledTasks()
-
-		// Attempting to register again might fail since same entry ID, let's see how it behaves
-		deps.scheduler.RegisterScheduledTasks()
-		// We just assert it doesn't panic
-	})
-
-	t.Run("Vulnerability - Verify time location setup", func(t *testing.T) {
-		deps, cleanup := setupSchedulerTest(t)
-		defer cleanup()
-
-		// Verify no panic during init and that scheduler isn't nil
-		assert.NotNil(t, deps.scheduler)
-	})
+				// Verify no panic during init and that scheduler isn't nil
+				assert.NotNil(t, deps.scheduler)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
