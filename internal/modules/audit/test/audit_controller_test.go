@@ -39,14 +39,14 @@ func newTestAuditController(mockUC usecase.AuditUseCase) *auditHttp.AuditControl
 	return auditHttp.NewAuditController(mockUC, v, logger)
 }
 
-func TestGetLogsDynamicController(t *testing.T) {
+func TestAuditController(t *testing.T) {
 	tests := []struct {
 		name     string
 		category string
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive_Success",
+			name:     "GetLogsDynamic_Positive_Success",
 			category: "positive",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -80,7 +80,7 @@ func TestGetLogsDynamicController(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative_BindError",
+			name:     "GetLogsDynamic_Negative_BindError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -96,7 +96,7 @@ func TestGetLogsDynamicController(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative_UseCaseError",
+			name:     "GetLogsDynamic_Negative_UseCaseError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -117,23 +117,40 @@ func TestGetLogsDynamicController(t *testing.T) {
 				assert.Equal(t, http.StatusInternalServerError, w.Code)
 			},
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
-
-func TestAuditController_Export(t *testing.T) {
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
 		{
-			name:     "Positive_Serialization",
+			name:     "GetLogsDynamic_Security_XSS",
+			category: "security",
+			run: func(t *testing.T) {
+				mockUC := new(mocks.MockAuditUseCase)
+				controller := newTestAuditController(mockUC)
+
+				gin.SetMode(gin.TestMode)
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+
+				payload := querybuilder.DynamicFilter{
+					Page:     1,
+					PageSize: 10,
+					Sort: &[]querybuilder.SortModel{
+						{
+							ColId: "<script>alert(1)</script>",
+							Sort:  "asc",
+						},
+					},
+				}
+
+				jsonBytes, _ := json.Marshal(payload)
+				c.Request, _ = http.NewRequest("POST", "/audit/search", bytes.NewBuffer(jsonBytes))
+				c.Request.Header.Set("Content-Type", "application/json")
+
+				controller.GetLogsDynamic(c)
+
+				assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+				assert.Contains(t, w.Body.String(), "validation failed")
+			},
+		},
+		{
+			name:     "Export_Positive_Serialization",
 			category: "positive",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -187,7 +204,7 @@ func TestAuditController_Export(t *testing.T) {
 			},
 		},
 		{
-			name:     "Security_CSVInjection",
+			name:     "Export_Security_CSVInjection",
 			category: "security",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -222,53 +239,6 @@ func TestAuditController_Export(t *testing.T) {
 				assert.Contains(t, csvOutput, "'=cmd|' /C calc'!A0", "Malicious payload should be sanitized/escaped")
 				assert.NotContains(t, csvOutput, "\n=cmd|' /C calc'!A0", "Unsafe payload found (start of line)")
 				assert.NotContains(t, csvOutput, ",=cmd|' /C calc'!A0", "Unsafe payload found (after comma)")
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
-
-func TestAuditController_GetLogsDynamic_XSS(t *testing.T) {
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
-		{
-			name:     "Security_XSS",
-			category: "security",
-			run: func(t *testing.T) {
-				mockUC := new(mocks.MockAuditUseCase)
-				controller := newTestAuditController(mockUC)
-
-				gin.SetMode(gin.TestMode)
-				w := httptest.NewRecorder()
-				c, _ := gin.CreateTestContext(w)
-
-				payload := querybuilder.DynamicFilter{
-					Page:     1,
-					PageSize: 10,
-					Sort: &[]querybuilder.SortModel{
-						{
-							ColId: "<script>alert(1)</script>",
-							Sort:  "asc",
-						},
-					},
-				}
-
-				jsonBytes, _ := json.Marshal(payload)
-				c.Request, _ = http.NewRequest("POST", "/audit/search", bytes.NewBuffer(jsonBytes))
-				c.Request.Header.Set("Content-Type", "application/json")
-
-				controller.GetLogsDynamic(c)
-
-				assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-				assert.Contains(t, w.Body.String(), "validation failed")
 			},
 		},
 	}
