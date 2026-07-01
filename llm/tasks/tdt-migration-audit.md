@@ -76,7 +76,7 @@
 | `internal/modules/api_key/test/api_key_usecase_test.go`                  | 3                 | DONE     |
 | `internal/modules/audit/test/audit_controller_test.go`                   | 2                 | DONE     |
 | `internal/modules/audit/test/audit_repository_test.go`                   | 2                 | Low      |
-| `internal/modules/audit/test/audit_usecase_test.go`                      | 3                 | Medium   |
+| `internal/modules/audit/test/audit_usecase_test.go`                      | 3                 | DONE     |
 | `internal/modules/auth/test/setup_test.go`                               | 0 (helper)        | —        |
 | `internal/modules/organization/test/organization_controller_test.go`     | 4                 | High     |
 | `internal/modules/organization/test/organization_member_usecase_test.go` | 3                 | DONE     |
