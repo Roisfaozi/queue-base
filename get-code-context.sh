@@ -9,7 +9,7 @@ output_file="${project_dir}/code_context.txt"
 # Go backend: internal, cmd, pkg
 # Configuration: db, documentation, tests
 # Monorepo infrastructure: turbo config, docker-compose
-include_dirs=("internal" "cmd" "pkg" "db" "documentation" "tests" "packages" "deploy")
+include_dirs=("internal" "cmd" "pkg" "db" "documentation" "tests" "packages" "deploy" "docs")
 
 # File root penting untuk konteks project
 include_root_files=(

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { DashboardShellProvider } from "./_components/dashboard-shell-context";
+import { ApiError } from "~/lib/api/client";
 import { organizationsApi } from "~/lib/api/organizations";
 
 // Better way: import usePresence in a dedicated client component or just here if we make this function client
@@ -21,7 +22,16 @@ export default async function DashboardLayout({
 		const resp = await organizationsApi.getMyOrganizations();
 		initialOrgs = resp.data?.organizations;
 	} catch (error) {
-		console.error("Failed to fetch initial orgs on server", error);
+		if (
+			(error instanceof ApiError && error.status === 401) ||
+			(error instanceof Error &&
+				(error.message === "Session expired" ||
+					error.message === "Unauthenticated"))
+		) {
+			console.warn("Initial organizations unavailable: unauthenticated");
+		} else {
+			console.error("Failed to fetch initial orgs on server", error);
+		}
 	}
 
 	return (

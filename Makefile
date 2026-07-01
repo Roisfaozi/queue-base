@@ -12,7 +12,7 @@ BENCHTIME=1s
 BENCHMEM=true
 
 # Worktree / local env
-REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
+REPO_ROOT := $(shell dirname "$(shell git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" 2>/dev/null || pwd)
 REPO_NAME := $(notdir $(REPO_ROOT))
 WORKTREE_ROOT ?= $(abspath $(REPO_ROOT)/.worktrees)
 WORKTREE_ROOT_FALLBACK ?= $(abspath $(REPO_ROOT)/.worktrees)
@@ -86,6 +86,10 @@ help:
 	@echo "  dev-down          - Stop worktree-local docker compose stack."
 	@echo "  dev-reset         - Stop stack and remove worktree-local volumes."
 	@echo "  dev-status        - Show current worktree/dev stack status."
+	@echo "  web-dev           - Run apps/web with worktree-local frontend env."
+	@echo "  client-dev        - Run apps/client with worktree-local frontend env."
+	@echo "  front-dev         - Show frontend dev commands and worktree ports."
+	@echo "  front-status      - Show generated frontend worktree env."
 	@echo "  migrate-up-local  - Run migrations against .env.local database."
 	@echo "  migrate-down-local - Roll back migrations against .env.local database."
 	@echo "  test-local        - Run narrow local tests, optional TEST_PKG=..."
@@ -94,6 +98,7 @@ help:
 
 .PHONY: wt-new
 wt-new:
+wt-new:
 	@branch_input="$(strip $(WORKTREE_BRANCH_ARG))"; \
 	base_input="$(strip $(WORKTREE_BASE_ARG))"; \
 	if [ -z "$$branch_input" ]; then \
@@ -101,9 +106,16 @@ wt-new:
 		exit 1; \
 	fi; \
 	branch="$$branch_input"; \
+	case "$$branch" in ''|/*|.*|-*|*' '*|*'..'*|*'@{'*) \
+		echo "Invalid branch name for worktree flow: $$branch"; \
+		exit 1; \
+		;; \
+	esac; \
 	base="$$base_input"; \
 	if [ -z "$$base" ]; then base="$$(git rev-parse --abbrev-ref HEAD)"; fi; \
 	slug="$${branch//\//-}"; \
+	slug="$$(printf '%s' "$$slug" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-//' | sed 's/-$$//')"; \
+	if [ -z "$$slug" ]; then echo "Cannot derive safe worktree slug from branch: $$branch"; exit 1; fi; \
 	path="$(WORKTREE_ROOT)/$$slug"; \
 	if ! mkdir -p "$(WORKTREE_ROOT)" 2>/dev/null; then \
 		if mkdir -p "$(WORKTREE_ROOT_FALLBACK)" 2>/dev/null; then \
@@ -117,18 +129,29 @@ wt-new:
 			exit 1; \
 		fi; \
 	fi; \
-	if git worktree list --porcelain | grep -F "branch refs/heads/$$branch" >/dev/null; then \
-		echo "Worktree for branch '$$branch' already exists."; \
-		exit 1; \
-	fi; \
 	if [ -e "$$path" ]; then \
 		echo "Target path already exists: $$path"; \
+		echo "If this is orphaned, remove it manually or choose another branch name."; \
 		exit 1; \
 	fi; \
-	echo "Creating worktree $$branch from $$base at $$path"; \
-	if ! git worktree add -b "$$branch" "$$path" "$$base"; then \
-		echo "Worktree create failed for branch '$$branch' from base '$$base'"; \
+	branch_ref="refs/heads/$$branch"; \
+	if git worktree list --porcelain | grep -F "branch $$branch_ref" >/dev/null; then \
+		echo "Worktree for branch '$$branch' already exists."; \
+		echo "Use 'make wt-path $$branch' to inspect its location."; \
 		exit 1; \
+	fi; \
+	if git show-ref --verify --quiet "$$branch_ref"; then \
+		echo "Creating worktree $$branch from existing branch at $$path"; \
+		if ! git worktree add "$$path" "$$branch"; then \
+			echo "Worktree create failed for existing branch '$$branch'"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "Creating worktree $$branch from $$base at $$path"; \
+		if ! git worktree add -b "$$branch" "$$path" "$$base"; then \
+			echo "Worktree create failed for branch '$$branch' from base '$$base'"; \
+			exit 1; \
+		fi; \
 	fi; \
 	if [ ! -d "$$path" ]; then \
 		echo "Worktree path missing after create: $$path"; \
@@ -141,7 +164,20 @@ wt-new:
 	echo "Next:"; \
 	echo "  cd $$rel_path"; \
 	echo "  make dev-up"
-
+			exit 1; \
+		fi; \
+	fi; \
+	if [ ! -d "$$path" ]; then \
+		echo "Worktree path missing after create: $$path"; \
+		exit 1; \
+	fi; \
+	$(MAKE) -C "$$path" env-init >/dev/null; \
+	$(MAKE) -C "$$path" env-sync >/dev/null; \
+	rel_path=".worktrees/$$slug"; \
+	echo "Worktree ready: $$path"; \
+	echo "Next:"; \
+	echo "  cd $$rel_path"; \
+	echo "  make dev-up"
 WORKTREE_COMMANDS := wt-new wt-path wt-enter wt-rm
 WORKTREE_EXTRA_GOALS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
@@ -213,16 +249,21 @@ wt-enter:
 .PHONY: wt-prune
 wt-prune:
 	@git worktree prune
-
 .PHONY: env-init
+
 env-init:
 	@slug="$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || basename "$(CURDIR)")"; \
 	slug="$${slug//\//-}"; \
-	slug="$$(printf '%s' "$$slug" | tr '[:upper:]' '[:lower:]')"; \
+	slug="$$(printf '%s' "$$slug" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-//' | sed 's/-$$//')"; \
+	if [ -z "$$slug" ]; then echo "Cannot derive safe worktree slug from current branch."; exit 1; fi; \
+	db_slug="$$(printf '%s' "$$slug" | tr '-' '_')"; \
+	db_slug="$$(printf '%.48s' "$$db_slug")"; \
 	if [ ! -f "$(ENV_LOCAL_FILE)" ]; then cp .env.example "$(ENV_LOCAL_FILE)"; fi; \
 	if [ ! -f "$(ENV_LOCAL_FILE)" ]; then echo "Failed to create $(ENV_LOCAL_FILE)"; exit 1; fi; \
 	index="$$(printf '%s' "$$slug" | cksum | awk '{print ($$1 % 200) + 1}')"; \
 	app_port="$$((8080 + index))"; \
+	web_port="$$((3000 + index))"; \
+	client_port="$$((3200 + index))"; \
 	mysql_port="$$((3306 + index))"; \
 	redis_port="$$((6379 + index))"; \
 	jaeger_ui_port="$$((16686 + index))"; \
@@ -233,6 +274,11 @@ env-init:
 	mailpit_smtp_port="$$((1025 + index))"; \
 	rustfs_port="$$((9000 + index))"; \
 	rustfs_console_port="$$((9001 + index))"; \
+	mysql_dbname="queue_base_$$db_slug"; \
+	api_base_url="http://127.0.0.1:$$app_port/api/v1"; \
+	api_origin="http://127.0.0.1:$$app_port"; \
+	ws_url="ws://127.0.0.1:$$app_port/ws"; \
+	web_origin="http://127.0.0.1:$$web_port"; \
 	set_kv() { \
 		key="$$1"; value="$$2"; file="$(ENV_LOCAL_FILE)"; \
 		if grep -qE "^$${key}=" "$$file"; then \
@@ -247,7 +293,10 @@ env-init:
 	set_kv HOST_GID "$$(id -g)"; \
 	set_kv RUSTFS_DATA_DIR "./tmp/rustfs-data"; \
 	set_kv APP_PORT "$$app_port"; \
+	set_kv WEB_PORT "$$web_port"; \
+	set_kv CLIENT_PORT "$$client_port"; \
 	set_kv MYSQL_PORT "$$mysql_port"; \
+	set_kv MYSQL_DBNAME "$$mysql_dbname"; \
 	set_kv REDIS_PORT "$$redis_port"; \
 	set_kv JAEGER_UI_PORT "$$jaeger_ui_port"; \
 	set_kv OTEL_GRPC_PORT "$$otel_port"; \
@@ -258,8 +307,25 @@ env-init:
 	set_kv RUSTFS_PORT "$$rustfs_port"; \
 	set_kv RUSTFS_CONSOLE_PORT "$$rustfs_console_port"; \
 	set_kv REDIS_ADDR "localhost:$$redis_port"; \
+	set_kv SWAGGER_HOST "localhost:$$app_port"; \
+	set_kv STORAGE_LOCAL_BASE_URL "http://localhost:$$app_port/uploads"; \
+	set_kv SSO_GOOGLE_REDIRECT_URL "http://localhost:$$app_port/api/v1/auth/sso/google/callback"; \
+	set_kv SSO_MICROSOFT_REDIRECT_URL "http://localhost:$$app_port/api/v1/auth/sso/microsoft/callback"; \
+	set_kv SSO_GITHUB_REDIRECT_URL "http://localhost:$$app_port/api/v1/auth/sso/github/callback"; \
+	mkdir -p apps/web apps/client; \
+	printf '%s\n' \
+		"NEXT_PUBLIC_API_URL=$$api_base_url" \
+		"NEXT_PUBLIC_WS_URL=$$ws_url" \
+		"NEXT_PUBLIC_APP_URL=$$web_origin" \
+		"PORT=$$web_port" \
+		> apps/web/.env.local; \
+	printf '%s\n' \
+		"NEXT_PUBLIC_API_URL=$$api_base_url" \
+		"VITE_API_PROXY_TARGET=$$api_origin" \
+		"VITE_DEV_PORT=$$client_port" \
+		> apps/client/.env.local; \
 	echo "Initialized $(ENV_LOCAL_FILE) for $$slug"; \
-	echo "APP_PORT=$$app_port MYSQL_PORT=$$mysql_port REDIS_PORT=$$redis_port"
+	echo "APP_PORT=$$app_port MYSQL_PORT=$$mysql_port REDIS_PORT=$$redis_port MYSQL_DBNAME=$$mysql_dbname WEB_PORT=$$web_port CLIENT_PORT=$$client_port"
 
 .PHONY: env-sync
 env-sync:
@@ -275,8 +341,9 @@ env-sync:
 		if ! grep -qE "^$${key}=" "$(ENV_LOCAL_FILE)"; then \
 			printf "%s\n" "$$line" >> "$(ENV_LOCAL_FILE)"; \
 		fi; \
-	done < .env.example; \
-	echo "Synced missing keys into $(ENV_LOCAL_FILE)"
+	done < .env.example;
+	@$(MAKE) env-init >/dev/null
+	@echo "Synced missing keys into $(ENV_LOCAL_FILE)"
 
 .PHONY: dev-up
 dev-up:
@@ -285,6 +352,13 @@ dev-up:
 		$(MAKE) env-init >/dev/null; \
 	fi
 	@$(MAKE) env-sync >/dev/null
+	@for key in COMPOSE_PROJECT_NAME APP_PORT MYSQL_PORT MYSQL_DBNAME REDIS_PORT; do \
+		value="$$(grep "^$${key}=" "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
+		if [ -z "$$value" ]; then \
+			echo "$(ENV_LOCAL_FILE) missing required key: $$key"; \
+			exit 1; \
+		fi; \
+	done
 	@docker compose --env-file "$(ENV_LOCAL_FILE)" -f docker-compose.dev.yml up -d --build
 
 .PHONY: dev-down
@@ -313,12 +387,15 @@ dev-status:
 	slug="$$(grep '^WORKTREE_SLUG=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
 	project="$$(grep '^COMPOSE_PROJECT_NAME=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
 	app_port="$$(grep '^APP_PORT=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
+	web_port="$$(grep '^WEB_PORT=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
+	client_port="$$(grep '^CLIENT_PORT=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
 	mysql_port="$$(grep '^MYSQL_PORT=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
+	mysql_dbname="$$(grep '^MYSQL_DBNAME=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
 	redis_port="$$(grep '^REDIS_PORT=' "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
 	echo "branch=$$branch"; \
 	echo "slug=$$slug"; \
 	echo "compose_project=$$project"; \
-	echo "app_port=$$app_port mysql_port=$$mysql_port redis_port=$$redis_port"; \
+	echo "app_port=$$app_port web_port=$$web_port client_port=$$client_port mysql_port=$$mysql_port mysql_dbname=$$mysql_dbname redis_port=$$redis_port"; \
 	docker compose --env-file "$(ENV_LOCAL_FILE)" -f docker-compose.dev.yml ps
 
 .PHONY: migrate-up-local
@@ -367,11 +444,53 @@ doctor:
 	@PATH=/home/user/sdk/go/bin:$$PATH command -v go >/dev/null && echo "go=ok" || echo "go=missing"
 	@if [ -f "$(ENV_LOCAL_FILE)" ]; then \
 		echo "env_local=present"; \
-		grep -E '^(WORKTREE_SLUG|COMPOSE_PROJECT_NAME|APP_PORT|MYSQL_PORT|REDIS_PORT)=' "$(ENV_LOCAL_FILE)"; \
+		grep -E '^(WORKTREE_SLUG|COMPOSE_PROJECT_NAME|APP_PORT|WEB_PORT|CLIENT_PORT|MYSQL_PORT|MYSQL_DBNAME|REDIS_PORT|SWAGGER_HOST|STORAGE_LOCAL_BASE_URL)=' "$(ENV_LOCAL_FILE)"; \
 	else \
 		echo "env_local=missing"; \
 	fi
 
+.PHONY: web-dev
+web-dev:
+	@if [ ! -f "apps/web/.env.local" ]; then \
+		echo "apps/web/.env.local missing, syncing worktree env..."; \
+		$(MAKE) env-sync >/dev/null; \
+	fi
+	@cd apps/web && pnpm dev
+
+.PHONY: client-dev
+client-dev:
+	@if [ ! -f "apps/client/.env.local" ]; then \
+		echo "apps/client/.env.local missing, syncing worktree env..."; \
+		$(MAKE) env-sync >/dev/null; \
+	fi
+	@cd apps/client && pnpm dev
+
+.PHONY: front-dev
+front-dev:
+	@if [ ! -f "apps/web/.env.local" ] || [ ! -f "apps/client/.env.local" ]; then \
+		echo "Frontend env missing, syncing worktree env..."; \
+		$(MAKE) env-sync >/dev/null; \
+	fi
+	@web_port="$$(grep '^PORT=' apps/web/.env.local | tail -n1 | cut -d= -f2-)"; \
+	client_port="$$(grep '^VITE_DEV_PORT=' apps/client/.env.local | tail -n1 | cut -d= -f2-)"; \
+	echo "Start frontend in separate terminals:"; \
+	echo "  apps/web    -> pnpm dev (PORT=$$web_port)"; \
+	echo "  apps/client -> pnpm dev (VITE_DEV_PORT=$$client_port)"
+
+.PHONY: front-status
+front-status:
+	@if [ -f "apps/web/.env.local" ]; then \
+		echo "apps/web/.env.local"; \
+		grep -E '^(NEXT_PUBLIC_API_URL|NEXT_PUBLIC_WS_URL|NEXT_PUBLIC_APP_URL|PORT)=' apps/web/.env.local; \
+	else \
+		echo "apps/web/.env.local missing"; \
+	fi
+	@if [ -f "apps/client/.env.local" ]; then \
+		echo "apps/client/.env.local"; \
+		grep -E '^(NEXT_PUBLIC_API_URL|VITE_API_PROXY_TARGET|VITE_DEV_PORT)=' apps/client/.env.local; \
+	else \
+		echo "apps/client/.env.local missing"; \
+	fi
 
 # Generate docs and run the application
 .PHONY: run

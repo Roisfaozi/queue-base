@@ -212,7 +212,7 @@ func TestUpdateCounter(t *testing.T) {
 		}
 		tenantID string
 		wantErr  error
-		wantRes  func(t *testing.T, res *model.CounterResponse)
+		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo)
 	}{
 		{
 			name:      "Positive_SanitizesFieldsOnUpdate",
@@ -228,7 +228,7 @@ func TestUpdateCounter(t *testing.T) {
 			},
 			tenantID: "tenant-1",
 			wantErr:  nil,
-			wantRes: func(t *testing.T, res *model.CounterResponse) {
+			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo) {
 				assert.Equal(t, "B2", res.Code)
 				assert.Equal(t, "Front Office", res.Name)
 			},
@@ -253,13 +253,13 @@ func TestUpdateCounter(t *testing.T) {
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
 				if tt.wantRes != nil {
-					tt.wantRes(t, res)
+					tt.wantRes(t, res, repo)
 				}
 				return
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, res)
+				tt.wantRes(t, res, repo)
 			}
 		})
 	}

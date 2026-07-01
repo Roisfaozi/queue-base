@@ -191,3 +191,42 @@ Examples:
 - negative: invalid counter assignment is rejected
 - edge: business date reset boundary behaves correctly
 - vulnerability: cross-tenant access is rejected
+
+## 10. Frontend Worktree Flow
+
+Worktree env sync now also generates frontend-local env files:
+
+- `apps/web/.env.local`
+- `apps/client/.env.local`
+
+These files follow the current worktree backend port automatically.
+
+Inspect generated frontend env:
+
+```bash
+make front-status
+```
+
+Show frontend run commands and ports:
+
+```bash
+make front-dev
+```
+
+Run Next.js frontend:
+
+```bash
+make web-dev
+```
+
+Run React Router frontend:
+
+```bash
+make client-dev
+```
+
+Expected behavior:
+
+- `apps/web` uses `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` from current worktree
+- `apps/client` uses `VITE_API_PROXY_TARGET` and `VITE_DEV_PORT` from current worktree
+- frontend branch no longer needs manual API-port rewiring when backend worktree port changes
