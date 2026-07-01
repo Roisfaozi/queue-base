@@ -81,6 +81,13 @@ export interface VisitJourney {
 	created_at: number;
 }
 
+export interface QueueStatsResponse {
+	total_queues_today: number;
+	total_active_journeys: number;
+	total_completed_visits: number;
+	waiting_by_service: Record<string, number>;
+}
+
 export interface ScannerCheckInResponse {
 	action: "register" | "forward";
 	queue: Queue;
@@ -180,7 +187,7 @@ export const queuesApi = {
 	getVisitJourneys: (id: string) =>
 		api.get<{ data: VisitJourney[] }>(`/queues/${id}/visit-journeys`),
 	getQueueStats: (branchId: string) =>
-		api.get<{ data: any }>(`/branches/${branchId}/queue-stats`),
+		api.get<{ data: QueueStatsResponse }>(`/branches/${branchId}/queue-stats`),
 };
 
 // -----------------------------------------------------------------------------

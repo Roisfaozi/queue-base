@@ -46,6 +46,15 @@ export function QueueDetailSheet({
 		fetchJourneys();
 	}, [fetchJourneys]);
 
+	const parsePayload = (payload?: string) => {
+		if (!payload) return null;
+		try {
+			return JSON.parse(payload);
+		} catch {
+			return payload;
+		}
+	};
+
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent className="sm:max-w-xl w-full flex flex-col gap-0 p-0">
@@ -92,12 +101,18 @@ export function QueueDetailSheet({
 														{j.event_type}
 													</span>
 													<span className="text-xs text-muted-foreground">
-														{format(new Date(j.created_at * 1000), "HH:mm:ss")}
+														{format(new Date(j.created_at), "HH:mm:ss")}
 													</span>
 												</div>
-												{j.payload && (
+												{parsePayload(j.payload) && (
 													<pre className="mt-2 rounded-md bg-muted p-2 text-xs text-muted-foreground overflow-auto">
-														{JSON.stringify(JSON.parse(j.payload), null, 2)}
+														{typeof parsePayload(j.payload) === "string"
+															? parsePayload(j.payload)
+															: JSON.stringify(
+																	parsePayload(j.payload),
+																	null,
+																	2,
+																)}
 													</pre>
 												)}
 											</div>

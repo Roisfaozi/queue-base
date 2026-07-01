@@ -18,7 +18,14 @@ import {
 } from "~/components/dashboard/queues";
 import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
-import { branchesApi, queuesApi, type Branch, type Queue } from "~/lib/api/qms";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+	branchesApi,
+	queuesApi,
+	type Branch,
+	type Queue,
+	type QueueStatsResponse,
+} from "~/lib/api/qms";
 
 export function QueuesContent() {
 	const { currentOrganization } = useDashboardShell();
@@ -27,6 +34,7 @@ export function QueuesContent() {
 	const [selectedBranchId, setSelectedBranchId] = useState<string>("");
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<any>(null);
+	const [stats, setStats] = useState<QueueStatsResponse | null>(null);
 
 	const [registerOpen, setRegisterOpen] = useState(false);
 	const [forwardOpen, setForwardOpen] = useState(false);
@@ -69,6 +77,20 @@ export function QueuesContent() {
 		}
 	}, [currentOrganization, selectedBranchId]);
 
+	const fetchStats = useCallback(async () => {
+		if (!currentOrganization || !selectedBranchId) {
+			setStats(null);
+			return;
+		}
+
+		try {
+			const resp = await queuesApi.getQueueStats(selectedBranchId);
+			setStats(resp.data);
+		} catch {
+			setStats(null);
+		}
+	}, [currentOrganization, selectedBranchId]);
+
 	useEffect(() => {
 		fetchBranches();
 	}, [fetchBranches]);
@@ -76,6 +98,10 @@ export function QueuesContent() {
 	useEffect(() => {
 		fetchQueues();
 	}, [fetchQueues]);
+
+	useEffect(() => {
+		fetchStats();
+	}, [fetchStats]);
 
 	const handleRegister = () => {
 		setRegisterOpen(true);
@@ -99,10 +125,39 @@ export function QueuesContent() {
 			await queuesApi.transition(queue.id, { action });
 			toast.success(`Ticket ${queue.ticket_no} marked as ${action}`);
 			fetchQueues();
+			fetchStats();
 		} catch (err: any) {
 			toast.error(err.message || `Failed to ${action} queue`);
 		}
 	};
+
+	const statCards = stats
+		? [
+				{
+					label: "Total Today",
+					value: stats.total_queues_today,
+					icon: "ListOrdered",
+				},
+				{
+					label: "Active Journeys",
+					value: stats.total_active_journeys,
+					icon: "Activity",
+				},
+				{
+					label: "Completed Visits",
+					value: stats.total_completed_visits,
+					icon: "CheckCircle2",
+				},
+				{
+					label: "Waiting Services",
+					value: Object.values(stats.waiting_by_service || {}).reduce(
+						(total, count) => total + count,
+						0,
+					),
+					icon: "Clock3",
+				},
+			]
+		: [];
 
 	if (!currentOrganization) return null;
 
@@ -148,6 +203,27 @@ export function QueuesContent() {
 				</div>
 			</div>
 
+			{statCards.length > 0 && (
+				<div className="grid gap-4 md:grid-cols-4">
+					{statCards.map((card) => (
+						<Card key={card.label}>
+							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+								<CardTitle className="text-muted-foreground text-sm font-medium">
+									{card.label}
+								</CardTitle>
+								<Icon
+									name={card.icon as any}
+									className="text-muted-foreground h-4 w-4"
+								/>
+							</CardHeader>
+							<CardContent>
+								<div className="text-3xl font-bold">{card.value}</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
+
 			<QueueTable
 				queues={queues}
 				isLoading={isLoading}
@@ -165,14 +241,20 @@ export function QueuesContent() {
 				onOpenChange={setRegisterOpen}
 				branches={branches}
 				defaultBranchId={selectedBranchId}
-				onSuccess={fetchQueues}
+				onSuccess={() => {
+					fetchQueues();
+					fetchStats();
+				}}
 			/>
 
 			<QueueForwardDialog
 				open={forwardOpen}
 				onOpenChange={setForwardOpen}
 				queue={selectedQueue}
-				onSuccess={fetchQueues}
+				onSuccess={() => {
+					fetchQueues();
+					fetchStats();
+				}}
 			/>
 
 			<QueueDetailSheet
