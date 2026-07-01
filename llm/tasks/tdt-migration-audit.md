@@ -83,7 +83,7 @@
 | `internal/modules/organization/test/organization_usecase_test.go`        | 5                 | DONE     |
 | `internal/modules/organization/test/reader_test.go`                      | 1                 | Low      |
 | `internal/modules/project/test/project_usecase_test.go`                  | 3                 | Medium   |
-| `internal/modules/role/usecase/role_usecase_test.go`                     | 3                 | High     |
+| `internal/modules/role/usecase/role_usecase_test.go`                     | 3                 | DONE     |
 | `internal/modules/permission/usecase/permission_usecase_test.go`         | 3                 | High     |
 | `internal/modules/stats/test/stats_usecase_test.go`                      | 2                 | Low      |
 | `internal/modules/webhook/test/webhook_controller_test.go`               | 3                 | Medium   |
