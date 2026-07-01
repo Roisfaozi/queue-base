@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
@@ -54,11 +56,65 @@ type stubRelationValidator struct {
 	validateCalled bool
 }
 
+type stubAuditLogger struct {
+	entries []auditModel.CreateAuditLogRequest
+	err     error
+}
+
+func (s *stubAuditLogger) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.entries = append(s.entries, req)
+	return s.err
+}
+
 func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
 	s.validateCalled = true
 	s.serviceID = serviceID
 	s.counterID = counterID
 	return s.err
+}
+
+func TestScannerAuditLogging(t *testing.T) {
+	t.Run("Register_EmitsAuditAndSurvivesFailure", func(t *testing.T) {
+		qh := &stubQueueHandler{registerRes: &queueModel.QueueResponse{ID: "q-1"}}
+		audit := &stubAuditLogger{err: assert.AnError}
+		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+		ctx = authcontext.WithUserID(ctx, "u-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionRegister, BranchID: "b-1", ClientID: "c-1", APIKey: "k-1", ServiceID: "svc-1", PatientName: "John"})
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.Len(t, audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		assert.True(t, ok)
+		assert.Equal(t, "SCANNER_REGISTER", audit.entries[0].Action)
+		assert.Equal(t, "scanner", audit.entries[0].Entity)
+		assert.Equal(t, "t-1", audit.entries[0].OrganizationID)
+		assert.Equal(t, "u-1", audit.entries[0].UserID)
+		assert.Equal(t, "b-1", values["branch_id"])
+	})
+
+	t.Run("Forward_DoesNotLeakAPIKey", func(t *testing.T) {
+		qh := &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}}
+		audit := &stubAuditLogger{}
+		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.CheckIn(ctx, &CheckInRequest{Action: ActionForward, BranchID: "b-1", ClientID: "c-1", APIKey: "super-secret", QueueID: "q-1", DestinationServiceID: "svc-2", DestinationCounterID: "ctr-2"})
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		require := assert.New(t)
+		require.Len(audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.True(ok)
+		require.NotContains(values, "api_key")
+		require.Equal("SCANNER_FORWARD", audit.entries[0].Action)
+		require.Equal("q-1", audit.entries[0].EntityID)
+	})
 }
 
 // =============================================================================

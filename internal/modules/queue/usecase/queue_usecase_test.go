@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
@@ -53,8 +55,89 @@ type stubRelationValidator struct {
 	err error
 }
 
+type stubAuditLogger struct {
+	entries []auditModel.CreateAuditLogRequest
+	err     error
+}
+
+func (s *stubAuditLogger) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.entries = append(s.entries, req)
+	return s.err
+}
+
 func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
 	return s.err
+}
+
+func TestQueueAuditLogging(t *testing.T) {
+	t.Run("Register_EmitsAuditAndSurvivesAuditFailure", func(t *testing.T) {
+		repo := &stubQueueRepo{}
+		audit := &stubAuditLogger{err: assert.AnError}
+		uc := NewQueueUseCase(repo, &stubSettingsResolver{}, nil, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+		ctx = authcontext.WithUserID(ctx, "u-1")
+
+		res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John"})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.True(t, ok)
+		assert.Equal(t, "QUEUE_REGISTER", audit.entries[0].Action)
+		assert.Equal(t, "queue", audit.entries[0].Entity)
+		assert.Equal(t, "t-1", audit.entries[0].OrganizationID)
+		assert.Equal(t, "u-1", audit.entries[0].UserID)
+		assert.Equal(t, "b-1", values["branch_id"])
+		assert.Equal(t, res.TicketNo, values["ticket_no"])
+	})
+
+	t.Run("Forward_EmitsAudit", func(t *testing.T) {
+		repo := &stubQueueRepo{
+			q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
+		}
+		audit := &stubAuditLogger{}
+		uc := NewQueueUseCase(repo, nil, &stubRelationValidator{}, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "svc-2", DestinationCounterID: "ctr-2"})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.True(t, ok)
+		assert.Equal(t, "QUEUE_FORWARD", audit.entries[0].Action)
+		assert.Equal(t, "system", audit.entries[0].UserID)
+		assert.Equal(t, "q-1", audit.entries[0].EntityID)
+		assert.Equal(t, "j-1", values["from_journey_id"])
+		assert.Equal(t, "svc-2", values["to_service_id"])
+	})
+
+	t.Run("Transition_EmitsAudit", func(t *testing.T) {
+		repo := &stubQueueRepo{
+			q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
+		}
+		audit := &stubAuditLogger{}
+		uc := NewQueueUseCase(repo, nil, nil, audit)
+
+		ctx := database.SetOrganizationContext(context.Background(), "t-1")
+		ctx = database.SetBranchContext(ctx, "b-1")
+
+		res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCall})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, audit.entries, 1)
+		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.True(t, ok)
+		assert.Equal(t, "QUEUE_CALL", audit.entries[0].Action)
+		assert.Equal(t, "j-1", values["journey_id"])
+		assert.Equal(t, entity.QueueStatusCalling, values["status"])
+	})
 }
 
 func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
