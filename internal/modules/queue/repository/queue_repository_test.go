@@ -338,7 +338,7 @@ func TestQueueRepository(t *testing.T) {
 				}
 
 				queue := &entity.Queue{ID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", CurrentJourneyID: "j-2", UpdatedAt: 123}
-				currentJourney := &entity.QueueJourney{ID: "j-1", TenantID: "tenant-1", BranchID: "branch-1", Status: entity.JourneyStatusForwarded, UpdatedAt: 123}
+				currentJourney := &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", Status: entity.JourneyStatusForwarded, UpdatedAt: 123}
 				nextJourney := &entity.QueueJourney{ID: "j-2", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-2", Status: entity.JourneyStatusPending}
 				visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", EventType: "forward"}
 
