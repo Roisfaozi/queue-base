@@ -316,6 +316,14 @@ func TestQueueRepository(t *testing.T) {
 				},
 				wantErr: gorm.ErrRecordNotFound,
 			},
+			{
+				name:     "Negative_RejectsExistingSecondActiveJourney",
+				category: "negative",
+				prepare: func(t *testing.T, db *gorm.DB) {
+					require.NoError(t, db.Create(&entity.QueueJourney{ID: "j-active", QueueID: "q-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-extra", SeqNo: 2, Status: entity.JourneyStatusPending}).Error)
+				},
+				wantErr: gorm.ErrDuplicatedKey,
+			},
 		}
 
 		for _, tt := range tests {

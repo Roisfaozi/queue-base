@@ -43,6 +43,10 @@ func (r *queueRepository) getDB(ctx context.Context) *gorm.DB {
 	return r.db.WithContext(ctx)
 }
 
+func activeJourneyStatuses() []string {
+	return []string{entity.JourneyStatusPending, entity.JourneyStatusCalling, entity.JourneyStatusServing, entity.JourneyStatusSkipped}
+}
+
 type queueCounterRow struct {
 	TenantID  string `gorm:"column:tenant_id"`
 	BranchID  string `gorm:"column:branch_id"`
@@ -229,6 +233,15 @@ func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Qu
 		var lockedQueue entity.Queue
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("tenant_id = ? AND branch_id = ? AND id = ? AND current_journey_id = ?", queue.TenantID, queue.BranchID, queue.ID, currentJourney.ID).First(&lockedQueue).Error; err != nil {
 			return err
+		}
+		var activeCount int64
+		if err := tx.Model(&entity.QueueJourney{}).
+			Where("tenant_id = ? AND branch_id = ? AND queue_id = ? AND id <> ? AND status IN ?", queue.TenantID, queue.BranchID, queue.ID, currentJourney.ID, activeJourneyStatuses()).
+			Count(&activeCount).Error; err != nil {
+			return err
+		}
+		if activeCount > 0 {
+			return gorm.ErrDuplicatedKey
 		}
 		var maxSeq int
 		if err := tx.Model(&entity.QueueJourney{}).Where("tenant_id = ? AND branch_id = ? AND queue_id = ?", queue.TenantID, queue.BranchID, queue.ID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
