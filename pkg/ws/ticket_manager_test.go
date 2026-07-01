@@ -30,87 +30,155 @@ func setupTicketManager(t *testing.T) (*ws.RedisTicketManager, *miniredis.Minire
 }
 
 func TestRedisTicketManager_CreateAndValidate(t *testing.T) {
-	tm, mr := setupTicketManager(t)
-	defer mr.Close()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_CreateAndValidate",
+			category: "positive",
+			run: func(t *testing.T) {
+				tm, mr := setupTicketManager(t)
+				defer mr.Close()
 
-	ctx := context.Background()
-	userID := "user-1"
-	orgID := "org-1"
-	sessionID := "session-1"
-	role := "admin"
-	username := "admin_user"
+				ctx := context.Background()
+				userID := "user-1"
+				orgID := "org-1"
+				sessionID := "session-1"
+				role := "admin"
+				username := "admin_user"
 
-	// 1. Create Ticket
-	ticket, err := tm.CreateTicket(ctx, userID, orgID, sessionID, role, username)
-	require.NoError(t, err)
-	require.NotEmpty(t, ticket)
+				// 1. Create Ticket
+				ticket, err := tm.CreateTicket(ctx, userID, orgID, sessionID, role, username)
+				require.NoError(t, err)
+				require.NotEmpty(t, ticket)
 
-	// 2. Validate Ticket (Success)
-	userCtx, err := tm.ValidateTicket(ctx, ticket)
-	require.NoError(t, err)
-	assert.Equal(t, userID, userCtx.UserID)
-	assert.Equal(t, orgID, userCtx.OrganizationID)
-	assert.Equal(t, sessionID, userCtx.SessionID)
-	assert.Equal(t, role, userCtx.Role)
-	assert.Equal(t, username, userCtx.Username)
+				// 2. Validate Ticket (Success)
+				userCtx, err := tm.ValidateTicket(ctx, ticket)
+				require.NoError(t, err)
+				assert.Equal(t, userID, userCtx.UserID)
+				assert.Equal(t, orgID, userCtx.OrganizationID)
+				assert.Equal(t, sessionID, userCtx.SessionID)
+				assert.Equal(t, role, userCtx.Role)
+				assert.Equal(t, username, userCtx.Username)
 
-	// 3. Validate Ticket Again (Should Fail - One Time Use)
-	_, err = tm.ValidateTicket(ctx, ticket)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid or expired ticket")
+				// 3. Validate Ticket Again (Should Fail - One Time Use)
+				_, err = tm.ValidateTicket(ctx, ticket)
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid or expired ticket")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRedisTicketManager_BadData(t *testing.T) {
-	mr, err := miniredis.Run()
-	if err != nil && strings.Contains(err.Error(), "operation not permitted") {
-		t.Skip("socket listeners not permitted in this environment")
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Negative_BadData",
+			category: "negative",
+			run: func(t *testing.T) {
+				mr, err := miniredis.Run()
+				if err != nil && strings.Contains(err.Error(), "operation not permitted") {
+					t.Skip("socket listeners not permitted in this environment")
+				}
+				require.NoError(t, err)
+				defer mr.Close()
+				rdb := redis.NewClient(&redis.Options{
+					Addr:            mr.Addr(),
+					DisableIdentity: true,
+					MaxRetries:      -1, // Don't retry/log when we close the server
+				})
+
+				tm := ws.NewRedisTicketManager(rdb, 0) // Should default to 30s
+
+				rdb.Set(context.Background(), "ws:ticket:bad-json", "{bad-json}", 0)
+				_, err = tm.ValidateTicket(context.Background(), "bad-json")
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "failed to unmarshal")
+
+				mr.Close()
+				// Error on get
+				_, err = tm.ValidateTicket(context.Background(), "anything")
+				require.Error(t, err)
+			},
+		},
 	}
-	require.NoError(t, err)
-	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{
-		Addr:            mr.Addr(),
-		DisableIdentity: true,
-		MaxRetries:      -1, // Don't retry/log when we close the server
-	})
-
-	tm := ws.NewRedisTicketManager(rdb, 0) // Should default to 30s
-
-	rdb.Set(context.Background(), "ws:ticket:bad-json", "{bad-json}", 0)
-	_, err = tm.ValidateTicket(context.Background(), "bad-json")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to unmarshal")
-
-	mr.Close()
-	// Error on get
-	_, err = tm.ValidateTicket(context.Background(), "anything")
-	require.Error(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRedisTicketManager_Expiration(t *testing.T) {
-	tm, mr := setupTicketManager(t)
-	defer mr.Close()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Negative_Expiration",
+			category: "negative",
+			run: func(t *testing.T) {
+				tm, mr := setupTicketManager(t)
+				defer mr.Close()
 
-	ctx := context.Background()
-	ticket, err := tm.CreateTicket(ctx, "u1", "o1", "s1", "r1", "run1")
-	require.NoError(t, err)
+				ctx := context.Background()
+				ticket, err := tm.CreateTicket(ctx, "u1", "o1", "s1", "r1", "run1")
+				require.NoError(t, err)
 
-	// Fast forward time greater than TTL (1s)
-	mr.FastForward(2 * time.Second)
+				// Fast forward time greater than TTL (1s)
+				mr.FastForward(2 * time.Second)
 
-	// Validate Ticket (Should Fail - Expired)
-	_, err = tm.ValidateTicket(ctx, ticket)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid or expired ticket")
+				// Validate Ticket (Should Fail - Expired)
+				_, err = tm.ValidateTicket(ctx, ticket)
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid or expired ticket")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestRedisTicketManager_InvalidTicket(t *testing.T) {
-	tm, mr := setupTicketManager(t)
-	defer mr.Close()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Negative_InvalidTicket",
+			category: "negative",
+			run: func(t *testing.T) {
+				tm, mr := setupTicketManager(t)
+				defer mr.Close()
 
-	ctx := context.Background()
+				ctx := context.Background()
 
-	// Validate non-existent ticket
-	_, err := tm.ValidateTicket(ctx, "non-existent-ticket")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid or expired ticket")
+				// Validate non-existent ticket
+				_, err := tm.ValidateTicket(ctx, "non-existent-ticket")
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid or expired ticket")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
