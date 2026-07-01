@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
@@ -15,14 +16,15 @@ type QueueRepository interface {
 	NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error)
 	ExistsRegistration(ctx context.Context, tenantID, branchID, queueDate, patientID, patientName string) (bool, error)
 	CreateRegistration(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error
+	CreateRegistrationWithNumber(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney, date time.Time, prefix string) error
 	ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error)
 	ListActiveJourneys(ctx context.Context, tenantID, branchID string, req model.QueueJourneyListRequest) ([]*entity.QueueJourney, error)
-	FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
-	FindCurrentJourney(ctx context.Context, queueID, journeyID string) (*entity.QueueJourney, error)
-	NextJourneySequence(ctx context.Context, queueID string) (int, error)
+	FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error)
+	FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error)
+	NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error)
 	CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error
-	FindVisitJourneysByQueueID(ctx context.Context, tenantID, queueID string) ([]*entity.VisitJourney, error)
+	FindVisitJourneysByQueueID(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error)
 	GetQueueStats(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error)
 }
 
@@ -103,13 +105,56 @@ func (r *queueRepository) CreateRegistration(ctx context.Context, queue *entity.
 		if err := tx.Create(queue).Error; err != nil {
 			return err
 		}
+		journey.BranchID = queue.BranchID
+		visit.BranchID = queue.BranchID
 		if err := tx.Create(journey).Error; err != nil {
 			return err
 		}
 		if err := tx.Create(visit).Error; err != nil {
 			return err
 		}
-		return tx.Model(&entity.Queue{}).Where("id = ?", queue.ID).Update("current_journey_id", journey.ID).Error
+		return tx.Model(&entity.Queue{}).Where("tenant_id = ? AND branch_id = ? AND id = ?", queue.TenantID, queue.BranchID, queue.ID).Update("current_journey_id", journey.ID).Error
+	})
+}
+
+func (r *queueRepository) CreateRegistrationWithNumber(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney, date time.Time, prefix string) error {
+	queueDate := date.Format("2006-01-02")
+	nowMs := date.UnixMilli()
+	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
+		row := &queueCounterRow{}
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("tenant_id = ? AND branch_id = ? AND queue_date = ? AND prefix = ?", queue.TenantID, queue.BranchID, queueDate, prefix).
+			First(row).Error
+		if err != nil {
+			if err != gorm.ErrRecordNotFound {
+				return err
+			}
+			row = &queueCounterRow{TenantID: queue.TenantID, BranchID: queue.BranchID, QueueDate: queueDate, Prefix: prefix, LastValue: 1, CreatedAt: nowMs, UpdatedAt: nowMs}
+			if err := tx.Table(row.TableName()).Create(row).Error; err != nil {
+				return err
+			}
+		} else {
+			row.LastValue++
+			row.UpdatedAt = nowMs
+			if err := tx.Table(row.TableName()).Where("tenant_id = ? AND branch_id = ? AND queue_date = ? AND prefix = ?", queue.TenantID, queue.BranchID, queueDate, prefix).Updates(map[string]any{"last_value": row.LastValue, "updated_at": row.UpdatedAt}).Error; err != nil {
+				return err
+			}
+		}
+
+		queue.QueueNo = row.LastValue
+		queue.TicketNo = prefix + fmt.Sprintf("%03d", row.LastValue)
+		if err := tx.Create(queue).Error; err != nil {
+			return err
+		}
+		journey.BranchID = queue.BranchID
+		visit.BranchID = queue.BranchID
+		if err := tx.Create(journey).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(visit).Error; err != nil {
+			return err
+		}
+		return tx.Model(&entity.Queue{}).Where("tenant_id = ? AND branch_id = ? AND id = ?", queue.TenantID, queue.BranchID, queue.ID).Update("current_journey_id", journey.ID).Error
 	})
 }
 
@@ -155,25 +200,25 @@ func (r *queueRepository) ListActiveJourneys(ctx context.Context, tenantID, bran
 	return journeys, nil
 }
 
-func (r *queueRepository) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
+func (r *queueRepository) FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error) {
 	var q entity.Queue
-	if err := r.getDB(ctx).Where("tenant_id = ? AND id = ?", tenantID, queueID).First(&q).Error; err != nil {
+	if err := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ? AND id = ?", tenantID, branchID, queueID).First(&q).Error; err != nil {
 		return nil, err
 	}
 	return &q, nil
 }
 
-func (r *queueRepository) FindCurrentJourney(ctx context.Context, queueID, journeyID string) (*entity.QueueJourney, error) {
+func (r *queueRepository) FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error) {
 	var j entity.QueueJourney
-	if err := r.getDB(ctx).Where("queue_id = ? AND id = ?", queueID, journeyID).First(&j).Error; err != nil {
+	if err := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ? AND queue_id = ? AND id = ?", tenantID, branchID, queueID, journeyID).First(&j).Error; err != nil {
 		return nil, err
 	}
 	return &j, nil
 }
 
-func (r *queueRepository) NextJourneySequence(ctx context.Context, queueID string) (int, error) {
+func (r *queueRepository) NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error) {
 	var maxSeq int
-	if err := r.getDB(ctx).Model(&entity.QueueJourney{}).Where("queue_id = ?", queueID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
+	if err := r.getDB(ctx).Model(&entity.QueueJourney{}).Where("tenant_id = ? AND branch_id = ? AND queue_id = ?", tenantID, branchID, queueID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
 		return 0, err
 	}
 	return maxSeq + 1, nil
@@ -182,12 +227,12 @@ func (r *queueRepository) NextJourneySequence(ctx context.Context, queueID strin
 func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
 	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
 		var maxSeq int
-		if err := tx.Model(&entity.QueueJourney{}).Where("queue_id = ?", queue.ID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
+		if err := tx.Model(&entity.QueueJourney{}).Where("tenant_id = ? AND branch_id = ? AND queue_id = ?", queue.TenantID, queue.BranchID, queue.ID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
 			return err
 		}
 		nextJourney.SeqNo = maxSeq + 1
 
-		result := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt})
+		result := tx.Model(&entity.QueueJourney{}).Where("tenant_id = ? AND branch_id = ? AND queue_id = ? AND id = ?", queue.TenantID, queue.BranchID, queue.ID, currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt})
 		if result.Error != nil {
 			return result.Error
 		}
@@ -200,20 +245,20 @@ func (r *queueRepository) CreateForwarding(ctx context.Context, queue *entity.Qu
 		if err := tx.Create(visit).Error; err != nil {
 			return err
 		}
-		return tx.Model(&entity.Queue{}).Where("id = ?", queue.ID).Updates(map[string]any{"current_journey_id": queue.CurrentJourneyID, "updated_at": queue.UpdatedAt}).Error
+		return tx.Model(&entity.Queue{}).Where("tenant_id = ? AND branch_id = ? AND id = ?", queue.TenantID, queue.BranchID, queue.ID).Updates(map[string]any{"current_journey_id": queue.CurrentJourneyID, "updated_at": queue.UpdatedAt}).Error
 	})
 }
 
 func (r *queueRepository) UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
 	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
-		queueResult := tx.Model(&entity.Queue{}).Where("id = ?", queue.ID).Updates(map[string]any{"status": queue.Status, "updated_at": queue.UpdatedAt})
+		queueResult := tx.Model(&entity.Queue{}).Where("tenant_id = ? AND branch_id = ? AND id = ?", queue.TenantID, queue.BranchID, queue.ID).Updates(map[string]any{"status": queue.Status, "updated_at": queue.UpdatedAt})
 		if queueResult.Error != nil {
 			return queueResult.Error
 		}
 		if queueResult.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
-		journeyResult := tx.Model(&entity.QueueJourney{}).Where("id = ?", currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt})
+		journeyResult := tx.Model(&entity.QueueJourney{}).Where("tenant_id = ? AND branch_id = ? AND queue_id = ? AND id = ?", queue.TenantID, queue.BranchID, queue.ID, currentJourney.ID).Updates(map[string]any{"status": currentJourney.Status, "updated_at": currentJourney.UpdatedAt})
 		if journeyResult.Error != nil {
 			return journeyResult.Error
 		}
@@ -224,9 +269,9 @@ func (r *queueRepository) UpdateQueueState(ctx context.Context, queue *entity.Qu
 	})
 }
 
-func (r *queueRepository) FindVisitJourneysByQueueID(ctx context.Context, tenantID, queueID string) ([]*entity.VisitJourney, error) {
+func (r *queueRepository) FindVisitJourneysByQueueID(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error) {
 	var visits []*entity.VisitJourney
-	if err := r.getDB(ctx).Where("tenant_id = ? AND queue_id = ?", tenantID, queueID).Order("created_at ASC").Find(&visits).Error; err != nil {
+	if err := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ? AND queue_id = ?", tenantID, branchID, queueID).Order("created_at ASC").Find(&visits).Error; err != nil {
 		return nil, err
 	}
 	return visits, nil

@@ -66,6 +66,9 @@ func (u *scannerUseCase) CheckIn(ctx context.Context, req *CheckInRequest) (*Che
 	if tenantID == "" || branchID == "" || req == nil {
 		return nil, exception.ErrBadRequest
 	}
+	if req.BranchID == "" || req.BranchID != branchID {
+		return nil, exception.ErrForbidden
+	}
 
 	action := strings.TrimSpace(strings.ToLower(req.Action))
 	if action != ActionRegister && action != ActionForward {

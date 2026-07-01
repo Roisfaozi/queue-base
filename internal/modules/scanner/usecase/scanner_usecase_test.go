@@ -83,6 +83,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "positive",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "key-1",
 				ServiceID:   "service-1",
@@ -106,6 +107,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "bad",
 				ServiceID:   "service-1",
@@ -121,6 +123,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "security",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "bad",
 				ServiceID:   "service-1",
@@ -136,6 +139,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "edge",
 			req: &CheckInRequest{
 				Action:               " forward ",
+				BranchID:             "b-1",
 				ClientID:             "client-1",
 				APIKey:               "key-1",
 				QueueID:              "q-1",
@@ -159,6 +163,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "vulnerability",
 			req: &CheckInRequest{
 				Action:   "drop-table",
+				BranchID: "b-1",
 				ClientID: "client-1",
 				APIKey:   "key-1",
 			},
@@ -171,6 +176,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "client-1",
 				APIKey:      "key-1",
 				ServiceID:   "service-1",
@@ -186,6 +192,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:               ActionForward,
+				BranchID:             "b-1",
 				ClientID:             "client-1",
 				APIKey:               "key-1",
 				QueueID:              "q-1",
@@ -214,6 +221,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",
@@ -226,6 +234,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",
@@ -239,6 +248,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:      ActionRegister,
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",
@@ -255,6 +265,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "negative",
 			req: &CheckInRequest{
 				Action:               ActionForward,
+				BranchID:             "b-1",
 				ClientID:             "c-1",
 				APIKey:               "k-1",
 				QueueID:              "q-1",
@@ -271,6 +282,7 @@ func TestScannerCheckIn(t *testing.T) {
 			category: "edge",
 			req: &CheckInRequest{
 				Action:      "REGISTER",
+				BranchID:    "b-1",
 				ClientID:    "c-1",
 				APIKey:      "k-1",
 				ServiceID:   "s-1",

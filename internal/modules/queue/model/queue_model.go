@@ -64,6 +64,8 @@ type QueueJourneyListRequest struct {
 type QueueJourneyResponse struct {
 	ID        string `json:"id"`
 	QueueID   string `json:"queue_id"`
+	TenantID  string `json:"tenant_id"`
+	BranchID  string `json:"branch_id"`
 	ServiceID string `json:"service_id"`
 	CounterID string `json:"counter_id,omitempty"`
 	SeqNo     int    `json:"seq_no"`
@@ -76,6 +78,7 @@ type VisitJourneyResponse struct {
 	ID        string `json:"id"`
 	QueueID   string `json:"queue_id"`
 	TenantID  string `json:"tenant_id"`
+	BranchID  string `json:"branch_id"`
 	EventType string `json:"event_type"`
 	Payload   string `json:"payload,omitempty"`
 	CreatedAt int64  `json:"created_at"`

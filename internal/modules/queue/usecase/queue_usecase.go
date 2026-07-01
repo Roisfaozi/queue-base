@@ -112,6 +112,8 @@ func (u *queueUseCase) ListActiveJourneys(ctx context.Context, req model.QueueJo
 		res[i] = model.QueueJourneyResponse{
 			ID:        journey.ID,
 			QueueID:   journey.QueueID,
+			TenantID:  journey.TenantID,
+			BranchID:  journey.BranchID,
 			ServiceID: journey.ServiceID,
 			CounterID: journey.CounterID,
 			SeqNo:     journey.SeqNo,
@@ -125,14 +127,15 @@ func (u *queueUseCase) ListActiveJourneys(ctx context.Context, req model.QueueJo
 
 func (u *queueUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]model.VisitJourneyResponse, error) {
 	tenantID := database.GetTenantID(ctx)
-	if tenantID == "" || queueID == "" {
+	branchID := database.GetBranchID(ctx)
+	if tenantID == "" || branchID == "" || queueID == "" {
 		return nil, exception.ErrBadRequest
 	}
 	// Ensure queue exists and belongs to tenant
-	if _, err := u.repo.FindQueueByID(ctx, tenantID, queueID); err != nil {
+	if _, err := u.repo.FindQueueByID(ctx, tenantID, branchID, queueID); err != nil {
 		return nil, exception.ErrNotFound
 	}
-	visits, err := u.repo.FindVisitJourneysByQueueID(ctx, tenantID, queueID)
+	visits, err := u.repo.FindVisitJourneysByQueueID(ctx, tenantID, branchID, queueID)
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +145,7 @@ func (u *queueUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]
 			ID:        v.ID,
 			QueueID:   v.QueueID,
 			TenantID:  v.TenantID,
+			BranchID:  v.BranchID,
 			EventType: v.EventType,
 			Payload:   v.Payload,
 			CreatedAt: v.CreatedAt,
@@ -152,10 +156,11 @@ func (u *queueUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]
 
 func (u *queueUseCase) GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error) {
 	tenantID := database.GetTenantID(ctx)
-	if tenantID == "" || queueID == "" {
+	branchID := database.GetBranchID(ctx)
+	if tenantID == "" || branchID == "" || queueID == "" {
 		return nil, exception.ErrBadRequest
 	}
-	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
+	queue, err := u.repo.FindQueueByID(ctx, tenantID, branchID, queueID)
 	if err != nil {
 		return nil, exception.ErrNotFound
 	}
@@ -195,12 +200,6 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		return nil, exception.ErrConflict
 	}
 
-	qNo, err := u.repo.NextQueueNumber(ctx, tenantID, branchID, now, prefix)
-	if err != nil {
-		return nil, err
-	}
-
-	ticketNo := fmt.Sprintf("%s%03d", prefix, qNo)
 	nowMs := now.UnixMilli()
 
 	queueID := uuid.New().String()
@@ -212,8 +211,8 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		TenantID:         tenantID,
 		BranchID:         branchID,
 		QueueDate:        queueDateStr,
-		TicketNo:         ticketNo,
-		QueueNo:          qNo,
+		TicketNo:         "",
+		QueueNo:          0,
 		PatientID:        req.PatientID,
 		PatientName:      req.PatientName,
 		Status:           entity.QueueStatusWaiting,
@@ -226,6 +225,7 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		ID:        journeyID,
 		QueueID:   queueID,
 		TenantID:  tenantID,
+		BranchID:  branchID,
 		ServiceID: req.ServiceID,
 		SeqNo:     1,
 		Status:    entity.JourneyStatusPending,
@@ -237,12 +237,13 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 		ID:        visitID,
 		QueueID:   queueID,
 		TenantID:  tenantID,
+		BranchID:  branchID,
 		EventType: "registration",
 		Payload:   fmt.Sprintf(`{"service_id":"%s"}`, req.ServiceID),
 		CreatedAt: nowMs,
 	}
 
-	if err := u.repo.CreateRegistration(ctx, q, j, v); err != nil {
+	if err := u.repo.CreateRegistrationWithNumber(ctx, q, j, v, now, prefix); err != nil {
 		return nil, err
 	}
 
@@ -300,11 +301,12 @@ func computeBusinessQueueDate(now time.Time, resetTime string) string {
 
 func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *model.ForwardQueueRequest) (*model.QueueResponse, error) {
 	tenantID := database.GetTenantID(ctx)
-	if tenantID == "" || queueID == "" || req == nil || req.DestinationServiceID == "" {
+	branchID := database.GetBranchID(ctx)
+	if tenantID == "" || branchID == "" || queueID == "" || req == nil || req.DestinationServiceID == "" {
 		return nil, exception.ErrBadRequest
 	}
 
-	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
+	queue, err := u.repo.FindQueueByID(ctx, tenantID, branchID, queueID)
 	if err != nil || queue == nil {
 		return nil, exception.ErrNotFound
 	}
@@ -315,7 +317,7 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		}
 	}
 
-	currentJourney, err := u.repo.FindCurrentJourney(ctx, queue.ID, queue.CurrentJourneyID)
+	currentJourney, err := u.repo.FindCurrentJourney(ctx, tenantID, branchID, queue.ID, queue.CurrentJourneyID)
 	if err != nil || currentJourney == nil {
 		return nil, exception.ErrNotFound
 	}
@@ -331,6 +333,7 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		ID:        nextJourneyID,
 		QueueID:   queue.ID,
 		TenantID:  tenantID,
+		BranchID:  branchID,
 		ServiceID: req.DestinationServiceID,
 		CounterID: req.DestinationCounterID,
 		Status:    entity.JourneyStatusPending,
@@ -342,6 +345,7 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 		ID:        visitID,
 		QueueID:   queue.ID,
 		TenantID:  tenantID,
+		BranchID:  branchID,
 		EventType: "forward",
 		Payload:   fmt.Sprintf(`{"from_journey_id":"%s","to_service_id":"%s"}`, currentJourney.ID, req.DestinationServiceID),
 		CreatedAt: nowMs,
@@ -360,24 +364,25 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 
 func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req *model.QueueTransitionRequest) (*model.QueueResponse, error) {
 	tenantID := database.GetTenantID(ctx)
-	if tenantID == "" || queueID == "" || req == nil {
+	branchID := database.GetBranchID(ctx)
+	if tenantID == "" || branchID == "" || queueID == "" || req == nil {
 		return nil, exception.ErrBadRequest
 	}
 	if strings.TrimSpace(req.Action) == "" {
 		return nil, exception.ErrBadRequest
 	}
 
-	queue, err := u.repo.FindQueueByID(ctx, tenantID, queueID)
+	queue, err := u.repo.FindQueueByID(ctx, tenantID, branchID, queueID)
 	if err != nil || queue == nil {
 		return nil, exception.ErrNotFound
 	}
-	currentJourney, err := u.repo.FindCurrentJourney(ctx, queue.ID, queue.CurrentJourneyID)
+	currentJourney, err := u.repo.FindCurrentJourney(ctx, tenantID, branchID, queue.ID, queue.CurrentJourneyID)
 	if err != nil || currentJourney == nil {
 		return nil, exception.ErrNotFound
 	}
 
 	nowMs := time.Now().UnixMilli()
-	visit := &entity.VisitJourney{ID: uuid.New().String(), QueueID: queue.ID, TenantID: tenantID, CreatedAt: nowMs}
+	visit := &entity.VisitJourney{ID: uuid.New().String(), QueueID: queue.ID, TenantID: tenantID, BranchID: branchID, CreatedAt: nowMs}
 
 	switch req.Action {
 	case model.QueueActionCall:

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -77,6 +78,14 @@ func (s *stubQueueRepo) CreateRegistration(ctx context.Context, queue *entity.Qu
 	return s.err
 }
 
+func (s *stubQueueRepo) CreateRegistrationWithNumber(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney, date time.Time, prefix string) error {
+	s.seenNum++
+	s.lastPrefix = prefix
+	queue.QueueNo = s.seenNum
+	queue.TicketNo = fmt.Sprintf("%s%03d", prefix, queue.QueueNo)
+	return s.CreateRegistration(ctx, queue, journey, visit)
+}
+
 func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error) {
 	s.listReq = req
 	if s.err != nil {
@@ -114,7 +123,7 @@ func (s *stubQueueRepo) ListActiveJourneys(ctx context.Context, tenantID, branch
 	return []*entity.QueueJourney{{ID: "j-1", QueueID: "q-1", TenantID: tenantID, ServiceID: req.ServiceID, CounterID: req.CounterID, SeqNo: 1, Status: entity.JourneyStatusCalling}}, nil
 }
 
-func (s *stubQueueRepo) FindVisitJourneysByQueueID(ctx context.Context, tenantID, queueID string) ([]*entity.VisitJourney, error) {
+func (s *stubQueueRepo) FindVisitJourneysByQueueID(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -128,21 +137,21 @@ func (s *stubQueueRepo) GetQueueStats(ctx context.Context, tenantID, branchID, q
 	return s.statsRes, nil
 }
 
-func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
+func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
 	return s.q, nil
 }
 
-func (s *stubQueueRepo) FindCurrentJourney(ctx context.Context, queueID, journeyID string) (*entity.QueueJourney, error) {
+func (s *stubQueueRepo) FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
 	return s.j, nil
 }
 
-func (s *stubQueueRepo) NextJourneySequence(ctx context.Context, queueID string) (int, error) {
+func (s *stubQueueRepo) NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error) {
 	if s.err != nil {
 		return 0, s.err
 	}
@@ -363,6 +372,9 @@ func TestRegisterQueue(t *testing.T) {
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
+			}
 
 			res, err := uc.RegisterQueue(ctx, tt.req)
 
@@ -401,11 +413,12 @@ func TestForwardQueue(t *testing.T) {
 			category: "positive",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", TicketNo: "A001", QueueNo: 1, Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
 			},
 			queueID:  "q-1",
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "s-2"},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, "q-1", res.ID)
 				assert.NotEqual(t, "j-1", res.CurrentJourneyID)
@@ -423,11 +436,12 @@ func TestForwardQueue(t *testing.T) {
 			category: "edge",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
 			},
 			queueID:  "q-1",
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "s-1"},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.NotEmpty(t, res.CurrentJourneyID)
 			},
@@ -441,6 +455,7 @@ func TestForwardQueue(t *testing.T) {
 			queueID:  "q-1",
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "s-2"},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantErr:  exception.ErrNotFound,
 		},
 		{
@@ -450,6 +465,7 @@ func TestForwardQueue(t *testing.T) {
 			queueID:  "q-1",
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "s-2"},
 			tenantID: "other-tenant",
+			branchID: "b-1",
 			wantErr:  exception.ErrNotFound,
 		},
 		{
@@ -457,7 +473,7 @@ func TestForwardQueue(t *testing.T) {
 			category: "negative",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
 			validator: &stubRelationValidator{err: exception.ErrForbidden},
 			queueID:   "q-1",
@@ -471,7 +487,7 @@ func TestForwardQueue(t *testing.T) {
 			category: "positive",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
 			queueID:  "q-1",
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "pharmacy-svc"},
@@ -505,6 +521,9 @@ func TestForwardQueue(t *testing.T) {
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
+			}
 
 			res, err := uc.ForwardQueue(ctx, tt.queueID, tt.req)
 
@@ -532,6 +551,7 @@ func TestTransitionQueue(t *testing.T) {
 		queueID  string
 		req      *model.QueueTransitionRequest
 		tenantID string
+		branchID string
 		wantErr  error
 		wantRes  func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse)
 	}{
@@ -540,11 +560,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "positive",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCalling, res.Status)
 				assert.Equal(t, entity.JourneyStatusCalling, repo.j.Status)
@@ -556,11 +577,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "positive",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCalling},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCanceled, res.Status)
 			},
@@ -570,11 +592,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "positive",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionSkip},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusSkipped, res.Status)
 			},
@@ -584,11 +607,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "edge",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCalling},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionServe},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusServing, res.Status)
 			},
@@ -598,11 +622,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "edge",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusServing, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusServing},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusServing},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionComplete},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCompleted, res.Status)
 			},
@@ -612,11 +637,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "negative",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCompleted},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCompleted},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
@@ -624,11 +650,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "edge",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCanceled, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusCanceled},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCanceled},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
@@ -636,11 +663,12 @@ func TestTransitionQueue(t *testing.T) {
 			category: "negative",
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
-				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", Status: entity.JourneyStatusPending},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: ""},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
@@ -650,6 +678,7 @@ func TestTransitionQueue(t *testing.T) {
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
 			tenantID: "other-tenant",
+			branchID: "b-1",
 			wantErr:  exception.ErrNotFound,
 		},
 	}
@@ -664,6 +693,9 @@ func TestTransitionQueue(t *testing.T) {
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 
 			res, err := uc.TransitionQueue(ctx, tt.queueID, tt.req)
@@ -755,6 +787,12 @@ func TestListQueues(t *testing.T) {
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
+			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
@@ -886,6 +924,9 @@ func TestListActiveJourneys(t *testing.T) {
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
+			}
 
 			res, err := uc.ListActiveJourneys(ctx, tt.req)
 
@@ -912,6 +953,7 @@ func TestGetVisitJourneys(t *testing.T) {
 		repo     *stubQueueRepo
 		queueID  string
 		tenantID string
+		branchID string
 		wantErr  error
 		wantRes  func(t *testing.T, res []model.VisitJourneyResponse)
 	}{
@@ -919,14 +961,15 @@ func TestGetVisitJourneys(t *testing.T) {
 			name:     "Positive_Success",
 			category: "positive",
 			repo: &stubQueueRepo{
-				q: &entity.Queue{ID: "q-1", TenantID: "t-1"},
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1"},
 				visits: []*entity.VisitJourney{
-					{ID: "v-1", QueueID: "q-1", TenantID: "t-1", EventType: "registration", CreatedAt: 100},
-					{ID: "v-2", QueueID: "q-1", TenantID: "t-1", EventType: "call", CreatedAt: 200},
+					{ID: "v-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", EventType: "registration", CreatedAt: 100},
+					{ID: "v-2", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", EventType: "call", CreatedAt: 200},
 				},
 			},
 			queueID:  "q-1",
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, res []model.VisitJourneyResponse) {
 				require.Len(t, res, 2)
 				assert.Equal(t, "v-1", res[0].ID)
@@ -943,14 +986,16 @@ func TestGetVisitJourneys(t *testing.T) {
 			name:     "Negative_EmptyQueueID",
 			category: "negative",
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
 			name:     "Edge_EmptyList",
 			category: "edge",
-			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1"}},
+			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1"}},
 			queueID:  "q-1",
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantRes: func(t *testing.T, res []model.VisitJourneyResponse) {
 				assert.Empty(t, res)
 			},
@@ -961,6 +1006,7 @@ func TestGetVisitJourneys(t *testing.T) {
 			repo:     &stubQueueRepo{err: exception.ErrNotFound},
 			queueID:  "q-1",
 			tenantID: "other-tenant",
+			branchID: "b-1",
 			wantErr:  exception.ErrNotFound,
 		},
 	}
@@ -975,6 +1021,9 @@ func TestGetVisitJourneys(t *testing.T) {
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 
 			res, err := uc.GetVisitJourneys(ctx, tt.queueID)
@@ -1001,6 +1050,7 @@ func TestGetQueueByID(t *testing.T) {
 		category string
 		repo     *stubQueueRepo
 		tenantID string
+		branchID string
 		wantErr  error
 		wantID   string
 	}{
@@ -1009,6 +1059,7 @@ func TestGetQueueByID(t *testing.T) {
 			category: "positive",
 			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
 			tenantID: "t-1",
+			branchID: "b-1",
 			wantID:   "q-1",
 		},
 		{
@@ -1016,6 +1067,7 @@ func TestGetQueueByID(t *testing.T) {
 			category: "vulnerability",
 			repo:     &stubQueueRepo{err: exception.ErrNotFound},
 			tenantID: "other-tenant",
+			branchID: "b-1",
 			wantErr:  exception.ErrNotFound,
 		},
 	}
@@ -1030,6 +1082,9 @@ func TestGetQueueByID(t *testing.T) {
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+			if tt.branchID != "" {
+				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 
 			res, err := uc.GetQueueByID(ctx, "q-1")
