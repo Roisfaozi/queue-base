@@ -22,54 +22,71 @@ import (
 )
 
 func TestScenario_RBAC_Orchestration(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-	setup.CleanupDatabase(t, env.DB)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_RBACOrchestration",
+			category: "positive",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				setup.CleanupDatabase(t, env.DB)
 
-	ctx := context.Background()
-	tm := tx.NewTransactionManager(env.DB, env.Logger)
+				ctx := context.Background()
+				tm := tx.NewTransactionManager(env.DB, env.Logger)
 
-	rRepo := roleRepo.NewRoleRepository(env.DB, env.Logger)
-	aRepo := accessRepo.NewAccessRepository(env.DB, env.Logger)
-	accessService := accessUC.NewAccessUseCase(aRepo, env.Logger)
+				rRepo := roleRepo.NewRoleRepository(env.DB, env.Logger)
+				aRepo := accessRepo.NewAccessRepository(env.DB, env.Logger)
+				accessService := accessUC.NewAccessUseCase(aRepo, env.Logger)
 
-	uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
-	permService := permissionUC.NewPermissionUseCase(env.Enforcer, env.Logger, rRepo, uRepo, aRepo, nil)
-	roleService := roleUC.NewRoleUseCase(env.Logger, tm, rRepo, permService)
+				uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
+				permService := permissionUC.NewPermissionUseCase(env.Enforcer, env.Logger, rRepo, uRepo, aRepo, nil)
+				roleService := roleUC.NewRoleUseCase(env.Logger, tm, rRepo, permService)
 
-	roleName := "Analyst"
-	_, err := roleService.Create(ctx, &roleModel.CreateRoleRequest{Name: roleName, Description: "Data Analyst"})
-	require.NoError(t, err)
+				roleName := "Analyst"
+				_, err := roleService.Create(ctx, &roleModel.CreateRoleRequest{Name: roleName, Description: "Data Analyst"})
+				require.NoError(t, err)
 
-	endpoint, err := accessService.CreateEndpoint(ctx, accessModel.CreateEndpointRequest{
-		Path:   "/api/v1/reports",
-		Method: "GET",
-	})
-	require.NoError(t, err)
+				endpoint, err := accessService.CreateEndpoint(ctx, accessModel.CreateEndpointRequest{
+					Path:   "/api/v1/reports",
+					Method: "GET",
+				})
+				require.NoError(t, err)
 
-	accessRight, err := accessService.CreateAccessRight(ctx, accessModel.CreateAccessRightRequest{
-		Name:        "view_reports",
-		Description: "Can view daily reports",
-	})
-	require.NoError(t, err)
+				accessRight, err := accessService.CreateAccessRight(ctx, accessModel.CreateAccessRightRequest{
+					Name:        "view_reports",
+					Description: "Can view daily reports",
+				})
+				require.NoError(t, err)
 
-	err = accessService.LinkEndpointToAccessRight(ctx, accessModel.LinkEndpointRequest{
-		AccessRightID: accessRight.ID,
-		EndpointID:    endpoint.ID,
-	})
-	require.NoError(t, err)
+				err = accessService.LinkEndpointToAccessRight(ctx, accessModel.LinkEndpointRequest{
+					AccessRightID: accessRight.ID,
+					EndpointID:    endpoint.ID,
+				})
+				require.NoError(t, err)
 
-	err = permService.GrantPermissionToRole(ctx, roleName, endpoint.Path, endpoint.Method, "global")
-	require.NoError(t, err)
+				err = permService.GrantPermissionToRole(ctx, roleName, endpoint.Path, endpoint.Method, "global")
+				require.NoError(t, err)
 
-	user := setup.CreateTestUser(t, env.DB, "analyst_user", "analyst@test.com", "pass")
-	err = permService.AssignRoleToUser(ctx, user.ID, roleName, "global")
-	require.NoError(t, err)
+				user := setup.CreateTestUser(t, env.DB, "analyst_user", "analyst@test.com", "pass")
+				err = permService.AssignRoleToUser(ctx, user.ID, roleName, "global")
+				require.NoError(t, err)
 
-	ok, err := env.Enforcer.Enforce(user.ID, "global", endpoint.Path, endpoint.Method)
-	require.NoError(t, err)
-	assert.True(t, ok, "User should be able to access the endpoint granted via role")
+				ok, err := env.Enforcer.Enforce(user.ID, "global", endpoint.Path, endpoint.Method)
+				require.NoError(t, err)
+				assert.True(t, ok, "User should be able to access the endpoint granted via role")
 
-	ok, _ = env.Enforcer.Enforce(user.ID, "global", endpoint.Path, "DELETE")
-	assert.False(t, ok, "User should not have DELETE permission")
+				ok, _ = env.Enforcer.Enforce(user.ID, "global", endpoint.Path, "DELETE")
+				assert.False(t, ok, "User should not have DELETE permission")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }

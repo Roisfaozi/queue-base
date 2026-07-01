@@ -29,49 +29,66 @@ import (
 )
 
 func TestScenario_TransactionalIntegrity_RegisterRollback(t *testing.T) {
-	env := setup.SetupIntegrationEnvironment(t)
-	defer env.Cleanup()
-	setup.CleanupDatabase(t, env.DB)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Negative_RegisterRollback",
+			category: "negative",
+			run: func(t *testing.T) {
+				env := setup.SetupIntegrationEnvironment(t)
+				defer env.Cleanup()
+				setup.CleanupDatabase(t, env.DB)
 
-	tm := tx.NewTransactionManager(env.DB, env.Logger)
-	uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
-	mockEnforcer := new(mocks.MockIEnforcer)
+				tm := tx.NewTransactionManager(env.DB, env.Logger)
+				uRepo := userRepo.NewUserRepository(env.DB, env.Logger)
+				mockEnforcer := new(mocks.MockIEnforcer)
 
-	// Mock WithContext to return itself
-	mockEnforcer.On("WithContext", mock.Anything).Return(mockEnforcer)
+				// Mock WithContext to return itself
+				mockEnforcer.On("WithContext", mock.Anything).Return(mockEnforcer)
 
-	tRepo := authRepo.NewTokenRepositoryRedis(env.Redis, env.Logger, env.DB, &util.RealClock{})
-	aucRepo := auditRepo.NewAuditRepository(env.DB, env.Logger)
-	auditService := auditUC.NewAuditUseCase(aucRepo, env.Logger, nil, nil)
-	jwtManager := jwt.NewJWTManager("secret", "refresh", 60, 60)
-	oRepo := orgRepo.NewOrganizationRepository(env.DB)
-	authz := authRepo.NewCasbinAdapter(mockEnforcer, "role:user", "global")
-	authService := authUC.NewAuthUsecase(5, 30*time.Minute, jwtManager, tRepo, uRepo, oRepo, tm, env.Logger, nil, authz, nil, nil, make(map[string]sso.Provider))
+				tRepo := authRepo.NewTokenRepositoryRedis(env.Redis, env.Logger, env.DB, &util.RealClock{})
+				aucRepo := auditRepo.NewAuditRepository(env.DB, env.Logger)
+				auditService := auditUC.NewAuditUseCase(aucRepo, env.Logger, nil, nil)
+				jwtManager := jwt.NewJWTManager("secret", "refresh", 60, 60)
+				oRepo := orgRepo.NewOrganizationRepository(env.DB)
+				authz := authRepo.NewCasbinAdapter(mockEnforcer, "role:user", "global")
+				authService := authUC.NewAuthUsecase(5, 30*time.Minute, jwtManager, tRepo, uRepo, oRepo, tm, env.Logger, nil, authz, nil, nil, make(map[string]sso.Provider))
 
-	userService := userUC.NewUserUseCase(tm, env.Logger, uRepo, mockEnforcer, auditService, authService, nil, nil)
+				userService := userUC.NewUserUseCase(tm, env.Logger, uRepo, mockEnforcer, auditService, authService, nil, nil)
 
-	expectedErr := errors.New("casbin connection error")
+				expectedErr := errors.New("casbin connection error")
 
-	// My manual mock uses variadic params...interface{} which mockery packs into a slice.
-	mockEnforcer.On("AddGroupingPolicy", mock.MatchedBy(func(params []interface{}) bool {
-		if len(params) != 3 {
-			return false
-		}
-		// Check if the last param is "global" as expected in the test
-		return params[2] == "global"
-	})).Return(false, expectedErr)
+				// My manual mock uses variadic params...interface{} which mockery packs into a slice.
+				mockEnforcer.On("AddGroupingPolicy", mock.MatchedBy(func(params []interface{}) bool {
+					if len(params) != 3 {
+						return false
+					}
+					// Check if the last param is "global" as expected in the test
+					return params[2] == "global"
+				})).Return(false, expectedErr)
 
-	req := &userModel.RegisterUserRequest{
-		Username: "rollback_user",
-		Email:    "rollback@test.com",
-		Password: "Password123!",
-		Name:     "Rollback User",
+				req := &userModel.RegisterUserRequest{
+					Username: "rollback_user",
+					Email:    "rollback@test.com",
+					Password: "Password123!",
+					Name:     "Rollback User",
+				}
+
+				_, err := userService.Create(context.Background(), req)
+
+				require.Error(t, err, "Expected error from UserUseCase when Role assignment fails")
+
+				user, _ := uRepo.FindByUsername(context.Background(), req.Username)
+				assert.Nil(t, user, "User should be rolled back (not found) when role assignment fails")
+			},
+		},
 	}
-
-	_, err := userService.Create(context.Background(), req)
-
-	require.Error(t, err, "Expected error from UserUseCase when Role assignment fails")
-
-	user, _ := uRepo.FindByUsername(context.Background(), req.Username)
-	assert.Nil(t, user, "User should be rolled back (not found) when role assignment fails")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
