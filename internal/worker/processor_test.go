@@ -81,89 +81,130 @@ func TestRedisTaskProcessor_Lifecycle(t *testing.T) {
 	deps, cleanup := setupProcessorTest(t)
 	defer cleanup()
 
-	t.Run("Positive - Start and Shutdown", func(t *testing.T) {
-		errChan := make(chan error, 1)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_StartAndShutdown",
+			category: "positive",
+			run: func(t *testing.T) {
+				errChan := make(chan error, 1)
 
-		go func() {
-			errChan <- deps.processor.Start()
-		}()
+				go func() {
+					errChan <- deps.processor.Start()
+				}()
 
-		// Let it start
-		time.Sleep(100 * time.Millisecond)
+				// Let it start
+				time.Sleep(100 * time.Millisecond)
 
-		// Shutdown
-		deps.processor.Shutdown()
+				// Shutdown
+				deps.processor.Shutdown()
 
-		// Ensure it stopped without major error (Asynq usually returns nil on successful shutdown or specific error if aborted)
-		err := <-errChan
-		assert.NoError(t, err)
-	})
+				// Ensure it stopped without major error (Asynq usually returns nil on successful shutdown or specific error if aborted)
+				err := <-errChan
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Negative_StartWithBadRedisConnection",
+			category: "negative",
+			run: func(t *testing.T) {
+				// Create a new processor pointing to nowhere
+				logger := logrus.New()
+				logger.SetOutput(new(mockWriter))
 
-	t.Run("Negative - Start with bad redis connection", func(t *testing.T) {
-		// Create a new processor pointing to nowhere
-		logger := logrus.New()
-		logger.SetOutput(new(mockWriter))
+				processor := worker.NewRedisTaskProcessor(
+					asynq.RedisClientOpt{Addr: "invalid:9999"},
+					logger,
+					nil,
+					nil,
+					nil,
+					nil,
+					worker.WorkerConfig{},
+				)
 
-		processor := worker.NewRedisTaskProcessor(
-			asynq.RedisClientOpt{Addr: "invalid:9999"},
-			logger,
-			nil,
-			nil,
-			nil,
-			nil,
-			worker.WorkerConfig{},
-		)
+				err := processor.Start()
+				/* asynq.Server logs error and returns nil if dial fails or panics, but let us verify how Start behaves on bad conn.
+				   Wait, asynq Start doesn't immediately error on bad redis, it retries in background.
+				   We should assert NoError instead or check logs. */
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Edge_StartMultipleTimesConcurrently",
+			category: "edge",
+			run: func(t *testing.T) {
+				go func() { _ = deps.processor.Start() }()
+				go func() { _ = deps.processor.Start() }()
 
-		err := processor.Start()
-		/* asynq.Server logs error and returns nil if dial fails or panics, but let us verify how Start behaves on bad conn.
-		   Wait, asynq Start doesn't immediately error on bad redis, it retries in background.
-		   We should assert NoError instead or check logs. */
-		assert.NoError(t, err)
-	})
+				time.Sleep(100 * time.Millisecond)
+				deps.processor.Shutdown()
+			},
+		},
+		{
+			name:     "Vulnerability_NullConfigsInjection",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				logger := logrus.New()
+				logger.SetOutput(new(mockWriter))
 
-	t.Run("Edge - Start multiple times concurrently", func(t *testing.T) {
-		go func() { _ = deps.processor.Start() }()
-		go func() { _ = deps.processor.Start() }()
+				processor := worker.NewRedisTaskProcessor(
+					asynq.RedisClientOpt{Addr: deps.mockRedis.Addr()},
+					logger,
+					nil, // Should handle nil safely in NewRedisTaskProcessor Start
+					nil,
+					nil,
+					nil,
+					worker.WorkerConfig{},
+				)
 
-		time.Sleep(100 * time.Millisecond)
-		deps.processor.Shutdown()
-	})
-
-	t.Run("Vulnerability - Null configs injection", func(t *testing.T) {
-		logger := logrus.New()
-		logger.SetOutput(new(mockWriter))
-
-		processor := worker.NewRedisTaskProcessor(
-			asynq.RedisClientOpt{Addr: deps.mockRedis.Addr()},
-			logger,
-			nil, // Should handle nil safely in NewRedisTaskProcessor Start
-			nil,
-			nil,
-			nil,
-			worker.WorkerConfig{},
-		)
-
-		errChan := make(chan error, 1)
-		go func() {
-			errChan <- processor.Start()
-		}()
-		time.Sleep(100 * time.Millisecond)
-		processor.Shutdown()
-		assert.NoError(t, <-errChan)
-	})
+				errChan := make(chan error, 1)
+				go func() {
+					errChan <- processor.Start()
+				}()
+				time.Sleep(100 * time.Millisecond)
+				processor.Shutdown()
+				assert.NoError(t, <-errChan)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestAsynqLogger_Fatal(t *testing.T) {
-	logger := logrus.New()
-	logger.SetOutput(new(mockWriter))
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_FatalLog",
+			category: "positive",
+			run: func(t *testing.T) {
+				logger := logrus.New()
+				logger.SetOutput(new(mockWriter))
 
-	var fatalCalled bool
-	logger.ExitFunc = func(code int) {
-		fatalCalled = true
+				var fatalCalled bool
+				logger.ExitFunc = func(code int) {
+					fatalCalled = true
+				}
+
+				asynqLogger := worker.NewAsynqLogger(logger)
+				asynqLogger.Fatal("test fatal")
+
+				assert.True(t, fatalCalled)
+			},
+		},
 	}
-
-	asynqLogger := worker.NewAsynqLogger(logger)
-	asynqLogger.Fatal("test fatal")
-
-	assert.True(t, fatalCalled)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
