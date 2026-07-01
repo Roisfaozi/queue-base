@@ -17,95 +17,129 @@ import (
 )
 
 func TestWebSocketController_HandleWebSocket_WithUser(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_HandleWebSocket_WithUser",
+			category: "positive",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	// Setup Mocks
-	mockUserRepo := mocks.NewMockUserRepository(t)
-	mockUserRepo.On("FindByID", mock.Anything, "u1").Return(&entity.User{
-		ID: "u1", Name: "User One", AvatarURL: "avatar.jpg",
-	}, nil)
+				// Setup Mocks
+				mockUserRepo := mocks.NewMockUserRepository(t)
+				mockUserRepo.On("FindByID", mock.Anything, "u1").Return(&entity.User{
+					ID: "u1", Name: "User One", AvatarURL: "avatar.jpg",
+				}, nil)
 
-	// Use setupTestServer to get a manager (and server, which we won't use directly for routing)
-	manager, server := setupTestServer()
-	if server == nil {
-		t.Skip("socket listeners not permitted in this environment")
+				// Use setupTestServer to get a manager (and server, which we won't use directly for routing)
+				manager, server := setupTestServer()
+				if server == nil {
+					t.Skip("socket listeners not permitted in this environment")
+				}
+				defer server.Close()
+				defer manager.Stop()
+
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
+
+				controller := ws.NewWebSocketController(logger, manager, []string{"*"}, mockUserRepo, nil)
+
+				// Setup Router
+				r := gin.New()
+				r.GET("/ws", func(c *gin.Context) {
+					c.Set("user_id", "u1")
+					c.Set("organization_id", "org1")
+					controller.HandleWebSocket(c)
+				})
+
+				// Create Server
+				ts, err := newPermissiveWSServer(r)
+				skipIfSocketBlocked(t, err)
+				defer ts.Close()
+
+				// Connect
+				wsURL := "ws" + ts.URL[4:] + "/ws"
+				conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+				require.NoError(t, err)
+				defer func() {
+					_ = conn.Close()
+				}()
+
+				// Verify user data via Presence (indirectly)
+				// We wait for client registration
+				time.Sleep(50 * time.Millisecond)
+				assert.Equal(t, 1, manager.ClientCount())
+
+				mockUserRepo.AssertExpectations(t)
+			},
+		},
 	}
-	defer server.Close()
-	defer manager.Stop()
-
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
-
-	controller := ws.NewWebSocketController(logger, manager, []string{"*"}, mockUserRepo, nil)
-
-	// Setup Router
-	r := gin.New()
-	r.GET("/ws", func(c *gin.Context) {
-		c.Set("user_id", "u1")
-		c.Set("organization_id", "org1")
-		controller.HandleWebSocket(c)
-	})
-
-	// Create Server
-	ts, err := newPermissiveWSServer(r)
-	skipIfSocketBlocked(t, err)
-	defer ts.Close()
-
-	// Connect
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	require.NoError(t, err)
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	// Verify user data via Presence (indirectly)
-	// We wait for client registration
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, 1, manager.ClientCount())
-
-	mockUserRepo.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebSocketController_HandleWebSocket_UserNotFound(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Negative_HandleWebSocket_UserNotFound",
+			category: "negative",
+			run: func(t *testing.T) {
+				gin.SetMode(gin.TestMode)
 
-	// Setup Mocks
-	mockUserRepo := mocks.NewMockUserRepository(t)
-	mockUserRepo.On("FindByID", mock.Anything, "u1").Return(nil, errors.New("not found"))
+				// Setup Mocks
+				mockUserRepo := mocks.NewMockUserRepository(t)
+				mockUserRepo.On("FindByID", mock.Anything, "u1").Return(nil, errors.New("not found"))
 
-	manager, server := setupTestServer()
-	if server == nil {
-		t.Skip("socket listeners not permitted in this environment")
+				manager, server := setupTestServer()
+				if server == nil {
+					t.Skip("socket listeners not permitted in this environment")
+				}
+				defer server.Close()
+				defer manager.Stop()
+
+				logger := logrus.New()
+				logger.SetOutput(&NoOpWriter{})
+
+				controller := ws.NewWebSocketController(logger, manager, []string{"*"}, mockUserRepo, nil)
+
+				// Setup Router
+				r := gin.New()
+				r.GET("/ws", func(c *gin.Context) {
+					c.Set("user_id", "u1")
+					controller.HandleWebSocket(c)
+				})
+
+				ts, err := newPermissiveWSServer(r)
+				skipIfSocketBlocked(t, err)
+				defer ts.Close()
+
+				wsURL := "ws" + ts.URL[4:] + "/ws"
+				conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+				require.NoError(t, err)
+				defer func() {
+					_ = conn.Close()
+				}()
+
+				time.Sleep(50 * time.Millisecond)
+				assert.Equal(t, 1, manager.ClientCount()) // Connection still succeeds
+
+				mockUserRepo.AssertExpectations(t)
+			},
+		},
 	}
-	defer server.Close()
-	defer manager.Stop()
-
-	logger := logrus.New()
-	logger.SetOutput(&NoOpWriter{})
-
-	controller := ws.NewWebSocketController(logger, manager, []string{"*"}, mockUserRepo, nil)
-
-	// Setup Router
-	r := gin.New()
-	r.GET("/ws", func(c *gin.Context) {
-		c.Set("user_id", "u1")
-		controller.HandleWebSocket(c)
-	})
-
-	ts, err := newPermissiveWSServer(r)
-	skipIfSocketBlocked(t, err)
-	defer ts.Close()
-
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	require.NoError(t, err)
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, 1, manager.ClientCount()) // Connection still succeeds
-
-	mockUserRepo.AssertExpectations(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
