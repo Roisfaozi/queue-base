@@ -88,6 +88,11 @@ const navItems: NavEntry[] = [
 		iconName: "ListOrdered",
 	},
 	{
+		title: "Scanner",
+		href: "/dashboard/scanner",
+		iconName: "Scan",
+	},
+	{
 		title: "Queue Settings",
 		href: "/dashboard/queue-settings",
 		iconName: "Settings2",

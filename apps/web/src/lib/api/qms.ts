@@ -81,6 +81,11 @@ export interface VisitJourney {
 	created_at: number;
 }
 
+export interface ScannerCheckInResponse {
+	action: "register" | "forward";
+	queue: Queue;
+}
+
 // -----------------------------------------------------------------------------
 // BRANCHES API
 // -----------------------------------------------------------------------------
@@ -176,6 +181,31 @@ export const queuesApi = {
 		api.get<{ data: VisitJourney[] }>(`/queues/${id}/visit-journeys`),
 	getQueueStats: (branchId: string) =>
 		api.get<{ data: any }>(`/branches/${branchId}/queue-stats`),
+};
+
+// -----------------------------------------------------------------------------
+// SCANNER API
+// -----------------------------------------------------------------------------
+export const scannerApi = {
+	checkIn: (
+		data: {
+			action: "register" | "forward";
+			branch_id: string;
+			service_id?: string;
+			patient_id?: string;
+			patient_name?: string;
+			queue_id?: string;
+			destination_service_id?: string;
+			destination_counter_id?: string;
+		},
+		headers: { clientId: string; apiKey: string },
+	) =>
+		api.post<{ data: ScannerCheckInResponse }>("/scanner/check-in", data, {
+			headers: {
+				"X-Client-ID": headers.clientId,
+				"X-API-Key": headers.apiKey,
+			},
+		}),
 };
 
 // -----------------------------------------------------------------------------
