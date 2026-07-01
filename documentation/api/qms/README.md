@@ -16,6 +16,7 @@ Dokumen API QMS dipecah per domain agar lebih mudah dibaca dan dirawat.
 - `documentation/api/qms/QUEUE_API.md` — register, list, detail, transition, forward, stats, active journeys, visit history
 - `documentation/api/qms/SCANNER_API.md` — scanner check-in register/forward
 - `documentation/api/qms/OPERATIONS_AND_SECURITY.md` — Phase 9 backend operations, audit, tenant/branch isolation, and scanner API-key contract
+- `documentation/api/qms/QMS_ALERT_POLICY.md` — Phase 11 observability alert policy for queue/scanner metrics and triage
 
 ## Suggested Reading Order
 
@@ -25,3 +26,4 @@ Dokumen API QMS dipecah per domain agar lebih mudah dibaca dan dirawat.
 4. `documentation/api/qms/QUEUE_API.md`
 5. `documentation/api/qms/SCANNER_API.md`
 6. `documentation/api/qms/OPERATIONS_AND_SECURITY.md`
+7. `documentation/api/qms/QMS_ALERT_POLICY.md`
