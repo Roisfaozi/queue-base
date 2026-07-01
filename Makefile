@@ -12,7 +12,7 @@ BENCHTIME=1s
 BENCHMEM=true
 
 # Worktree / local env
-REPO_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
+REPO_ROOT := $(shell dirname "$(shell git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" 2>/dev/null || pwd)
 REPO_NAME := $(notdir $(REPO_ROOT))
 WORKTREE_ROOT ?= $(abspath $(REPO_ROOT)/.worktrees)
 WORKTREE_ROOT_FALLBACK ?= $(abspath $(REPO_ROOT)/.worktrees)
@@ -117,18 +117,27 @@ wt-new:
 			exit 1; \
 		fi; \
 	fi; \
-	if git worktree list --porcelain | grep -F "branch refs/heads/$$branch" >/dev/null; then \
-		echo "Worktree for branch '$$branch' already exists."; \
-		exit 1; \
-	fi; \
 	if [ -e "$$path" ]; then \
 		echo "Target path already exists: $$path"; \
 		exit 1; \
 	fi; \
-	echo "Creating worktree $$branch from $$base at $$path"; \
-	if ! git worktree add -b "$$branch" "$$path" "$$base"; then \
-		echo "Worktree create failed for branch '$$branch' from base '$$base'"; \
+	branch_ref="refs/heads/$$branch"; \
+	if git worktree list --porcelain | grep -F "branch $$branch_ref" >/dev/null; then \
+		echo "Worktree for branch '$$branch' already exists."; \
 		exit 1; \
+	fi; \
+	if git show-ref --verify --quiet "$$branch_ref"; then \
+		echo "Creating worktree $$branch from existing branch at $$path"; \
+		if ! git worktree add "$$path" "$$branch"; then \
+			echo "Worktree create failed for existing branch '$$branch'"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "Creating worktree $$branch from $$base at $$path"; \
+		if ! git worktree add -b "$$branch" "$$path" "$$base"; then \
+			echo "Worktree create failed for branch '$$branch' from base '$$base'"; \
+			exit 1; \
+		fi; \
 	fi; \
 	if [ ! -d "$$path" ]; then \
 		echo "Worktree path missing after create: $$path"; \
@@ -141,7 +150,6 @@ wt-new:
 	echo "Next:"; \
 	echo "  cd $$rel_path"; \
 	echo "  make dev-up"
-
 WORKTREE_COMMANDS := wt-new wt-path wt-enter wt-rm
 WORKTREE_EXTRA_GOALS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
@@ -213,16 +221,19 @@ wt-enter:
 .PHONY: wt-prune
 wt-prune:
 	@git worktree prune
-
 .PHONY: env-init
+
 env-init:
 	@slug="$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || basename "$(CURDIR)")"; \
 	slug="$${slug//\//-}"; \
 	slug="$$(printf '%s' "$$slug" | tr '[:upper:]' '[:lower:]')"; \
+	db_slug="$$(printf '%s' "$$slug" | tr '-' '_')"; \
 	if [ ! -f "$(ENV_LOCAL_FILE)" ]; then cp .env.example "$(ENV_LOCAL_FILE)"; fi; \
 	if [ ! -f "$(ENV_LOCAL_FILE)" ]; then echo "Failed to create $(ENV_LOCAL_FILE)"; exit 1; fi; \
 	index="$$(printf '%s' "$$slug" | cksum | awk '{print ($$1 % 200) + 1}')"; \
 	app_port="$$((8080 + index))"; \
+	web_port="$$((3000 + index))"; \
+	client_port="$$((3200 + index))"; \
 	mysql_port="$$((3306 + index))"; \
 	redis_port="$$((6379 + index))"; \
 	jaeger_ui_port="$$((16686 + index))"; \
@@ -233,6 +244,11 @@ env-init:
 	mailpit_smtp_port="$$((1025 + index))"; \
 	rustfs_port="$$((9000 + index))"; \
 	rustfs_console_port="$$((9001 + index))"; \
+	mysql_dbname="queue_base_$$db_slug"; \
+	api_base_url="http://127.0.0.1:$$app_port/api/v1"; \
+	api_origin="http://127.0.0.1:$$app_port"; \
+	ws_url="ws://127.0.0.1:$$app_port/ws"; \
+	web_origin="http://127.0.0.1:$$web_port"; \
 	set_kv() { \
 		key="$$1"; value="$$2"; file="$(ENV_LOCAL_FILE)"; \
 		if grep -qE "^$${key}=" "$$file"; then \
@@ -247,7 +263,10 @@ env-init:
 	set_kv HOST_GID "$$(id -g)"; \
 	set_kv RUSTFS_DATA_DIR "./tmp/rustfs-data"; \
 	set_kv APP_PORT "$$app_port"; \
+	set_kv WEB_PORT "$$web_port"; \
+	set_kv CLIENT_PORT "$$client_port"; \
 	set_kv MYSQL_PORT "$$mysql_port"; \
+	set_kv MYSQL_DBNAME "$$mysql_dbname"; \
 	set_kv REDIS_PORT "$$redis_port"; \
 	set_kv JAEGER_UI_PORT "$$jaeger_ui_port"; \
 	set_kv OTEL_GRPC_PORT "$$otel_port"; \
@@ -258,8 +277,25 @@ env-init:
 	set_kv RUSTFS_PORT "$$rustfs_port"; \
 	set_kv RUSTFS_CONSOLE_PORT "$$rustfs_console_port"; \
 	set_kv REDIS_ADDR "localhost:$$redis_port"; \
+	set_kv SWAGGER_HOST "localhost:$$app_port"; \
+	set_kv STORAGE_LOCAL_BASE_URL "http://localhost:$$app_port/uploads"; \
+	set_kv SSO_GOOGLE_REDIRECT_URL "http://localhost:$$app_port/api/v1/auth/sso/google/callback"; \
+	set_kv SSO_MICROSOFT_REDIRECT_URL "http://localhost:$$app_port/api/v1/auth/sso/microsoft/callback"; \
+	set_kv SSO_GITHUB_REDIRECT_URL "http://localhost:$$app_port/api/v1/auth/sso/github/callback"; \
+	mkdir -p apps/web apps/client; \
+	printf '%s\n' \
+		"NEXT_PUBLIC_API_URL=$$api_base_url" \
+		"NEXT_PUBLIC_WS_URL=$$ws_url" \
+		"NEXT_PUBLIC_APP_URL=$$web_origin" \
+		"PORT=$$web_port" \
+		> apps/web/.env.local; \
+	printf '%s\n' \
+		"NEXT_PUBLIC_API_URL=$$api_base_url" \
+		"VITE_API_PROXY_TARGET=$$api_origin" \
+		"VITE_DEV_PORT=$$client_port" \
+		> apps/client/.env.local; \
 	echo "Initialized $(ENV_LOCAL_FILE) for $$slug"; \
-	echo "APP_PORT=$$app_port MYSQL_PORT=$$mysql_port REDIS_PORT=$$redis_port"
+	echo "APP_PORT=$$app_port MYSQL_PORT=$$mysql_port REDIS_PORT=$$redis_port MYSQL_DBNAME=$$mysql_dbname WEB_PORT=$$web_port CLIENT_PORT=$$client_port"
 
 .PHONY: env-sync
 env-sync:
@@ -275,8 +311,9 @@ env-sync:
 		if ! grep -qE "^$${key}=" "$(ENV_LOCAL_FILE)"; then \
 			printf "%s\n" "$$line" >> "$(ENV_LOCAL_FILE)"; \
 		fi; \
-	done < .env.example; \
-	echo "Synced missing keys into $(ENV_LOCAL_FILE)"
+	done < .env.example;
+	@$(MAKE) env-init >/dev/null
+	@echo "Synced missing keys into $(ENV_LOCAL_FILE)"
 
 .PHONY: dev-up
 dev-up:
@@ -285,6 +322,13 @@ dev-up:
 		$(MAKE) env-init >/dev/null; \
 	fi
 	@$(MAKE) env-sync >/dev/null
+	@for key in COMPOSE_PROJECT_NAME APP_PORT MYSQL_PORT MYSQL_DBNAME REDIS_PORT; do \
+		value="$$(grep "^$${key}=" "$(ENV_LOCAL_FILE)" | tail -n1 | cut -d= -f2-)"; \
+		if [ -z "$$value" ]; then \
+			echo "$(ENV_LOCAL_FILE) missing required key: $$key"; \
+			exit 1; \
+		fi; \
+	done
 	@docker compose --env-file "$(ENV_LOCAL_FILE)" -f docker-compose.dev.yml up -d --build
 
 .PHONY: dev-down
