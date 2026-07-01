@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +19,17 @@ func newQueueTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&entity.Queue{}, &entity.QueueJourney{}, &entity.VisitJourney{}, &queueCounterRow{}))
+	return db
+}
+
+func newQueueConcurrencyTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())), &gorm.Config{})
+	require.NoError(t, err)
+	conn, err := db.DB()
+	require.NoError(t, err)
+	conn.SetMaxOpenConns(1)
 	require.NoError(t, db.AutoMigrate(&entity.Queue{}, &entity.QueueJourney{}, &entity.VisitJourney{}, &queueCounterRow{}))
 	return db
 }
@@ -58,6 +71,47 @@ func TestQueueRepository(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.want+1, second)
 			})
+		}
+	})
+
+	t.Run("NextQueueNumberConcurrent", func(t *testing.T) {
+		db := newQueueConcurrencyTestDB(t)
+		repo := NewQueueRepository(db)
+		const workers = 8
+		results := make(chan int, workers)
+		errCh := make(chan error, workers)
+		var wg sync.WaitGroup
+
+		for i := 0; i < workers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				next, err := repo.NextQueueNumber(ctx, "tenant-1", "branch-1", date, "A")
+				if err != nil {
+					errCh <- err
+					return
+				}
+				results <- next
+			}()
+		}
+
+		wg.Wait()
+		close(results)
+		close(errCh)
+
+		for err := range errCh {
+			require.NoError(t, err)
+		}
+
+		seen := map[int]struct{}{}
+		for next := range results {
+			seen[next] = struct{}{}
+		}
+
+		require.Len(t, seen, workers)
+		for i := 1; i <= workers; i++ {
+			_, ok := seen[i]
+			require.Truef(t, ok, "missing queue number %d", i)
 		}
 	})
 
@@ -130,6 +184,33 @@ func TestQueueRepository(t *testing.T) {
 				require.Equal(t, "j-1", saved.CurrentJourneyID)
 			})
 		}
+	})
+
+	t.Run("CreateRegistrationWithNumber", func(t *testing.T) {
+		t.Run("Negative_RollsBackCounterAndChildrenOnQueueInsertFailure", func(t *testing.T) {
+			db := newQueueTestDB(t)
+			repo := NewQueueRepository(db)
+
+			require.NoError(t, db.Create(&entity.Queue{ID: "q-existing", TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-24", TicketNo: "A001", QueueNo: 1, Status: entity.QueueStatusWaiting}).Error)
+
+			queue := &entity.Queue{ID: "q-existing", TenantID: "tenant-1", BranchID: "branch-1", Status: entity.QueueStatusWaiting}
+			journey := &entity.QueueJourney{ID: "j-1", QueueID: "q-existing", TenantID: "tenant-1", ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}
+			visit := &entity.VisitJourney{ID: "v-1", QueueID: "q-existing", TenantID: "tenant-1", EventType: "registration"}
+
+			err := repo.CreateRegistrationWithNumber(ctx, queue, journey, visit, date, "A")
+			require.Error(t, err)
+
+			var counter queueCounterRow
+			require.Error(t, db.First(&counter, "tenant_id = ? AND branch_id = ? AND queue_date = ? AND prefix = ?", "tenant-1", "branch-1", "2026-06-24", "A").Error)
+
+			var journeyCount int64
+			require.NoError(t, db.Model(&entity.QueueJourney{}).Where("id = ?", "j-1").Count(&journeyCount).Error)
+			require.Zero(t, journeyCount)
+
+			var visitCount int64
+			require.NoError(t, db.Model(&entity.VisitJourney{}).Where("id = ?", "v-1").Count(&visitCount).Error)
+			require.Zero(t, visitCount)
+		})
 	})
 
 	t.Run("UpdateQueueState", func(t *testing.T) {
