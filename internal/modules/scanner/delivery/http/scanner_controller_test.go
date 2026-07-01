@@ -144,6 +144,18 @@ func TestScannerController(t *testing.T) {
 					assert.True(t, uc.called)
 				},
 			},
+			{
+				name:    "Negative_RejectsMalformedJSON",
+				reqBody: nil,
+				headers: map[string]string{"X-Client-ID": "client-1", "X-API-Key": "key-1"},
+				setup: func() *stubScannerControllerUseCase {
+					return &stubScannerControllerUseCase{}
+				},
+				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubScannerControllerUseCase) {
+					assert.False(t, uc.called)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -168,11 +180,16 @@ func TestScannerController(t *testing.T) {
 
 				router.POST("/scanner/check-in", controller.CheckIn)
 
-				body, err := json.Marshal(tt.reqBody)
-				if err != nil {
-					t.Fatalf("Failed to marshal body: %v", err)
+				var req *http.Request
+				if tt.name == "Negative_RejectsMalformedJSON" {
+					req, _ = http.NewRequest("POST", "/scanner/check-in", bytes.NewBufferString("{"))
+				} else {
+					body, err := json.Marshal(tt.reqBody)
+					if err != nil {
+						t.Fatalf("Failed to marshal body: %v", err)
+					}
+					req, _ = http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 				}
-				req, _ := http.NewRequest("POST", "/scanner/check-in", bytes.NewBuffer(body))
 
 				for k, v := range tt.headers {
 					req.Header.Set(k, v)

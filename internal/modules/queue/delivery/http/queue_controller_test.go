@@ -334,6 +334,17 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.transitionCalled)
 				},
 			},
+			{
+				name:     "Negative_TransitionRejectsInvalidAction",
+				category: "negative",
+				queueID:  "q-1",
+				reqBody:  map[string]any{"action": "drop-table"},
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.transitionCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -361,6 +372,26 @@ func TestQueueController(t *testing.T) {
 				}
 			})
 		}
+	})
+
+	t.Run("TransitionRejectsMalformedJSON", func(t *testing.T) {
+		uc := &stubQueueControllerUseCase{}
+		log := logrus.New()
+		controller := NewQueueController(uc, newQueueTestValidator(), log)
+		router := gin.New()
+		router.Use(func(c *gin.Context) {
+			ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+			c.Request = c.Request.WithContext(ctx)
+			c.Next()
+		})
+		router.POST("/queues/:id/transition", controller.Transition)
+
+		req, _ := http.NewRequest("POST", "/queues/q-1/transition", bytes.NewBufferString("{"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.False(t, uc.transitionCalled)
 	})
 
 	t.Run("Forward", func(t *testing.T) {
