@@ -44,9 +44,15 @@ func loginQueueAdmin(t *testing.T, server *setup.TestServer) (string, string, st
 }
 
 func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
-
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer)
+	}{
+		{
+			name:     "Positive_LifecycleAndScannerGuard",
+			category: "positive",
+			run: func(t *testing.T, server *setup.TestServer) {
 	token, orgID, userID := loginQueueAdmin(t, server)
 
 	createBranchResp := server.Client.POST("/api/v1/branches", map[string]any{"code": "BD", "name": "Branch Desk"}, setup.WithAuth(token), setup.WithOrg(orgID))
@@ -163,4 +169,15 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 	require.NoError(t, server.DB.Create(foreignBranch).Error)
 	foreignStatsResp := server.Client.GET("/api/v1/branches/"+foreignBranch.ID+"/queue-stats", setup.WithAuth(token), setup.WithOrg(orgID))
 	require.Equal(t, http.StatusForbidden, foreignStatsResp.StatusCode, foreignStatsResp.String())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := setup.SetupTestServer(t)
+			defer server.Cleanup()
+			tt.run(t, server)
+		})
+	}
 }

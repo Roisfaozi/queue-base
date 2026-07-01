@@ -17,9 +17,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestMultiTenancyE2E_MemberFlow(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+func TestMultiTenancyE2E(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer)
+	}{
+		{
+			name:     "Positive_MemberInvitationAndAccessFlow",
+			category: "positive",
+			run: func(t *testing.T, server *setup.TestServer) {
 	client := server.Client
 
 	// 1. Setup Owner
@@ -167,4 +174,15 @@ func TestMultiTenancyE2E_MemberFlow(t *testing.T) {
 	resp = client.GET("/api/v1/organizations/"+orgID, setup.WithAuth(memberToken), setup.WithOrg(orgID))
 	// Should be allowed if they are a member.
 	assert.Equal(t, 200, resp.StatusCode)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := setup.SetupTestServer(t)
+			defer server.Cleanup()
+			tt.run(t, server)
+		})
+	}
 }

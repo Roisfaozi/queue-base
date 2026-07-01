@@ -24,8 +24,15 @@ import (
 // This validates Row-Level Security (database.OrganizationScope) and
 // Casbin multi-tenant authorization working together.
 func TestCrossTenantIsolation_ProjectAccess(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer)
+	}{
+		{
+			name:     "Positive_TenantIsolation_ProjectAccess",
+			category: "positive",
+			run: func(t *testing.T, server *setup.TestServer) {
 	client := server.Client
 
 	// ── Setup ──
@@ -229,13 +236,31 @@ func TestCrossTenantIsolation_ProjectAccess(t *testing.T) {
 		)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := setup.SetupTestServer(t)
+			defer server.Cleanup()
+			tt.run(t, server)
+		})
+	}
 }
 
 // TestCrossTenantIsolation_MemberList tests that listing members
 // of Org A is not possible for a user who belongs only to Org B.
 func TestCrossTenantIsolation_MemberList(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer)
+	}{
+		{
+			name:     "Positive_TenantIsolation_MemberList",
+			category: "positive",
+			run: func(t *testing.T, server *setup.TestServer) {
 	client := server.Client
 
 	f := fixtures.NewUserFactory(server.DB)
@@ -333,13 +358,31 @@ func TestCrossTenantIsolation_MemberList(t *testing.T) {
 		)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := setup.SetupTestServer(t)
+			defer server.Cleanup()
+			tt.run(t, server)
+		})
+	}
 }
 
 // TestCrossTenantIsolation_OrgDetails tests that a user from Org B
 // cannot view, update or delete Org A's details.
 func TestCrossTenantIsolation_OrgDetails(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer)
+	}{
+		{
+			name:     "Positive_TenantIsolation_OrgDetails",
+			category: "positive",
+			run: func(t *testing.T, server *setup.TestServer) {
 	client := server.Client
 
 	f := fixtures.NewUserFactory(server.DB)
@@ -434,13 +477,31 @@ func TestCrossTenantIsolation_OrgDetails(t *testing.T) {
 		)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := setup.SetupTestServer(t)
+			defer server.Cleanup()
+			tt.run(t, server)
+		})
+	}
 }
 
 // TestCrossTenantIsolation_PermissionManagement tests that a user from Org A
 // cannot assign permissions or roles outside their organization's domain.
 func TestCrossTenantIsolation_PermissionManagement(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T, server *setup.TestServer)
+	}{
+		{
+			name:     "Positive_TenantIsolation_PermissionManagement",
+			category: "positive",
+			run: func(t *testing.T, server *setup.TestServer) {
 	client := server.Client
 
 	f := fixtures.NewUserFactory(server.DB)
@@ -535,4 +596,15 @@ func TestCrossTenantIsolation_PermissionManagement(t *testing.T) {
 		hasOrgA, _ := server.Enforcer.HasPolicy("PermAdmin", orgA.Data.ID, "/api/v1/hacked-again", "GET")
 		assert.True(t, hasOrgA, "Domain was not correctly scoped to the tenant's organization ID")
 	})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := setup.SetupTestServer(t)
+			defer server.Cleanup()
+			tt.run(t, server)
+		})
+	}
 }

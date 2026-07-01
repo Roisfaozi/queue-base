@@ -72,8 +72,16 @@ func setupControllerTest() *controllerTestDeps {
 	return deps
 }
 
-func TestOrganizationController_CreateOrganization(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+func TestOrganizationController(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive_CreateOrganization_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.CreateOrganizationRequest{Name: "Org 1", Slug: "org-1"}
 		res := &model.OrganizationResponse{ID: "org-1", Name: "Org 1"}
@@ -86,9 +94,12 @@ func TestOrganizationController_CreateOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusCreated, w.Code)
-	})
-
-	t.Run("Conflict", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_CreateOrganization_Conflict",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.CreateOrganizationRequest{Name: "Org 1", Slug: "org-1"}
 
@@ -100,9 +111,12 @@ func TestOrganizationController_CreateOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusConflict, w.Code)
-	})
-
-	t.Run("Internal Error", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_CreateOrganization_InternalError",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.CreateOrganizationRequest{Name: "Org 1", Slug: "org-1"}
 
@@ -114,11 +128,12 @@ func TestOrganizationController_CreateOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-}
-
-func TestOrganizationController_GetOrganization(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_GetOrganization_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		res := &model.OrganizationResponse{ID: "org-1", Name: "Org 1"}
 
@@ -129,9 +144,12 @@ func TestOrganizationController_GetOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Not Found", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_GetOrganization_NotFound",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.OrgUseCase.On("GetOrganization", mock.Anything, "org-1").Return(nil, exception.ErrNotFound)
 
@@ -140,11 +158,12 @@ func TestOrganizationController_GetOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-}
-
-func TestOrganizationController_GetOrganizationBySlug(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_GetOrganizationBySlug_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		res := &model.OrganizationResponse{ID: "org-1", Slug: "slug-1"}
 
@@ -155,9 +174,12 @@ func TestOrganizationController_GetOrganizationBySlug(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Not Found", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_GetOrganizationBySlug_NotFound",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.OrgUseCase.On("GetOrganizationBySlug", mock.Anything, "slug-1").Return(nil, exception.ErrNotFound)
 
@@ -166,11 +188,12 @@ func TestOrganizationController_GetOrganizationBySlug(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-}
-
-func TestOrganizationController_UpdateOrganization(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_UpdateOrganization_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.UpdateOrganizationRequest{Name: "New Name"}
 		res := &model.OrganizationResponse{ID: "org-1", Name: "New Name"}
@@ -183,9 +206,12 @@ func TestOrganizationController_UpdateOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Not Found", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_UpdateOrganization_NotFound",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.UpdateOrganizationRequest{Name: "New Name"}
 		deps.OrgUseCase.On("UpdateOrganization", mock.Anything, "org-1", &req).Return(nil, exception.ErrNotFound)
@@ -196,11 +222,12 @@ func TestOrganizationController_UpdateOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-}
-
-func TestOrganizationController_DeleteOrganization(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_DeleteOrganization_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.OrgUseCase.On("DeleteOrganization", mock.Anything, "org-1", "user-123").Return(nil)
 
@@ -209,9 +236,12 @@ func TestOrganizationController_DeleteOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Forbidden", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Security_DeleteOrganization_Forbidden",
+			category: "security",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.OrgUseCase.On("DeleteOrganization", mock.Anything, "org-1", "user-123").Return(exception.ErrForbidden)
 
@@ -220,11 +250,12 @@ func TestOrganizationController_DeleteOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusForbidden, w.Code)
-	})
-}
-
-func TestOrganizationController_RestoreOrganization(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_RestoreOrganization_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		res := &model.OrganizationResponse{ID: "org-1", Name: "Org 1"}
 		deps.OrgUseCase.On("RestoreOrganization", mock.Anything, "org-1").Return(res, nil)
@@ -234,9 +265,12 @@ func TestOrganizationController_RestoreOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Forbidden", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Security_RestoreOrganization_Forbidden",
+			category: "security",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.OrgUseCase.On("RestoreOrganization", mock.Anything, "org-1").Return(nil, exception.ErrForbidden)
 
@@ -245,11 +279,12 @@ func TestOrganizationController_RestoreOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusForbidden, w.Code)
-	})
-}
-
-func TestOrganizationController_HardDeleteOrganization(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_HardDeleteOrganization_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.OrgUseCase.On("HardDeleteOrganization", mock.Anything, "org-1").Return(nil)
 
@@ -258,9 +293,12 @@ func TestOrganizationController_HardDeleteOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Bad Request", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_HardDeleteOrganization_BadRequest",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.OrgUseCase.On("HardDeleteOrganization", mock.Anything, "org-1").Return(exception.ErrBadRequest)
 
@@ -269,11 +307,12 @@ func TestOrganizationController_HardDeleteOrganization(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-}
-
-func TestOrganizationController_GetMyOrganizations(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_GetMyOrganizations_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		res := &model.UserOrganizationsResponse{Total: 1}
 
@@ -284,11 +323,12 @@ func TestOrganizationController_GetMyOrganizations(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-}
-
-func TestOrganizationController_InviteMember(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_InviteMember_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.InviteMemberRequest{Email: "test@example.com", RoleID: "role"}
 		res := &model.MemberResponse{UserID: "u1"}
@@ -301,9 +341,12 @@ func TestOrganizationController_InviteMember(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusCreated, w.Code)
-	})
-
-	t.Run("Conflict", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_InviteMember_Conflict",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.InviteMemberRequest{Email: "test@example.com", RoleID: "role"}
 		deps.MemberUseCase.On("InviteMember", mock.Anything, "org-1", &req).Return(nil, exception.ErrConflict)
@@ -314,11 +357,12 @@ func TestOrganizationController_InviteMember(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusConflict, w.Code)
-	})
-}
-
-func TestOrganizationController_GetMembers(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_GetMembers_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		res := []model.MemberResponse{{UserID: "u1"}}
 
@@ -329,11 +373,12 @@ func TestOrganizationController_GetMembers(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-}
-
-func TestOrganizationController_UpdateMemberRole(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_UpdateMemberRole_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.UpdateMemberRequest{RoleID: "new-role"}
 		res := &model.MemberResponse{RoleID: "new-role"}
@@ -346,11 +391,12 @@ func TestOrganizationController_UpdateMemberRole(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-}
-
-func TestOrganizationController_RemoveMember(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_RemoveMember_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.MemberUseCase.On("RemoveMember", mock.Anything, "org-1", "user-1").Return(nil)
 
@@ -359,11 +405,12 @@ func TestOrganizationController_RemoveMember(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-}
-
-func TestOrganizationController_AcceptInvitation(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_AcceptInvitation_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.AcceptInvitationRequest{Token: "token"}
 
@@ -375,9 +422,12 @@ func TestOrganizationController_AcceptInvitation(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Validation Error", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_AcceptInvitation_ValidationError",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		req := model.AcceptInvitationRequest{} // Empty token
 
@@ -387,11 +437,12 @@ func TestOrganizationController_AcceptInvitation(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-}
-
-func TestOrganizationController_GetPresence(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Positive_GetPresence_Success",
+			category: "positive",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		res := []interface{}{}
 
@@ -402,9 +453,12 @@ func TestOrganizationController_GetPresence(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Error", func(t *testing.T) {
+			},
+		},
+		{
+			name:     "Negative_GetPresence_Error",
+			category: "negative",
+			run: func(t *testing.T) {
 		deps := setupControllerTest()
 		deps.MemberUseCase.On("GetPresence", mock.Anything, "org-1").Return(nil, errors.New("error"))
 
@@ -413,5 +467,13 @@ func TestOrganizationController_GetPresence(t *testing.T) {
 		deps.Router.ServeHTTP(w, reqHttp)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
-	})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
