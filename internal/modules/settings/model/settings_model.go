@@ -9,6 +9,8 @@ type SettingResponse struct {
 	TenantID  string `json:"tenant_id"`
 	ScopeType string `json:"scope_type"`
 	ScopeID   string `json:"scope_id"`
+	Source    string `json:"source,omitempty"`
+	Inherited bool   `json:"inherited,omitempty"`
 	Key       string `json:"key"`
 	Value     string `json:"value"`
 	ValueType string `json:"value_type"`

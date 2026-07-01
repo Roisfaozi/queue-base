@@ -46,6 +46,8 @@ func TestResolveSetting(t *testing.T) {
 		tenantID string
 		wantErr  bool
 		wantVal  string
+		wantSrc  string
+		wantInh  *bool
 	}{
 		// --- Inheritance chain ---
 		{
@@ -57,6 +59,7 @@ func TestResolveSetting(t *testing.T) {
 			req:      &model.ResolveSettingRequest{Key: "reset_time"},
 			tenantID: "t-1",
 			wantVal:  "00:00",
+			wantSrc:  "tenant",
 		},
 		{
 			name:     "Positive_ResolvesBranchOverrideWhenBranchProvided",
@@ -68,6 +71,19 @@ func TestResolveSetting(t *testing.T) {
 			req:      &model.ResolveSettingRequest{Key: "reset_time", BranchID: "b-1"},
 			tenantID: "t-1",
 			wantVal:  "04:00",
+			wantSrc:  "branch",
+		},
+		{
+			name:     "Positive_ReportsTenantInheritedSource",
+			category: "positive",
+			repo: &stubSettingsRepo{settings: map[string]*entity.Setting{
+				"tenant:t-1:reset_time": {ID: "1", Value: "00:00"},
+			}},
+			req:      &model.ResolveSettingRequest{Key: "reset_time", BranchID: "b-1"},
+			tenantID: "t-1",
+			wantVal:  "00:00",
+			wantSrc:  "tenant",
+			wantInh:  boolPtr(true),
 		},
 		{
 			name:     "Positive_ResolvesServiceOverrideBeforeBranch",
@@ -192,7 +208,18 @@ func TestResolveSetting(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
+			assert.NotEmpty(t, res.Source)
+			if tt.wantSrc != "" {
+				assert.Equal(t, tt.wantSrc, res.Source)
+			}
+			if tt.wantInh != nil {
+				assert.Equal(t, *tt.wantInh, res.Inherited)
+			}
 			assert.Equal(t, tt.wantVal, res.Value)
 		})
 	}
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }
