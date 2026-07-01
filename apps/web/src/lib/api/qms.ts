@@ -188,6 +188,32 @@ export const queuesApi = {
 		api.get<{ data: VisitJourney[] }>(`/queues/${id}/visit-journeys`),
 	getQueueStats: (branchId: string) =>
 		api.get<{ data: QueueStatsResponse }>(`/branches/${branchId}/queue-stats`),
+	getJourneysByBranchAndService: (
+		branchId: string,
+		serviceId: string,
+		params?: { status?: string; queue_date?: string },
+	) => {
+		const searchParams = new URLSearchParams();
+		if (params?.status) searchParams.append("status", params.status);
+		if (params?.queue_date)
+			searchParams.append("queue_date", params.queue_date);
+		return api.get<{ data: QueueJourney[] }>(
+			`/branches/${branchId}/services/${serviceId}/queue-journeys${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+		);
+	},
+	getJourneysByBranchAndCounter: (
+		branchId: string,
+		counterId: string,
+		params?: { status?: string; queue_date?: string },
+	) => {
+		const searchParams = new URLSearchParams();
+		if (params?.status) searchParams.append("status", params.status);
+		if (params?.queue_date)
+			searchParams.append("queue_date", params.queue_date);
+		return api.get<{ data: QueueJourney[] }>(
+			`/branches/${branchId}/counters/${counterId}/queue-journeys${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+		);
+	},
 };
 
 // -----------------------------------------------------------------------------
