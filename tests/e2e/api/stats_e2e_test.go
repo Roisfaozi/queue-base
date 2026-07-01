@@ -44,112 +44,180 @@ func loginForStats(t *testing.T, server *setup.TestServer) string {
 }
 
 func TestStatsE2E_GetSummary(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_GetSummary",
+			category: "positive",
+			run: func(t *testing.T) {
+				server := setup.SetupTestServer(t)
+				defer server.Cleanup()
 
-	token := loginForStats(t, server)
+				token := loginForStats(t, server)
 
-	resp := server.Client.GET("/api/v1/stats/summary", setup.WithAuth(token))
+				resp := server.Client.GET("/api/v1/stats/summary", setup.WithAuth(token))
 
-	assert.Equal(t, 200, resp.StatusCode)
+				assert.Equal(t, 200, resp.StatusCode)
 
-	var result struct {
-		Data struct {
-			TotalUsers      int64 `json:"total_users"`
-			TotalRoles      int64 `json:"total_roles"`
-			TotalAuditLogs  int64 `json:"total_audit_logs"`
-			TotalOrgMembers int64 `json:"total_org_members"`
-		} `json:"data"`
+				var result struct {
+					Data struct {
+						TotalUsers      int64 `json:"total_users"`
+						TotalRoles      int64 `json:"total_roles"`
+						TotalAuditLogs  int64 `json:"total_audit_logs"`
+						TotalOrgMembers int64 `json:"total_org_members"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+
+				// At least the test user we created should exist
+				assert.GreaterOrEqual(t, result.Data.TotalUsers, int64(1))
+			},
+		},
 	}
-	err := resp.JSON(&result)
-	require.NoError(t, err)
-
-	// At least the test user we created should exist
-	assert.GreaterOrEqual(t, result.Data.TotalUsers, int64(1))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsE2E_GetActivity(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_GetActivity",
+			category: "positive",
+			run: func(t *testing.T) {
+				server := setup.SetupTestServer(t)
+				defer server.Cleanup()
 
-	token := loginForStats(t, server)
+				token := loginForStats(t, server)
 
-	t.Run("Default Days", func(t *testing.T) {
-		resp := server.Client.GET("/api/v1/stats/activity", setup.WithAuth(token))
+				t.Run("Default Days", func(t *testing.T) {
+					resp := server.Client.GET("/api/v1/stats/activity", setup.WithAuth(token))
 
-		assert.Equal(t, 200, resp.StatusCode)
+					assert.Equal(t, 200, resp.StatusCode)
 
-		var result struct {
-			Data struct {
-				Points []struct {
-					Date   string `json:"date"`
-					Audits int64  `json:"audits"`
-					Logins int64  `json:"logins"`
-				} `json:"points"`
-			} `json:"data"`
-		}
-		err := resp.JSON(&result)
-		require.NoError(t, err)
-		assert.Len(t, result.Data.Points, 7, "Default should return 7 days of activity")
-	})
+					var result struct {
+						Data struct {
+							Points []struct {
+								Date   string `json:"date"`
+								Audits int64  `json:"audits"`
+								Logins int64  `json:"logins"`
+							} `json:"points"`
+						} `json:"data"`
+					}
+					err := resp.JSON(&result)
+					require.NoError(t, err)
+					assert.Len(t, result.Data.Points, 7, "Default should return 7 days of activity")
+				})
 
-	t.Run("Custom Days", func(t *testing.T) {
-		resp := server.Client.GET("/api/v1/stats/activity?days=14", setup.WithAuth(token))
-		assert.Equal(t, 200, resp.StatusCode)
+				t.Run("Custom Days", func(t *testing.T) {
+					resp := server.Client.GET("/api/v1/stats/activity?days=14", setup.WithAuth(token))
+					assert.Equal(t, 200, resp.StatusCode)
 
-		var result struct {
-			Data struct {
-				Points []struct {
-					Date string `json:"date"`
-				} `json:"points"`
-			} `json:"data"`
-		}
-		resp.JSON(&result)
-		assert.Len(t, result.Data.Points, 14, "Should return 14 days of activity")
-	})
+					var result struct {
+						Data struct {
+							Points []struct {
+								Date string `json:"date"`
+							} `json:"points"`
+						} `json:"data"`
+					}
+					resp.JSON(&result)
+					assert.Len(t, result.Data.Points, 14, "Should return 14 days of activity")
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsE2E_GetInsights(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Success_GetInsights",
+			category: "positive",
+			run: func(t *testing.T) {
+				server := setup.SetupTestServer(t)
+				defer server.Cleanup()
 
-	token := loginForStats(t, server)
+				token := loginForStats(t, server)
 
-	resp := server.Client.GET("/api/v1/stats/insights", setup.WithAuth(token))
+				resp := server.Client.GET("/api/v1/stats/insights", setup.WithAuth(token))
 
-	assert.Equal(t, 200, resp.StatusCode)
+				assert.Equal(t, 200, resp.StatusCode)
 
-	var result struct {
-		Data struct {
-			AvgLatencyMs   float64 `json:"avg_latency_ms"`
-			ErrorRate      float64 `json:"error_rate"`
-			Uptime         string  `json:"uptime"`
-			MostActiveRole string  `json:"most_active_role"`
-		} `json:"data"`
+				var result struct {
+					Data struct {
+						AvgLatencyMs   float64 `json:"avg_latency_ms"`
+						ErrorRate      float64 `json:"error_rate"`
+						Uptime         string  `json:"uptime"`
+						MostActiveRole string  `json:"most_active_role"`
+					} `json:"data"`
+				}
+				err := resp.JSON(&result)
+				require.NoError(t, err)
+				assert.Greater(t, result.Data.AvgLatencyMs, float64(0))
+				assert.NotEmpty(t, result.Data.Uptime)
+				assert.NotEmpty(t, result.Data.MostActiveRole)
+			},
+		},
 	}
-	err := resp.JSON(&result)
-	require.NoError(t, err)
-	assert.Greater(t, result.Data.AvgLatencyMs, float64(0))
-	assert.NotEmpty(t, result.Data.Uptime)
-	assert.NotEmpty(t, result.Data.MostActiveRole)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestStatsE2E_Unauthorized(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Negative_Unauthorized",
+			category: "negative",
+			run: func(t *testing.T) {
+				server := setup.SetupTestServer(t)
+				defer server.Cleanup()
 
-	t.Run("Summary Without Auth", func(t *testing.T) {
-		resp := server.Client.GET("/api/v1/stats/summary")
-		assert.Equal(t, 401, resp.StatusCode)
-	})
+				t.Run("Summary Without Auth", func(t *testing.T) {
+					resp := server.Client.GET("/api/v1/stats/summary")
+					assert.Equal(t, 401, resp.StatusCode)
+				})
 
-	t.Run("Activity Without Auth", func(t *testing.T) {
-		resp := server.Client.GET("/api/v1/stats/activity")
-		assert.Equal(t, 401, resp.StatusCode)
-	})
+				t.Run("Activity Without Auth", func(t *testing.T) {
+					resp := server.Client.GET("/api/v1/stats/activity")
+					assert.Equal(t, 401, resp.StatusCode)
+				})
 
-	t.Run("Insights Without Auth", func(t *testing.T) {
-		resp := server.Client.GET("/api/v1/stats/insights")
-		assert.Equal(t, 401, resp.StatusCode)
-	})
+				t.Run("Insights Without Auth", func(t *testing.T) {
+					resp := server.Client.GET("/api/v1/stats/insights")
+					assert.Equal(t, 401, resp.StatusCode)
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
