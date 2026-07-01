@@ -40,292 +40,449 @@ const webhookVisibilityClause = "((webhooks.organization_id IS NULL OR NOT EXIST
 func TestWebhookRepository_Create(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully creates webhook", func(t *testing.T) {
-		webhook := &entity.Webhook{
-			ID:             "wh-123",
-			Name:           "Test Webhook",
-			OrganizationID: "org-123",
-			URL:            "https://test.com/hook",
-			Events:         "[\"user.created\"]",
-			Secret:         "secret",
-			IsActive:       true,
-		}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully creates webhook",
+			category: "positive",
+			run: func(t *testing.T) {
+				webhook := &entity.Webhook{
+					ID:             "wh-123",
+					Name:           "Test Webhook",
+					OrganizationID: "org-123",
+					URL:            "https://test.com/hook",
+					Events:         "[\"user.created\"]",
+					Secret:         "secret",
+					IsActive:       true,
+				}
 
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhooks`")).
-			WithArgs(
-				webhook.ID, webhook.Name, webhook.OrganizationID, webhook.URL,
-				webhook.Events, webhook.Secret, webhook.IsActive,
-				sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-			).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-		mock.ExpectCommit()
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhooks`")).
+					WithArgs(
+						webhook.ID, webhook.Name, webhook.OrganizationID, webhook.URL,
+						webhook.Events, webhook.Secret, webhook.IsActive,
+						sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
 
-		err := repo.Create(context.Background(), webhook)
-		assert.NoError(t, err)
-	})
+				err := repo.Create(context.Background(), webhook)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Negative - DB Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				webhook := &entity.Webhook{
+					ID: "wh-err",
+				}
 
-	t.Run("Negative - DB Error", func(t *testing.T) {
-		webhook := &entity.Webhook{
-			ID: "wh-err",
-		}
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhooks`")).
+					WillReturnError(fmt.Errorf("db error"))
+				mock.ExpectRollback()
 
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhooks`")).
-			WillReturnError(fmt.Errorf("db error"))
-		mock.ExpectRollback()
+				err := repo.Create(context.Background(), webhook)
+				assert.Error(t, err)
+				assert.Equal(t, "db error", err.Error())
+			},
+		},
+	}
 
-		err := repo.Create(context.Background(), webhook)
-		assert.Error(t, err)
-		assert.Equal(t, "db error", err.Error())
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookRepository_Update(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully updates webhook", func(t *testing.T) {
-		webhook := &entity.Webhook{
-			ID:             "wh-123",
-			Name:           "Updated Webhook",
-			OrganizationID: "org-123",
-			URL:            "https://test.com/hook",
-			Events:         "[\"user.created\"]",
-			Secret:         "secret",
-			IsActive:       true,
-		}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully updates webhook",
+			category: "positive",
+			run: func(t *testing.T) {
+				webhook := &entity.Webhook{
+					ID:             "wh-123",
+					Name:           "Updated Webhook",
+					OrganizationID: "org-123",
+					URL:            "https://test.com/hook",
+					Events:         "[\"user.created\"]",
+					Secret:         "secret",
+					IsActive:       true,
+				}
 
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks` SET `name`=?,`organization_id`=?,`url`=?,`events`=?,`secret`=?,`is_active`=?,`created_at`=?,`updated_at`=?,`deleted_at`=? WHERE `webhooks`.`deleted_at` IS NULL AND `id` = ?")).
-			WithArgs(
-				webhook.Name, webhook.OrganizationID, webhook.URL,
-				webhook.Events, webhook.Secret, webhook.IsActive,
-				sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), webhook.ID,
-			).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-		mock.ExpectCommit()
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks` SET `name`=?,`organization_id`=?,`url`=?,`events`=?,`secret`=?,`is_active`=?,`created_at`=?,`updated_at`=?,`deleted_at`=? WHERE `webhooks`.`deleted_at` IS NULL AND `id` = ?")).
+					WithArgs(
+						webhook.Name, webhook.OrganizationID, webhook.URL,
+						webhook.Events, webhook.Secret, webhook.IsActive,
+						sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), webhook.ID,
+					).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
 
-		err := repo.Update(context.Background(), webhook)
-		assert.NoError(t, err)
-	})
+				err := repo.Update(context.Background(), webhook)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Negative - DB Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				webhook := &entity.Webhook{
+					ID: "wh-err",
+				}
 
-	t.Run("Negative - DB Error", func(t *testing.T) {
-		webhook := &entity.Webhook{
-			ID: "wh-err",
-		}
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks`")).
+					WillReturnError(fmt.Errorf("db error"))
+				mock.ExpectRollback()
 
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks`")).
-			WillReturnError(fmt.Errorf("db error"))
-		mock.ExpectRollback()
+				err := repo.Update(context.Background(), webhook)
+				assert.Error(t, err)
+			},
+		},
+	}
 
-		err := repo.Update(context.Background(), webhook)
-		assert.Error(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookRepository_Delete(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully deletes webhook", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks` SET `deleted_at`=? WHERE (id = ? AND organization_id = ?) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
-			WithArgs(sqlmock.AnyArg(), "wh-123", "org-123").
-			WillReturnResult(sqlmock.NewResult(0, 1))
-		mock.ExpectCommit()
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully deletes webhook",
+			category: "positive",
+			run: func(t *testing.T) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks` SET `deleted_at`=? WHERE (id = ? AND organization_id = ?) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
+					WithArgs(sqlmock.AnyArg(), "wh-123", "org-123").
+					WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectCommit()
 
-		err := repo.Delete(context.Background(), "wh-123", "org-123")
-		assert.NoError(t, err)
-	})
+				err := repo.Delete(context.Background(), "wh-123", "org-123")
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Negative - DB Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks` SET `deleted_at`=? WHERE (id = ? AND organization_id = ?) AND " + webhookVisibilityClause + " AND `webhooks`.`deleted_at` IS NULL")).
+					WillReturnError(fmt.Errorf("db error"))
+				mock.ExpectRollback()
 
-	t.Run("Negative - DB Error", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("UPDATE `webhooks` SET `deleted_at`=? WHERE (id = ? AND organization_id = ?) AND " + webhookVisibilityClause + " AND `webhooks`.`deleted_at` IS NULL")).
-			WillReturnError(fmt.Errorf("db error"))
-		mock.ExpectRollback()
+				err := repo.Delete(context.Background(), "wh-123", "org-123")
+				assert.Error(t, err)
+			},
+		},
+	}
 
-		err := repo.Delete(context.Background(), "wh-123", "org-123")
-		assert.Error(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookRepository_FindByID(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully finds webhook", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "name", "organization_id", "url"}).
-			AddRow("wh-123", "Test Webhook", "org-123", "https://test.com/hook")
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully finds webhook",
+			category: "positive",
+			run: func(t *testing.T) {
+				rows := sqlmock.NewRows([]string{"id", "name", "organization_id", "url"}).
+					AddRow("wh-123", "Test Webhook", "org-123", "https://test.com/hook")
 
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (id = ? AND organization_id = ?) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL ORDER BY `webhooks`.`id` LIMIT ?")).
-			WithArgs("wh-123", "org-123", 1).
-			WillReturnRows(rows)
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (id = ? AND organization_id = ?) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL ORDER BY `webhooks`.`id` LIMIT ?")).
+					WithArgs("wh-123", "org-123", 1).
+					WillReturnRows(rows)
 
-		webhook, err := repo.FindByID(context.Background(), "wh-123", "org-123")
-		assert.NoError(t, err)
-		assert.NotNil(t, webhook)
-		if webhook != nil {
-			assert.Equal(t, "wh-123", webhook.ID)
-		}
-	})
+				webhook, err := repo.FindByID(context.Background(), "wh-123", "org-123")
+				assert.NoError(t, err)
+				assert.NotNil(t, webhook)
+				if webhook != nil {
+					assert.Equal(t, "wh-123", webhook.ID)
+				}
+			},
+		},
+		{
+			name:     "Negative - Not Found",
+			category: "negative",
+			run: func(t *testing.T) {
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (id = ? AND organization_id = ?) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL ORDER BY `webhooks`.`id` LIMIT ?")).
+					WithArgs("wh-123", "org-123", 1).
+					WillReturnError(gorm.ErrRecordNotFound)
 
-	t.Run("Negative - Not Found", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (id = ? AND organization_id = ?) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL ORDER BY `webhooks`.`id` LIMIT ?")).
-			WithArgs("wh-123", "org-123", 1).
-			WillReturnError(gorm.ErrRecordNotFound)
+				webhook, err := repo.FindByID(context.Background(), "wh-123", "org-123")
+				assert.Error(t, err)
+				assert.Nil(t, webhook)
+				assert.Equal(t, gorm.ErrRecordNotFound, err)
+			},
+		},
+	}
 
-		webhook, err := repo.FindByID(context.Background(), "wh-123", "org-123")
-		assert.Error(t, err)
-		assert.Nil(t, webhook)
-		assert.Equal(t, gorm.ErrRecordNotFound, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookRepository_FindByOrganizationID(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully finds webhooks", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "name", "organization_id"}).
-			AddRow("wh-123", "Test 1", "org-123").
-			AddRow("wh-124", "Test 2", "org-123")
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully finds webhooks",
+			category: "positive",
+			run: func(t *testing.T) {
+				rows := sqlmock.NewRows([]string{"id", "name", "organization_id"}).
+					AddRow("wh-123", "Test 1", "org-123").
+					AddRow("wh-124", "Test 2", "org-123")
 
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE organization_id = ? AND " + webhookVisibilityClause + " AND `webhooks`.`deleted_at` IS NULL")).
-			WithArgs("org-123").
-			WillReturnRows(rows)
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE organization_id = ? AND " + webhookVisibilityClause + " AND `webhooks`.`deleted_at` IS NULL")).
+					WithArgs("org-123").
+					WillReturnRows(rows)
 
-		webhooks, err := repo.FindByOrganizationID(context.Background(), "org-123")
-		assert.NoError(t, err)
-		assert.Len(t, webhooks, 2)
-	})
+				webhooks, err := repo.FindByOrganizationID(context.Background(), "org-123")
+				assert.NoError(t, err)
+				assert.Len(t, webhooks, 2)
+			},
+		},
+		{
+			name:     "Negative - DB Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE organization_id = ? AND " + webhookVisibilityClause + " AND `webhooks`.`deleted_at` IS NULL")).
+					WithArgs("org-123").
+					WillReturnError(fmt.Errorf("db error"))
 
-	t.Run("Negative - DB Error", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE organization_id = ? AND " + webhookVisibilityClause + " AND `webhooks`.`deleted_at` IS NULL")).
-			WithArgs("org-123").
-			WillReturnError(fmt.Errorf("db error"))
+				webhooks, err := repo.FindByOrganizationID(context.Background(), "org-123")
+				assert.Error(t, err)
+				assert.Nil(t, webhooks)
+			},
+		},
+	}
 
-		webhooks, err := repo.FindByOrganizationID(context.Background(), "org-123")
-		assert.Error(t, err)
-		assert.Nil(t, webhooks)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookRepository_FindByEvent(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully finds webhooks", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "name", "organization_id"}).
-			AddRow("wh-123", "Test 1", "org-123")
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully finds webhooks",
+			category: "positive",
+			run: func(t *testing.T) {
+				rows := sqlmock.NewRows([]string{"id", "name", "organization_id"}).
+					AddRow("wh-123", "Test 1", "org-123")
 
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (organization_id = ? AND is_active = ? AND JSON_CONTAINS(events, JSON_QUOTE(?))) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
-			WithArgs("org-123", true, "user.created").
-			WillReturnRows(rows)
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (organization_id = ? AND is_active = ? AND JSON_CONTAINS(events, JSON_QUOTE(?))) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
+					WithArgs("org-123", true, "user.created").
+					WillReturnRows(rows)
 
-		webhooks, err := repo.FindByEvent(context.Background(), "org-123", "user.created")
-		assert.NoError(t, err)
-		assert.Len(t, webhooks, 1)
-	})
+				webhooks, err := repo.FindByEvent(context.Background(), "org-123", "user.created")
+				assert.NoError(t, err)
+				assert.Len(t, webhooks, 1)
+			},
+		},
+		{
+			name:     "Vulnerability - SQL Injection attempt via Event string",
+			category: "vulnerability",
+			run: func(t *testing.T) {
+				rows := sqlmock.NewRows([]string{"id"})
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (organization_id = ? AND is_active = ? AND JSON_CONTAINS(events, JSON_QUOTE(?))) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
+					WithArgs("org-123", true, "'); DROP TABLE webhooks;--").
+					WillReturnRows(rows)
 
-	t.Run("Vulnerability - SQL Injection attempt via Event string", func(t *testing.T) {
-		// Test that dangerous input strings are handled properly by GORM parameterization
-		rows := sqlmock.NewRows([]string{"id"})
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (organization_id = ? AND is_active = ? AND JSON_CONTAINS(events, JSON_QUOTE(?))) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
-			WithArgs("org-123", true, "'); DROP TABLE webhooks;--").
-			WillReturnRows(rows)
+				webhooks, err := repo.FindByEvent(context.Background(), "org-123", "'); DROP TABLE webhooks;--")
+				assert.NoError(t, err)
+				assert.Len(t, webhooks, 0)
+			},
+		},
+		{
+			name:     "Negative - DB Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (organization_id = ? AND is_active = ? AND JSON_CONTAINS(events, JSON_QUOTE(?))) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
+					WithArgs("org-123", true, "user.created").
+					WillReturnError(fmt.Errorf("db error"))
 
-		webhooks, err := repo.FindByEvent(context.Background(), "org-123", "'); DROP TABLE webhooks;--")
-		assert.NoError(t, err)
-		assert.Len(t, webhooks, 0)
-	})
+				webhooks, err := repo.FindByEvent(context.Background(), "org-123", "user.created")
+				assert.Error(t, err)
+				assert.Nil(t, webhooks)
+			},
+		},
+	}
 
-	t.Run("Negative - DB Error", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (organization_id = ? AND is_active = ? AND JSON_CONTAINS(events, JSON_QUOTE(?))) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
-			WithArgs("org-123", true, "user.created").
-			WillReturnError(fmt.Errorf("db error"))
-
-		webhooks, err := repo.FindByEvent(context.Background(), "org-123", "user.created")
-		assert.Error(t, err)
-		assert.Nil(t, webhooks)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookRepository_CreateLog(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully creates log", func(t *testing.T) {
-		log := &entity.WebhookLog{
-			ID:                 "log-123",
-			WebhookID:          "wh-123",
-			EventType:          "user.created",
-			Payload:            "{}",
-			ResponseStatusCode: 200,
-			ExecutionTime:      100,
-		}
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully creates log",
+			category: "positive",
+			run: func(t *testing.T) {
+				log := &entity.WebhookLog{
+					ID:                 "log-123",
+					WebhookID:          "wh-123",
+					EventType:          "user.created",
+					Payload:            "{}",
+					ResponseStatusCode: 200,
+					ExecutionTime:      100,
+				}
 
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhook_logs`")).
-			WithArgs(
-				log.ID, log.WebhookID, log.EventType, log.Payload,
-				log.ResponseStatusCode, log.ResponseBody, log.ExecutionTime,
-				log.ErrorMessage, log.RetryCount, sqlmock.AnyArg(),
-			).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-		mock.ExpectCommit()
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhook_logs`")).
+					WithArgs(
+						log.ID, log.WebhookID, log.EventType, log.Payload,
+						log.ResponseStatusCode, log.ResponseBody, log.ExecutionTime,
+						log.ErrorMessage, log.RetryCount, sqlmock.AnyArg(),
+					).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
 
-		err := repo.CreateLog(context.Background(), log)
-		assert.NoError(t, err)
-	})
+				err := repo.CreateLog(context.Background(), log)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			name:     "Negative - DB Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				log := &entity.WebhookLog{
+					ID: "log-err",
+				}
 
-	t.Run("Negative - DB Error", func(t *testing.T) {
-		log := &entity.WebhookLog{
-			ID: "log-err",
-		}
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhook_logs`")).
+					WillReturnError(fmt.Errorf("db error"))
+				mock.ExpectRollback()
 
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `webhook_logs`")).
-			WillReturnError(fmt.Errorf("db error"))
-		mock.ExpectRollback()
+				err := repo.CreateLog(context.Background(), log)
+				assert.Error(t, err)
+			},
+		},
+	}
 
-		err := repo.CreateLog(context.Background(), log)
-		assert.Error(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
 
 func TestWebhookRepository_FindLogsByWebhookID(t *testing.T) {
 	_, mock, repo := setupWebhookRepoTest(t)
 
-	t.Run("Positive - Successfully finds logs", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "webhook_id"}).
-			AddRow("log-1", "wh-123").
-			AddRow("log-2", "wh-123")
+	tests := []struct {
+		name     string
+		category string
+		run      func(t *testing.T)
+	}{
+		{
+			name:     "Positive - Successfully finds logs",
+			category: "positive",
+			run: func(t *testing.T) {
+				rows := sqlmock.NewRows([]string{"id", "webhook_id"}).
+					AddRow("log-1", "wh-123").
+					AddRow("log-2", "wh-123")
 
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhook_logs` WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?")).
-			WithArgs("wh-123", 10). // Note offset not sent if 0 by gorm usually, but let's check exact args.
-			WillReturnRows(rows)
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhook_logs` WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?")).
+					WithArgs("wh-123", 10). // Note offset not sent if 0 by gorm usually, but let's check exact args.
+					WillReturnRows(rows)
 
-		logs, err := repo.FindLogsByWebhookID(context.Background(), "wh-123", 10, 0)
-		assert.NoError(t, err)
-		assert.Len(t, logs, 2)
-	})
+				logs, err := repo.FindLogsByWebhookID(context.Background(), "wh-123", 10, 0)
+				assert.NoError(t, err)
+				assert.Len(t, logs, 2)
+			},
+		},
+		{
+			name:     "Positive - With Offset",
+			category: "positive",
+			run: func(t *testing.T) {
+				rows := sqlmock.NewRows([]string{"id", "webhook_id"}).
+					AddRow("log-1", "wh-123")
 
-	t.Run("Positive - With Offset", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "webhook_id"}).
-			AddRow("log-1", "wh-123")
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhook_logs` WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?")).
+					WithArgs("wh-123", 10, 5).
+					WillReturnRows(rows)
 
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhook_logs` WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?")).
-			WithArgs("wh-123", 10, 5).
-			WillReturnRows(rows)
+				logs, err := repo.FindLogsByWebhookID(context.Background(), "wh-123", 10, 5)
+				assert.NoError(t, err)
+				assert.Len(t, logs, 1)
+			},
+		},
+		{
+			name:     "Negative - DB Error",
+			category: "negative",
+			run: func(t *testing.T) {
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhook_logs` WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?")).
+					WithArgs("wh-123", 10).
+					WillReturnError(fmt.Errorf("db error"))
 
-		logs, err := repo.FindLogsByWebhookID(context.Background(), "wh-123", 10, 5)
-		assert.NoError(t, err)
-		assert.Len(t, logs, 1)
-	})
+				logs, err := repo.FindLogsByWebhookID(context.Background(), "wh-123", 10, 0)
+				assert.Error(t, err)
+				assert.Nil(t, logs)
+			},
+		},
+	}
 
-	t.Run("Negative - DB Error", func(t *testing.T) {
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhook_logs` WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?")).
-			WithArgs("wh-123", 10).
-			WillReturnError(fmt.Errorf("db error"))
-
-		logs, err := repo.FindLogsByWebhookID(context.Background(), "wh-123", 10, 0)
-		assert.Error(t, err)
-		assert.Nil(t, logs)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
 }
