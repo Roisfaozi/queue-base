@@ -271,6 +271,16 @@ func TestQueueController(t *testing.T) {
 					assert.Equal(t, "q-1", uc.getID)
 				},
 			},
+			{
+				name:     "Negative_GetByIDMissingIDHitsRouter404",
+				category: "negative",
+				queueID:  "",
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusNotFound,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.getCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -436,6 +446,17 @@ func TestQueueController(t *testing.T) {
 					assert.False(t, uc.forwardCalled)
 				},
 			},
+			{
+				name:     "Negative_ForwardRejectsInvalidDestinationService",
+				category: "negative",
+				queueID:  "q-1",
+				reqBody:  map[string]any{"destination_service_id": "bad"},
+				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.forwardCalled)
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -463,6 +484,26 @@ func TestQueueController(t *testing.T) {
 				}
 			})
 		}
+	})
+
+	t.Run("ForwardRejectsMalformedJSON", func(t *testing.T) {
+		uc := &stubQueueControllerUseCase{}
+		log := logrus.New()
+		controller := NewQueueController(uc, newQueueTestValidator(), log)
+		router := gin.New()
+		router.Use(func(c *gin.Context) {
+			ctx := database.SetOrganizationContext(c.Request.Context(), "t-1")
+			c.Request = c.Request.WithContext(ctx)
+			c.Next()
+		})
+		router.POST("/queues/:id/forward", controller.Forward)
+
+		req, _ := http.NewRequest("POST", "/queues/q-1/forward", bytes.NewBufferString("{"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.False(t, uc.forwardCalled)
 	})
 
 	t.Run("GetVisitJourneys", func(t *testing.T) {
@@ -493,6 +534,18 @@ func TestQueueController(t *testing.T) {
 				queueID:  "",
 				setup:    func() *stubQueueControllerUseCase { return &stubQueueControllerUseCase{} },
 				wantCode: http.StatusBadRequest,
+				assert: func(t *testing.T, uc *stubQueueControllerUseCase) {
+					assert.False(t, uc.getCalled)
+				},
+			},
+			{
+				name:     "Negative_GetVisitJourneysPropagatesNotFound",
+				category: "negative",
+				queueID:  "q-404",
+				setup: func() *stubQueueControllerUseCase {
+					return &stubQueueControllerUseCase{}
+				},
+				wantCode: http.StatusOK,
 			},
 		}
 

@@ -117,6 +117,18 @@ func TestScannerController(t *testing.T) {
 				},
 			},
 			{
+				name:    "Negative_RejectsInvalidBranchID",
+				reqBody: map[string]interface{}{"action": "register", "branch_id": "bad", "service_id": "s-1", "patient_name": "John"},
+				headers: map[string]string{"X-Client-ID": "client-1", "X-API-Key": "key-1"},
+				setup: func() *stubScannerControllerUseCase {
+					return &stubScannerControllerUseCase{}
+				},
+				wantCode: http.StatusUnprocessableEntity,
+				assert: func(t *testing.T, uc *stubScannerControllerUseCase) {
+					assert.False(t, uc.called)
+				},
+			},
+			{
 				name:    "Security_PropagatesUnauthorized",
 				reqBody: model.CheckInRequest{Action: "register", BranchID: "550e8400-e29b-41d4-a716-446655440000", ServiceID: "s-1", PatientName: "John"},
 				headers: map[string]string{"X-Client-ID": "client-1", "X-API-Key": "bad-key"},

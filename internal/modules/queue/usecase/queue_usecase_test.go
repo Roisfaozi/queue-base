@@ -1140,6 +1140,13 @@ func TestGetVisitJourneys(t *testing.T) {
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
+			name:     "Negative_MissingBranch",
+			category: "negative",
+			queueID:  "q-1",
+			tenantID: "t-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
 			name:     "Negative_EmptyQueueID",
 			category: "negative",
 			tenantID: "t-1",
@@ -1163,6 +1170,15 @@ func TestGetVisitJourneys(t *testing.T) {
 			repo:     &stubQueueRepo{err: exception.ErrNotFound},
 			queueID:  "q-1",
 			tenantID: "other-tenant",
+			branchID: "b-1",
+			wantErr:  exception.ErrNotFound,
+		},
+		{
+			name:     "Negative_QueueLookupFailureStopsVisitsRead",
+			category: "negative",
+			repo:     &stubQueueRepo{err: exception.ErrNotFound, visits: []*entity.VisitJourney{{ID: "v-1"}}},
+			queueID:  "q-1",
+			tenantID: "t-1",
 			branchID: "b-1",
 			wantErr:  exception.ErrNotFound,
 		},
@@ -1310,6 +1326,18 @@ func TestGetQueueStats(t *testing.T) {
 			tenantID:  "t-1",
 			branchID:  "branch-foreign",
 			wantErr:   exception.ErrForbidden,
+		},
+		{
+			name:     "Edge_ZeroStatsAllowed",
+			category: "edge",
+			repo:     &stubQueueRepo{statsRes: model.QueueStatsResponse{}},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantRes: func(t *testing.T, res *model.QueueStatsResponse) {
+				require.NotNil(t, res)
+				assert.Equal(t, int64(0), res.TotalQueuesToday)
+				assert.Equal(t, int64(0), res.TotalActiveJourneys)
+			},
 		},
 		{
 			name:     "Negative_NoTenantOrBranch",
