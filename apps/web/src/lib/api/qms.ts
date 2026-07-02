@@ -15,6 +15,8 @@ export interface Service {
 	tenant_id: string;
 	code: string;
 	name: string;
+	type?: string;
+	default_estimated_duration?: number;
 	status: "active" | "inactive";
 	is_pharmacy: boolean;
 	is_pharmacy_reception: boolean;
@@ -29,6 +31,7 @@ export interface Counter {
 	branch_service_id?: string;
 	code: string;
 	name: string;
+	display_name?: string;
 	status: "active" | "inactive";
 	created_at: number;
 	updated_at: number;
@@ -43,6 +46,18 @@ export interface Setting {
 	value: string;
 	value_type: "string" | "number" | "boolean" | "json";
 	is_active: boolean;
+	created_at: number;
+	updated_at: number;
+}
+
+export interface BranchService {
+	id: string;
+	tenant_id: string;
+	branch_id: string;
+	service_id: string;
+	custom_name?: string;
+	is_active: boolean;
+	sort_order: number;
 	created_at: number;
 	updated_at: number;
 }
@@ -137,6 +152,8 @@ export const servicesApi = {
 	create: (data: {
 		code: string;
 		name: string;
+		type?: string;
+		default_estimated_duration?: number;
 		is_pharmacy: boolean;
 		is_pharmacy_reception: boolean;
 	}) => api.post<{ data: Service }>("/services", data),
@@ -145,6 +162,8 @@ export const servicesApi = {
 		data: {
 			code?: string;
 			name?: string;
+			type?: string;
+			default_estimated_duration?: number;
 			status?: "active" | "inactive";
 			is_pharmacy?: boolean;
 			is_pharmacy_reception?: boolean;
@@ -159,11 +178,22 @@ export const servicesApi = {
 export const countersApi = {
 	getAll: () => api.get<{ data: Counter[] }>("/counters"),
 	getById: (id: string) => api.get<{ data: Counter }>(`/counters/${id}`),
-	create: (data: { branch_id: string; code: string; name: string }) =>
-		api.post<{ data: Counter }>("/counters", data),
+	create: (data: {
+		branch_id: string;
+		branch_service_id?: string;
+		code: string;
+		name: string;
+		display_name?: string;
+	}) => api.post<{ data: Counter }>("/counters", data),
 	update: (
 		id: string,
-		data: { code?: string; name?: string; status?: "active" | "inactive" },
+		data: {
+			branch_service_id?: string;
+			code?: string;
+			name?: string;
+			display_name?: string;
+			status?: "active" | "inactive";
+		},
 	) => api.put<{ data: Counter }>(`/counters/${id}`, data),
 	delete: (id: string) => api.delete(`/counters/${id}`),
 };
@@ -259,6 +289,14 @@ export const scannerApi = {
 				"X-API-Key": headers.apiKey,
 			},
 		}),
+};
+
+// -----------------------------------------------------------------------------
+// BRANCH SERVICES API
+// -----------------------------------------------------------------------------
+export const branchServicesApi = {
+	getByBranch: (branchId: string) =>
+		api.get<{ data: BranchService[] }>(`/branches/${branchId}/services`),
 };
 
 // -----------------------------------------------------------------------------
