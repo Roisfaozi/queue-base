@@ -51,3 +51,4 @@
 - For new entity files, avoid carrying template imports like `soft_delete` unless the struct really uses soft-delete fields; narrow compile checks catch this fast.
 - Strict `assert.Equal` on UnixMilli timestamps in repository tests can flake when using SQLite memory DBs if operations straddle a millisecond boundary; use `assert.InDelta(t, expected, actual, 5)` instead.
 - If sandboxed runs block `git commit` due to read-only `.git/index.lock` across worktrees, record progress in the durable tracker and proceed without forcing source-control mutations.
+- When scaffolding new route domains, finalize route ownership first, then write controller and registration separately; avoid placeholder route helpers that duplicate groups or create temporary noop handlers.

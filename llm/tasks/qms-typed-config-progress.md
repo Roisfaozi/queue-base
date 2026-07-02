@@ -71,6 +71,41 @@ Design sources:
   - ...
 ```
 
+## 2026-07-02 — Phase 2A Branch Service Activation Domain
+
+- status: completed
+- owner paths:
+  - `internal/modules/service/repository/branch_service_repository.go`
+  - `internal/modules/service/usecase/branch_service_usecase.go`
+  - `internal/modules/service/model/branch_service_model.go`
+  - `internal/modules/service/delivery/http/branch_service_controller.go`
+  - `internal/modules/service/delivery/http/service_routes.go`
+  - `internal/modules/service/module.go`
+  - `internal/config/app.go`
+  - `internal/router/router.go`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Implemented branch-service activation repository, usecase, controller, routes, module wiring, and startup ordering.
+  - Exposed tenant/branch-scoped branch-service CRUD needed for later queue/scanner validation.
+  - Preserved `EnsureActiveBranchService` validator path for downstream use.
+- tests added/updated:
+  - positive: validated service and router compile + narrow package tests pass after wiring changes.
+  - negative: not added in this slice; enforcement happens downstream in queue/scanner validation.
+  - edge: not added in this slice; branch-service edge cases need queue creation coverage.
+  - vulnerability/security: not added in this slice; cross-tenant enforcement relies on tenant context checks.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/service/... ./internal/router ./internal/config`
+  - result: passed
+  - evidence: config, router, and service packages all pass after patch and gofmt.
+- errors and fixes:
+  - error: initial route helper file contained a duplicate inline branch-service group and a noop placeholder.
+  - root cause: scaffold was written before route ownership decision was finalized.
+  - fix: extracted clean `RegisterBranchServiceRoutes` and removed placeholder helper.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Phase 2B: add validation path in counter and queue/scanner so registration/forward requires active branch-service relation.
+
 ## 2026-07-02 — Phase 1A Typed Schema Draft and Entity Alignment
 
 - status: completed
