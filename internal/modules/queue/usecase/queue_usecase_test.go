@@ -345,20 +345,6 @@ func TestRegisterQueue(t *testing.T) {
 			},
 		},
 		{
-			name:     "Positive_FallbacksToLegacyPrefixKey",
-			category: "positive",
-			req:      &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"},
-			settings: map[string]string{"prefix": "RX"},
-			tenantID: "t-1",
-			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.Equal(t, "RX", repo.lastPrefix)
-				assert.Equal(t, "RX001", res.TicketNo)
-				assert.Contains(t, resolver.Calls, "ticket_prefix")
-				assert.Contains(t, resolver.Calls, "prefix")
-			},
-		},
-		{
 			name:     "Positive_DefaultsPrefixToA",
 			category: "positive",
 			req:      &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"},
@@ -379,18 +365,6 @@ func TestRegisterQueue(t *testing.T) {
 			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
 				assert.Equal(t, 1, res.QueueNo)
 				assert.Contains(t, resolver.Calls, "numbering_strategy")
-			},
-		},
-		{
-			name:     "Positive_FallbacksToLegacyNumberingKey",
-			category: "positive",
-			req:      &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"},
-			settings: map[string]string{"numbering": "sequential"},
-			tenantID: "t-1",
-			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.Contains(t, resolver.Calls, "numbering_strategy")
-				assert.Contains(t, resolver.Calls, "numbering")
 			},
 		},
 		{

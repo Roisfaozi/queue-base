@@ -285,9 +285,6 @@ func resolveTicketPrefix(ctx context.Context, resolver SettingsResolver, branchI
 	if resolved, err := resolver.Resolve(ctx, "ticket_prefix", branchID, serviceID, ""); err == nil && resolved != "" {
 		return resolved
 	}
-	if resolved, err := resolver.Resolve(ctx, "prefix", branchID, serviceID, ""); err == nil && resolved != "" {
-		return resolved
-	}
 	return "A"
 }
 
@@ -300,11 +297,6 @@ func resolveNumberingStrategy(ctx context.Context, resolver SettingsResolver, br
 			return resolved
 		}
 		return "sequential"
-	}
-	if resolved, err := resolver.Resolve(ctx, "numbering", branchID, serviceID, ""); err == nil && resolved != "" {
-		if resolved == "sequential" {
-			return resolved
-		}
 	}
 	return "sequential"
 }
