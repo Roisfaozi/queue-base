@@ -4,13 +4,19 @@ import (
 	"context"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
 )
+
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
+}
 
 type ServiceUseCase interface {
 	CreateService(ctx context.Context, req *model.CreateServiceRequest) (*model.ServiceResponse, error)
@@ -21,11 +27,16 @@ type ServiceUseCase interface {
 }
 
 type serviceUseCase struct {
-	repo repository.ServiceRepository
+	repo  repository.ServiceRepository
+	audit AuditLogger
 }
 
-func NewServiceUseCase(repo repository.ServiceRepository) ServiceUseCase {
-	return &serviceUseCase{repo: repo}
+func NewServiceUseCase(repo repository.ServiceRepository, audit ...AuditLogger) ServiceUseCase {
+	var auditLogger AuditLogger
+	if len(audit) > 0 {
+		auditLogger = audit[0]
+	}
+	return &serviceUseCase{repo: repo, audit: auditLogger}
 }
 
 func (u *serviceUseCase) CreateService(ctx context.Context, req *model.CreateServiceRequest) (*model.ServiceResponse, error) {
@@ -59,6 +70,7 @@ func (u *serviceUseCase) CreateService(ctx context.Context, req *model.CreateSer
 	if err := u.repo.Create(ctx, service); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "SERVICE_CREATE", service.ID, map[string]any{"code": service.Code, "name": service.Name, "type": service.Type, "status": service.Status})
 	return u.mapToResponse(service), nil
 }
 
@@ -125,6 +137,7 @@ func (u *serviceUseCase) UpdateService(ctx context.Context, serviceID string, re
 	if err := u.repo.Update(ctx, service); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "SERVICE_UPDATE", service.ID, map[string]any{"code": service.Code, "name": service.Name, "type": service.Type, "status": service.Status})
 	return u.mapToResponse(service), nil
 }
 
@@ -133,7 +146,29 @@ func (u *serviceUseCase) DeleteService(ctx context.Context, serviceID string) er
 	if tenantID == "" || serviceID == "" {
 		return exception.ErrBadRequest
 	}
-	return u.repo.Delete(ctx, tenantID, serviceID)
+	if err := u.repo.Delete(ctx, tenantID, serviceID); err != nil {
+		return err
+	}
+	u.tryAudit(ctx, "SERVICE_DELETE", serviceID, nil)
+	return nil
+}
+
+func (u *serviceUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]any) {
+	if u.audit == nil {
+		return
+	}
+	userID, ok := authcontext.UserIDFromContext(ctx)
+	if !ok || userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		OrganizationID: database.GetTenantID(ctx),
+		UserID:         userID,
+		Action:         action,
+		Entity:         "service",
+		EntityID:       entityID,
+		NewValues:      values,
+	})
 }
 
 func (u *serviceUseCase) mapToResponse(service *entity.Service) *model.ServiceResponse {

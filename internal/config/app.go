@@ -214,12 +214,12 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	statsModule := stats.NewStatsModule(dbConnection, logger)
 
 	projectModule := project.NewProjectModule(dbConnection, validate)
-	settingsModule := settings.NewSettingsModule(dbConnection, validate)
+	settingsModule := settings.NewSettingsModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate, logger)
-	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo)
-	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo)
+	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo, logger, auditModule.AuditUseCase)
+	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
 	queueModule := queue.NewQueueModule(dbConnection, validate, settingsModule.QueueSettingsResolver, logger, auditModule.AuditUseCase)
 	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, settingsModule, validate, scanner.NewAPIKeyAuthenticator(apiKeyModule.UseCase), logger, auditModule.AuditUseCase)
 

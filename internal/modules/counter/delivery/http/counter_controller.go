@@ -10,15 +10,17 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type CounterController struct {
 	useCase  usecase.CounterUseCase
 	validate *validator.Validate
+	log      *logrus.Logger
 }
 
-func NewCounterController(useCase usecase.CounterUseCase, validate *validator.Validate) *CounterController {
-	return &CounterController{useCase: useCase, validate: validate}
+func NewCounterController(useCase usecase.CounterUseCase, validate *validator.Validate, log *logrus.Logger) *CounterController {
+	return &CounterController{useCase: useCase, validate: validate, log: log}
 }
 
 // Create godoc
@@ -42,11 +44,13 @@ func (h *CounterController) Create(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
+		h.logError(err, "validation error on create counter")
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	res, err := h.useCase.CreateCounter(c.Request.Context(), &req)
 	if err != nil {
+		h.logError(err, "failed to create counter")
 		response.HandleError(c, err, "failed to create counter")
 		return
 	}
@@ -67,6 +71,7 @@ func (h *CounterController) Create(c *gin.Context) {
 func (h *CounterController) GetAll(c *gin.Context) {
 	res, err := h.useCase.ListCounters(c.Request.Context())
 	if err != nil {
+		h.logError(err, "failed to get counters")
 		response.HandleError(c, err, "failed to get counters")
 		return
 	}
@@ -88,6 +93,7 @@ func (h *CounterController) GetAll(c *gin.Context) {
 func (h *CounterController) GetByID(c *gin.Context) {
 	res, err := h.useCase.GetCounter(c.Request.Context(), c.Param("id"))
 	if err != nil {
+		h.logError(err, "failed to get counter")
 		response.HandleError(c, err, "failed to get counter")
 		return
 	}
@@ -117,11 +123,13 @@ func (h *CounterController) Update(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
+		h.logError(err, "validation error on update counter")
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	res, err := h.useCase.UpdateCounter(c.Request.Context(), c.Param("id"), &req)
 	if err != nil {
+		h.logError(err, "failed to update counter")
 		response.HandleError(c, err, "failed to update counter")
 		return
 	}
@@ -142,8 +150,15 @@ func (h *CounterController) Update(c *gin.Context) {
 // @Router       /counters/{id} [delete]
 func (h *CounterController) Delete(c *gin.Context) {
 	if err := h.useCase.DeleteCounter(c.Request.Context(), c.Param("id")); err != nil {
+		h.logError(err, "failed to delete counter")
 		response.HandleError(c, err, "failed to delete counter")
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *CounterController) logError(err error, msg string) {
+	if h.log != nil && err != nil {
+		h.log.WithError(err).Error(msg)
+	}
 }

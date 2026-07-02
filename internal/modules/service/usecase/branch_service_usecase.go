@@ -4,10 +4,12 @@ import (
 	"context"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
@@ -25,10 +27,15 @@ type branchServiceUseCase struct {
 	repo        repository.BranchServiceRepository
 	serviceRepo repository.ServiceRepository
 	branchRepo  branchRepository.BranchRepository
+	audit       AuditLogger
 }
 
-func NewBranchServiceUseCase(repo repository.BranchServiceRepository, serviceRepo repository.ServiceRepository, branchRepo branchRepository.BranchRepository) BranchServiceUseCase {
-	return &branchServiceUseCase{repo: repo, serviceRepo: serviceRepo, branchRepo: branchRepo}
+func NewBranchServiceUseCase(repo repository.BranchServiceRepository, serviceRepo repository.ServiceRepository, branchRepo branchRepository.BranchRepository, audit ...AuditLogger) BranchServiceUseCase {
+	var auditLogger AuditLogger
+	if len(audit) > 0 {
+		auditLogger = audit[0]
+	}
+	return &branchServiceUseCase{repo: repo, serviceRepo: serviceRepo, branchRepo: branchRepo, audit: auditLogger}
 }
 
 func (u *branchServiceUseCase) CreateBranchService(ctx context.Context, branchID string, req *model.CreateBranchServiceRequest) (*model.BranchServiceResponse, error) {
@@ -58,6 +65,7 @@ func (u *branchServiceUseCase) CreateBranchService(ctx context.Context, branchID
 	if err := u.repo.Create(ctx, bs); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "BRANCH_SERVICE_CREATE", bs.ID, map[string]any{"branch_id": bs.BranchID, "service_id": bs.ServiceID, "is_active": bs.IsActive})
 	return u.mapToResponse(bs), nil
 }
 
@@ -102,6 +110,7 @@ func (u *branchServiceUseCase) UpdateBranchService(ctx context.Context, branchID
 	if err := u.repo.Update(ctx, bs); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "BRANCH_SERVICE_UPDATE", bs.ID, map[string]any{"branch_id": bs.BranchID, "service_id": bs.ServiceID, "is_active": bs.IsActive})
 	return u.mapToResponse(bs), nil
 }
 
@@ -110,7 +119,29 @@ func (u *branchServiceUseCase) DeleteBranchService(ctx context.Context, branchID
 	if tenantID == "" || branchID == "" || id == "" {
 		return exception.ErrBadRequest
 	}
-	return u.repo.Delete(ctx, tenantID, branchID, id)
+	if err := u.repo.Delete(ctx, tenantID, branchID, id); err != nil {
+		return err
+	}
+	u.tryAudit(ctx, "BRANCH_SERVICE_DELETE", id, map[string]any{"branch_id": branchID})
+	return nil
+}
+
+func (u *branchServiceUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]any) {
+	if u.audit == nil {
+		return
+	}
+	userID, ok := authcontext.UserIDFromContext(ctx)
+	if !ok || userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		OrganizationID: database.GetTenantID(ctx),
+		UserID:         userID,
+		Action:         action,
+		Entity:         "branch_service",
+		EntityID:       entityID,
+		NewValues:      values,
+	})
 }
 
 func (u *branchServiceUseCase) EnsureActiveBranchService(ctx context.Context, tenantID, branchID, serviceID string) (*entity.BranchService, error) {

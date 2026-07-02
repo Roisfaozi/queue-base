@@ -4,15 +4,21 @@ import (
 	"context"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	serviceRepository "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
 )
+
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
+}
 
 type CounterUseCase interface {
 	CreateCounter(ctx context.Context, req *model.CreateCounterRequest) (*model.CounterResponse, error)
@@ -26,10 +32,15 @@ type counterUseCase struct {
 	repo              repository.CounterRepository
 	branchRepo        branchRepository.BranchRepository
 	branchServiceRepo serviceRepository.BranchServiceRepository
+	audit             AuditLogger
 }
 
-func NewCounterUseCase(repo repository.CounterRepository, branchRepo branchRepository.BranchRepository, branchServiceRepo serviceRepository.BranchServiceRepository) CounterUseCase {
-	return &counterUseCase{repo: repo, branchRepo: branchRepo, branchServiceRepo: branchServiceRepo}
+func NewCounterUseCase(repo repository.CounterRepository, branchRepo branchRepository.BranchRepository, branchServiceRepo serviceRepository.BranchServiceRepository, audit ...AuditLogger) CounterUseCase {
+	var auditLogger AuditLogger
+	if len(audit) > 0 {
+		auditLogger = audit[0]
+	}
+	return &counterUseCase{repo: repo, branchRepo: branchRepo, branchServiceRepo: branchServiceRepo, audit: auditLogger}
 }
 
 func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCounterRequest) (*model.CounterResponse, error) {
@@ -66,6 +77,7 @@ func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCou
 	if err := u.repo.Create(ctx, counter); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "COUNTER_CREATE", counter.ID, map[string]any{"branch_id": counter.BranchID, "branch_service_id": counter.BranchServiceID, "code": counter.Code, "status": counter.Status})
 	return u.mapToResponse(counter), nil
 }
 
@@ -132,6 +144,7 @@ func (u *counterUseCase) UpdateCounter(ctx context.Context, counterID string, re
 	if err := u.repo.Update(ctx, counter); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "COUNTER_UPDATE", counter.ID, map[string]any{"branch_id": counter.BranchID, "branch_service_id": counter.BranchServiceID, "code": counter.Code, "status": counter.Status})
 	return u.mapToResponse(counter), nil
 }
 
@@ -157,7 +170,29 @@ func (u *counterUseCase) DeleteCounter(ctx context.Context, counterID string) er
 	if tenantID == "" || counterID == "" {
 		return exception.ErrBadRequest
 	}
-	return u.repo.Delete(ctx, tenantID, counterID)
+	if err := u.repo.Delete(ctx, tenantID, counterID); err != nil {
+		return err
+	}
+	u.tryAudit(ctx, "COUNTER_DELETE", counterID, nil)
+	return nil
+}
+
+func (u *counterUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]any) {
+	if u.audit == nil {
+		return
+	}
+	userID, ok := authcontext.UserIDFromContext(ctx)
+	if !ok || userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		OrganizationID: database.GetTenantID(ctx),
+		UserID:         userID,
+		Action:         action,
+		Entity:         "counter",
+		EntityID:       entityID,
+		NewValues:      values,
+	})
 }
 
 func (u *counterUseCase) mapToResponse(counter *entity.Counter) *model.CounterResponse {

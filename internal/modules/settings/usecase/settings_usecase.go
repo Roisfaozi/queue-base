@@ -4,13 +4,19 @@ import (
 	"context"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/repository"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
 )
+
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
+}
 
 type SettingsUseCase interface {
 	CreateSetting(ctx context.Context, req *model.CreateSettingRequest) (*model.SettingResponse, error)
@@ -21,11 +27,16 @@ type SettingsUseCase interface {
 }
 
 type settingsUseCase struct {
-	repo repository.SettingsRepository
+	repo  repository.SettingsRepository
+	audit AuditLogger
 }
 
-func NewSettingsUseCase(repo repository.SettingsRepository) SettingsUseCase {
-	return &settingsUseCase{repo: repo}
+func NewSettingsUseCase(repo repository.SettingsRepository, audit ...AuditLogger) SettingsUseCase {
+	var auditLogger AuditLogger
+	if len(audit) > 0 {
+		auditLogger = audit[0]
+	}
+	return &settingsUseCase{repo: repo, audit: auditLogger}
 }
 
 func (u *settingsUseCase) CreateSetting(ctx context.Context, req *model.CreateSettingRequest) (*model.SettingResponse, error) {
@@ -56,6 +67,7 @@ func (u *settingsUseCase) CreateSetting(ctx context.Context, req *model.CreateSe
 	if err := u.repo.Create(ctx, setting); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "SETTING_CREATE", setting.ID, map[string]any{"scope_type": setting.ScopeType, "scope_id": setting.ScopeID, "key": setting.Key})
 	return u.mapToResponse(setting), nil
 }
 
@@ -90,6 +102,7 @@ func (u *settingsUseCase) UpdateSetting(ctx context.Context, settingID string, r
 	if err := u.repo.Update(ctx, setting); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "SETTING_UPDATE", setting.ID, map[string]any{"scope_type": setting.ScopeType, "scope_id": setting.ScopeID, "key": setting.Key})
 	return u.mapToResponse(setting), nil
 }
 
@@ -98,7 +111,11 @@ func (u *settingsUseCase) DeleteSetting(ctx context.Context, settingID string) e
 	if tenantID == "" || settingID == "" {
 		return exception.ErrBadRequest
 	}
-	return u.repo.Delete(ctx, tenantID, settingID)
+	if err := u.repo.Delete(ctx, tenantID, settingID); err != nil {
+		return err
+	}
+	u.tryAudit(ctx, "SETTING_DELETE", settingID, nil)
+	return nil
 }
 
 // ResolveSetting walks the inheritance chain: Counter -> Service -> Branch -> Tenant
@@ -161,4 +178,22 @@ func (u *settingsUseCase) mapToResponseWithMeta(s *entity.Setting, source string
 		CreatedAt: s.CreatedAt,
 		UpdatedAt: s.UpdatedAt,
 	}
+}
+
+func (u *settingsUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]any) {
+	if u.audit == nil {
+		return
+	}
+	userID, ok := authcontext.UserIDFromContext(ctx)
+	if !ok || userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		OrganizationID: database.GetTenantID(ctx),
+		UserID:         userID,
+		Action:         action,
+		Entity:         "setting",
+		EntityID:       entityID,
+		NewValues:      values,
+	})
 }

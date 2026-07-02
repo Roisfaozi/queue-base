@@ -11,15 +11,17 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type ServiceController struct {
 	useCase  usecase.ServiceUseCase
 	validate *validator.Validate
+	log      *logrus.Logger
 }
 
-func NewServiceController(useCase usecase.ServiceUseCase, validate *validator.Validate) *ServiceController {
-	return &ServiceController{useCase: useCase, validate: validate}
+func NewServiceController(useCase usecase.ServiceUseCase, validate *validator.Validate, log *logrus.Logger) *ServiceController {
+	return &ServiceController{useCase: useCase, validate: validate, log: log}
 }
 
 // Create godoc
@@ -43,11 +45,13 @@ func (h *ServiceController) Create(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
+		h.logValidation(err, "validation error on create service")
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	res, err := h.useCase.CreateService(c.Request.Context(), &req)
 	if err != nil {
+		h.logError(err, "failed to create service")
 		response.HandleError(c, err, "failed to create service")
 		return
 	}
@@ -72,6 +76,7 @@ func (h *ServiceController) GetAll(c *gin.Context) {
 	}
 	res, err := h.useCase.ListServices(c.Request.Context())
 	if err != nil {
+		h.logError(err, "failed to get services")
 		response.HandleError(c, err, "failed to get services")
 		return
 	}
@@ -93,6 +98,7 @@ func (h *ServiceController) GetAll(c *gin.Context) {
 func (h *ServiceController) GetByID(c *gin.Context) {
 	res, err := h.useCase.GetService(c.Request.Context(), c.Param("id"))
 	if err != nil {
+		h.logError(err, "failed to get service")
 		response.HandleError(c, err, "failed to get service")
 		return
 	}
@@ -122,11 +128,13 @@ func (h *ServiceController) Update(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
+		h.logValidation(err, "validation error on update service")
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	res, err := h.useCase.UpdateService(c.Request.Context(), c.Param("id"), &req)
 	if err != nil {
+		h.logError(err, "failed to update service")
 		response.HandleError(c, err, "failed to update service")
 		return
 	}
@@ -147,8 +155,19 @@ func (h *ServiceController) Update(c *gin.Context) {
 // @Router       /services/{id} [delete]
 func (h *ServiceController) Delete(c *gin.Context) {
 	if err := h.useCase.DeleteService(c.Request.Context(), c.Param("id")); err != nil {
+		h.logError(err, "failed to delete service")
 		response.HandleError(c, err, "failed to delete service")
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *ServiceController) logError(err error, msg string) {
+	if h.log != nil && err != nil {
+		h.log.WithError(err).Error(msg)
+	}
+}
+
+func (h *ServiceController) logValidation(err error, msg string) {
+	h.logError(err, msg)
 }

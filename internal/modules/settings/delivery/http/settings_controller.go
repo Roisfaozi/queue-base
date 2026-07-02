@@ -12,12 +12,14 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type SettingsController struct {
 	useCase       usecase.SettingsUseCase
 	queueResolver QueueSettingResolver
 	validate      *validator.Validate
+	log           *logrus.Logger
 }
 
 // EffectiveQueueConfig godoc
@@ -140,12 +142,12 @@ func inheritedOf(resolved *model.ResolvedQueueSetting) bool {
 	return resolved.Inherited
 }
 
-func NewSettingsController(useCase usecase.SettingsUseCase, validate *validator.Validate) *SettingsController {
-	return &SettingsController{useCase: useCase, validate: validate}
+func NewSettingsController(useCase usecase.SettingsUseCase, validate *validator.Validate, log *logrus.Logger) *SettingsController {
+	return &SettingsController{useCase: useCase, validate: validate, log: log}
 }
 
-func NewSettingsControllerWithResolver(useCase usecase.SettingsUseCase, validate *validator.Validate, resolver QueueSettingResolver) *SettingsController {
-	return &SettingsController{useCase: useCase, queueResolver: resolver, validate: validate}
+func NewSettingsControllerWithResolver(useCase usecase.SettingsUseCase, validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger) *SettingsController {
+	return &SettingsController{useCase: useCase, queueResolver: resolver, validate: validate, log: log}
 }
 
 // Create godoc
