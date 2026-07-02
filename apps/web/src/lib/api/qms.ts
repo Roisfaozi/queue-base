@@ -26,6 +26,7 @@ export interface Counter {
 	id: string;
 	tenant_id: string;
 	branch_id: string;
+	branch_service_id?: string;
 	code: string;
 	name: string;
 	status: "active" | "inactive";
@@ -44,6 +45,17 @@ export interface Setting {
 	is_active: boolean;
 	created_at: number;
 	updated_at: number;
+}
+
+export interface EffectiveQueueConfig {
+	tenant_id: string;
+	branch_id?: string;
+	service_id?: string;
+	counter_id?: string;
+	queue_reset_time: string;
+	ticket_prefix: string;
+	numbering_strategy: string;
+	default_estimated_duration?: string;
 }
 
 export interface Queue {
@@ -245,6 +257,23 @@ export const scannerApi = {
 // SETTINGS API
 // -----------------------------------------------------------------------------
 export const settingsApi = {
+	getEffective: (params?: {
+		branch_id?: string;
+		service_id?: string;
+		counter_id?: string;
+	}) => {
+		const searchParams = new URLSearchParams();
+		if (params?.branch_id) searchParams.append("branch_id", params.branch_id);
+		if (params?.service_id)
+			searchParams.append("service_id", params.service_id);
+		if (params?.counter_id)
+			searchParams.append("counter_id", params.counter_id);
+
+		const query = searchParams.toString();
+		return api.get<{ data: EffectiveQueueConfig }>(
+			`/settings/effective${query ? `?${query}` : ""}`,
+		);
+	},
 	resolve: (params: {
 		key: string;
 		branch_id?: string;
