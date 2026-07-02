@@ -50,12 +50,27 @@ type EffectiveQueueConfigRequest struct {
 }
 
 type EffectiveQueueConfigResponse struct {
-	TenantID                 string `json:"tenant_id"`
-	BranchID                 string `json:"branch_id,omitempty"`
-	ServiceID                string `json:"service_id,omitempty"`
-	CounterID                string `json:"counter_id,omitempty"`
-	QueueResetTime           string `json:"queue_reset_time"`
-	TicketPrefix             string `json:"ticket_prefix"`
-	NumberingStrategy        string `json:"numbering_strategy"`
-	DefaultEstimatedDuration string `json:"default_estimated_duration,omitempty"`
+	TenantID                          string `json:"tenant_id"`
+	BranchID                          string `json:"branch_id,omitempty"`
+	ServiceID                         string `json:"service_id,omitempty"`
+	CounterID                         string `json:"counter_id,omitempty"`
+	QueueResetTime                    string `json:"queue_reset_time"`
+	QueueResetTimeSource              string `json:"queue_reset_time_source,omitempty"`
+	QueueResetTimeInherited           bool   `json:"queue_reset_time_inherited,omitempty"`
+	TicketPrefix                      string `json:"ticket_prefix"`
+	TicketPrefixSource                string `json:"ticket_prefix_source,omitempty"`
+	TicketPrefixInherited             bool   `json:"ticket_prefix_inherited,omitempty"`
+	NumberingStrategy                 string `json:"numbering_strategy"`
+	NumberingStrategySource           string `json:"numbering_strategy_source,omitempty"`
+	NumberingStrategyInherited        bool   `json:"numbering_strategy_inherited,omitempty"`
+	DefaultEstimatedDuration          string `json:"default_estimated_duration,omitempty"`
+	DefaultEstimatedDurationSource    string `json:"default_estimated_duration_source,omitempty"`
+	DefaultEstimatedDurationInherited bool   `json:"default_estimated_duration_inherited,omitempty"`
+}
+
+type ResolvedQueueSetting struct {
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	Source    string `json:"source,omitempty"`
+	Inherited bool   `json:"inherited,omitempty"`
 }

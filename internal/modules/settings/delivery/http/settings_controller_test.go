@@ -34,6 +34,10 @@ func (s stubQueueResolver) Resolve(ctx context.Context, key string, branchID str
 	return s.values[key], nil
 }
 
+func (s stubQueueResolver) ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*model.ResolvedQueueSetting, error) {
+	return &model.ResolvedQueueSetting{Key: key, Value: s.values[key], Source: "tenant", Inherited: branchID != "" || serviceID != "" || counterID != ""}, nil
+}
+
 func (s *stubSettingsControllerUseCase) CreateSetting(ctx context.Context, req *model.CreateSettingRequest) (*model.SettingResponse, error) {
 	s.createReq = req
 	return s.createRes, nil

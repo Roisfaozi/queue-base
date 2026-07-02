@@ -76,15 +76,28 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 		return nil, err
 	}
 	defaultEstimatedDuration, _ := resolver.Resolve(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
+	queueResetTimeResolved, _ := resolver.ResolveDetailed(ctx, "queue_reset_time", req.BranchID, req.ServiceID, req.CounterID)
+	ticketPrefixResolved, _ := resolver.ResolveDetailed(ctx, "ticket_prefix", req.BranchID, req.ServiceID, req.CounterID)
+	numberingStrategyResolved, _ := resolver.ResolveDetailed(ctx, "numbering_strategy", req.BranchID, req.ServiceID, req.CounterID)
+	defaultEstimatedDurationResolved, _ := resolver.ResolveDetailed(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
+
 	return &model.EffectiveQueueConfigResponse{
-		TenantID:                 tenantID,
-		BranchID:                 req.BranchID,
-		ServiceID:                req.ServiceID,
-		CounterID:                req.CounterID,
-		QueueResetTime:           queueResetTime,
-		TicketPrefix:             ticketPrefix,
-		NumberingStrategy:        numberingStrategy,
-		DefaultEstimatedDuration: defaultEstimatedDuration,
+		TenantID:                          tenantID,
+		BranchID:                          req.BranchID,
+		ServiceID:                         req.ServiceID,
+		CounterID:                         req.CounterID,
+		QueueResetTime:                    queueResetTime,
+		QueueResetTimeSource:              sourceOf(queueResetTimeResolved),
+		QueueResetTimeInherited:           inheritedOf(queueResetTimeResolved),
+		TicketPrefix:                      ticketPrefix,
+		TicketPrefixSource:                sourceOf(ticketPrefixResolved),
+		TicketPrefixInherited:             inheritedOf(ticketPrefixResolved),
+		NumberingStrategy:                 numberingStrategy,
+		NumberingStrategySource:           sourceOf(numberingStrategyResolved),
+		NumberingStrategyInherited:        inheritedOf(numberingStrategyResolved),
+		DefaultEstimatedDuration:          defaultEstimatedDuration,
+		DefaultEstimatedDurationSource:    sourceOf(defaultEstimatedDurationResolved),
+		DefaultEstimatedDurationInherited: inheritedOf(defaultEstimatedDurationResolved),
 	}, nil
 }
 
@@ -102,6 +115,29 @@ func (r genericQueueResolver) Resolve(ctx context.Context, key string, branchID 
 
 type QueueSettingResolver interface {
 	Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error)
+	ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*model.ResolvedQueueSetting, error)
+}
+
+func (r genericQueueResolver) ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*model.ResolvedQueueSetting, error) {
+	res, err := r.useCase.ResolveSetting(ctx, &model.ResolveSettingRequest{Key: key, BranchID: branchID, ServiceID: serviceID, CounterID: counterID})
+	if err != nil {
+		return nil, err
+	}
+	return &model.ResolvedQueueSetting{Key: key, Value: res.Value, Source: res.Source, Inherited: res.Inherited}, nil
+}
+
+func sourceOf(resolved *model.ResolvedQueueSetting) string {
+	if resolved == nil {
+		return ""
+	}
+	return resolved.Source
+}
+
+func inheritedOf(resolved *model.ResolvedQueueSetting) bool {
+	if resolved == nil {
+		return false
+	}
+	return resolved.Inherited
 }
 
 func NewSettingsController(useCase usecase.SettingsUseCase, validate *validator.Validate) *SettingsController {

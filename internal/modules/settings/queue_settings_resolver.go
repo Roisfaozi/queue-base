@@ -32,16 +32,24 @@ func NewQueueSettingsResolver(db *gorm.DB, useCase settingsUsecase.SettingsUseCa
 }
 
 func (r *QueueSettingsResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
+	resolved, err := r.ResolveDetailed(ctx, key, branchID, serviceID, counterID)
+	if err != nil {
+		return "", err
+	}
+	return resolved.Value, nil
+}
+
+func (r *QueueSettingsResolver) ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*settingsModel.ResolvedQueueSetting, error) {
 	// Step 1: try typed tables for core QMS keys
 	if typedConfigKeys[key] {
-		if val, err := r.resolveTyped(ctx, key, branchID, serviceID, counterID); err == nil && val != "" {
-			return val, nil
+		if resolved, err := r.resolveTypedDetailed(ctx, key, branchID, serviceID, counterID); err == nil && resolved != nil && resolved.Value != "" {
+			return resolved, nil
 		}
 	}
 
 	// Step 2: fall back to generic settings
 	if !r.fallbackToGeneric {
-		return "", fmt.Errorf("not found")
+		return nil, fmt.Errorf("not found")
 	}
 	res, err := r.useCase.ResolveSetting(ctx, &settingsModel.ResolveSettingRequest{
 		Key:       key,
@@ -50,41 +58,47 @@ func (r *QueueSettingsResolver) Resolve(ctx context.Context, key string, branchI
 		CounterID: counterID,
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return res.Value, nil
+	return &settingsModel.ResolvedQueueSetting{
+		Key:       key,
+		Value:     res.Value,
+		Source:    res.Source,
+		Inherited: res.Inherited,
+	}, nil
 }
 
-func (r *QueueSettingsResolver) resolveTyped(ctx context.Context, key string, branchID, serviceID, counterID string) (string, error) {
+func (r *QueueSettingsResolver) resolveTypedDetailed(ctx context.Context, key string, branchID, serviceID, counterID string) (*settingsModel.ResolvedQueueSetting, error) {
 	if r.db == nil {
-		return "", fmt.Errorf("no db")
+		return nil, fmt.Errorf("no db")
 	}
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" {
-		return "", fmt.Errorf("no tenant")
+		return nil, fmt.Errorf("no tenant")
 	}
 
 	// Resolve hierarchy: counter -> service -> branch -> tenant
 	if counterID != "" {
 		if val, err := readTypedMap(r.db, entity.ScopeTypeCounter, tenantID, counterID, key); err == nil && val != nil {
-			return *val, nil
+			return &settingsModel.ResolvedQueueSetting{Key: key, Value: *val, Source: entity.ScopeTypeCounter, Inherited: false}, nil
 		}
 	}
 	if serviceID != "" {
 		if val, err := readTypedService(r.db, tenantID, serviceID, key); err == nil && val != nil {
-			return *val, nil
+			return &settingsModel.ResolvedQueueSetting{Key: key, Value: *val, Source: entity.ScopeTypeService, Inherited: false}, nil
 		}
 	}
 	if branchID != "" {
 		if val, err := readTypedBranch(r.db, tenantID, branchID, key); err == nil && val != nil {
-			return *val, nil
+			return &settingsModel.ResolvedQueueSetting{Key: key, Value: *val, Source: entity.ScopeTypeBranch, Inherited: false}, nil
 		}
 	}
 	// Tenant default
 	if val, err := readTypedTenant(r.db, tenantID, key); err == nil && val != nil {
-		return *val, nil
+		inherited := branchID != "" || serviceID != "" || counterID != ""
+		return &settingsModel.ResolvedQueueSetting{Key: key, Value: *val, Source: entity.ScopeTypeTenant, Inherited: inherited}, nil
 	}
-	return "", fmt.Errorf("not found")
+	return nil, fmt.Errorf("not found")
 }
 
 // typed table helpers
