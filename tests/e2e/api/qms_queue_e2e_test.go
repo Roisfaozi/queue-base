@@ -23,7 +23,7 @@ import (
 func loginQueueAdmin(t *testing.T, server *setup.TestServer) (string, string, string) {
 	unique := fmt.Sprintf("%d", time.Now().UnixNano())
 	user := integrationSetup.CreateTestUser(t, server.DB, "queue_admin_"+unique, "queue_"+unique+"@test.com", "Password123!")
-	org := &orgEntity.Organization{ID: uuid.New().String(), Name: "Queue Org", Slug: "queue-org-" + unique, OwnerID: user.ID, Status: orgEntity.OrgStatusActive}
+	org := &orgEntity.Organization{ID: uuid.New().String(), Code: "queue-org-" + unique, Name: "Queue Org", Slug: "queue-org-" + unique, OwnerID: user.ID, Status: orgEntity.OrgStatusActive}
 	require.NoError(t, server.DB.Create(org).Error)
 	require.NoError(t, server.DB.Create(&orgEntity.OrganizationMember{ID: uuid.New().String(), OrganizationID: org.ID, UserID: user.ID, RoleID: "role:owner", Status: orgEntity.MemberStatusActive}).Error)
 	_, err := server.Enforcer.AddGroupingPolicy(user.ID, "role:superadmin", org.ID)

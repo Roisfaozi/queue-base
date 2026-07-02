@@ -75,9 +75,9 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	}
 
 	// Create tenant organizations and branches
-	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.tenantID, Name: "TestTenant", Slug: "test-tenant-" + deps.tenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
+	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.tenantID, Code: "test-tenant-" + deps.tenantID[:6], Name: "TestTenant", Slug: "test-tenant-" + deps.tenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
 	require.NoError(t, deps.db.Create(&branchEntity.Branch{ID: deps.branchID, TenantID: deps.tenantID, Code: "BR1", Name: "Main Branch", Status: branchEntity.BranchStatusActive}).Error)
-	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.otherTenantID, Name: "OtherTenant", Slug: "other-tenant-" + deps.otherTenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
+	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.otherTenantID, Code: "other-tenant-" + deps.otherTenantID[:6], Name: "OtherTenant", Slug: "other-tenant-" + deps.otherTenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
 
 	// Create services
 	require.NoError(t, deps.db.Create(&serviceEntity.Service{ID: deps.regServiceID, TenantID: deps.tenantID, Code: "RG", Name: "Registration", Status: serviceEntity.ServiceStatusActive}).Error)

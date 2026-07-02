@@ -95,6 +95,7 @@ func SeedTestData(t *testing.T, db *gorm.DB) {
 	globalOrg := "global"
 	globalOrgRecord := orgEntity.Organization{
 		ID:      globalOrg,
+		Code:    "global",
 		Name:    "Global Organization",
 		Slug:    "global",
 		OwnerID: "system",
@@ -227,6 +228,7 @@ func CreateTestUser(t *testing.T, db *gorm.DB, username, email, password string,
 func CreateTestOrganization(t *testing.T, db *gorm.DB, ownerID, name, slug string) *orgEntity.Organization {
 	org := &orgEntity.Organization{
 		ID:      uuid.New().String(),
+		Code:    slug,
 		Name:    name,
 		Slug:    slug,
 		OwnerID: ownerID,
@@ -243,6 +245,7 @@ func CreateTestRole(t *testing.T, db *gorm.DB, name string) *roleEntity.Role {
 	globalOrg := "global"
 	db.FirstOrCreate(&orgEntity.Organization{}, orgEntity.Organization{
 		ID:      globalOrg,
+		Code:    "global",
 		Name:    "Global Organization",
 		Slug:    "global",
 		OwnerID: "system",
