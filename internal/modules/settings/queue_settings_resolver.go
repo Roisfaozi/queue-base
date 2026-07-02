@@ -12,7 +12,6 @@ import (
 )
 
 // typedConfigKeys are core QMS keys resolved from typed tables.
-// All other keys fall back to generic settings.
 var typedConfigKeys = map[string]bool{
 	"queue_reset_time":           true,
 	"reset_time":                 true,
@@ -22,13 +21,12 @@ var typedConfigKeys = map[string]bool{
 }
 
 type QueueSettingsResolver struct {
-	useCase           settingsUsecase.SettingsUseCase
-	db                *gorm.DB
-	fallbackToGeneric bool
+	useCase settingsUsecase.SettingsUseCase
+	db      *gorm.DB
 }
 
 func NewQueueSettingsResolver(db *gorm.DB, useCase settingsUsecase.SettingsUseCase) *QueueSettingsResolver {
-	return &QueueSettingsResolver{useCase: useCase, db: db, fallbackToGeneric: true}
+	return &QueueSettingsResolver{useCase: useCase, db: db}
 }
 
 func (r *QueueSettingsResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
@@ -47,25 +45,7 @@ func (r *QueueSettingsResolver) ResolveDetailed(ctx context.Context, key string,
 		}
 	}
 
-	// Step 2: fall back to generic settings
-	if !r.fallbackToGeneric {
-		return nil, fmt.Errorf("not found")
-	}
-	res, err := r.useCase.ResolveSetting(ctx, &settingsModel.ResolveSettingRequest{
-		Key:       key,
-		BranchID:  branchID,
-		ServiceID: serviceID,
-		CounterID: counterID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &settingsModel.ResolvedQueueSetting{
-		Key:       key,
-		Value:     res.Value,
-		Source:    res.Source,
-		Inherited: res.Inherited,
-	}, nil
+	return nil, fmt.Errorf("not found")
 }
 
 func (r *QueueSettingsResolver) resolveTypedDetailed(ctx context.Context, key string, branchID, serviceID, counterID string) (*settingsModel.ResolvedQueueSetting, error) {
@@ -84,7 +64,7 @@ func (r *QueueSettingsResolver) resolveTypedDetailed(ctx context.Context, key st
 		}
 	}
 	if serviceID != "" {
-		if val, err := readTypedService(r.db, tenantID, serviceID, key); err == nil && val != nil {
+		if val, err := readTypedBranchService(r.db, tenantID, branchID, serviceID, key); err == nil && val != nil {
 			return &settingsModel.ResolvedQueueSetting{Key: key, Value: *val, Source: entity.ScopeTypeService, Inherited: false}, nil
 		}
 	}
@@ -118,9 +98,9 @@ func readTypedBranch(db *gorm.DB, tenantID, branchID, key string) (*string, erro
 	return typedFieldNullable(&row, key), nil
 }
 
-func readTypedService(db *gorm.DB, tenantID, serviceID, key string) (*string, error) {
-	var row entity.ServiceQueueSetting
-	if err := db.Where("tenant_id = ? AND service_id = ?", tenantID, serviceID).First(&row).Error; err != nil {
+func readTypedBranchService(db *gorm.DB, tenantID, branchID, branchServiceID, key string) (*string, error) {
+	var row entity.BranchServiceQueueSetting
+	if err := db.Where("tenant_id = ? AND branch_id = ? AND branch_service_id = ?", tenantID, branchID, branchServiceID).First(&row).Error; err != nil {
 		return nil, err
 	}
 	return typedFieldNullable(&row, key), nil
@@ -163,8 +143,25 @@ func typedFieldNullable(row any, key string) *string {
 		case "numbering_strategy":
 			return r.NumberingStrategy
 		}
-	case *entity.ServiceQueueSetting:
-		return nil
+	case *entity.BranchServiceQueueSetting:
+		switch key {
+		case "default_estimated_duration":
+			if r.DefaultEstimatedDuration != nil {
+				return strPtr(fmt.Sprintf("%d", *r.DefaultEstimatedDuration))
+			}
+		case "require_counter":
+			return boolPtrToString(r.RequireCounter)
+		case "allow_forward_from":
+			return boolPtrToString(r.AllowForwardFrom)
+		case "allow_forward_to":
+			return boolPtrToString(r.AllowForwardTo)
+		case "allow_skip":
+			return boolPtrToString(r.AllowSkip)
+		case "allow_recall":
+			return boolPtrToString(r.AllowRecall)
+		case "allow_cancel":
+			return boolPtrToString(r.AllowCancel)
+		}
 	case *entity.CounterQueueSetting:
 		switch key {
 		case "queue_reset_time", "reset_time":
@@ -176,4 +173,18 @@ func typedFieldNullable(row any, key string) *string {
 		}
 	}
 	return nil
+}
+
+func strPtr(value string) *string {
+	return &value
+}
+
+func boolPtrToString(value *bool) *string {
+	if value == nil {
+		return nil
+	}
+	if *value {
+		return strPtr("true")
+	}
+	return strPtr("false")
 }

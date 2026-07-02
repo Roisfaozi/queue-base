@@ -42,7 +42,7 @@ func newResolverTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, db.AutoMigrate(
 		&entity.TenantQueueSetting{},
 		&entity.BranchQueueSetting{},
-		&entity.ServiceQueueSetting{},
+		&entity.BranchServiceQueueSetting{},
 		&entity.CounterQueueSetting{},
 	))
 	return db
@@ -69,6 +69,15 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 		BranchID:       "b-1",
 		QueueResetTime: &val0500,
 		// TicketPrefix is null, should inherit
+	}).Error)
+
+	// Seed branch service override
+	require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{
+		ID:                       "bss-1",
+		TenantID:                 "t-1",
+		BranchID:                 "b-1",
+		BranchServiceID:          "bsvc-1",
+		DefaultEstimatedDuration: &[]int{20}[0],
 	}).Error)
 
 	// Seed counter override
@@ -116,18 +125,30 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 			want:      "C", // from counter
 		},
 		{
-			name:      "Positive_FallbackToGenericForNonCoreKey",
+			name:      "Positive_ResolvesBranchServiceOverride",
+			key:       "default_estimated_duration",
+			branchID:  "b-1",
+			serviceID: "bsvc-1",
+			counterID: "",
+			want:      "20",
+		},
+		{
+			name:      "Negative_NoGenericFallback",
 			key:       "custom_theme_color",
 			branchID:  "b-1",
 			serviceID: "",
 			counterID: "",
-			want:      "generic_val", // from stubSettingsUseCase
+			want:      "", // expect error
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := resolver.Resolve(ctx, tt.key, tt.branchID, tt.serviceID, tt.counterID)
+			if tt.name == "Negative_NoGenericFallback" {
+				require.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
