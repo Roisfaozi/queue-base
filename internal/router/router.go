@@ -234,6 +234,7 @@ func SetupRouter(
 		organizationHttp.RegisterTenantRoutes(tenantAuthorized, organizationModule.OrganizationController, apiKeyMiddleware)
 		organizationHttp.RegisterBranchRoutes(tenantAuthorized, branchModule.BranchController, apiKeyMiddleware)
 		serviceHttp.RegisterServiceRoutes(tenantAuthorized, serviceModule.ServiceController, apiKeyMiddleware)
+		serviceHttp.RegisterBranchServiceRoutes(tenantAuthorized, serviceModule.BranchServiceController, apiKeyMiddleware)
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
 		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)

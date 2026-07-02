@@ -214,13 +214,13 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	statsModule := stats.NewStatsModule(dbConnection, logger)
 
 	projectModule := project.NewProjectModule(dbConnection, validate)
-	serviceModule := service.NewServiceModule(dbConnection, validate)
 	settingsModule := settings.NewSettingsModule(dbConnection, validate)
-	queueModule := queue.NewQueueModule(dbConnection, validate, settings.NewQueueSettingsResolver(settingsModule.SettingsUseCase), logger, auditModule.AuditUseCase)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate, logger)
+	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo)
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo)
+	queueModule := queue.NewQueueModule(dbConnection, validate, settings.NewQueueSettingsResolver(settingsModule.SettingsUseCase), logger, auditModule.AuditUseCase)
 	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, settingsModule, validate, scanner.NewAPIKeyAuthenticator(apiKeyModule.UseCase), logger, auditModule.AuditUseCase)
 
 	logger.Info("Application modules initialized.")
