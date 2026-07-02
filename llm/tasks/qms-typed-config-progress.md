@@ -256,3 +256,34 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Phase 3B: expose typed effective-config API and remove direct generic-settings dependence from queue core where possible.
+
+## 2026-07-02 — Phase 3B Effective Queue Config API Endpoint
+
+- status: completed
+- owner paths:
+  - `internal/modules/settings/delivery/http/settings_controller.go`
+  - `internal/modules/settings/delivery/http/settings_controller_test.go`
+  - `internal/modules/settings/delivery/http/settings_routes.go`
+  - `internal/modules/settings/model/settings_model.go`
+  - `internal/modules/settings/module.go`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Added `GET /settings/effective` endpoint using typed queue settings resolver.
+  - Added `EffectiveQueueConfigRequest/Response` model with all core QMS keys.
+  - Wired `QueueSettingsResolver` as typed resolver, with fallback to generic settings via `genericQueueResolver`.
+  - Added positive + negative controller tests.
+- tests added/updated:
+  - positive: resolves effective config for valid tenant/branch.
+  - negative: missing tenant context returns 400.
+  - edge: not explicitly covered; resolver already covered by Phase 3A.
+  - vulnerability/security: tenant context required; nil resolver falls back to generic, no panic.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/settings/... ./internal/router ./internal/config`
+  - result: passed
+  - evidence: settings, router, config packages pass after endpoint patch.
+- errors and fixes:
+  - error: none significant in this slice.
+- next step:
+  - Phase 4: Remove direct generic-settings dependence from queue core where possible.
+  - Phase 5: Frontend sync for queue-settings page.
