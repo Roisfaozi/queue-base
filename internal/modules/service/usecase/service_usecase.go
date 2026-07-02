@@ -34,17 +34,27 @@ func (u *serviceUseCase) CreateService(ctx context.Context, req *model.CreateSer
 		return nil, exception.ErrBadRequest
 	}
 	req.Sanitize()
+	serviceType := req.Type
+	if serviceType == "" {
+		serviceType = entity.ServiceTypeGeneral
+	}
+	estimatedDuration := req.DefaultEstimatedDuration
+	if estimatedDuration == 0 {
+		estimatedDuration = 5
+	}
 	now := time.Now().UnixMilli()
 	service := &entity.Service{
-		ID:                  uuid.New().String(),
-		TenantID:            tenantID,
-		Code:                req.Code,
-		Name:                req.Name,
-		Status:              entity.ServiceStatusActive,
-		IsPharmacy:          req.IsPharmacy,
-		IsPharmacyReception: req.IsPharmacyReception,
-		CreatedAt:           now,
-		UpdatedAt:           now,
+		ID:                       uuid.New().String(),
+		TenantID:                 tenantID,
+		Code:                     req.Code,
+		Name:                     req.Name,
+		Type:                     serviceType,
+		DefaultEstimatedDuration: estimatedDuration,
+		Status:                   entity.ServiceStatusActive,
+		IsPharmacy:               req.IsPharmacy,
+		IsPharmacyReception:      req.IsPharmacyReception,
+		CreatedAt:                now,
+		UpdatedAt:                now,
 	}
 	if err := u.repo.Create(ctx, service); err != nil {
 		return nil, err
@@ -96,6 +106,12 @@ func (u *serviceUseCase) UpdateService(ctx context.Context, serviceID string, re
 	if req.Name != nil {
 		service.Name = *req.Name
 	}
+	if req.Type != nil {
+		service.Type = *req.Type
+	}
+	if req.DefaultEstimatedDuration != nil {
+		service.DefaultEstimatedDuration = *req.DefaultEstimatedDuration
+	}
 	if req.Status != nil {
 		service.Status = *req.Status
 	}
@@ -122,14 +138,16 @@ func (u *serviceUseCase) DeleteService(ctx context.Context, serviceID string) er
 
 func (u *serviceUseCase) mapToResponse(service *entity.Service) *model.ServiceResponse {
 	return &model.ServiceResponse{
-		ID:                  service.ID,
-		TenantID:            service.TenantID,
-		Code:                service.Code,
-		Name:                service.Name,
-		Status:              service.Status,
-		IsPharmacy:          service.IsPharmacy,
-		IsPharmacyReception: service.IsPharmacyReception,
-		CreatedAt:           service.CreatedAt,
-		UpdatedAt:           service.UpdatedAt,
+		ID:                       service.ID,
+		TenantID:                 service.TenantID,
+		Code:                     service.Code,
+		Name:                     service.Name,
+		Type:                     service.Type,
+		DefaultEstimatedDuration: service.DefaultEstimatedDuration,
+		Status:                   service.Status,
+		IsPharmacy:               service.IsPharmacy,
+		IsPharmacyReception:      service.IsPharmacyReception,
+		CreatedAt:                service.CreatedAt,
+		UpdatedAt:                service.UpdatedAt,
 	}
 }

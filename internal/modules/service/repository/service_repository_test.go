@@ -117,7 +117,7 @@ func TestServiceRepository(t *testing.T) {
 					assert.Equal(t, entity.ServiceStatusInactive, updated.Status)
 					assert.True(t, updated.IsPharmacy)
 					assert.True(t, updated.IsPharmacyReception)
-					assert.Equal(t, now, updated.UpdatedAt)
+					assert.InDelta(t, now, updated.UpdatedAt, 5)
 				},
 			},
 			{

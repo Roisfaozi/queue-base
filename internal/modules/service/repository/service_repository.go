@@ -56,7 +56,7 @@ func (r *serviceRepository) Update(ctx context.Context, service *entity.Service)
 	res := r.getDB(ctx).
 		Model(&entity.Service{}).
 		Where("tenant_id = ? AND id = ?", service.TenantID, service.ID).
-		Select("Code", "Name", "Status", "IsPharmacy", "IsPharmacyReception", "Settings", "UpdatedAt").
+		Select("Code", "Name", "Type", "DefaultEstimatedDuration", "Status", "IsPharmacy", "IsPharmacyReception", "Settings", "UpdatedAt").
 		Updates(service)
 	if res.Error != nil {
 		return res.Error
