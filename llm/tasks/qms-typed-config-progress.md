@@ -585,3 +585,32 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Sync Frontend `/api/v1/settings/effective` consumption for `auto_call_next`, `audio_id` or start `qms_clients` logic for Caller and Signage credentials check-in.
+## 2026-07-02 — Phase 2: Signage API Skeleton
+
+- status: completed
+- owner paths:
+  - `internal/modules/signage/*`
+  - `internal/router/router.go`
+  - `internal/config/app.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Added `signage` module skeleton with routes `GET /api/v1/signage/me`, `GET /api/v1/signage/current-calls`, and `GET /api/v1/signage/queues`.
+  - Wired `signage` module into application composition root and router.
+  - Added placeholder usecase contract so later credential-binding implementation can land without route churn.
+- tests added/updated:
+  - positive: `internal/router/router_test.go` updated for new dependency wiring.
+  - negative: not added yet; credential rejection path still pending auth middleware work.
+  - edge: build-path verification for injected router dependency.
+  - vulnerability/security: not complete yet; signage client credential validation still placeholder.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/router ./internal/modules/signage/... && PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
+  - result: passed
+  - evidence: router package tests passed and application compiled.
+- errors and fixes:
+  - error: router dependency injection changed again after adding signage module.
+  - root cause: `SetupRouter` constructor signature expanded.
+  - fix: synchronized `internal/router/router_test.go` and `internal/config/app.go` wiring.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Replace placeholder signage logic with real `qms_clients` credential resolution and scoped feed queries.

@@ -76,3 +76,6 @@
 - `branch_service_queue_settings` cannot be treated like old `service_queue_settings`; runtime resolution now needs `tenant_id + branch_id + branch_service_id` as stable lookup key.
 - When router composition root adds a new module argument, immediately update `internal/router/router_test.go` or build will pass while package test fails.
 - For sandboxed Go builds on this machine, use `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache` instead of `make build` to avoid read-only Go cache failures.
+## 2026-07-02 — Signage skeleton follow-up
+
+- For staged QMS rebuild work, route skeletons can land first, but progress log must mark auth/credential validation as pending so placeholder handlers are not mistaken for complete feature delivery.
