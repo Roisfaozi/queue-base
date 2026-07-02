@@ -36,3 +36,16 @@
 - Targets included `settings`, `counter`, `service`, and `branch` (organization) modules.
 - Migration adheres strictly to standard TDT structure (`t.Run` with `[]struct`).
 - Maintains existing test coverage. All tests pass locally.
+
+## QMS Typed Configuration Alignment
+
+- Latest QMS design from `documentation/New Design — Typed Configuration Architecture for QMS.md` supersedes old generic-settings progress for core QMS configuration.
+- Do not mark generic `settings` inheritance as complete for latest core QMS behavior; typed tables are required for tenant, branch, service, and counter queue configuration.
+- Keep old `settings` only for experimental flags, temporary feature toggles, non-critical UI preferences, or future dynamic config.
+- Before starting implementation, append a progress entry to `llm/tasks/qms-typed-config-progress.md` with owner paths, design source, tests, verification, errors, fixes, and next step.
+- Every QMS typed-config implementation slice must use TDD when feasible and cover positive, negative, edge, and vulnerability/security cases.
+- Record every fixed error as a lesson: exact symptom, root cause, fix, and prevention rule. Fixed errors must not disappear from project memory.
+- Frontend progress is not current unless checked against live backend routes; `queue-settings` currently targets old generic settings behavior and must be realigned with typed effective configuration APIs.
+- Branch/service/counter validation must use typed ownership relations: tenant owns branch and service, branch enables service through `branch_services`, and counter points to `branch_service_id`.
+- When writing Go test assertions that call methods on composite literals inside short variable declarations, wrap the composite literal in parentheses first, for example `(BranchService{}).TableName()`.
+- For new entity files, avoid carrying template imports like `soft_delete` unless the struct really uses soft-delete fields; narrow compile checks catch this fast.
