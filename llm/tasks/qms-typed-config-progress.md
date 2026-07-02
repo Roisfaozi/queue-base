@@ -394,3 +394,32 @@ Design sources:
   - Phase 6: documentation sync for effective config.
   - Or review service/counter pages for typed-config UI sync.
 
+
+## 2026-07-02 — Phase 5C Service and Counter Form Contract Alignment
+
+- status: completed
+- owner paths:
+  - `apps/web/src/lib/api/qms.ts`
+  - `apps/web/src/components/dashboard/services/service-dialog.tsx`
+  - `apps/web/src/components/dashboard/counters/counter-dialog.tsx`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Aligned frontend `Service` type with backend fields `type` and `default_estimated_duration`.
+  - Aligned frontend `Counter` type with backend field `display_name`.
+  - Extended service create/update payloads with typed-design service fields.
+  - Extended counter create/update payloads with `branch_service_id` and `display_name`.
+  - Updated service and counter dialogs to edit new contract fields.
+- tests added/updated:
+  - positive: web typecheck passes with expanded form payloads.
+  - negative: not added; existing form validation still guards required name/code/branch.
+  - edge: optional fields allow empty string/default value without type errors.
+  - vulnerability/security: no UI-only permission changes.
+- verification:
+  - command: `cd apps/web && pnpm typecheck`
+  - result: passed
+  - evidence: `tsc --noEmit` exited 0.
+- errors and fixes:
+  - error: none significant in this slice.
+- next step:
+  - Improve counter dialog to load actual branch-service options per branch instead of raw optional string semantics.
