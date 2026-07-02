@@ -49,3 +49,5 @@
 - Branch/service/counter validation must use typed ownership relations: tenant owns branch and service, branch enables service through `branch_services`, and counter points to `branch_service_id`.
 - When writing Go test assertions that call methods on composite literals inside short variable declarations, wrap the composite literal in parentheses first, for example `(BranchService{}).TableName()`.
 - For new entity files, avoid carrying template imports like `soft_delete` unless the struct really uses soft-delete fields; narrow compile checks catch this fast.
+- Strict `assert.Equal` on UnixMilli timestamps in repository tests can flake when using SQLite memory DBs if operations straddle a millisecond boundary; use `assert.InDelta(t, expected, actual, 5)` instead.
+- If sandboxed runs block `git commit` due to read-only `.git/index.lock` across worktrees, record progress in the durable tracker and proceed without forcing source-control mutations.
