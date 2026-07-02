@@ -253,9 +253,13 @@ definitions:
     properties:
       branch_id:
         type: string
+      branch_service_id:
+        type: string
       code:
         maxLength: 50
         minLength: 2
+        type: string
+      display_name:
         type: string
       name:
         maxLength: 255
@@ -268,9 +272,13 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_counter_model.UpdateCounterRequest:
     properties:
+      branch_service_id:
+        type: string
       code:
         maxLength: 50
         minLength: 2
+        type: string
+      display_name:
         type: string
       name:
         maxLength: 255
@@ -297,6 +305,10 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.CreateBranchRequest:
     properties:
+      address:
+        type: string
+      city:
+        type: string
       code:
         maxLength: 50
         minLength: 2
@@ -304,6 +316,14 @@ definitions:
       name:
         maxLength: 255
         minLength: 3
+        type: string
+      phone:
+        type: string
+      province:
+        type: string
+      running_text:
+        type: string
+      timezone:
         type: string
     required:
     - code
@@ -374,18 +394,36 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateBranchRequest:
     properties:
+      address:
+        type: string
+      city:
+        type: string
       code:
         maxLength: 50
         minLength: 2
+        type: string
+      email:
+        type: string
+      logo_asset_id:
         type: string
       name:
         maxLength: 255
         minLength: 3
         type: string
+      phone:
+        type: string
+      postal_code:
+        type: string
+      province:
+        type: string
+      running_text:
+        type: string
       status:
         enum:
         - active
         - inactive
+        type: string
+      timezone:
         type: string
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateMemberRequest:
@@ -740,6 +778,8 @@ definitions:
         maxLength: 50
         minLength: 2
         type: string
+      default_estimated_duration:
+        type: integer
       is_pharmacy:
         type: boolean
       is_pharmacy_reception:
@@ -747,6 +787,8 @@ definitions:
       name:
         maxLength: 255
         minLength: 3
+        type: string
+      type:
         type: string
     required:
     - code
@@ -758,6 +800,8 @@ definitions:
         maxLength: 50
         minLength: 2
         type: string
+      default_estimated_duration:
+        type: integer
       is_pharmacy:
         type: boolean
       is_pharmacy_reception:
@@ -770,6 +814,8 @@ definitions:
         enum:
         - active
         - inactive
+        type: string
+      type:
         type: string
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_settings_model.CreateSettingRequest:
@@ -4808,6 +4854,51 @@ paths:
       security:
       - BearerAuth: []
       summary: Update setting
+      tags:
+      - settings
+  /settings/effective:
+    get:
+      description: Resolves core QMS queue behavior from typed queue settings tables.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Branch ID
+        in: query
+        name: branch_id
+        type: string
+      - description: Service ID
+        in: query
+        name: service_id
+        type: string
+      - description: Counter ID
+        in: query
+        name: counter_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Resolve effective queue config
       tags:
       - settings
   /settings/resolve:

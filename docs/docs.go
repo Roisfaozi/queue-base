@@ -5476,6 +5476,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/settings/effective": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Resolves core QMS queue behavior from typed queue settings tables.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Resolve effective queue config",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "X-Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch ID",
+                        "name": "branch_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "service_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Counter ID",
+                        "name": "counter_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    }
+                }
+            }
+        },
         "/settings/resolve": {
             "get": {
                 "security": [
@@ -7379,10 +7449,16 @@ const docTemplate = `{
                 "branch_id": {
                     "type": "string"
                 },
+                "branch_service_id": {
+                    "type": "string"
+                },
                 "code": {
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 2
+                },
+                "display_name": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string",
@@ -7394,10 +7470,16 @@ const docTemplate = `{
         "github_com_Roisfaozi_queue-base_internal_modules_counter_model.UpdateCounterRequest": {
             "type": "object",
             "properties": {
+                "branch_service_id": {
+                    "type": "string"
+                },
                 "code": {
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 2
+                },
+                "display_name": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string",
@@ -7439,6 +7521,12 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
                 "code": {
                     "type": "string",
                     "maxLength": 50,
@@ -7448,6 +7536,18 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 3
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "province": {
+                    "type": "string"
+                },
+                "running_text": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
@@ -7547,15 +7647,39 @@ const docTemplate = `{
         "github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateBranchRequest": {
             "type": "object",
             "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
                 "code": {
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 2
                 },
+                "email": {
+                    "type": "string"
+                },
+                "logo_asset_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 3
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "postal_code": {
+                    "type": "string"
+                },
+                "province": {
+                    "type": "string"
+                },
+                "running_text": {
+                    "type": "string"
                 },
                 "status": {
                     "type": "string",
@@ -7563,6 +7687,9 @@ const docTemplate = `{
                         "active",
                         "inactive"
                     ]
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
@@ -8093,6 +8220,9 @@ const docTemplate = `{
                     "maxLength": 50,
                     "minLength": 2
                 },
+                "default_estimated_duration": {
+                    "type": "integer"
+                },
                 "is_pharmacy": {
                     "type": "boolean"
                 },
@@ -8103,6 +8233,9 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 3
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -8113,6 +8246,9 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 2
+                },
+                "default_estimated_duration": {
+                    "type": "integer"
                 },
                 "is_pharmacy": {
                     "type": "boolean"
@@ -8131,6 +8267,9 @@ const docTemplate = `{
                         "active",
                         "inactive"
                     ]
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
