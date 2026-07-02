@@ -93,8 +93,6 @@ func (u *queueUseCase) GetQueueStats(ctx context.Context) (*model.QueueStatsResp
 	if u.settingsResolver != nil {
 		if resolved, err := u.settingsResolver.Resolve(ctx, "queue_reset_time", branchID, "", ""); err == nil && resolved != "" {
 			resetTime = resolved
-		} else if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, "", ""); err == nil && resolved != "" {
-			resetTime = resolved
 		}
 	}
 	queueDateStr := computeBusinessQueueDate(now, resetTime)
@@ -209,8 +207,6 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	resetTime := "04:00"
 	if u.settingsResolver != nil {
 		if resolved, err := u.settingsResolver.Resolve(ctx, "queue_reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
-			resetTime = resolved
-		} else if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
 			resetTime = resolved
 		}
 	}

@@ -321,14 +321,14 @@ func TestRegisterQueue(t *testing.T) {
 			},
 		},
 		{
-			name:     "Positive_FallbacksToLegacyResetTimeKey",
-			category: "positive",
+			name:     "Negative_IgnoresLegacyResetTimeKeyInUsecase",
+			category: "negative",
 			req:      &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"},
 			settings: map[string]string{"reset_time": "05:00"},
 			tenantID: "t-1",
 			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.Equal(t, []string{"queue_reset_time", "reset_time"}, resolver.Calls[:2])
+				assert.Equal(t, "queue_reset_time", resolver.Calls[0])
 			},
 		},
 		{
