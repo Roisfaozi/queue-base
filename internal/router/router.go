@@ -30,6 +30,8 @@ import (
 	serviceHttp "github.com/Roisfaozi/queue-base/internal/modules/service/delivery/http"
 	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
 	settingsHttp "github.com/Roisfaozi/queue-base/internal/modules/settings/delivery/http"
+	signageModulePkg "github.com/Roisfaozi/queue-base/internal/modules/signage"
+	signageHttp "github.com/Roisfaozi/queue-base/internal/modules/signage/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/stats"
 	"github.com/Roisfaozi/queue-base/internal/modules/user"
 	userHttp "github.com/Roisfaozi/queue-base/internal/modules/user/delivery/http"
@@ -83,6 +85,7 @@ func SetupRouter(
 	settingsModule *settingsModulePkg.SettingsModule,
 	queueModule *queueModulePkg.QueueModule,
 	callerModule *caller.CallerModule,
+	signageModule *signageModulePkg.SignageModule,
 	scannerModule *scannerModulePkg.ScannerModule,
 	apiKeyModule *api_key.ApiKeyModule,
 	webhookModule *webhook.WebhookModule,
@@ -242,6 +245,7 @@ func SetupRouter(
 		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)
 		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, apiKeyMiddleware)
+		signageHttp.RegisterSignageRoutes(tenantAuthorized, signageModule.SignageController, apiKeyMiddleware)
 		scannerHttp.RegisterScannerRoutes(tenantAuthorized, scannerModule.ScannerController)
 
 		// Project Routes
