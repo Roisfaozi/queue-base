@@ -113,6 +113,12 @@ func (s *Service) Register(ctx context.Context, request model.RegisterRequest) (
 
 		defaultOrgName := fmt.Sprintf("%s's Workspace", user.Name)
 		defaultOrgSlug := pkg.Slugify(defaultOrgName + "-" + user.Username)
+		if len(defaultOrgSlug) > 50 {
+			defaultOrgSlug = defaultOrgSlug[:50]
+		}
+		if defaultOrgSlug == "" {
+			defaultOrgSlug = "ws-" + user.ID[:8]
+		}
 		defaultOrg := &orgEntity.Organization{
 			ID:      uuid.New().String(),
 			Code:    defaultOrgSlug,
