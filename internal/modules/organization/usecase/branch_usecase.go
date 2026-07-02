@@ -36,13 +36,19 @@ func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranc
 	req.Sanitize()
 	now := time.Now().UnixMilli()
 	branch := &entity.Branch{
-		ID:        uuid.New().String(),
-		TenantID:  tenantID,
-		Code:      req.Code,
-		Name:      req.Name,
-		Status:    entity.BranchStatusActive,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:          uuid.New().String(),
+		TenantID:    tenantID,
+		Code:        req.Code,
+		Name:        req.Name,
+		Address:     req.Address,
+		City:        req.City,
+		Province:    req.Province,
+		Phone:       req.Phone,
+		RunningText: req.RunningText,
+		Timezone:    req.Timezone,
+		Status:      entity.BranchStatusActive,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := u.repo.Create(ctx, branch); err != nil {
 		return nil, err
@@ -96,6 +102,33 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 	if req.Name != nil {
 		branch.Name = *req.Name
 	}
+	if req.Address != nil {
+		branch.Address = *req.Address
+	}
+	if req.City != nil {
+		branch.City = *req.City
+	}
+	if req.Province != nil {
+		branch.Province = *req.Province
+	}
+	if req.PostalCode != nil {
+		branch.PostalCode = *req.PostalCode
+	}
+	if req.Phone != nil {
+		branch.Phone = *req.Phone
+	}
+	if req.Email != nil {
+		branch.Email = *req.Email
+	}
+	if req.LogoAssetID != nil {
+		branch.LogoAssetID = *req.LogoAssetID
+	}
+	if req.RunningText != nil {
+		branch.RunningText = *req.RunningText
+	}
+	if req.Timezone != nil {
+		branch.Timezone = *req.Timezone
+	}
 	if req.Status != nil {
 		branch.Status = *req.Status
 	}
@@ -116,12 +149,21 @@ func (u *branchUseCase) DeleteBranch(ctx context.Context, branchID string) error
 
 func (u *branchUseCase) mapToResponse(branch *entity.Branch) *model.BranchResponse {
 	return &model.BranchResponse{
-		ID:        branch.ID,
-		TenantID:  branch.TenantID,
-		Code:      branch.Code,
-		Name:      branch.Name,
-		Status:    branch.Status,
-		CreatedAt: branch.CreatedAt,
-		UpdatedAt: branch.UpdatedAt,
+		ID:          branch.ID,
+		TenantID:    branch.TenantID,
+		Code:        branch.Code,
+		Name:        branch.Name,
+		Address:     branch.Address,
+		City:        branch.City,
+		Province:    branch.Province,
+		PostalCode:  branch.PostalCode,
+		Phone:       branch.Phone,
+		Email:       branch.Email,
+		LogoAssetID: branch.LogoAssetID,
+		RunningText: branch.RunningText,
+		Timezone:    branch.Timezone,
+		Status:      branch.Status,
+		CreatedAt:   branch.CreatedAt,
+		UpdatedAt:   branch.UpdatedAt,
 	}
 }
