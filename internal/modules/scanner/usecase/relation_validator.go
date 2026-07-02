@@ -16,14 +16,15 @@ type settingsResolver interface {
 }
 
 type relationValidator struct {
-	branchRepo  branchRepository.BranchRepository
-	serviceRepo serviceRepository.ServiceRepository
-	counterRepo counterRepository.CounterRepository
-	settings    settingsResolver
+	branchRepo        branchRepository.BranchRepository
+	serviceRepo       serviceRepository.ServiceRepository
+	branchServiceRepo serviceRepository.BranchServiceRepository
+	counterRepo       counterRepository.CounterRepository
+	settings          settingsResolver
 }
 
-func NewRelationValidator(branchRepo branchRepository.BranchRepository, serviceRepo serviceRepository.ServiceRepository, counterRepo counterRepository.CounterRepository, settingsResolver settingsResolver) RelationValidator {
-	return &relationValidator{branchRepo: branchRepo, serviceRepo: serviceRepo, counterRepo: counterRepo, settings: settingsResolver}
+func NewRelationValidator(branchRepo branchRepository.BranchRepository, serviceRepo serviceRepository.ServiceRepository, branchServiceRepo serviceRepository.BranchServiceRepository, counterRepo counterRepository.CounterRepository, settingsResolver settingsResolver) RelationValidator {
+	return &relationValidator{branchRepo: branchRepo, serviceRepo: serviceRepo, branchServiceRepo: branchServiceRepo, counterRepo: counterRepo, settings: settingsResolver}
 }
 
 func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
@@ -34,6 +35,13 @@ func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, se
 		service, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID)
 		if err != nil {
 			return fmt.Errorf("serviceRepo.FindByID failed (%v): %w", err, exception.ErrForbidden)
+		}
+		if v.branchServiceRepo != nil {
+			if _, err := v.branchServiceRepo.FindByService(ctx, tenantID, branchID, serviceID); err != nil {
+				return fmt.Errorf("branchServiceRepo.FindByService failed (%v): %w", err, exception.ErrForbidden)
+			}
+		} else {
+			return fmt.Errorf("branchServiceRepo missing: %w", exception.ErrForbidden)
 		}
 		requireCounter := service.IsPharmacy
 		pharmacyFlowEnabled := service.IsPharmacy

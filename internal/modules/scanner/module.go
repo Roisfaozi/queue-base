@@ -66,7 +66,7 @@ func NewScannerModule(queueModule *queueModulePkg.QueueModule, branchModule *bra
 	if settingsModule != nil {
 		resolver = settingsModule.QueueSettingsResolver
 	}
-	relationValidator := scannerUsecase.NewRelationValidator(branchModule.BranchRepo, serviceModule.ServiceRepo, counterModule.CounterRepo, resolver)
+	relationValidator := scannerUsecase.NewRelationValidator(branchModule.BranchRepo, serviceModule.ServiceRepo, serviceModule.BranchServiceRepo, counterModule.CounterRepo, resolver)
 	uc := scannerUsecase.NewScannerUseCase(queueModule.QueueUseCase, authenticator, relationValidator, audit...)
 	ctrl := scannerHttp.NewScannerControllerWithLogger(uc, validate, log)
 	return &ScannerModule{ScannerController: ctrl, ScannerUseCase: uc}
