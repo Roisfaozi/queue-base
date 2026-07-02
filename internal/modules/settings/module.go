@@ -19,6 +19,6 @@ func NewSettingsModule(db *gorm.DB, validate *validator.Validate) *SettingsModul
 	repo := repository.NewSettingsRepository(db)
 	uc := usecase.NewSettingsUseCase(repo)
 	ctrl := settingsHttp.NewSettingsController(uc, validate)
-	resolver := NewQueueSettingsResolver(uc)
+	resolver := NewQueueSettingsResolver(db, uc)
 	return &SettingsModule{SettingsController: ctrl, SettingsRepo: repo, SettingsUseCase: uc, QueueSettingsResolver: resolver}
 }
