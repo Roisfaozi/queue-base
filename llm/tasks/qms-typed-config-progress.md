@@ -225,3 +225,34 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Phase 2: Add BranchService repository and usecase, update Counter to validate `branch_service_id`, update Scanner and Queue to validate active branch-service relations.
+
+## 2026-07-02 — Phase 3A Typed Queue Settings Resolver
+
+- status: completed
+- owner paths:
+  - `internal/modules/settings/queue_settings_resolver.go`
+  - `internal/modules/settings/queue_settings_resolver_test.go`
+  - `internal/modules/settings/module.go`
+  - `internal/config/app.go`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Updated `QueueSettingsResolver` to read core QMS config from typed tables before falling back to generic settings.
+  - Wired settings module with DB-backed resolver instead of usecase-only generic resolver.
+  - Added tests for tenant default, branch override, counter override, and generic fallback for non-core keys.
+- tests added/updated:
+  - positive: tenant default, branch override, counter override.
+  - negative: not added; missing typed values still fall back to generic settings by compatibility choice.
+  - edge: branch null override inherits tenant default.
+  - vulnerability/security: tenant context required before typed resolver can read typed tables.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/settings/... ./internal/modules/queue/... ./internal/config`
+  - result: passed
+  - evidence: settings, queue, and config packages passed after resolver and test changes.
+- errors and fixes:
+  - error: compile failed with `nil is not used` in `typedFieldNullable` service branch.
+  - root cause: placeholder `nil` statement was left in a switch branch.
+  - fix: changed placeholder to `return nil`.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Phase 3B: expose typed effective-config API and remove direct generic-settings dependence from queue core where possible.

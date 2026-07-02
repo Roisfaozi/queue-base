@@ -53,3 +53,4 @@
 - If sandboxed runs block `git commit` due to read-only `.git/index.lock` across worktrees, record progress in the durable tracker and proceed without forcing source-control mutations.
 - When scaffolding new route domains, finalize route ownership first, then write controller and registration separately; avoid placeholder route helpers that duplicate groups or create temporary noop handlers.
 - Avoid adding duplicate imports for same package with different aliases; staticcheck `ST1019` fails fast. Reuse one alias for all interfaces from same package.
+- Remove placeholder-only statements before compile checks; a bare `nil` in Go switch branches causes `nil is not used`. Use `return nil` when branch intentionally has no typed value.
