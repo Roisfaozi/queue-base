@@ -292,7 +292,14 @@ export function QueueSettingsContent() {
 							) : effectiveConfig ? (
 								<div className="grid gap-4 md:grid-cols-2">
 									{EFFECTIVE_FIELDS.map((field) => {
-										const value = effectiveConfig[field.key];
+										const value = effectiveConfig[field.key] as
+											| string
+											| undefined;
+										const sourceKey =
+											`${field.key}_source` as keyof EffectiveQueueConfig;
+										const sourceValue = effectiveConfig[sourceKey] as
+											| string
+											| undefined;
 										return (
 											<div
 												key={field.key}
@@ -305,7 +312,18 @@ export function QueueSettingsContent() {
 															{field.description}
 														</p>
 													</div>
-													<Badge variant="outline">effective</Badge>
+													{sourceValue ? (
+														<Badge
+															variant="outline"
+															className="text-[10px] capitalize"
+														>
+															{sourceValue}
+														</Badge>
+													) : (
+														<Badge variant="outline" className="text-[10px]">
+															effective
+														</Badge>
+													)}
 												</div>
 												<p className="mt-4 break-all font-mono text-sm font-semibold">
 													{value || "—"}

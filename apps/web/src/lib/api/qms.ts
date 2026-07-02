@@ -53,9 +53,17 @@ export interface EffectiveQueueConfig {
 	service_id?: string;
 	counter_id?: string;
 	queue_reset_time: string;
+	queue_reset_time_source?: string;
+	queue_reset_time_inherited?: boolean;
 	ticket_prefix: string;
+	ticket_prefix_source?: string;
+	ticket_prefix_inherited?: boolean;
 	numbering_strategy: string;
+	numbering_strategy_source?: string;
+	numbering_strategy_inherited?: boolean;
 	default_estimated_duration?: string;
+	default_estimated_duration_source?: string;
+	default_estimated_duration_inherited?: boolean;
 }
 
 export interface Queue {
