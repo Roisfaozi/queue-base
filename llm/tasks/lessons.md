@@ -70,3 +70,4 @@
 - When adding adjacent TypeScript interfaces, verify the new interface is not nested inside another interface block; `tsc --noEmit` catches this as TS1131/TS1109 syntax errors.
 - QMS docs sync must replace legacy generic-settings queue flow with typed effective-config flow; leaving `reset_time`/`prefix`/`numbering` in the core docs makes the design look older than runtime.
 - Temporary patch files like `patch.txt` should not be kept in worktree; use direct `apply_patch` so docs slices stay clean.
+- When the MVP operational design supersedes earlier typed-config drafts, rewrite the roadmap fully instead of layering patch notes on the old plan; mixed plan generations hide true dependencies and cause overlapping worktree write sets.

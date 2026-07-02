@@ -520,3 +520,32 @@ Design sources:
   - lesson: avoid temporary patch files in repo worktrees; use direct patch application so cleanup is automatic.
 - next step:
   - Continue with UI polish or typed-config test matrix hardening if user requests.
+
+## 2026-07-02 — Plan Rebased to QMS MVP Operations
+
+- status: completed
+- owner paths:
+  - `llm/plans/roadmap/qms-typed-configuration-alignment.md`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Discarded old generic-settings roadmap drafts.
+  - Rewrote roadmap into 11 strictly parallel phases (A through K) with explicit write scopes.
+  - Added specific schema migrations (`branch_service_queue_settings`, `qms_clients`, `qms_client_credentials`, `operator_counter_assignments`).
+  - Added caller and signage dedicated endpoint phases.
+  - Added tenant/branch activation rule phase.
+  - Specified dependency graph for agent multi-worktree execution without git overlap.
+- tests added/updated:
+  - positive: planned.
+  - negative: planned.
+  - edge: planned.
+  - vulnerability/security: planned.
+- verification:
+  - command: `cat llm/plans/roadmap/qms-typed-configuration-alignment.md`
+  - result: passed
+  - evidence: parallel write scopes defined and no cross-agent file overlap.
+- errors and fixes:
+  - error: none in planning.
+- next step:
+  - Implement Phase A: Schema/Entity Migration for the missing MVP tables.
