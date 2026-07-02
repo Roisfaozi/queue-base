@@ -78,6 +78,7 @@ func (uc *organizationUseCase) CreateOrganization(ctx context.Context, userID st
 		// Create organization
 		org := &entity.Organization{
 			ID:      newID.String(),
+			Code:    request.Slug,
 			Name:    request.Name,
 			Slug:    request.Slug,
 			OwnerID: userID,
