@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
@@ -14,12 +15,101 @@ import (
 )
 
 type SettingsController struct {
-	useCase  usecase.SettingsUseCase
-	validate *validator.Validate
+	useCase       usecase.SettingsUseCase
+	queueResolver QueueSettingResolver
+	validate      *validator.Validate
+}
+
+// EffectiveQueueConfig godoc
+// @Summary      Resolve effective queue config
+// @Description  Resolves core QMS queue behavior from typed queue settings tables.
+// @Tags         settings
+// @Security     BearerAuth
+// @Produce      json
+// @Param        X-Organization-ID header string true "Tenant ID"
+// @Param        branch_id query string false "Branch ID"
+// @Param        service_id query string false "Service ID"
+// @Param        counter_id query string false "Counter ID"
+// @Success      200  {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      422  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /settings/effective [get]
+func (h *SettingsController) EffectiveQueueConfig(c *gin.Context) {
+	var req model.EffectiveQueueConfigRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid query parameters")
+		return
+	}
+	tenantID := database.GetTenantID(c.Request.Context())
+	if tenantID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	res, err := h.resolveEffectiveQueueConfig(c.Request.Context(), tenantID, req)
+	if err != nil {
+		response.HandleError(c, err, "failed to resolve effective queue config")
+		return
+	}
+	response.Success(c, res)
+}
+
+func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, tenantID string, req model.EffectiveQueueConfigRequest) (*model.EffectiveQueueConfigResponse, error) {
+	resolver := h.queueResolver
+	if resolver == nil {
+		resolver = genericQueueResolver{useCase: h.useCase}
+	}
+	queueResetTime, err := resolver.Resolve(ctx, "queue_reset_time", req.BranchID, req.ServiceID, req.CounterID)
+	if err != nil {
+		return nil, err
+	}
+	ticketPrefix, err := resolver.Resolve(ctx, "ticket_prefix", req.BranchID, req.ServiceID, req.CounterID)
+	if err != nil {
+		return nil, err
+	}
+	numberingStrategy, err := resolver.Resolve(ctx, "numbering_strategy", req.BranchID, req.ServiceID, req.CounterID)
+	if err != nil {
+		return nil, err
+	}
+	defaultEstimatedDuration, _ := resolver.Resolve(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
+	return &model.EffectiveQueueConfigResponse{
+		TenantID:                 tenantID,
+		BranchID:                 req.BranchID,
+		ServiceID:                req.ServiceID,
+		CounterID:                req.CounterID,
+		QueueResetTime:           queueResetTime,
+		TicketPrefix:             ticketPrefix,
+		NumberingStrategy:        numberingStrategy,
+		DefaultEstimatedDuration: defaultEstimatedDuration,
+	}, nil
+}
+
+type genericQueueResolver struct {
+	useCase usecase.SettingsUseCase
+}
+
+func (r genericQueueResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
+	res, err := r.useCase.ResolveSetting(ctx, &model.ResolveSettingRequest{Key: key, BranchID: branchID, ServiceID: serviceID, CounterID: counterID})
+	if err != nil {
+		return "", err
+	}
+	return res.Value, nil
+}
+
+type QueueSettingResolver interface {
+	Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error)
 }
 
 func NewSettingsController(useCase usecase.SettingsUseCase, validate *validator.Validate) *SettingsController {
 	return &SettingsController{useCase: useCase, validate: validate}
+}
+
+func NewSettingsControllerWithResolver(useCase usecase.SettingsUseCase, validate *validator.Validate, resolver QueueSettingResolver) *SettingsController {
+	return &SettingsController{useCase: useCase, queueResolver: resolver, validate: validate}
 }
 
 // Create godoc

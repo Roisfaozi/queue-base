@@ -42,3 +42,20 @@ type ResolveSettingRequest struct {
 	ServiceID string `json:"service_id" validate:"omitempty,uuid4"`
 	CounterID string `json:"counter_id" validate:"omitempty,uuid4"`
 }
+
+type EffectiveQueueConfigRequest struct {
+	BranchID  string `form:"branch_id" json:"branch_id" validate:"omitempty,uuid4"`
+	ServiceID string `form:"service_id" json:"service_id" validate:"omitempty,uuid4"`
+	CounterID string `form:"counter_id" json:"counter_id" validate:"omitempty,uuid4"`
+}
+
+type EffectiveQueueConfigResponse struct {
+	TenantID                 string `json:"tenant_id"`
+	BranchID                 string `json:"branch_id,omitempty"`
+	ServiceID                string `json:"service_id,omitempty"`
+	CounterID                string `json:"counter_id,omitempty"`
+	QueueResetTime           string `json:"queue_reset_time"`
+	TicketPrefix             string `json:"ticket_prefix"`
+	NumberingStrategy        string `json:"numbering_strategy"`
+	DefaultEstimatedDuration string `json:"default_estimated_duration,omitempty"`
+}

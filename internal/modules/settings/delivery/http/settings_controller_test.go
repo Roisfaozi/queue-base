@@ -26,6 +26,14 @@ type stubSettingsControllerUseCase struct {
 	resolveRes *model.SettingResponse
 }
 
+type stubQueueResolver struct {
+	values map[string]string
+}
+
+func (s stubQueueResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
+	return s.values[key], nil
+}
+
 func (s *stubSettingsControllerUseCase) CreateSetting(ctx context.Context, req *model.CreateSettingRequest) (*model.SettingResponse, error) {
 	s.createReq = req
 	return s.createRes, nil
@@ -209,6 +217,54 @@ func TestSettingsController(t *testing.T) {
 				w := httptest.NewRecorder()
 				router.ServeHTTP(w, req)
 
+				assert.Equal(t, tt.wantCode, w.Code)
+			})
+		}
+	})
+
+	t.Run("EffectiveQueueConfig", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			query    string
+			tenantID string
+			wantCode int
+		}{
+			{
+				name:     "Positive_ResolvesTypedConfig",
+				query:    "?branch_id=550e8400-e29b-41d4-a716-446655440000",
+				tenantID: "tenant-1",
+				wantCode: http.StatusOK,
+			},
+			{
+				name:     "Negative_RejectsMissingTenantContext",
+				query:    "?branch_id=550e8400-e29b-41d4-a716-446655440000",
+				tenantID: "",
+				wantCode: http.StatusBadRequest,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := &stubSettingsControllerUseCase{}
+				controller := NewSettingsControllerWithResolver(uc, newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{
+					"queue_reset_time":           "04:00",
+					"ticket_prefix":              "A",
+					"numbering_strategy":         "daily_branch_sequence",
+					"default_estimated_duration": "5",
+				}})
+				router := gin.New()
+				router.GET("/settings/effective", func(c *gin.Context) {
+					ctx := c.Request.Context()
+					if tt.tenantID != "" {
+						ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+					}
+					c.Request = c.Request.WithContext(ctx)
+					controller.EffectiveQueueConfig(c)
+				})
+
+				req, _ := http.NewRequest("GET", "/settings/effective"+tt.query, nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 				assert.Equal(t, tt.wantCode, w.Code)
 			})
 		}
