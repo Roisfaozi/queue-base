@@ -8,6 +8,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	serviceRepository "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
@@ -22,12 +23,13 @@ type CounterUseCase interface {
 }
 
 type counterUseCase struct {
-	repo       repository.CounterRepository
-	branchRepo branchRepository.BranchRepository
+	repo              repository.CounterRepository
+	branchRepo        branchRepository.BranchRepository
+	branchServiceRepo serviceRepository.BranchServiceRepository
 }
 
-func NewCounterUseCase(repo repository.CounterRepository, branchRepo branchRepository.BranchRepository) CounterUseCase {
-	return &counterUseCase{repo: repo, branchRepo: branchRepo}
+func NewCounterUseCase(repo repository.CounterRepository, branchRepo branchRepository.BranchRepository, branchServiceRepo serviceRepository.BranchServiceRepository) CounterUseCase {
+	return &counterUseCase{repo: repo, branchRepo: branchRepo, branchServiceRepo: branchServiceRepo}
 }
 
 func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCounterRequest) (*model.CounterResponse, error) {
@@ -43,6 +45,9 @@ func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCou
 	}
 	if _, err := u.branchRepo.FindByID(ctx, tenantID, req.BranchID); err != nil {
 		return nil, exception.ErrForbidden
+	}
+	if err := u.validateBranchService(ctx, tenantID, req.BranchID, req.BranchServiceID); err != nil {
+		return nil, err
 	}
 	req.Sanitize()
 	now := time.Now().UnixMilli()
@@ -112,6 +117,9 @@ func (u *counterUseCase) UpdateCounter(ctx context.Context, counterID string, re
 		counter.Name = *req.Name
 	}
 	if req.BranchServiceID != nil {
+		if err := u.validateBranchService(ctx, tenantID, counter.BranchID, *req.BranchServiceID); err != nil {
+			return nil, err
+		}
 		counter.BranchServiceID = *req.BranchServiceID
 	}
 	if req.DisplayName != nil {
@@ -125,6 +133,23 @@ func (u *counterUseCase) UpdateCounter(ctx context.Context, counterID string, re
 		return nil, err
 	}
 	return u.mapToResponse(counter), nil
+}
+
+func (u *counterUseCase) validateBranchService(ctx context.Context, tenantID, branchID, branchServiceID string) error {
+	if branchServiceID == "" {
+		return nil
+	}
+	if u.branchServiceRepo == nil {
+		return exception.ErrForbidden
+	}
+	branchService, err := u.branchServiceRepo.FindByID(ctx, tenantID, branchID, branchServiceID)
+	if err != nil {
+		return exception.ErrForbidden
+	}
+	if !branchService.IsActive {
+		return exception.ErrForbidden
+	}
+	return nil
 }
 
 func (u *counterUseCase) DeleteCounter(ctx context.Context, counterID string) error {

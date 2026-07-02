@@ -7,6 +7,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
 	organizationEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
@@ -173,7 +174,7 @@ func TestCreateCounter(t *testing.T) {
 				branch: tt.stubBranchRepo.branch,
 				err:    tt.stubBranchRepo.err,
 			}
-			uc := NewCounterUseCase(repo, branchRepo)
+			uc := NewCounterUseCase(repo, branchRepo, &stubCounterBranchServiceRepo{})
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -241,7 +242,7 @@ func TestUpdateCounter(t *testing.T) {
 				counter: tt.stubRepo.counter,
 				err:     tt.stubRepo.err,
 			}
-			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{})
+			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{}, &stubCounterBranchServiceRepo{})
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -263,4 +264,30 @@ func TestUpdateCounter(t *testing.T) {
 			}
 		})
 	}
+}
+
+type stubCounterBranchServiceRepo struct {
+	err error
+}
+
+func (s *stubCounterBranchServiceRepo) Create(_ context.Context, bs *serviceEntity.BranchService) error {
+	return nil
+}
+func (s *stubCounterBranchServiceRepo) FindByID(_ context.Context, tenantID, branchID, id string) (*serviceEntity.BranchService, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &serviceEntity.BranchService{ID: id, TenantID: tenantID, BranchID: branchID, IsActive: true}, nil
+}
+func (s *stubCounterBranchServiceRepo) FindByService(_ context.Context, tenantID, branchID, serviceID string) (*serviceEntity.BranchService, error) {
+	return nil, nil
+}
+func (s *stubCounterBranchServiceRepo) FindAll(_ context.Context, tenantID, branchID string) ([]*serviceEntity.BranchService, error) {
+	return nil, nil
+}
+func (s *stubCounterBranchServiceRepo) Update(_ context.Context, bs *serviceEntity.BranchService) error {
+	return nil
+}
+func (s *stubCounterBranchServiceRepo) Delete(_ context.Context, tenantID, branchID, id string) error {
+	return nil
 }
