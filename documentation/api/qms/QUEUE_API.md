@@ -15,9 +15,11 @@ Register queue ticket.
 
 ### Runtime defaults
 
-- `queue_reset_time` fallback `reset_time` fallback `04:00`
-- `ticket_prefix` fallback `prefix` fallback `A`
-- numbering strategy effective default `sequential`
+- `queue_reset_time` — default runtime `04:00`
+- `ticket_prefix` — default runtime `A`
+- `numbering_strategy` — default runtime `sequential`
+
+Queue config resolved via typed tables (`tenant_queue_settings` / `branch_queue_settings` / `service_queue_settings` / `counter_queue_settings`). Use `GET /settings/effective` to inspect effective values and inheritance chain (`*_source`, `*_inherited`). Generic `settings` table is compatibility-only for non-core config.
 
 ### Example request body
 

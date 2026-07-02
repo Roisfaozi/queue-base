@@ -61,38 +61,41 @@ curl -X POST 'http://127.0.0.1:8080/api/v1/settings' \
   }'
 ```
 
-## `GET /api/v1/settings/resolve`
+## `GET /api/v1/settings/effective`
 
-Resolve setting by inheritance order: counter -> service -> branch -> tenant.
+Mengembalikan nilai efektif core queue config dengan metadata inheritance (`*_source`, `*_inherited`). Gunakan endpoint ini untuk queue runtime. Generic `/settings/resolve` tetap tersedia untuk non-core compatibility.
+
+Resolve effective queue config by inheritance order: counter -> service -> branch -> tenant.
 
 ### Query
 
 | Field | In | Type | Required | Enum | Default | Notes |
 |---|---|---|---|---|---|---|
-| `key` | query | string | Yes | - | - | target setting key |
 | `branch_id` | query | string(uuid) | Optional | - | - | branch scope candidate |
 | `service_id` | query | string(uuid) | Optional | - | - | service scope candidate |
 | `counter_id` | query | string(uuid) | Optional | - | - | counter scope candidate |
 
 ### Example request
 
-`GET /api/v1/settings/resolve?key=queue_reset_time&branch_id=550e8400-e29b-41d4-a716-446655440100`
+`GET /api/v1/settings/effective?branch_id=550e8400-e29b-41d4-a716-446655440100`
 
 ### Example success response
 
 ```json
 {
   "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440400",
-    "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
-    "scope_type": "branch",
-    "scope_id": "550e8400-e29b-41d4-a716-446655440100",
-    "key": "queue_reset_time",
-    "value": "04:00",
-    "value_type": "string",
-    "is_active": true,
-    "created_at": 1761800000000,
-    "updated_at": 1761800000000
+    "queue_reset_time": "04:00",
+    "queue_reset_time_source": "branch",
+    "queue_reset_time_inherited": true,
+    "ticket_prefix": "A",
+    "ticket_prefix_source": "tenant",
+    "ticket_prefix_inherited": true,
+    "numbering_strategy": "daily_branch_sequence",
+    "numbering_strategy_source": "tenant",
+    "numbering_strategy_inherited": true,
+    "default_estimated_duration": "5",
+    "default_estimated_duration_source": "service",
+    "default_estimated_duration_inherited": true
   }
 }
 ```
@@ -100,7 +103,7 @@ Resolve setting by inheritance order: counter -> service -> branch -> tenant.
 ### Curl
 
 ```bash
-curl 'http://127.0.0.1:8080/api/v1/settings/resolve?key=queue_reset_time&branch_id=550e8400-e29b-41d4-a716-446655440100' \
+curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=550e8400-e29b-41d4-a716-446655440100' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'X-Organization-ID: 550e8400-e29b-41d4-a716-446655440000'
 ```
