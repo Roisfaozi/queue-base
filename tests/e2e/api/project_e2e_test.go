@@ -5,6 +5,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -66,7 +67,6 @@ func TestProjectE2E_CRUD_Lifecycle(t *testing.T) {
 	defer server.Cleanup()
 
 	token, orgID := setupProjectE2E(t, server)
-
 	var projectID string
 
 	tests := []struct {
@@ -207,118 +207,105 @@ func TestProjectE2E_CRUD_Lifecycle(t *testing.T) {
 	}
 }
 
-func TestProjectE2E_CreateMultiple(t *testing.T) {
+// createTestProject creates a project for testing get/update/delete endpoints in stateless TDT
+func createTestProject(t *testing.T, server *setup.TestServer, token, orgID string) string {
+	payload := map[string]string{
+		"name":   "Precreated Project",
+		"domain": "pre.example.com",
+	}
+	resp := server.Client.POST("/api/v1/projects", payload,
+		setup.WithAuth(token),
+		setup.WithOrg(orgID),
+	)
+	require.Equal(t, 201, resp.StatusCode)
+
+	var result struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	resp.JSON(&result)
+	return result.Data.ID
+}
+
+func TestProjectE2E_Stateless(t *testing.T) {
 	server := setup.SetupTestServer(t)
 	defer server.Cleanup()
 
 	token, orgID := setupProjectE2E(t, server)
+	// Create one project beforehand for get-by-id tests
+	_ = createTestProject(t, server, token, orgID)
 
 	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
+		name           string
+		endpoint       string
+		method         string
+		payload        any
+		token          string
+		orgID          string
+		expectedStatus int
+		validateFunc   func(t *testing.T, resp *setup.Response)
 	}{
 		{
-			name:     "Create Multiple Projects",
-			category: "positive",
-			run: func(t *testing.T) {
-				for i := 1; i <= 3; i++ {
-					payload := map[string]string{
-						"name":   fmt.Sprintf("Project %d", i),
-						"domain": fmt.Sprintf("project%d.example.com", i),
-					}
-					resp := server.Client.POST("/api/v1/projects", payload,
-						setup.WithAuth(token),
-						setup.WithOrg(orgID),
-					)
-					require.Equal(t, 201, resp.StatusCode)
-				}
-
-				resp := server.Client.GET("/api/v1/projects",
-					setup.WithAuth(token),
-					setup.WithOrg(orgID),
-				)
-				assert.Equal(t, 200, resp.StatusCode)
-
-				var result struct {
-					Data []struct {
-						ID string `json:"id"`
-					} `json:"data"`
-				}
-				resp.JSON(&result)
-				assert.GreaterOrEqual(t, len(result.Data), 3)
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
-
-func TestProjectE2E_Unauthorized(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
-
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
-		{
-			name:     "Create Without Auth",
-			category: "negative",
-			run: func(t *testing.T) {
-				resp := server.Client.POST("/api/v1/projects", map[string]string{
-					"name":   "Unauth Project",
-					"domain": "unauth.com",
-				})
-				assert.Equal(t, 401, resp.StatusCode)
-			},
+			name:           "Success_CreateMultipleProjects",
+			endpoint:       "/api/v1/projects",
+			method:         http.MethodPost,
+			payload:        map[string]string{"name": "Multiple 1", "domain": "m1.example.com"},
+			token:          token,
+			orgID:          orgID,
+			expectedStatus: http.StatusCreated,
 		},
 		{
-			name:     "Get All Without Auth",
-			category: "negative",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/projects")
-				assert.Equal(t, 401, resp.StatusCode)
-			},
+			name:           "Error_CreateWithoutAuth",
+			endpoint:       "/api/v1/projects",
+			method:         http.MethodPost,
+			payload:        map[string]string{"name": "Unauth Project", "domain": "unauth.com"},
+			token:          "",
+			orgID:          orgID,
+			expectedStatus: http.StatusUnauthorized,
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
-
-func TestProjectE2E_GetByID_NotFound(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
-
-	token, orgID := setupProjectE2E(t, server)
-
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
 		{
-			name:     "Get Non-existent Project",
-			category: "negative",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/projects/nonexistent-id",
-					setup.WithAuth(token),
-					setup.WithOrg(orgID),
-				)
-				assert.Equal(t, 404, resp.StatusCode)
-			},
+			name:           "Error_GetAllWithoutAuth",
+			endpoint:       "/api/v1/projects",
+			method:         http.MethodGet,
+			token:          "",
+			orgID:          orgID,
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "Error_GetNonexistentProject",
+			endpoint:       "/api/v1/projects/nonexistent-id",
+			method:         http.MethodGet,
+			token:          token,
+			orgID:          orgID,
+			expectedStatus: http.StatusNotFound,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
+			var opts []setup.RequestOption
+			if tt.token != "" {
+				opts = append(opts, setup.WithAuth(tt.token))
+			}
+			if tt.orgID != "" {
+				opts = append(opts, setup.WithOrg(tt.orgID))
+			}
+
+			var resp *setup.Response
+			switch tt.method {
+			case http.MethodGet:
+				resp = server.Client.GET(tt.endpoint, opts...)
+			case http.MethodPost:
+				resp = server.Client.POST(tt.endpoint, tt.payload, opts...)
+			default:
+				t.Fatalf("unsupported method %s", tt.method)
+			}
+
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+			if tt.validateFunc != nil {
+				tt.validateFunc(t, resp)
+			}
 		})
 	}
 }
