@@ -259,6 +259,113 @@
 | Backfill script | ❌ missing | No seed/backfill SQL script in `db/seeds/` |
 | Mapping: settings → typed tables | ❌ missing | No automated migration for existing data |
 
+---
+
+## 16. Final MVP Operational Design Gap Audit — Sections 4 to 42
+
+> Source audited: `documentation/New Design Document — QMS MVP Operatio.md`
+> Scope: live backend/frontend/schema evidence only. Legacy docs are not runtime truth.
+> Status terms: `done` means live code covers design intent; `partial` means foundation exists but endpoint/shape/rule is incomplete; `missing` means no live implementation found.
+
+### 16.1 Core Architecture Principles — Section 4
+
+| Section | Status | Gap / Finding | Live Evidence |
+|---|---|---|---|
+| 4.1 Tenant first | done | QMS entities/usecases resolve and write `tenant_id`; queue list/stats require tenant context. | `internal/modules/queue/entity/queue_entity.go:22`, `internal/modules/queue/usecase/queue_usecase.go:60`, `internal/modules/queue/repository/queue_repository.go:168` |
+| 4.2 Branch under tenant | done | Branch entity and branch-owned queue queries are tenant+branch scoped. | `internal/modules/organization/entity/branch_entity.go:13`, `internal/modules/queue/repository/queue_repository.go:168`, `internal/modules/queue/repository/queue_repository.go:210` |
+| 4.3 One queue record per ticket/visit | done | Queue master has one `ticket_no`, one `queue_no`, and `current_journey_id`; journey/history separated. | `internal/modules/queue/entity/queue_entity.go:22`, `internal/modules/queue/entity/queue_entity.go:38`, `internal/modules/queue/entity/queue_entity.go:51` |
+| 4.4 Forwarding uses queue journey | done | Forward updates current queue and appends next `queue_journey`; no new queue master row. | `internal/modules/queue/usecase/queue_usecase.go:351`, `internal/modules/queue/usecase/queue_usecase.go:377`, `internal/modules/queue/repository/queue_repository.go:240` |
+| 4.5 No generic settings anywhere | partial | Typed resolver exists, but legacy `settings` table/module still exists and resolver supports fallback path. | `internal/modules/settings/entity/settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:47`, `internal/modules/settings/queue_settings_resolver.go:54` |
+| 4.6 Profile data is not settings | done | Tenant/branch profile fields live on main organization/branch entities. | `internal/modules/organization/entity/organization_entity.go:18`, `internal/modules/organization/entity/organization_entity.go:21`, `internal/modules/organization/entity/branch_entity.go:16` |
+| 4.7 Behavior config uses typed tables | partial | Typed tables exist, but design-named `branch_service_queue_settings` is absent; live code uses `service_queue_settings` and `counter_queue_settings`. | `db/migrations/000032_align_qms_typed_configuration.up.sql:54`, `db/migrations/000032_align_qms_typed_configuration.up.sql:90`, `db/migrations/000032_align_qms_typed_configuration.up.sql:108` |
+
+### 16.2 Tenant, Branch, Services, Counters — Sections 7 to 15
+
+| Section | Status | Gap / Finding | Live Evidence |
+|---|---|---|---|
+| 7 Tenant design | partial | Tenant profile fields and status exist, but activation completeness rule is not enforced. | `internal/modules/organization/entity/organization_entity.go:15`, `internal/modules/organization/entity/organization_entity.go:30`, `internal/modules/organization/usecase/organization_usecase.go:55` |
+| 8 `tenant_queue_settings` | done | Table/entity include defaults and tenant unique constraint. | `db/migrations/000032_align_qms_typed_configuration.up.sql:54`, `db/migrations/000032_align_qms_typed_configuration.up.sql:67`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3` |
+| 9 Branch design | partial | Branch profile fields exist; branch logo field exists; explicit branch-logo-fallback-to-tenant resolver is missing. | `db/migrations/000032_align_qms_typed_configuration.up.sql:14`, `internal/modules/organization/entity/branch_entity.go:22`, `internal/modules/organization/model/branch_model.go:20` |
+| 10 `branch_queue_settings` | done | Nullable override fields and tenant+branch unique key exist. | `db/migrations/000032_align_qms_typed_configuration.up.sql:71`, `db/migrations/000032_align_qms_typed_configuration.up.sql:85`, `internal/modules/settings/entity/qms_queue_settings_entity.go:20` |
+| 11 Services | partial | Service type/duration/pharmacy flags exist; audio/narrative fallback rules are not implemented. | `db/migrations/000032_align_qms_typed_configuration.up.sql:25`, `internal/modules/service/entity/service_entity.go:13`, `internal/modules/service/entity/service_entity.go:17` |
+| 12 Branch services | done | Branch-service table and CRUD/usecase exist with tenant/branch/service binding. | `db/migrations/000032_align_qms_typed_configuration.up.sql:29`, `internal/modules/service/usecase/branch_service_usecase.go:31`, `internal/modules/service/repository/branch_service_repository.go:1` |
+| 13 `branch_service_queue_settings` | missing | Design table by this name is absent; current schema has `service_queue_settings`, not branch-service-specific settings. | `documentation/New Design Document — QMS MVP Operatio.md:778`, `db/migrations/000032_align_qms_typed_configuration.up.sql:90`, `internal/modules/settings/entity/qms_queue_settings_entity.go:38` |
+| 14 Counters | done | Counter has `branch_service_id`, display name, status, and branch-service validation. | `db/migrations/000032_align_qms_typed_configuration.up.sql:48`, `internal/modules/counter/entity/counter_entity.go:14`, `internal/modules/counter/usecase/counter_usecase.go:151` |
+| 15 `counter_queue_settings` | done | Counter settings table/entity exist with nullable override fields. | `db/migrations/000032_align_qms_typed_configuration.up.sql:108`, `db/migrations/000032_align_qms_typed_configuration.up.sql:122`, `internal/modules/settings/entity/qms_queue_settings_entity.go:57` |
+
+### 16.3 Queue, Journeys, Estimate, Counter Sequence — Sections 16 to 23
+
+| Section | Status | Gap / Finding | Live Evidence |
+|---|---|---|---|
+| 16 Queues | done | Queue master row has tenant, branch, date, ticket, number, status, current journey. | `internal/modules/queue/entity/queue_entity.go:22`, `internal/modules/queue/model/queue_model.go:7`, `db/migrations/000027_create_queues_and_journeys.up.sql:1` |
+| 17 Queue journeys | done | Journey entity has queue, tenant, branch, service, counter, seq, status; forwarding enforces active journey guard. | `internal/modules/queue/entity/queue_entity.go:38`, `internal/modules/queue/repository/queue_repository.go:246`, `internal/modules/queue/repository/queue_repository.go:248` |
+| 18 Mapping concept | done | Queue points to current journey and list endpoints filter journeys by branch/service/counter. | `internal/modules/queue/entity/queue_entity.go:32`, `internal/modules/queue/delivery/http/queue_routes.go:22`, `internal/modules/queue/delivery/http/queue_routes.go:23` |
+| 19 Operational actions | partial | Generic queue transition supports call/serve/complete/skip/cancel; caller-specific single action endpoint is missing. | `internal/modules/queue/model/queue_model.go:38`, `internal/modules/queue/usecase/queue_usecase.go:391`, `internal/modules/queue/delivery/http/queue_routes.go:16` |
+| 21 Queue-left and estimate response | partial | Queue stats and active journeys exist, but doc-level estimate response shape and estimate endpoint are absent. | `internal/modules/queue/usecase/queue_usecase.go:78`, `internal/modules/queue/usecase/queue_usecase.go:107`, `internal/modules/queue/model/queue_model.go:70` |
+| 22 Visit journeys | done | Visit journey entity and event writes exist for register/forward/transition. | `internal/modules/queue/entity/queue_entity.go:51`, `internal/modules/queue/usecase/queue_usecase.go:367`, `internal/modules/queue/usecase/queue_usecase.go:415` |
+| 23 `queue_counters` | partial | Atomic create/numbering exists in repository flow, but no explicit `queue_counters` table found. | `internal/modules/queue/usecase/queue_usecase.go:149`, `internal/modules/queue/repository/queue_repository.go:232`, `internal/modules/queue/repository/queue_repository.go:240` |
+
+### 16.4 Caller, Signage, Client Credential Binding — Sections 28 to 34
+
+| Section | Status | Gap / Finding | Live Evidence |
+|---|---|---|---|
+| 28 `operator_counter_assignments` | missing | No migration/entity/repository/usecase/route found. | `documentation/New Design Document — QMS MVP Operatio.md:1773`; `rg 'operator_counter_assignments|OperatorCounter|operator_counter' internal db tests` returned no implementation |
+| 29 `qms_clients` | missing | No migration/entity/repository/usecase/route found. | `documentation/New Design Document — QMS MVP Operatio.md:1824`; `rg 'qms_clients|QMSClient|qms_client' internal db tests` returned no implementation |
+| 30 `qms_client_credentials` | missing | No credential table or hash/auth binding for QMS clients exists. | `documentation/New Design Document — QMS MVP Operatio.md:1889`; `rg 'qms_client_credentials|ClientCredential|client_credential' internal db tests` returned no implementation |
+| 31 Caller login context binding | missing | No two-step client credential + human operator login context exists; scanner has its own request authenticator only. | `internal/modules/scanner/usecase/scanner_usecase.go:75`, `internal/modules/scanner/usecase/scanner_usecase.go:93`, `internal/modules/scanner/usecase/scanner_usecase.go:119` |
+| 32 Caller endpoints | missing | No `/caller` routes/controllers; current queue route is generic `/queues/:id/transition`. | `internal/router/router.go:223`, `internal/router/router.go:240`, `internal/modules/queue/delivery/http/queue_routes.go:16` |
+| 34 Signage endpoints | missing | No `/signage/me` or `/signage/current-calls` route/controller/usecase. | `documentation/New Design Document — QMS MVP Operatio.md:2093`, `documentation/New Design Document — QMS MVP Operatio.md:2126`; `rg 'signage|Signage|/signage' internal` returned no implementation |
+
+### 16.5 Typed Behavior Consumption — Section 36
+
+| Section | Status | Gap / Finding | Live Evidence |
+|---|---|---|---|
+| 36.1 Queue reset time | done | Queue stats/register use resolver-provided reset time for business date. | `internal/modules/queue/usecase/queue_usecase.go:90`, `internal/modules/queue/usecase/queue_usecase.go:149`, `internal/modules/queue/usecase/queue_usecase.go:160` |
+| 36.2 Ticket prefix | done | Ticket prefix resolved through settings resolver. | `internal/modules/queue/usecase/queue_usecase.go:161`, `internal/modules/settings/queue_settings_resolver.go:146` |
+| 36.3 Estimated duration | partial | Fields exist; resolver handling is incomplete for nullable typed fields and no full estimate response wiring exists. | `db/migrations/000032_align_qms_typed_configuration.up.sql:59`, `db/migrations/000032_align_qms_typed_configuration.up.sql:94`, `internal/modules/settings/queue_settings_resolver.go:155` |
+| 36.4 Audio | missing | No audio field/resolver/endpoint found in QMS live code. | `documentation/New Design Document — QMS MVP Operatio.md:2232`; `rg 'audio|Audio' internal/modules db/migrations` has no QMS implementation |
+| 36.5 Narrative | missing | No narrative field/resolver/endpoint found in QMS live code. | `documentation/New Design Document — QMS MVP Operatio.md:2240`; `rg 'narrative|Narrative' internal/modules db/migrations` has no QMS implementation |
+| 36.6 Auto call next | missing | `auto_call_next` absent from schema/entity/resolver. | `documentation/New Design Document — QMS MVP Operatio.md:2248`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:142` |
+| 36.7 Allow recall | partial | `allow_recall` columns exist, but caller recall semantics and caller endpoint are missing. | `db/migrations/000032_align_qms_typed_configuration.up.sql:62`, `db/migrations/000032_align_qms_typed_configuration.up.sql:80`, `db/migrations/000032_align_qms_typed_configuration.up.sql:117` |
+
+### 16.6 Audit, Logging, UI, Tests — Sections 38 to 42
+
+| Section | Status | Gap / Finding | Live Evidence |
+|---|---|---|---|
+| 38 Audit setup events | partial | Service/branch-service/counter/settings/queue audit calls exist; client/caller/signage setup audit cannot exist because domains missing. | `internal/modules/service/usecase/service_usecase.go:165`, `internal/modules/service/usecase/branch_service_usecase.go:133`, `internal/modules/counter/usecase/counter_usecase.go:180` |
+| 38 Queue events | done | Queue register/forward/transition emits visit journeys and audit. | `internal/modules/queue/usecase/queue_usecase.go:275`, `internal/modules/queue/usecase/queue_usecase.go:385`, `internal/modules/queue/usecase/queue_usecase.go:415` |
+| 38 Audit metadata | partial | Audit supports values and request metadata in audit module, but no caller/signage client metadata yet. | `internal/modules/audit/usecase/audit_usecase.go:50`, `internal/modules/scanner/usecase/scanner_usecase.go:160`, `internal/modules/queue/usecase/queue_usecase.go:385` |
+| 39 Error logging context | partial | Tenant/branch guards exist; no central QMS correlation/client context for caller/signage. | `internal/modules/queue/usecase/queue_usecase.go:60`, `internal/modules/scanner/usecase/scanner_usecase.go:75`, `internal/modules/settings/delivery/http/settings_controller.go:46` |
+| 40.1 Dashboard/manage | partial | Backend CRUD/settings/stat endpoints exist; MVP setup wizard/typed manage surface is incomplete. | `internal/modules/settings/delivery/http/settings_routes.go:8`, `internal/modules/service/delivery/http/service_routes.go:8`, `internal/modules/counter/delivery/http/counter_routes.go:8` |
+| 40.2 Queue operation | done | Register/list/forward/transition/visit journey routes exist. | `internal/modules/queue/delivery/http/queue_routes.go:11`, `internal/modules/queue/delivery/http/queue_routes.go:15`, `internal/modules/queue/delivery/http/queue_routes.go:16` |
+| 40.3 Caller | missing | No caller module, route, context, page, or endpoint found. | `documentation/New Design Document — QMS MVP Operatio.md:2502`; `rg 'caller|Caller|/caller' internal apps` returned no implementation |
+| 40.4 Signage | missing | No signage module, route, context, page, or endpoint found. | `documentation/New Design Document — QMS MVP Operatio.md:2550`; `rg 'signage|Signage|/signage' internal apps` returned no implementation |
+| 42 Tests | partial | Queue/service/counter/settings tests exist; caller/signage/client credential/operator assignment tests are missing. | `internal/modules/settings/queue_settings_resolver_test.go:1`, `internal/modules/counter/usecase/counter_usecase_test.go:1`, `tests/e2e/api/qms_queue_e2e_test.go:1` |
+
+### 16.7 Focus Gap Register
+
+| Focus Area | Status | Required Next Work | Evidence |
+|---|---|---|---|
+| `branch_service_queue_settings` | missing | Add migration/entity/repository/resolver scope keyed by `tenant_id + branch_service_id`, or explicitly revise design to use `service_queue_settings`. | `documentation/New Design Document — QMS MVP Operatio.md:778`, `db/migrations/000032_align_qms_typed_configuration.up.sql:90` |
+| `qms_clients` | missing | Add client table/domain for caller/signage/scanner/kiosk binding. | `documentation/New Design Document — QMS MVP Operatio.md:1824` |
+| `qms_client_credentials` | missing | Add hashed credential table and auth middleware/resolver. | `documentation/New Design Document — QMS MVP Operatio.md:1889` |
+| `operator_counter_assignments` | missing | Add assignment table/domain and validate operator/counter scope at caller login. | `documentation/New Design Document — QMS MVP Operatio.md:1773` |
+| Caller action endpoint | missing | Add `/caller/action` endpoint resolving queue operations from bound caller context. | `documentation/New Design Document — QMS MVP Operatio.md:2002`, `internal/modules/queue/delivery/http/queue_routes.go:16` |
+| Signage endpoint | missing | Add `/signage/me` and `/signage/current-calls` using client credential branch context. | `documentation/New Design Document — QMS MVP Operatio.md:2093`, `documentation/New Design Document — QMS MVP Operatio.md:2126` |
+| Effective config response | partial | Existing endpoint resolves queue values, but response shape lacks full nested metadata and logo fallback. | `internal/modules/settings/delivery/http/settings_routes.go:12`, `internal/modules/settings/delivery/http/settings_controller.go:63` |
+| Branch logo fallback | missing | Fields exist, but no resolver returns branch logo fallback to tenant logo. | `internal/modules/organization/entity/organization_entity.go:27`, `internal/modules/organization/entity/branch_entity.go:22` |
+| Activation rules tenant/branch | partial | Status fields exist, but activation completeness validation is missing. | `internal/modules/organization/entity/organization_entity.go:30`, `internal/modules/organization/entity/branch_entity.go:25`, `internal/modules/organization/usecase/branch_usecase.go:132` |
+
+### 16.8 Recommended MVP Implementation Order
+
+1. Fix design/schema mismatch for `branch_service_queue_settings` before adding caller/signage, because effective config inheritance depends on this scope.
+2. Add `qms_clients` and `qms_client_credentials` with hashed credential auth and tenant/branch/client-type constraints.
+3. Add `operator_counter_assignments` and caller session context resolution.
+4. Add `/caller/action` over existing queue transition/forward logic with context filtering.
+5. Add `/signage/me` and `/signage/current-calls`, including branch logo fallback and running text.
+6. Add activation validation for tenant/branch profile completeness.
+7. Extend effective config response with nested metadata, `can_override`, `can_reset`, and `effective_logo_asset_id`.
+
 ### Step 4 — Backfill Defaults
 
 | Sub-Point | Status | Evidence |
@@ -276,7 +383,7 @@
 
 ---
 
-## 13. Testing Requirements
+## 17. Testing Requirements
 
 ### Tenant Tests
 
@@ -324,7 +431,7 @@
 
 ---
 
-## 14. NEW Architecture Decision
+## 18. NEW Architecture Decision
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
@@ -338,7 +445,7 @@
 
 ---
 
-## 15. NEW Recommended Table List for MVP
+## 19. NEW Recommended Table List for MVP
 
 | Table | Status | Evidence |
 |-------|--------|----------|
