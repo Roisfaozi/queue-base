@@ -61,3 +61,5 @@
 - When adding a new shared type for cross-package resolver interfaces, define it in the `model` package, not in a non-model package, to keep import graphs clean and avoid unused imports.
 - Effective config source metadata (`_source`, `_inherited`) gives the frontend enough data to render inheritance chain without needing a separate "resolve each key" flow.
 - When adding adjacent TypeScript interfaces, verify the new interface is not nested inside another interface block; `tsc --noEmit` catches this as TS1131/TS1109 syntax errors.
+- QMS docs sync must replace legacy generic-settings queue flow with typed effective-config flow; leaving `reset_time`/`prefix`/`numbering` in the core docs makes the design look older than runtime.
+- Temporary patch files like `patch.txt` should not be kept in worktree; use direct `apply_patch` so docs slices stay clean.

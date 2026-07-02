@@ -454,3 +454,35 @@ Design sources:
   - lesson: patch adjacent TypeScript interface blocks with exact start/end context when adding new exported interfaces.
 - next step:
   - Commit Phase 5C/5D frontend and progress records, then proceed to Phase 6 docs sync.
+
+## 2026-07-02 — Phase 6 Docs Sync for Typed Config Runtime
+
+- status: in progress
+- owner paths:
+  - `documentation/QMS_FEATURE_AND_E2E_GUIDE.md`
+  - `documentation/guides/QMS_MANUAL_TEST_FLOW.md`
+  - `llm/tasks/qms-typed-config-progress.md`
+  - `llm/tasks/lessons.md`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+  - `documentation/QMS NEW Design Diagrams.md`
+- work done:
+  - Rewrote feature guide settings section to typed configuration inheritance flow.
+  - Removed legacy `reset_time`, `prefix`, and `numbering` fallback narrative from core queue flow.
+  - Updated manual test flow to use `GET /settings/effective` and typed config metadata instead of generic settings resolve flow.
+  - Marked generic `settings` as compatibility-only for non-core usage in docs.
+- tests added/updated:
+  - positive: docs now describe typed effective values and source metadata for queue config.
+  - negative: docs no longer instruct core queue tests to depend on missing generic list/resolve behavior.
+  - edge: manual flow now covers tenant, branch, and service inheritance with default runtime fallback.
+  - vulnerability/security: docs keep tenant-scoped auth and cross-tenant validation in the test flow.
+- verification:
+  - command: `rg -n "reset_time|prefix|numbering|settings/effective|branch_services|branch_service_id|/settings/resolve|GET /settings" documentation/QMS_FEATURE_AND_E2E_GUIDE.md documentation/guides/QMS_MANUAL_TEST_FLOW.md llm/tasks/qms-typed-config-progress.md llm/tasks/lessons.md`
+  - result: confirmed stale legacy references before patch; updated docs remove them from core flow.
+- errors and fixes:
+  - error: temporary `patch.txt` file was left behind after a malformed patch attempt.
+  - root cause: manual patch staging used an intermediate file instead of direct patch application.
+  - fix: deleted `patch.txt` and continued with `apply_patch` only.
+  - lesson: avoid temporary patch files in repo worktrees; use direct patch application so cleanup is automatic.
+- next step:
+  - Commit docs slice separately, then continue any remaining QMS alignment work if user requests.
