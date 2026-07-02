@@ -4,6 +4,7 @@ This file tracks implementation progress for aligning QMS runtime with the lates
 
 Design sources:
 
+- `documentation/New Design Document — QMS MVP Operatio.md`
 - `documentation/New Design — Typed Configuration Architecture for QMS.md`
 - `documentation/QMS NEW Design Diagrams.md`
 - `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md`
@@ -14,6 +15,7 @@ Design sources:
 - status: completed
 - owner paths:
   - `llm/plans/roadmap/qms-typed-configuration-alignment.md`
+  - `llm/research/typed-config-design-coverage.md`
   - `llm/tasks/qms-typed-config-progress.md`
   - `llm/tasks/lessons.md`
 - design source:
@@ -40,6 +42,39 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Start Phase 1 with failing tests and migrations for typed schema/entity alignment.
+
+## 2026-07-02 — MVP Operational Design Update
+
+- status: completed
+- owner paths:
+  - `llm/tasks/qms-typed-config-progress.md`
+  - `llm/plans/roadmap/qms-typed-configuration-alignment.md`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Read the more detailed MVP operational design and compared it against current typed-config progress.
+  - Identified new MVP shifts that supersede parts of the earlier typed-config plan:
+    - `service_queue_settings` becomes `branch_service_queue_settings`.
+    - `qms_clients` and `qms_client_credentials` replace old device concept.
+    - `operator_counter_assignments` becomes first-class.
+    - Caller flow collapses into a single action endpoint.
+    - Generic settings is fully removed from QMS core.
+  - Marked this as a design update so later implementation phases follow the latest MVP spec instead of the earlier narrower typed-config draft.
+- tests added/updated:
+  - positive: not added; documentation/record update only.
+  - negative: not added; documentation/record update only.
+  - edge: not added; documentation/record update only.
+  - vulnerability/security: not added; documentation/record update only.
+- verification:
+  - command: `rg -n "branch_service_queue_settings|qms_clients|operator_counter_assignments|queue-journeys/.*/action" "documentation/New Design Document — QMS MVP Operatio.md"`
+  - result: passed
+  - evidence: confirmed new MVP tables and caller action endpoint exist in latest design.
+- errors and fixes:
+  - error: prior progress still assumed `service_queue_settings` level and no client-binding domain.
+  - root cause: design drift between earlier typed-config doc and newer MVP operational doc.
+  - fix: record latest design shift here so implementation planning can be re-based safely.
+  - lesson recorded in: `llm/tasks/lessons.md`
+  - next step: rebase roadmap around `branch_service_queue_settings`, `qms_clients`, `operator_counter_assignments`, and caller/signage flows.
 
 ## Entry Template
 
@@ -393,7 +428,6 @@ Design sources:
 - next step:
   - Phase 6: documentation sync for effective config.
   - Or review service/counter pages for typed-config UI sync.
-
 
 ## 2026-07-02 — Phase 5C Service and Counter Form Contract Alignment
 

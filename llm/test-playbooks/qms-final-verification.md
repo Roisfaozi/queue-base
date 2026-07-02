@@ -1,5 +1,9 @@
 # QMS Final Verification Playbook
 
+Latest design priority:
+
+- `documentation/New Design Document — QMS MVP Operatio.md`
+
 ## Purpose
 
 Playbook ini menutup Fase 8 QMS rebuild: handoff verifikasi yang bisa diulang oleh agent, reviewer, atau CI tanpa membaca raw log panjang.
@@ -8,6 +12,8 @@ Scope playbook:
 
 - queue unit/usecase/repository hardening
 - scanner unit/usecase/controller hardening
+- qms client credential binding
+- operator assignment enforcement
 - QMS integration tests
 - QMS E2E tests
 - race and vet checks for changed queue/scanner packages
@@ -192,4 +198,3 @@ Fase 8 selesai bila:
 - vet passes for queue/scanner
 - QMS integration and E2E commands have explicit pass or explicit Docker skip evidence
 - handoff report separates verified pass from skipped verification
-

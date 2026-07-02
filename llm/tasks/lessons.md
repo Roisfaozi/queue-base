@@ -1,5 +1,12 @@
 # Lessons
 
+## QMS MVP Design Drift
+
+- `documentation/New Design Document — QMS MVP Operatio.md` is now the highest-priority QMS design source.
+- Earlier typed-config notes that still mention `service_queue_settings` should be treated as stale where they conflict with `branch_service_queue_settings`.
+- New MVP scope also introduces `qms_clients`, `qms_client_credentials`, and `operator_counter_assignments`; future implementation plans and audits must include them.
+- Caller/signage/client-binding flows are now first-class QMS runtime concerns, not optional future notes.
+
 ## Phase 1
 
 - Root repo is hybrid: Go backend core plus active `apps/web` and `apps/client` frontends.

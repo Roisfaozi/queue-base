@@ -6,7 +6,7 @@ This plan tracks the rebuild path from the current QMS foundation into the lates
 
 Primary design sources:
 
-- `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- `documentation/New Design Document — QMS MVP Operatio.md`
 - `documentation/QMS NEW Design Diagrams.md`
 - `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md`
 - `documentation/task-overview.md`
@@ -82,7 +82,7 @@ Owner paths:
 
 - `llm/tasks/qms-typed-config-progress.md`
 - `llm/tasks/lessons.md`
-- `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- `documentation/New Design Document — QMS MVP Operatio.md`
 - `documentation/QMS NEW Design Diagrams.md`
 
 Tasks:
