@@ -67,6 +67,7 @@ func TestScenario_RealTime_LoginBroadcast(t *testing.T) {
 
 				org := &orgEntity.Organization{
 					ID:      orgID,
+					Code:    "test-org-123",
 					Name:    "Test Org",
 					Slug:    "test-org",
 					OwnerID: user.ID,
