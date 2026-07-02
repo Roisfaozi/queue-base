@@ -232,6 +232,13 @@ When task touches architecture-heavy areas:
 - inspect `internal/router/router.go` second
 - inspect target module constructor and usecase/repository/controller flow third
 
+For QMS development and new backend feature work:
+
+- every new feature or module slice must include application logging at each active layer that owns the behavior
+- every transactional side effect must include audit log emission or an explicit documented reason why it cannot
+- prefer `tryAudit`-style non-blocking audit helper inside usecases when audit failure must not fail business transaction
+- do not ship new feature work without checking whether controller, usecase, and transaction path all have logging/audit coverage
+
 When editing docs or AI context:
 
 - keep claims concrete and tied to live paths
