@@ -549,3 +549,39 @@ Design sources:
   - error: none in planning.
 - next step:
   - Implement Phase A: Schema/Entity Migration for the missing MVP tables.
+## 2026-07-02 — Phase 1: Typed Config Schema and Core Domain Alignment
+
+- status: completed
+- owner paths:
+  - `db/migrations/000033_qms_mvp_alignment.up.sql`
+  - `internal/modules/settings/queue_settings_resolver.go`
+  - `internal/modules/caller/*`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Renamed `service_queue_settings` to `branch_service_queue_settings` in migrations and entities.
+  - Linked `branch_service_queue_settings` properly with `branch_id` and `branch_service_id`.
+  - Added new MVP entity schemas: `qms_clients`, `qms_client_credentials`, and `operator_counter_assignments`.
+  - Updated `QueueSettingsResolver` to query `branch_service_queue_settings` by resolving `branch_service_id` safely.
+  - Added the `caller` module and `POST /api/v1/caller/queue-journeys/{journey_id}/action` endpoint.
+  - Wired `caller` controller to reuse existing `TransitionQueue` usecase flows.
+  - Fixed configuration inheritance bugs in generic-fallback flow.
+- tests added/updated:
+  - positive: Updated unit tests for `queue_settings_resolver_test.go` and `qms_queue_settings_entity_test.go` to assert new branch_service struct binding and lookup logic.
+  - negative: Added test case `Negative_NoGenericFallback` in resolver.
+  - edge: Added nullable field mapping test boundaries in `QueueSettingsResolver`.
+  - vulnerability/security: Ensured tenant/branch context leakage does not occur in caller action.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/router ./internal/modules/settings/... ./internal/modules/caller/... && PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
+  - result: passed
+  - evidence: All unit tests and main binary compile successfully.
+- errors and fixes:
+  - error: `service_queue_settings` rename lost branch relationship context in resolver.
+  - root cause: Need 3-way join key for branch service lookup.
+  - fix: Updated resolver entity type switch and `readTypedBranchService` query to pass `branch_service_id`.
+  - error: SetupRouter signature mismatch in test.
+  - root cause: Injected caller module into app wiring but forgot `router_test.go`.
+  - fix: Updated `router_test.go` struct injector.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Sync Frontend `/api/v1/settings/effective` consumption for `auto_call_next`, `audio_id` or start `qms_clients` logic for Caller and Signage credentials check-in.

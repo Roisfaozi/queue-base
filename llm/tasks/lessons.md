@@ -71,3 +71,8 @@
 - QMS docs sync must replace legacy generic-settings queue flow with typed effective-config flow; leaving `reset_time`/`prefix`/`numbering` in the core docs makes the design look older than runtime.
 - Temporary patch files like `patch.txt` should not be kept in worktree; use direct `apply_patch` so docs slices stay clean.
 - When the MVP operational design supersedes earlier typed-config drafts, rewrite the roadmap fully instead of layering patch notes on the old plan; mixed plan generations hide true dependencies and cause overlapping worktree write sets.
+## 2026-07-02 — QMS typed-config MVP phase 1
+
+- `branch_service_queue_settings` cannot be treated like old `service_queue_settings`; runtime resolution now needs `tenant_id + branch_id + branch_service_id` as stable lookup key.
+- When router composition root adds a new module argument, immediately update `internal/router/router_test.go` or build will pass while package test fails.
+- For sandboxed Go builds on this machine, use `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache` instead of `make build` to avoid read-only Go cache failures.
