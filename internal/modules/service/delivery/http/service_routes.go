@@ -22,7 +22,7 @@ func RegisterBranchServiceRoutes(router *gin.RouterGroup, controller *BranchServ
 	{
 		branchServiceGroup.POST("", apiKeyMiddleware.RequireScopes("service:manage"), controller.Create)
 		branchServiceGroup.GET("", apiKeyMiddleware.RequireScopes("service:view", "service:manage"), controller.GetAll)
-		branchServiceGroup.PUT(":branch_service_id", apiKeyMiddleware.RequireScopes("service:manage"), controller.Update)
-		branchServiceGroup.DELETE(":branch_service_id", apiKeyMiddleware.RequireScopes("service:manage"), controller.Delete)
+		branchServiceGroup.PUT("/:branch_service_id", apiKeyMiddleware.RequireScopes("service:manage"), controller.Update)
+		branchServiceGroup.DELETE("/:branch_service_id", apiKeyMiddleware.RequireScopes("service:manage"), controller.Delete)
 	}
 }
