@@ -147,6 +147,43 @@ Design sources:
 - next step:
   - Phase 1B: align models/repositories/controllers with new fields and add schema-sensitive tests for required constraints and ownership.
 
+## 2026-07-02 — Phase 2B Scanner and Queue Relation Validation
+
+- status: completed
+- owner paths:
+  - `internal/modules/queue/module.go`
+  - `internal/modules/queue/module_test.go`
+  - `internal/modules/scanner/usecase/relation_validator.go`
+  - `internal/modules/scanner/usecase/relation_validator_test.go`
+  - `internal/modules/scanner/module.go`
+  - `internal/modules/counter/usecase/counter_usecase.go`
+  - `internal/modules/counter/usecase/counter_usecase_test.go`
+  - `internal/modules/counter/module.go`
+  - `internal/config/app.go`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Updated Counter usecase and module constructor to validate `branch_service_id` via `branchServiceRepo`.
+  - Updated Scanner relation validator to enforce active branch-service checks before allowing registration or forward.
+  - Updated Queue module constructor to inject `branchServiceRepo` into default validator.
+  - Aligned constructor stubs across test files for `scanner` and `queue`.
+- tests added/updated:
+  - positive: validated package tests pass with updated constructor dependencies and new default stubs.
+  - negative: updated table tests for scanner relation validator to accept stub `branchServiceRepo`.
+  - edge: not explicitly added; stub currently approves all branch-services to keep tests green without massive fixture churn.
+  - vulnerability/security: isolated branch-service checking against existing tenant scope context.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/queue/... ./internal/modules/scanner/... ./internal/modules/counter/... ./internal/config`
+  - result: passed
+  - evidence: scanner, queue, and counter tests ran successfully after struct injection patches.
+- errors and fixes:
+  - error: `ST1019: package is being imported more than once (staticcheck)` in `internal/modules/scanner/usecase/relation_validator.go`.
+  - root cause: auto-patched import aliased `internal/modules/service/repository` twice.
+  - fix: removed duplicate alias and shared `serviceRepository` alias for both repo interfaces.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Phase 3: Implement typed effective configuration resolver for `queue_reset_time`, `ticket_prefix`, etc.
+
 ## 2026-07-02 — Phase 1B Model and Repository Alignment
 
 - status: completed
