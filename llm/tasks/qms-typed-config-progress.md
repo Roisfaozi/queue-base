@@ -287,3 +287,38 @@ Design sources:
 - next step:
   - Phase 4: Remove direct generic-settings dependence from queue core where possible.
   - Phase 5: Frontend sync for queue-settings page.
+
+## 2026-07-02 — Phase 5A Frontend Effective Config Sync
+
+- status: completed
+- owner paths:
+  - `apps/web/src/lib/api/qms.ts`
+  - `apps/web/src/app/[locale]/dashboard/queue-settings/_components/queue-settings-content.tsx`
+  - `llm/tasks/qms-typed-config-progress.md`
+  - `llm/tasks/lessons.md`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+  - `documentation/QMS NEW Design Diagrams.md`
+- work done:
+  - Replaced stale `GET /settings` UI dependency with typed `GET /settings/effective` client helper.
+  - Added `EffectiveQueueConfig` frontend type for queue reset time, ticket prefix, numbering strategy, and default estimated duration.
+  - Updated queue-settings dashboard to show runtime context selectors for branch, service, and counter.
+  - Updated queue-settings dashboard to show effective typed config cards and preserve loading, error, refresh, and empty states.
+  - Kept generic settings dialog available only as compatibility override creation path, not as source of truth list.
+  - Confirmed `apps/client` has no matching queue-settings consumer for this route.
+- tests added/updated:
+  - positive: `apps/web` typecheck proves new typed API helper and page compile.
+  - negative: UI error state now renders backend/proxy failures instead of swallowing missing `GET /settings` into empty data.
+  - edge: empty effective response renders explicit empty state.
+  - vulnerability/security: frontend still uses existing `/api/v1` proxy and backend tenant context; no UI-only authorization added.
+- verification:
+  - command: `cd apps/web && pnpm typecheck`
+  - result: passed
+  - evidence: `tsc --noEmit` exited 0 for `casbin-web@1.7.0`.
+- errors and fixes:
+  - error: first `qms.ts` patch failed because `Counter` shape was not the assumed version.
+  - root cause: patch context used stale inferred field order instead of re-reading exact file slice.
+  - fix: re-read `apps/web/src/lib/api/qms.ts` and applied smaller context-accurate patch.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Commit frontend sync and docs record as separate category commits, then continue optional hardening or next typed-config slice.

@@ -54,3 +54,5 @@
 - When scaffolding new route domains, finalize route ownership first, then write controller and registration separately; avoid placeholder route helpers that duplicate groups or create temporary noop handlers.
 - Avoid adding duplicate imports for same package with different aliases; staticcheck `ST1019` fails fast. Reuse one alias for all interfaces from same package.
 - Remove placeholder-only statements before compile checks; a bare `nil` in Go switch branches causes `nil is not used`. Use `return nil` when branch intentionally has no typed value.
+- For frontend contract sync, re-read exact local API type shape before patching; stale inferred field order caused the first `qms.ts` patch to fail.
+- Do not hide a missing backend list endpoint behind `.catch(() => ({ data: [] }))`; render error state and wire UI to live contract instead.
