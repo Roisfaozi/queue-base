@@ -354,3 +354,43 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Continue frontend typed-config hardening or add deeper resolver edge tests for service/counter inheritance.
+
+## 2026-07-02 — Phase 5B Effective Config Source Metadata
+
+- status: completed
+- owner paths:
+  - `internal/modules/settings/model/settings_model.go`
+  - `internal/modules/settings/queue_settings_resolver.go`
+  - `internal/modules/settings/delivery/http/settings_controller.go`
+  - `internal/modules/settings/delivery/http/settings_controller_test.go`
+  - `apps/web/src/lib/api/qms.ts`
+  - `apps/web/src/app/[locale]/dashboard/queue-settings/_components/queue-settings-content.tsx`
+  - `llm/tasks/qms-typed-config-progress.md`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Added `ResolvedQueueSetting` model type and `ResolveDetailed` method on resolver for value + source + inherited metadata.
+  - Extended `EffectiveQueueConfigResponse` with per-field `*_source` and `*_inherited` fields.
+  - Updated `QueueSettingResolver` interface with `ResolveDetailed` method.
+  - Added `ResolveDetailed` on `genericQueueResolver` fallback.
+  - Updated frontend `EffectiveQueueConfig` type with source fields.
+  - Updated queue-settings content to read and display source badge per effective field.
+- tests added/updated:
+  - positive: resolver test passes with stub `ResolveDetailed`.
+  - negative: generic fallback (nil resolver) covered by existing test.
+  - edge: resolved=nil handled by helpers returning ""/false.
+  - vulnerability/security: unchanged (tenant context still required).
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/settings/... ./internal/config -count=1`
+  - result: passed
+  - command: `cd apps/web && pnpm typecheck`
+  - result: passed
+- errors and fixes:
+  - error: unused `settingsEntity` import in controller after type moved to model package.
+  - root cause: controller tried to reference resolver struct from `settings` package but import was left when type moved to `model`.
+  - fix: removed unused import line.
+  - lesson: when introducing new type in cross-package interface, land it in `model` first to avoid circular/competing imports.
+- next step:
+  - Phase 6: documentation sync for effective config.
+  - Or review service/counter pages for typed-config UI sync.
+

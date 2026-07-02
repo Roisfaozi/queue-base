@@ -58,3 +58,5 @@
 - Do not hide a missing backend list endpoint behind `.catch(() => ({ data: [] }))`; render error state and wire UI to live contract instead.
 - Keep QMS phase tracker chronological with implementation intent; if a later consumer slice lands first, immediately add the missing backend phase record so progress does not look skipped.
 - Queue usecase must not call legacy config keys such as `prefix` or `numbering`; compatibility belongs in resolver/settings layer, while queue core uses typed design keys only.
+- When adding a new shared type for cross-package resolver interfaces, define it in the `model` package, not in a non-model package, to keep import graphs clean and avoid unused imports.
+- Effective config source metadata (`_source`, `_inherited`) gives the frontend enough data to render inheritance chain without needing a separate "resolve each key" flow.
