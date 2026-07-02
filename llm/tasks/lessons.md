@@ -56,3 +56,5 @@
 - Remove placeholder-only statements before compile checks; a bare `nil` in Go switch branches causes `nil is not used`. Use `return nil` when branch intentionally has no typed value.
 - For frontend contract sync, re-read exact local API type shape before patching; stale inferred field order caused the first `qms.ts` patch to fail.
 - Do not hide a missing backend list endpoint behind `.catch(() => ({ data: [] }))`; render error state and wire UI to live contract instead.
+- Keep QMS phase tracker chronological with implementation intent; if a later consumer slice lands first, immediately add the missing backend phase record so progress does not look skipped.
+- Queue usecase must not call legacy config keys such as `prefix` or `numbering`; compatibility belongs in resolver/settings layer, while queue core uses typed design keys only.

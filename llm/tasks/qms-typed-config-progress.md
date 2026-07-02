@@ -322,3 +322,35 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Commit frontend sync and docs record as separate category commits, then continue optional hardening or next typed-config slice.
+
+## 2026-07-02 — Phase 4A Queue Core Legacy Key Cleanup
+
+- status: completed
+- owner paths:
+  - `internal/modules/queue/usecase/queue_usecase.go`
+  - `internal/modules/queue/usecase/queue_usecase_test.go`
+  - `llm/tasks/qms-typed-config-progress.md`
+  - `llm/tasks/lessons.md`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Removed queue usecase fallback lookups for legacy `prefix` and `numbering` keys.
+  - Kept queue core resolving only typed design keys: `queue_reset_time`, `ticket_prefix`, and `numbering_strategy`.
+  - Preserved non-core compatibility at resolver/settings layer instead of queue business logic.
+  - Removed tests that expected queue usecase to call legacy key names.
+- tests added/updated:
+  - positive: queue registration still uses `ticket_prefix` and `numbering_strategy`.
+  - negative: legacy `reset_time` remains ignored by queue usecase; queue core asks for `queue_reset_time`.
+  - edge: invalid `numbering_strategy` still falls back to sequential.
+  - vulnerability/security: tenant/branch missing still rejects before any config-dependent queue write.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/queue/... ./internal/modules/settings/... ./internal/config -count=1 -timeout 30s`
+  - result: passed
+  - evidence: queue, settings, and config package tests exited 0 after cleanup.
+- errors and fixes:
+  - error: Phase 5 UI started before Phase 4 record was appended, making tracker look like phase order skipped.
+  - root cause: frontend sync was chosen as quick consumer proof before queue core cleanup was recorded.
+  - fix: completed and recorded Phase 4A explicitly, then left Phase 5A as already completed consumer sync.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Continue frontend typed-config hardening or add deeper resolver edge tests for service/counter inheritance.
