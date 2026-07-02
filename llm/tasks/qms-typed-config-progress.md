@@ -457,7 +457,7 @@ Design sources:
 
 ## 2026-07-02 — Phase 6 Docs Sync for Typed Config Runtime
 
-- status: in progress
+- status: completed
 - owner paths:
   - `documentation/QMS_FEATURE_AND_E2E_GUIDE.md`
   - `documentation/guides/QMS_MANUAL_TEST_FLOW.md`
@@ -485,4 +485,4 @@ Design sources:
   - fix: deleted `patch.txt` and continued with `apply_patch` only.
   - lesson: avoid temporary patch files in repo worktrees; use direct patch application so cleanup is automatic.
 - next step:
-  - Commit docs slice separately, then continue any remaining QMS alignment work if user requests.
+  - Continue with UI polish or typed-config test matrix hardening if user requests.
