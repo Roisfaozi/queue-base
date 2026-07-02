@@ -270,80 +270,68 @@ Security:
 
 - counter tidak boleh dibuat ke branch lintas tenant
 
-## Phase 3 — Settings Inheritance
+## Phase 3 — Typed Effective Configuration
 
-## Scenario D — Set branch reset time
+## Scenario D — Check branch reset time
 
 Action:
 
-1. create setting branch key `queue_reset_time`
-2. value contoh `04:00`
+1. pastikan branch sudah punya typed config `queue_reset_time` lewat seed/admin API yang menulis `branch_queue_settings`
+2. panggil effective config untuk branch itu
 
 Example request:
 
 ```bash
-curl -X POST 'http://127.0.0.1:8080/api/v1/settings' \
+curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=<BRANCH_ID>' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
-  -H 'X-Organization-ID: <TENANT_ID>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "scope_type": "branch",
-    "scope_id": "<BRANCH_ID>",
-    "key": "queue_reset_time",
-    "value": "04:00",
-    "value_type": "string"
-  }'
+  -H 'X-Organization-ID: <TENANT_ID>'
 ```
 
 Expected:
 
-- setting tersimpan
-- `GET /api/v1/settings/resolve` dengan `branch_id` yang sama mengembalikan setting itu
+- response mengembalikan `queue_reset_time`
+- response mengembalikan `queue_reset_time_source`
+- response mengembalikan `queue_reset_time_inherited`
 
 Negative:
 
-- `scope_type` di luar enum -> gagal validasi
-- `value_type` di luar enum -> gagal validasi
+- `branch_id` lintas tenant -> gagal auth/tenant validation
+- `branch_id` invalid -> gagal validation/not found
 
-## Scenario E — Set ticket prefix
+## Scenario E — Check service ticket prefix
 
 Action:
 
-1. create setting service key `ticket_prefix`
-2. value contoh `B`
+1. pastikan branch sudah mengaktifkan service lewat `branch_services`
+2. pastikan service punya typed config `ticket_prefix`
+3. panggil effective config dengan `branch_id` dan `service_id`
 
 Example request:
 
 ```bash
-curl -X POST 'http://127.0.0.1:8080/api/v1/settings' \
+curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=<BRANCH_ID>&service_id=<SERVICE_ID>' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
-  -H 'X-Organization-ID: <TENANT_ID>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "scope_type": "service",
-    "scope_id": "<SERVICE_ID>",
-    "key": "ticket_prefix",
-    "value": "B",
-    "value_type": "string"
-  }'
+  -H 'X-Organization-ID: <TENANT_ID>'
 ```
 
 Expected:
 
-- queue register ke service itu akan memakai prefix `B`
+- response mengembalikan `ticket_prefix`
+- response mengembalikan `ticket_prefix_source = service` bila service override aktif
+- queue register ke service itu memakai prefix efektif
 
 ## Scenario F — Verify inheritance order
 
 Action:
 
-1. buat setting tenant `queue_reset_time = 04:00`
-2. buat setting branch `queue_reset_time = 05:00`
-3. resolve setting dengan `branch_id`
+1. siapkan tenant config `queue_reset_time = 04:00`
+2. siapkan branch config `queue_reset_time = 05:00`
+3. resolve effective config dengan `branch_id`
 
 Example resolve request:
 
 ```bash
-curl 'http://127.0.0.1:8080/api/v1/settings/resolve?key=queue_reset_time&branch_id=<BRANCH_ID>' \
+curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=<BRANCH_ID>' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
   -H 'X-Organization-ID: <TENANT_ID>'
 ```
@@ -351,10 +339,13 @@ curl 'http://127.0.0.1:8080/api/v1/settings/resolve?key=queue_reset_time&branch_
 Expected:
 
 - hasil resolve mengambil nilai branch `05:00`, bukan tenant `04:00`
+- `queue_reset_time_source = branch`
+- `queue_reset_time_inherited = true`
 
 Edge:
 
-- bila counter/service/branch tidak ada setting, sistem fallback sampai tenant
+- bila counter/service/branch tidak ada typed config, sistem fallback sampai tenant lalu default runtime
+- generic `/settings/resolve` hanya compatibility non-core, bukan sumber queue core
 
 ## Phase 4 — Queue Registration
 
