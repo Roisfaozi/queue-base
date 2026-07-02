@@ -38,6 +38,7 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		&orgEntity.OrganizationMember{},
 		&orgEntity.Branch{},
 		&serviceEntity.Service{},
+		&serviceEntity.BranchService{},
 		&counterEntity.Counter{},
 		&settingsEntity.Setting{},
 		&userEntity.UserSSOIdentity{},

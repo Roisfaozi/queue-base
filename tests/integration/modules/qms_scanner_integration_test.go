@@ -82,6 +82,8 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	// Create services
 	require.NoError(t, deps.db.Create(&serviceEntity.Service{ID: deps.regServiceID, TenantID: deps.tenantID, Code: "RG", Name: "Registration", Status: serviceEntity.ServiceStatusActive}).Error)
 	require.NoError(t, deps.db.Create(&serviceEntity.Service{ID: deps.pharmacyServiceID, TenantID: deps.tenantID, Code: "PH", Name: "Pharmacy", Status: serviceEntity.ServiceStatusActive, IsPharmacy: true}).Error)
+	require.NoError(t, deps.db.Create(&serviceEntity.BranchService{ID: uuid.New().String(), TenantID: deps.tenantID, BranchID: deps.branchID, ServiceID: deps.regServiceID, IsActive: true}).Error)
+	require.NoError(t, deps.db.Create(&serviceEntity.BranchService{ID: uuid.New().String(), TenantID: deps.tenantID, BranchID: deps.branchID, ServiceID: deps.pharmacyServiceID, IsActive: true}).Error)
 
 	// Create counter
 	require.NoError(t, deps.db.Create(&counterEntity.Counter{ID: deps.counterID, TenantID: deps.tenantID, BranchID: deps.branchID, Code: "C1", Name: "Counter 1", Status: counterEntity.CounterStatusActive}).Error)

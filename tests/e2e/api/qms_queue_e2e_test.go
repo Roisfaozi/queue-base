@@ -83,6 +83,10 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 				require.NoError(t, createPharmacyResp.JSON(&pharmacyData))
 
 				createCounterResp := server.Client.POST("/api/v1/counters", map[string]any{"branch_id": branchData.Data.ID, "code": "C1", "name": "Counter 1"}, setup.WithAuth(token), setup.WithOrg(orgID))
+				branchServiceResp := server.Client.POST("/api/v1/branches/"+branchData.Data.ID+"/services", map[string]any{"service_id": regServiceData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID))
+				require.Equal(t, http.StatusCreated, branchServiceResp.StatusCode, branchServiceResp.String())
+				branchPharmacyResp := server.Client.POST("/api/v1/branches/"+branchData.Data.ID+"/services", map[string]any{"service_id": pharmacyData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID))
+				require.Equal(t, http.StatusCreated, branchPharmacyResp.StatusCode, branchPharmacyResp.String())
 				require.Equal(t, http.StatusCreated, createCounterResp.StatusCode, createCounterResp.String())
 				var counterData struct {
 					Data struct {
