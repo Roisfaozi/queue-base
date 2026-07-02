@@ -52,6 +52,33 @@ func (s stubServiceRepo) Update(ctx context.Context, service *serviceEntity.Serv
 }
 func (s stubServiceRepo) Delete(ctx context.Context, tenantID, serviceID string) error { return nil }
 
+type stubBranchServiceRepo struct{ err error }
+
+func (s stubBranchServiceRepo) Create(ctx context.Context, branchService *serviceEntity.BranchService) error {
+	return nil
+}
+func (s stubBranchServiceRepo) FindByID(ctx context.Context, tenantID, branchID, id string) (*serviceEntity.BranchService, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &serviceEntity.BranchService{ID: id, TenantID: tenantID, BranchID: branchID, IsActive: true}, nil
+}
+func (s stubBranchServiceRepo) FindByService(ctx context.Context, tenantID, branchID, serviceID string) (*serviceEntity.BranchService, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &serviceEntity.BranchService{TenantID: tenantID, BranchID: branchID, ServiceID: serviceID, IsActive: true}, nil
+}
+func (s stubBranchServiceRepo) FindAll(ctx context.Context, tenantID, branchID string) ([]*serviceEntity.BranchService, error) {
+	return nil, nil
+}
+func (s stubBranchServiceRepo) Update(ctx context.Context, branchService *serviceEntity.BranchService) error {
+	return nil
+}
+func (s stubBranchServiceRepo) Delete(ctx context.Context, tenantID, branchID, id string) error {
+	return nil
+}
+
 type stubCounterRepo struct {
 	err      error
 	branchID string
@@ -101,7 +128,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
 			wantErr:   nil,
 		},
 		{
@@ -111,7 +138,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
+			validator: NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
 			wantErr:   exception.ErrForbidden,
 		},
 		{
@@ -121,7 +148,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{err: exception.ErrNotFound}, stubCounterRepo{branchID: "b-1"}, nil),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{err: exception.ErrNotFound}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
 			wantErr:   exception.ErrForbidden,
 		},
 		{
@@ -131,7 +158,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{err: exception.ErrNotFound}, nil),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{err: exception.ErrNotFound}, nil),
 			wantErr:   exception.ErrForbidden,
 		},
 		{
@@ -141,7 +168,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
 			wantErr:   nil,
 		},
 		{
@@ -151,7 +178,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "other-branch"}, nil),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "other-branch"}, nil),
 			wantErr:   exception.ErrForbidden,
 		},
 		{
@@ -161,7 +188,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
 			wantErr:   exception.ErrForbidden,
 		},
 		{
@@ -171,7 +198,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "false"}),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "false"}),
 			wantErr:   exception.ErrForbidden,
 		},
 		{
@@ -181,7 +208,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
+			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", IsPharmacy: true}}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
 			wantErr:   nil,
 		},
 	}

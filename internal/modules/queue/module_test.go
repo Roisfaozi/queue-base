@@ -52,6 +52,36 @@ func (s *stubServiceRepo) Update(ctx context.Context, service *serviceEntity.Ser
 }
 func (s *stubServiceRepo) Delete(ctx context.Context, tenantID, serviceID string) error { return nil }
 
+type stubBranchServiceRepo struct {
+	branchService *serviceEntity.BranchService
+	err           error
+}
+
+func (s *stubBranchServiceRepo) Create(ctx context.Context, branchService *serviceEntity.BranchService) error {
+	return nil
+}
+func (s *stubBranchServiceRepo) FindByID(ctx context.Context, tenantID, branchID, id string) (*serviceEntity.BranchService, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.branchService, nil
+}
+func (s *stubBranchServiceRepo) FindByService(ctx context.Context, tenantID, branchID, serviceID string) (*serviceEntity.BranchService, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.branchService, nil
+}
+func (s *stubBranchServiceRepo) FindAll(ctx context.Context, tenantID, branchID string) ([]*serviceEntity.BranchService, error) {
+	return nil, nil
+}
+func (s *stubBranchServiceRepo) Update(ctx context.Context, branchService *serviceEntity.BranchService) error {
+	return nil
+}
+func (s *stubBranchServiceRepo) Delete(ctx context.Context, tenantID, branchID, id string) error {
+	return nil
+}
+
 type stubCounterRepo struct {
 	counter *counterEntity.Counter
 	err     error
@@ -105,9 +135,10 @@ func TestDefaultRelationValidator_Validate(t *testing.T) {
 			counterID: "c-1",
 			setup: func() *defaultRelationValidator {
 				return &defaultRelationValidator{
-					branchRepo:  &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
-					serviceRepo: &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1", IsPharmacy: true}},
-					counterRepo: &stubCounterRepo{counter: &counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1"}},
+					branchRepo:        &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
+					serviceRepo:       &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1", IsPharmacy: true}},
+					branchServiceRepo: &stubBranchServiceRepo{branchService: &serviceEntity.BranchService{ServiceID: "svc-1", BranchID: "b-1", TenantID: "t-1", IsActive: true}},
+					counterRepo:       &stubCounterRepo{counter: &counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1"}},
 					settings: &stubQueueSettingsResolver{values: map[string]string{
 						settingsModel.SettingKeyPharmacyFlowEnabled:      "true",
 						settingsModel.SettingKeyRequireCounterForService: "true",
@@ -124,9 +155,10 @@ func TestDefaultRelationValidator_Validate(t *testing.T) {
 			counterID: "",
 			setup: func() *defaultRelationValidator {
 				return &defaultRelationValidator{
-					branchRepo:  &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
-					serviceRepo: &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1", IsPharmacy: true}},
-					counterRepo: &stubCounterRepo{},
+					branchRepo:        &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
+					serviceRepo:       &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1", IsPharmacy: true}},
+					branchServiceRepo: &stubBranchServiceRepo{branchService: &serviceEntity.BranchService{ServiceID: "svc-1", BranchID: "b-1", TenantID: "t-1", IsActive: true}},
+					counterRepo:       &stubCounterRepo{},
 					settings: &stubQueueSettingsResolver{values: map[string]string{
 						settingsModel.SettingKeyPharmacyFlowEnabled: "false",
 					}},
@@ -143,9 +175,10 @@ func TestDefaultRelationValidator_Validate(t *testing.T) {
 			counterID: "",
 			setup: func() *defaultRelationValidator {
 				return &defaultRelationValidator{
-					branchRepo:  &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
-					serviceRepo: &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1"}},
-					counterRepo: &stubCounterRepo{},
+					branchRepo:        &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
+					serviceRepo:       &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1"}},
+					branchServiceRepo: &stubBranchServiceRepo{branchService: &serviceEntity.BranchService{ServiceID: "svc-1", BranchID: "b-1", TenantID: "t-1", IsActive: true}},
+					counterRepo:       &stubCounterRepo{},
 					settings: &stubQueueSettingsResolver{values: map[string]string{
 						settingsModel.SettingKeyRequireCounterForService: "true",
 					}},
@@ -162,9 +195,10 @@ func TestDefaultRelationValidator_Validate(t *testing.T) {
 			counterID: "c-1",
 			setup: func() *defaultRelationValidator {
 				return &defaultRelationValidator{
-					branchRepo:  &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
-					serviceRepo: &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1"}},
-					counterRepo: &stubCounterRepo{counter: &counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-foreign"}},
+					branchRepo:        &stubBranchRepo{branch: &branchEntity.Branch{ID: "b-1", TenantID: "t-1"}},
+					serviceRepo:       &stubServiceRepo{service: &serviceEntity.Service{ID: "svc-1", TenantID: "t-1"}},
+					branchServiceRepo: &stubBranchServiceRepo{branchService: &serviceEntity.BranchService{ServiceID: "svc-1", BranchID: "b-1", TenantID: "t-1", IsActive: true}},
+					counterRepo:       &stubCounterRepo{counter: &counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-foreign"}},
 				}
 			},
 			wantErr: exception.ErrForbidden,
