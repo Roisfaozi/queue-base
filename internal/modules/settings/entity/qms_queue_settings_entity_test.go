@@ -13,7 +13,7 @@ func TestTypedQueueSettingTableNames(t *testing.T) {
 	}{
 		{name: "tenant", got: TenantQueueSetting{}.TableName(), want: "tenant_queue_settings"},
 		{name: "branch", got: BranchQueueSetting{}.TableName(), want: "branch_queue_settings"},
-		{name: "service", got: ServiceQueueSetting{}.TableName(), want: "service_queue_settings"},
+		{name: "branch service", got: BranchServiceQueueSetting{}.TableName(), want: "branch_service_queue_settings"},
 		{name: "counter", got: CounterQueueSetting{}.TableName(), want: "counter_queue_settings"},
 	}
 
@@ -34,7 +34,8 @@ func TestTypedQueueSettingFields(t *testing.T) {
 	}{
 		{name: "tenant queue reset time", typeValue: TenantQueueSetting{}, fieldName: "QueueResetTime"},
 		{name: "branch ticket prefix", typeValue: BranchQueueSetting{}, fieldName: "TicketPrefix"},
-		{name: "service require counter", typeValue: ServiceQueueSetting{}, fieldName: "RequireCounter"},
+		{name: "branch service require counter", typeValue: BranchServiceQueueSetting{}, fieldName: "RequireCounter"},
+		{name: "branch service branch id", typeValue: BranchServiceQueueSetting{}, fieldName: "BranchID"},
 		{name: "counter numbering strategy", typeValue: CounterQueueSetting{}, fieldName: "NumberingStrategy"},
 	}
 

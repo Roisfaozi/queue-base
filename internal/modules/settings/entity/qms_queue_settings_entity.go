@@ -35,10 +35,11 @@ type BranchQueueSetting struct {
 
 func (BranchQueueSetting) TableName() string { return "branch_queue_settings" }
 
-type ServiceQueueSetting struct {
+type BranchServiceQueueSetting struct {
 	ID                       string `gorm:"column:id;primaryKey;type:varchar(36)"`
-	TenantID                 string `gorm:"column:tenant_id;type:varchar(36);not null;uniqueIndex:uk_service_queue_settings_service"`
-	ServiceID                string `gorm:"column:service_id;type:varchar(36);not null;uniqueIndex:uk_service_queue_settings_service"`
+	TenantID                 string `gorm:"column:tenant_id;type:varchar(36);not null;uniqueIndex:uk_branch_service_queue_settings_branch_service"`
+	BranchID                 string `gorm:"column:branch_id;type:varchar(36);not null;uniqueIndex:uk_branch_service_queue_settings_branch_service"`
+	BranchServiceID          string `gorm:"column:branch_service_id;type:varchar(36);not null;uniqueIndex:uk_branch_service_queue_settings_branch_service"`
 	DefaultEstimatedDuration *int   `gorm:"column:default_estimated_duration;type:int"`
 	RequireCounter           *bool  `gorm:"column:require_counter"`
 	AllowForwardFrom         *bool  `gorm:"column:allow_forward_from"`
@@ -50,7 +51,7 @@ type ServiceQueueSetting struct {
 	UpdatedAt                int64  `gorm:"column:updated_at;autoCreateTime:milli;autoUpdateTime:milli"`
 }
 
-func (ServiceQueueSetting) TableName() string { return "service_queue_settings" }
+func (BranchServiceQueueSetting) TableName() string { return "branch_service_queue_settings" }
 
 type CounterQueueSetting struct {
 	ID                       string  `gorm:"column:id;primaryKey;type:varchar(36)"`
