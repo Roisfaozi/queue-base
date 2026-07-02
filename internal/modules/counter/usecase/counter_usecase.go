@@ -47,14 +47,16 @@ func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCou
 	req.Sanitize()
 	now := time.Now().UnixMilli()
 	counter := &entity.Counter{
-		ID:        uuid.New().String(),
-		TenantID:  tenantID,
-		BranchID:  req.BranchID,
-		Code:      req.Code,
-		Name:      req.Name,
-		Status:    entity.CounterStatusActive,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:              uuid.New().String(),
+		TenantID:        tenantID,
+		BranchID:        req.BranchID,
+		BranchServiceID: req.BranchServiceID,
+		Code:            req.Code,
+		Name:            req.Name,
+		DisplayName:     req.DisplayName,
+		Status:          entity.CounterStatusActive,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 	if err := u.repo.Create(ctx, counter); err != nil {
 		return nil, err
@@ -109,6 +111,12 @@ func (u *counterUseCase) UpdateCounter(ctx context.Context, counterID string, re
 	if req.Name != nil {
 		counter.Name = *req.Name
 	}
+	if req.BranchServiceID != nil {
+		counter.BranchServiceID = *req.BranchServiceID
+	}
+	if req.DisplayName != nil {
+		counter.DisplayName = *req.DisplayName
+	}
 	if req.Status != nil {
 		counter.Status = *req.Status
 	}
@@ -129,13 +137,15 @@ func (u *counterUseCase) DeleteCounter(ctx context.Context, counterID string) er
 
 func (u *counterUseCase) mapToResponse(counter *entity.Counter) *model.CounterResponse {
 	return &model.CounterResponse{
-		ID:        counter.ID,
-		TenantID:  counter.TenantID,
-		BranchID:  counter.BranchID,
-		Code:      counter.Code,
-		Name:      counter.Name,
-		Status:    counter.Status,
-		CreatedAt: counter.CreatedAt,
-		UpdatedAt: counter.UpdatedAt,
+		ID:              counter.ID,
+		TenantID:        counter.TenantID,
+		BranchID:        counter.BranchID,
+		BranchServiceID: counter.BranchServiceID,
+		Code:            counter.Code,
+		Name:            counter.Name,
+		DisplayName:     counter.DisplayName,
+		Status:          counter.Status,
+		CreatedAt:       counter.CreatedAt,
+		UpdatedAt:       counter.UpdatedAt,
 	}
 }
