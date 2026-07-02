@@ -10,6 +10,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/api_key"
 	"github.com/Roisfaozi/queue-base/internal/modules/audit"
 	"github.com/Roisfaozi/queue-base/internal/modules/auth"
+	"github.com/Roisfaozi/queue-base/internal/modules/caller"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
@@ -49,6 +50,7 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&counter.CounterModule{},
 		&settings.SettingsModule{},
 		&queue.QueueModule{},
+		&caller.CallerModule{},
 		&scanner.ScannerModule{},
 		&api_key.ApiKeyModule{},
 		&webhook.WebhookModule{},

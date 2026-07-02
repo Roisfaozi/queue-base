@@ -11,6 +11,8 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/audit"
 	auditHttp "github.com/Roisfaozi/queue-base/internal/modules/audit/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/auth"
+	"github.com/Roisfaozi/queue-base/internal/modules/caller"
+	callerHttp "github.com/Roisfaozi/queue-base/internal/modules/caller/delivery/http"
 	counterModulePkg "github.com/Roisfaozi/queue-base/internal/modules/counter"
 	counterHttp "github.com/Roisfaozi/queue-base/internal/modules/counter/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
@@ -80,6 +82,7 @@ func SetupRouter(
 	counterModule *counterModulePkg.CounterModule,
 	settingsModule *settingsModulePkg.SettingsModule,
 	queueModule *queueModulePkg.QueueModule,
+	callerModule *caller.CallerModule,
 	scannerModule *scannerModulePkg.ScannerModule,
 	apiKeyModule *api_key.ApiKeyModule,
 	webhookModule *webhook.WebhookModule,
@@ -238,6 +241,7 @@ func SetupRouter(
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
 		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)
+		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, apiKeyMiddleware)
 		scannerHttp.RegisterScannerRoutes(tenantAuthorized, scannerModule.ScannerController)
 
 		// Project Routes
