@@ -164,6 +164,7 @@ func CleanupDatabase(t *testing.T, db *gorm.DB) {
 		"queue_counters",
 		"settings",
 		"counters",
+		"branch_services",
 		"services",
 		"branches",
 		"projects",
