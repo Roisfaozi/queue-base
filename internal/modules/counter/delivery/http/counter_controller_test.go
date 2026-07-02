@@ -103,7 +103,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -148,7 +148,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.GET("/counters/:id", controller.GetByID)
 
@@ -191,7 +191,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.PUT("/counters/:id", controller.Update)
 
@@ -231,7 +231,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.GET("/counters", controller.GetAll)
 
@@ -265,7 +265,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.DELETE("/counters/:id", controller.Delete)
 

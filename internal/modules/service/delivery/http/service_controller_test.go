@@ -93,7 +93,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -143,7 +143,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -189,7 +189,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -244,7 +244,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				if tt.tenantID != "" {
 					router.Use(func(c *gin.Context) {
@@ -285,7 +285,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.DELETE("/services/:id", controller.Delete)
 

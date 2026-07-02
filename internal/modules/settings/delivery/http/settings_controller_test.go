@@ -103,7 +103,7 @@ func TestSettingsController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewSettingsController(uc, newSettingsTestValidator(t))
+				controller := NewSettingsController(uc, newSettingsTestValidator(t), nil)
 				router := gin.New()
 				router.POST("/settings", controller.Create)
 
@@ -172,7 +172,7 @@ func TestSettingsController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewSettingsController(uc, newSettingsTestValidator(t))
+				controller := NewSettingsController(uc, newSettingsTestValidator(t), nil)
 				router := gin.New()
 				if tt.tenantID != "" {
 					router.Use(func(c *gin.Context) {
@@ -213,7 +213,7 @@ func TestSettingsController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewSettingsController(uc, newSettingsTestValidator(t))
+				controller := NewSettingsController(uc, newSettingsTestValidator(t), nil)
 				router := gin.New()
 				router.DELETE("/settings/:id", controller.Delete)
 
@@ -255,7 +255,7 @@ func TestSettingsController(t *testing.T) {
 					"ticket_prefix":              "A",
 					"numbering_strategy":         "daily_branch_sequence",
 					"default_estimated_duration": "5",
-				}})
+				}}, nil)
 				router := gin.New()
 				router.GET("/settings/effective", func(c *gin.Context) {
 					ctx := c.Request.Context()
