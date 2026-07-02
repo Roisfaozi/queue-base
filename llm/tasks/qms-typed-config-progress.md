@@ -423,3 +423,34 @@ Design sources:
   - error: none significant in this slice.
 - next step:
   - Improve counter dialog to load actual branch-service options per branch instead of raw optional string semantics.
+
+## 2026-07-02 — Phase 5D Counter Branch-Service Selector
+
+- status: completed
+- owner paths:
+  - `apps/web/src/lib/api/qms.ts`
+  - `apps/web/src/components/dashboard/counters/counter-dialog.tsx`
+  - `llm/tasks/qms-typed-config-progress.md`
+- design source:
+  - `documentation/New Design — Typed Configuration Architecture for QMS.md`
+- work done:
+  - Added frontend `BranchService` type and `branchServicesApi.getByBranch` client helper for `/branches/{branch_id}/services`.
+  - Updated counter dialog to load branch services for the selected branch.
+  - Updated counter dialog to display assigned service choices by service code/name or branch-service custom name.
+  - Kept `branch_service_id` optional so unassigned counter drafts remain compatible with backend contract.
+- tests added/updated:
+  - positive: web typecheck passes with branch-service API helper and counter selector state.
+  - negative: empty branch-service list shows disabled empty item.
+  - edge: missing service lookup falls back to `Unknown Service` label.
+  - vulnerability/security: frontend uses existing tenant-scoped backend proxy; backend remains source of authorization.
+- verification:
+  - command: `cd apps/web && pnpm typecheck`
+  - result: passed
+  - evidence: `tsc --noEmit` exited 0 after selector patch.
+- errors and fixes:
+  - error: `BranchService` interface was accidentally inserted inside `EffectiveQueueConfig`, causing TypeScript syntax errors.
+  - root cause: patch context was too broad around adjacent interfaces.
+  - fix: moved `BranchService` to standalone interface above `EffectiveQueueConfig` and reran typecheck.
+  - lesson: patch adjacent TypeScript interface blocks with exact start/end context when adding new exported interfaces.
+- next step:
+  - Commit Phase 5C/5D frontend and progress records, then proceed to Phase 6 docs sync.
