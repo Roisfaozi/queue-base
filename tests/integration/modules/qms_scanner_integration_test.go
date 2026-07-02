@@ -56,11 +56,11 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	}
 
 	v := validator.New()
-	settingsMod := settingsModulePkg.NewSettingsModule(env.DB, v)
+	settingsMod := settingsModulePkg.NewSettingsModule(env.DB, v, env.Logger)
 	queueMod := queueModulePkg.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, env.Logger)
 	branchMod := branchModulePkg.NewBranchModule(env.DB, v, env.Logger)
-	serviceMod := serviceModulePkg.NewServiceModule(env.DB, v)
-	counterMod := counterModulePkg.NewCounterModule(env.DB, v, branchMod.BranchRepo)
+	serviceMod := serviceModulePkg.NewServiceModule(env.DB, v, branchMod.BranchRepo, env.Logger)
+	counterMod := counterModulePkg.NewCounterModule(env.DB, v, branchMod.BranchRepo, serviceMod.BranchServiceRepo, env.Logger)
 
 	deps := &scannerDeps{
 		db:                env.DB,

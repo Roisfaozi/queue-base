@@ -44,7 +44,7 @@ func setupQMSIntegration(t *testing.T) *qmsDeps {
 
 	v := validator.New()
 	log := env.Logger
-	settingsMod := settingsModule.NewSettingsModule(env.DB, v)
+	settingsMod := settingsModule.NewSettingsModule(env.DB, v, log)
 	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, log)
 
 	deps := &qmsDeps{
