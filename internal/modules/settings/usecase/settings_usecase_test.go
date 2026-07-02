@@ -4,22 +4,43 @@ import (
 	"context"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+type stubSettingsAuditLogger struct {
+	entries []auditModel.CreateAuditLogRequest
+}
+
+func (s *stubSettingsAuditLogger) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.entries = append(s.entries, req)
+	return nil
+}
 
 type stubSettingsRepo struct {
 	settings map[string]*entity.Setting
 }
 
 func (s *stubSettingsRepo) Create(ctx context.Context, setting *entity.Setting) error {
+	if s.settings == nil {
+		s.settings = map[string]*entity.Setting{}
+	}
+	s.settings[setting.ID] = setting
 	return nil
 }
 func (s *stubSettingsRepo) FindByID(ctx context.Context, tenantID, settingID string) (*entity.Setting, error) {
-	return nil, nil
+	if s.settings == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	if val, ok := s.settings[settingID]; ok {
+		return val, nil
+	}
+	return nil, gorm.ErrRecordNotFound
 }
 func (s *stubSettingsRepo) FindByScope(ctx context.Context, tenantID, scopeType, scopeID, key string) (*entity.Setting, error) {
 	if val, ok := s.settings[scopeType+":"+scopeID+":"+key]; ok {
@@ -30,7 +51,13 @@ func (s *stubSettingsRepo) FindByScope(ctx context.Context, tenantID, scopeType,
 func (s *stubSettingsRepo) FindAllByKey(ctx context.Context, tenantID, key string) ([]*entity.Setting, error) {
 	return nil, nil
 }
-func (s *stubSettingsRepo) Update(ctx context.Context, setting *entity.Setting) error    { return nil }
+func (s *stubSettingsRepo) Update(ctx context.Context, setting *entity.Setting) error {
+	if s.settings == nil {
+		s.settings = map[string]*entity.Setting{}
+	}
+	s.settings[setting.ID] = setting
+	return nil
+}
 func (s *stubSettingsRepo) Delete(ctx context.Context, tenantID, settingID string) error { return nil }
 
 // =============================================================================
@@ -222,4 +249,24 @@ func TestResolveSetting(t *testing.T) {
 
 func boolPtr(v bool) *bool {
 	return &v
+}
+
+func TestSettingsAuditHooks(t *testing.T) {
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	audit := &stubSettingsAuditLogger{}
+	repo := &stubSettingsRepo{settings: map[string]*entity.Setting{"setting-1": {ID: "setting-1", TenantID: "t-1", ScopeType: "branch", ScopeID: "b-1", Key: "queue_reset_time", Value: "04:00", ValueType: "string", IsActive: true}}}
+	uc := NewSettingsUseCase(repo, audit)
+
+	created, err := uc.CreateSetting(ctx, &model.CreateSettingRequest{ScopeType: "branch", ScopeID: "b-1", Key: "queue_reset_time", Value: "04:00"})
+	require.NoError(t, err)
+	_, err = uc.UpdateSetting(ctx, "setting-1", &model.UpdateSettingRequest{})
+	require.NoError(t, err)
+	err = uc.DeleteSetting(ctx, created.ID)
+	require.NoError(t, err)
+
+	require.Len(t, audit.entries, 3)
+	assert.Equal(t, "SETTING_CREATE", audit.entries[0].Action)
+	assert.Equal(t, "SETTING_UPDATE", audit.entries[1].Action)
+	assert.Equal(t, "SETTING_DELETE", audit.entries[2].Action)
+	assert.Equal(t, "setting", audit.entries[0].Entity)
 }

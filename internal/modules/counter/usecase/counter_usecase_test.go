@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
 	organizationEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
@@ -13,6 +14,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type stubCounterAuditLogger struct {
+	entries []auditModel.CreateAuditLogRequest
+}
+
+func (s *stubCounterAuditLogger) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.entries = append(s.entries, req)
+	return nil
+}
 
 type stubCounterRepo struct {
 	counter *entity.Counter
@@ -290,4 +300,24 @@ func (s *stubCounterBranchServiceRepo) Update(_ context.Context, bs *serviceEnti
 }
 func (s *stubCounterBranchServiceRepo) Delete(_ context.Context, tenantID, branchID, id string) error {
 	return nil
+}
+
+func TestCounterAuditHooks(t *testing.T) {
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	audit := &stubCounterAuditLogger{}
+	repo := &stubCounterRepo{counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Status: entity.CounterStatusActive}}
+	uc := NewCounterUseCase(repo, &stubCounterBranchRepo{}, &stubCounterBranchServiceRepo{}, audit)
+
+	_, err := uc.CreateCounter(ctx, &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Counter A"})
+	require.NoError(t, err)
+	_, err = uc.UpdateCounter(ctx, "counter-1", &model.UpdateCounterRequest{})
+	require.NoError(t, err)
+	err = uc.DeleteCounter(ctx, "counter-1")
+	require.NoError(t, err)
+
+	require.Len(t, audit.entries, 3)
+	assert.Equal(t, "COUNTER_CREATE", audit.entries[0].Action)
+	assert.Equal(t, "COUNTER_UPDATE", audit.entries[1].Action)
+	assert.Equal(t, "COUNTER_DELETE", audit.entries[2].Action)
+	assert.Equal(t, "counter", audit.entries[0].Entity)
 }

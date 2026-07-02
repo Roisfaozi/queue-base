@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -13,10 +14,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type stubServiceAuditLogger struct {
+	entries []auditModel.CreateAuditLogRequest
+}
+
+func (s *stubServiceAuditLogger) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.entries = append(s.entries, req)
+	return nil
+}
+
 type stubServiceRepo struct {
 	service *entity.Service
 	list    []*entity.Service
 	err     error
+}
+
+func TestServiceAuditHooks(t *testing.T) {
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	audit := &stubServiceAuditLogger{}
+	repo := &stubServiceRepo{service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Code: "REG", Name: "Registration", Status: entity.ServiceStatusActive}}
+	uc := NewServiceUseCase(repo, audit)
+
+	_, err := uc.CreateService(ctx, &model.CreateServiceRequest{Code: "new", Name: "New"})
+	require.NoError(t, err)
+	_, err = uc.UpdateService(ctx, "svc-1", &model.UpdateServiceRequest{})
+	require.NoError(t, err)
+	err = uc.DeleteService(ctx, "svc-1")
+	require.NoError(t, err)
+
+	require.Len(t, audit.entries, 3)
+	assert.Equal(t, "SERVICE_CREATE", audit.entries[0].Action)
+	assert.Equal(t, "SERVICE_UPDATE", audit.entries[1].Action)
+	assert.Equal(t, "SERVICE_DELETE", audit.entries[2].Action)
+	assert.Equal(t, "service", audit.entries[0].Entity)
 }
 
 func (s *stubServiceRepo) Create(_ context.Context, service *entity.Service) error {
