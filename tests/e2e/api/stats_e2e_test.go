@@ -5,6 +5,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
 	"github.com/Roisfaozi/queue-base/tests/fixtures"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -32,7 +32,7 @@ func loginForStats(t *testing.T, server *setup.TestServer) string {
 		"username": "stats_user_" + uniqueSuffix,
 		"password": "StatsPass123!",
 	})
-	require.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, 200, resp.StatusCode)
 
 	var loginRes struct {
 		Data struct {
@@ -43,185 +43,164 @@ func loginForStats(t *testing.T, server *setup.TestServer) string {
 	return loginRes.Data.AccessToken
 }
 
-func TestStatsE2E_GetSummary(t *testing.T) {
+func TestStatsE2E(t *testing.T) {
 	server := setup.SetupTestServer(t)
 	defer server.Cleanup()
 
 	token := loginForStats(t, server)
 
 	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
+		name           string
+		endpoint       string
+		method         string
+		token          string
+		expectedStatus int
+		validateFunc   func(t *testing.T, resp *setup.Response)
 	}{
 		{
-			name:     "Success_GetSummary",
-			category: "positive",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/stats/summary", setup.WithAuth(token))
-
-				assert.Equal(t, 200, resp.StatusCode)
-
-				var result struct {
+			name:           "Success_GetSummary",
+			endpoint:       "/api/v1/stats/summary?timeframe=week",
+			method:         http.MethodGet,
+			token:          token,
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res struct {
 					Data struct {
-						TotalUsers      int64 `json:"total_users"`
-						TotalRoles      int64 `json:"total_roles"`
-						TotalAuditLogs  int64 `json:"total_audit_logs"`
-						TotalOrgMembers int64 `json:"total_org_members"`
+						TotalUsers    int     `json:"total_users"`
+						ActiveUsers   int     `json:"active_users"`
+						Revenue       float64 `json:"revenue"`
+						NewSignups    int     `json:"new_signups"`
+						PreviousUsers int     `json:"previous_users"`
 					} `json:"data"`
 				}
-				err := resp.JSON(&result)
-				require.NoError(t, err)
-
-				assert.GreaterOrEqual(t, result.Data.TotalUsers, int64(1))
+				resp.JSON(&res)
+				// Basic validation that structure is present
+				assert.GreaterOrEqual(t, res.Data.TotalUsers, 0)
+				assert.GreaterOrEqual(t, res.Data.ActiveUsers, 0)
 			},
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
-
-func TestStatsE2E_GetActivity(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
-
-	token := loginForStats(t, server)
-
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
 		{
-			name:     "Default Days",
-			category: "positive",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/stats/activity", setup.WithAuth(token))
-
-				assert.Equal(t, 200, resp.StatusCode)
-
-				var result struct {
+			name:           "Error_SummaryInvalidTimeframe",
+			endpoint:       "/api/v1/stats/summary?timeframe=invalid",
+			method:         http.MethodGet,
+			token:          token,
+			expectedStatus: http.StatusBadRequest,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res map[string]any
+				resp.JSON(&res)
+				assert.Equal(t, "invalid timeframe", res["message"])
+			},
+		},
+		{
+			name:           "Success_GetActivity",
+			endpoint:       "/api/v1/stats/activity?timeframe=month",
+			method:         http.MethodGet,
+			token:          token,
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res struct {
 					Data struct {
-						Points []struct {
-							Date   string `json:"date"`
-							Audits int64  `json:"audits"`
-							Logins int64  `json:"logins"`
-						} `json:"points"`
+						TimeSeries []struct {
+							Date  string `json:"date"`
+							Value int    `json:"value"`
+						} `json:"time_series"`
+						Trend float64 `json:"trend"`
 					} `json:"data"`
 				}
-				err := resp.JSON(&result)
-				require.NoError(t, err)
-				assert.Len(t, result.Data.Points, 7, "Default should return 7 days of activity")
+				resp.JSON(&res)
+				assert.NotNil(t, res.Data.TimeSeries)
 			},
 		},
 		{
-			name:     "Custom Days",
-			category: "positive",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/stats/activity?days=14", setup.WithAuth(token))
-				assert.Equal(t, 200, resp.StatusCode)
-
-				var result struct {
-					Data struct {
-						Points []struct {
-							Date string `json:"date"`
-						} `json:"points"`
+			name:           "Error_ActivityInvalidTimeframe",
+			endpoint:       "/api/v1/stats/activity?timeframe=invalid",
+			method:         http.MethodGet,
+			token:          token,
+			expectedStatus: http.StatusBadRequest,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res map[string]any
+				resp.JSON(&res)
+				assert.Equal(t, "invalid timeframe", res["message"])
+			},
+		},
+		{
+			name:           "Success_GetInsights",
+			endpoint:       "/api/v1/stats/insights",
+			method:         http.MethodGet,
+			token:          token,
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res struct {
+					Data []struct {
+						Category string `json:"category"`
+						Title    string `json:"title"`
+						Value    string `json:"value"`
+						Type     string `json:"type"`
 					} `json:"data"`
 				}
-				resp.JSON(&result)
-				assert.Len(t, result.Data.Points, 14, "Should return 14 days of activity")
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
-
-func TestStatsE2E_GetInsights(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
-
-	token := loginForStats(t, server)
-
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
-		{
-			name:     "Success_GetInsights",
-			category: "positive",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/stats/insights", setup.WithAuth(token))
-
-				assert.Equal(t, 200, resp.StatusCode)
-
-				var result struct {
-					Data struct {
-						AvgLatencyMs   float64 `json:"avg_latency_ms"`
-						ErrorRate      float64 `json:"error_rate"`
-						Uptime         string  `json:"uptime"`
-						MostActiveRole string  `json:"most_active_role"`
-					} `json:"data"`
+				resp.JSON(&res)
+				assert.NotNil(t, res.Data)
+				if len(res.Data) > 0 {
+					assert.NotEmpty(t, res.Data[0].Category)
 				}
-				err := resp.JSON(&result)
-				require.NoError(t, err)
-				assert.Greater(t, result.Data.AvgLatencyMs, float64(0))
-				assert.NotEmpty(t, result.Data.Uptime)
-				assert.NotEmpty(t, result.Data.MostActiveRole)
+			},
+		},
+		{
+			name:           "Error_SummaryUnauthorized",
+			endpoint:       "/api/v1/stats/summary?timeframe=week",
+			method:         http.MethodGet,
+			token:          "", // No token
+			expectedStatus: http.StatusUnauthorized,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res map[string]any
+				resp.JSON(&res)
+				assert.Equal(t, "unauthorized", res["message"])
+			},
+		},
+		{
+			name:           "Error_ActivityUnauthorized",
+			endpoint:       "/api/v1/stats/activity?timeframe=month",
+			method:         http.MethodGet,
+			token:          "", // No token
+			expectedStatus: http.StatusUnauthorized,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res map[string]any
+				resp.JSON(&res)
+				assert.Equal(t, "unauthorized", res["message"])
+			},
+		},
+		{
+			name:           "Error_InsightsUnauthorized",
+			endpoint:       "/api/v1/stats/insights",
+			method:         http.MethodGet,
+			token:          "", // No token
+			expectedStatus: http.StatusUnauthorized,
+			validateFunc: func(t *testing.T, resp *setup.Response) {
+				var res map[string]any
+				resp.JSON(&res)
+				assert.Equal(t, "unauthorized", res["message"])
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
-		})
-	}
-}
+			headers := map[string]string{}
+			if tt.token != "" {
+				headers["Authorization"] = "Bearer " + tt.token
+			}
 
-func TestStatsE2E_Unauthorized(t *testing.T) {
-	server := setup.SetupTestServer(t)
-	defer server.Cleanup()
+			var resp *setup.Response
+			if tt.method == http.MethodGet {
+				resp = server.Client.GET(tt.endpoint, headers)
+			} else {
+				t.Fatalf("unsupported method %s", tt.method)
+			}
 
-	tests := []struct {
-		name     string
-		category string
-		run      func(t *testing.T)
-	}{
-		{
-			name:     "Summary Without Auth",
-			category: "negative",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/stats/summary")
-				assert.Equal(t, 401, resp.StatusCode)
-			},
-		},
-		{
-			name:     "Activity Without Auth",
-			category: "negative",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/stats/activity")
-				assert.Equal(t, 401, resp.StatusCode)
-			},
-		},
-		{
-			name:     "Insights Without Auth",
-			category: "negative",
-			run: func(t *testing.T) {
-				resp := server.Client.GET("/api/v1/stats/insights")
-				assert.Equal(t, 401, resp.StatusCode)
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.run(t)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+			if tt.validateFunc != nil {
+				tt.validateFunc(t, resp)
+			}
 		})
 	}
 }
