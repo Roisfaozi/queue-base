@@ -84,7 +84,7 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 			Joins("JOIN services ON services.id = branch_services.service_id").
 			Select("services.name AS service_name").
 			Where("branch_services.id = ? AND branch_services.tenant_id = ?", *cr.BranchServiceID, cr.TenantID).
-			First(&sr).Error
+			Take(&sr).Error
 		res.ServiceName = sr.ServiceName
 	}
 
@@ -97,7 +97,7 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 		_ = u.db.WithContext(ctx).Table("counters").
 			Select("display_name").
 			Where("id = ? AND tenant_id = ?", *cr.CounterID, cr.TenantID).
-			First(&ctr).Error
+			Take(&ctr).Error
 		if ctr.DisplayName != nil {
 			res.CounterDisplayName = *ctr.DisplayName
 		}
@@ -128,6 +128,9 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 	branchID := database.GetBranchID(ctx)
 	if tenantID == "" || branchID == "" {
 		return nil, exception.ErrBadRequest
+	}
+	if cs.TenantID != tenantID || cs.BranchID != branchID {
+		return nil, exception.ErrForbidden
 	}
 
 	type callRow struct {
@@ -211,6 +214,9 @@ func (u *signageUseCase) GetQueues(ctx context.Context, clientID string) ([]queu
 	branchID := database.GetBranchID(ctx)
 	if tenantID == "" || branchID == "" {
 		return nil, exception.ErrBadRequest
+	}
+	if cs.TenantID != tenantID || cs.BranchID != branchID {
+		return nil, exception.ErrForbidden
 	}
 
 	type queueRow struct {
