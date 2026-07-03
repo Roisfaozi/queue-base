@@ -6,14 +6,23 @@ type QMSClientRequest struct {
 	Name       string `json:"name" validate:"required,min=1,max=255"`
 }
 
+type QMSClientUpdateRequest struct {
+	Name            string  `json:"name" validate:"omitempty,min=1,max=255"`
+	BranchServiceID *string `json:"branch_service_id" validate:"omitempty,uuid4"`
+	CounterID       *string `json:"counter_id" validate:"omitempty,uuid4"`
+	IsActive        *bool   `json:"is_active"`
+}
+
 type QMSClientResponse struct {
-	ID         string `json:"id"`
-	TenantID   string `json:"tenant_id,omitempty"`
-	BranchID   string `json:"branch_id"`
-	ClientType string `json:"client_type"`
-	Name       string `json:"name"`
-	IsActive   bool   `json:"is_active"`
-	CreatedAt  int64  `json:"created_at"`
+	ID              string  `json:"id"`
+	TenantID        string  `json:"tenant_id,omitempty"`
+	BranchID        string  `json:"branch_id"`
+	ClientType      string  `json:"client_type"`
+	Name            string  `json:"name"`
+	BranchServiceID *string `json:"branch_service_id,omitempty"`
+	CounterID       *string `json:"counter_id,omitempty"`
+	IsActive        bool    `json:"is_active"`
+	CreatedAt       int64   `json:"created_at"`
 }
 
 type QMSClientCredentialRequest struct {

@@ -59,6 +59,46 @@ func (h *QMSClientController) CreateCredential(c *gin.Context) {
 	response.Created(c, res)
 }
 
+func (h *QMSClientController) GetAll(c *gin.Context) {
+	res, err := h.useCase.GetAll(c.Request.Context())
+	if err != nil {
+		response.HandleError(c, err, "failed to get qms clients")
+		return
+	}
+	response.Success(c, res)
+}
+
+func (h *QMSClientController) GetByID(c *gin.Context) {
+	res, err := h.useCase.GetByID(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		response.HandleError(c, err, "failed to get qms client")
+		return
+	}
+	response.Success(c, res)
+}
+
+func (h *QMSClientController) Update(c *gin.Context) {
+	var req model.QMSClientUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	res, err := h.useCase.Update(c.Request.Context(), c.Param("id"), &req)
+	if err != nil {
+		response.HandleError(c, err, "failed to update qms client")
+		return
+	}
+	response.Success(c, res)
+}
+
 func (h *QMSClientController) Delete(c *gin.Context) {
-	c.Status(http.StatusNotImplemented)
+	if err := h.useCase.Delete(c.Request.Context(), c.Param("id")); err != nil {
+		response.HandleError(c, err, "failed to deactivate qms client")
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

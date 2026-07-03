@@ -15,6 +15,8 @@ import (
 	callerHttp "github.com/Roisfaozi/queue-base/internal/modules/caller/delivery/http"
 	counterModulePkg "github.com/Roisfaozi/queue-base/internal/modules/counter"
 	counterHttp "github.com/Roisfaozi/queue-base/internal/modules/counter/delivery/http"
+	operatorAssignmentModulePkg "github.com/Roisfaozi/queue-base/internal/modules/operator_assignment"
+	operatorAssignmentHttp "github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
 	organizationHttp "github.com/Roisfaozi/queue-base/internal/modules/organization/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
@@ -87,6 +89,7 @@ func SetupRouter(
 	settingsModule *settingsModulePkg.SettingsModule,
 	queueModule *queueModulePkg.QueueModule,
 	callerModule *caller.CallerModule,
+	operatorAssignmentModule *operatorAssignmentModulePkg.Module,
 	qmsClientModule *qmsClientModulePkg.QMSClientModule,
 	qmsClientMiddleware *middleware.QMSClientMiddleware,
 	signageModule *signageModulePkg.SignageModule,
@@ -247,6 +250,7 @@ func SetupRouter(
 		serviceHttp.RegisterBranchServiceRoutes(tenantAuthorized, serviceModule.BranchServiceController, apiKeyMiddleware)
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
 		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
+		operatorAssignmentHttp.RegisterRoutes(tenantAuthorized, operatorAssignmentModule.Controller, apiKeyMiddleware)
 		qmsClientHttp.RegisterQMSClientRoutes(tenantAuthorized, qmsClientModule.Controller, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)
 		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, qmsClientMiddleware)

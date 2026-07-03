@@ -157,3 +157,44 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 		})
 	}
 }
+
+func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
+	db := newAdminTestDB(t)
+	audit := &stubAuditLogger{}
+	uc := NewQMSClientAdminUseCase(db, audit)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	otherCtx := database.SetOrganizationContext(context.Background(), "t-2")
+	require.NoError(t, db.Create(&entity.QMSClient{ID: "c-1", TenantID: "t-1", BranchID: "b-1", ClientType: entity.ClientTypeCaller, Name: "Old", IsActive: true}).Error)
+
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "Positive_UpdateAndDeactivate",
+			run: func(t *testing.T) {
+				newName := "New"
+				active := true
+				res, err := uc.Update(ctx, "c-1", &model.QMSClientUpdateRequest{Name: newName, IsActive: &active})
+				require.NoError(t, err)
+				assert.Equal(t, newName, res.Name)
+
+				require.NoError(t, uc.Delete(ctx, "c-1"))
+				res, err = uc.GetByID(ctx, "c-1")
+				require.NoError(t, err)
+				assert.False(t, res.IsActive)
+			},
+		},
+		{
+			name: "Vulnerability_CrossTenantUpdateRejected",
+			run: func(t *testing.T) {
+				_, err := uc.Update(otherCtx, "c-1", &model.QMSClientUpdateRequest{Name: "Owned"})
+				require.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+}

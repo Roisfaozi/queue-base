@@ -15,6 +15,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/auth"
 	"github.com/Roisfaozi/queue-base/internal/modules/caller"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter"
+	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
 	orgRepo "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
@@ -225,6 +226,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
 	queueModule := queue.NewQueueModule(dbConnection, validate, settingsModule.QueueSettingsResolver, logger, auditModule.AuditUseCase)
 	callerModule := caller.NewCallerModule(dbConnection, queueModule.QueueUseCase, authModule.AuthUseCase, auditModule.AuditUseCase, validate, logger)
+	operatorAssignmentModule := operator_assignment.NewModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 	qmsClientModule := qms_client.NewQMSClientModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 	qmsClientMiddleware := middleware.NewQMSClientMiddleware(qmsClientModule.Authenticator, logger)
 	signageModule := signage.NewSignageModule(dbConnection, queueModule.QueueUseCase, validate, logger)
@@ -386,6 +388,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		settingsModule,
 		queueModule,
 		callerModule,
+		operatorAssignmentModule,
 		qmsClientModule,
 		qmsClientMiddleware,
 		signageModule,
