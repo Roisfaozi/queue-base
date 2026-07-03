@@ -138,6 +138,133 @@ export interface TokenResponse {
 	token_type: string;
 }
 
+export interface QMSClientCreateRequest {
+	branch_id: string;
+	client_type: "caller" | "signage" | "scanner" | "kiosk";
+	name: string;
+}
+
+export interface QMSClientCreateResponse {
+	id: string;
+	tenant_id?: string;
+	branch_id: string;
+	client_type: "caller" | "signage" | "scanner" | "kiosk";
+	name: string;
+	is_active: boolean;
+	created_at: number;
+}
+
+export interface QMSClientCredentialCreateRequest {
+	client_id: string;
+	api_key: string;
+}
+
+export interface QMSClientCredentialCreateResponse {
+	id: string;
+	client_id: string;
+	expires_at?: number;
+	created_at: number;
+}
+
+export interface CallerContext {
+	tenant_id: string;
+	tenant_name?: string;
+	branch_id: string;
+	branch_name?: string;
+	branch_service_id?: string;
+	service_name?: string;
+	counter_id?: string;
+	counter_name?: string;
+	display_name?: string;
+}
+
+export interface CallerLoginRequest {
+	username: string;
+	password: string;
+}
+
+export interface CallerActionRequest {
+	action: "call" | "serve" | "complete" | "skip" | "cancel";
+}
+
+export interface CallerActionResponse {
+	success: boolean;
+	track_no?: string;
+	queue_no?: number;
+	status: string;
+	journey_id: string;
+}
+
+export interface CallerLoginResponse {
+	access_token: string;
+	context: CallerContext;
+	permissions: string[];
+}
+
+export interface CallerMeResponse extends CallerLoginResponse {}
+
+export interface SignageMeResponse {
+	client_id: string;
+	tenant_id: string;
+	branch_id: string;
+	branch_service_id?: string;
+	counter_id?: string;
+	client_type: string;
+	name: string;
+	running_text?: string;
+	logo_asset_id?: string;
+	branch_name?: string;
+	service_name?: string;
+	counter_display_name?: string;
+	audio_id?: string;
+	audio_en?: string;
+}
+
+export interface SignageCurrentCallResponse {
+	queue_id: string;
+	ticket_no: string;
+	counter_id: string;
+	counter_display_name?: string;
+	service_id: string;
+	service_type?: string;
+	audio_id?: string;
+	audio_en?: string;
+}
+
+export interface EffectiveQueueConfigResponse {
+	tenant_id: string;
+	branch_id?: string;
+	service_id?: string;
+	counter_id?: string;
+	queue_reset_time: string;
+	queue_reset_time_source?: string;
+	queue_reset_time_inherited?: boolean;
+	ticket_prefix: string;
+	ticket_prefix_source?: string;
+	ticket_prefix_inherited?: boolean;
+	numbering_strategy: string;
+	numbering_strategy_source?: string;
+	numbering_strategy_inherited?: boolean;
+	default_estimated_duration?: string;
+	default_estimated_duration_source?: string;
+	default_estimated_duration_inherited?: boolean;
+	allow_forward?: boolean;
+	allow_skip?: boolean;
+	allow_recall?: boolean;
+	allow_cancel?: boolean;
+	auto_call_next?: boolean;
+	max_service_duration?: number;
+	min_service_duration?: number;
+	require_counter?: boolean;
+	allow_forward_from?: boolean;
+	allow_forward_to?: boolean;
+	audio_id?: string;
+	audio_en?: string;
+	narrative_instruction_id?: string;
+	narrative_instruction_en?: string;
+	effective_until?: string;
+}
+
 export interface PaginatedResponse<T> {
 	data: T[];
 	meta: { total: number };

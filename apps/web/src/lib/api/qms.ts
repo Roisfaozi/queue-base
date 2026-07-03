@@ -1,3 +1,18 @@
+import type {
+	CallerActionRequest,
+	CallerActionResponse,
+	CallerLoginRequest,
+	CallerLoginResponse,
+	CallerMeResponse,
+	EffectiveQueueConfigResponse,
+	QMSClientCreateRequest,
+	QMSClientCreateResponse,
+	QMSClientCredentialCreateRequest,
+	QMSClientCredentialCreateResponse,
+	SignageCurrentCallResponse,
+	SignageMeResponse,
+} from "@casbin/api-types";
+
 import { api } from "./client";
 
 export interface Branch {
@@ -62,24 +77,7 @@ export interface BranchService {
 	updated_at: number;
 }
 
-export interface EffectiveQueueConfig {
-	tenant_id: string;
-	branch_id?: string;
-	service_id?: string;
-	counter_id?: string;
-	queue_reset_time: string;
-	queue_reset_time_source?: string;
-	queue_reset_time_inherited?: boolean;
-	ticket_prefix: string;
-	ticket_prefix_source?: string;
-	ticket_prefix_inherited?: boolean;
-	numbering_strategy: string;
-	numbering_strategy_source?: string;
-	numbering_strategy_inherited?: boolean;
-	default_estimated_duration?: string;
-	default_estimated_duration_source?: string;
-	default_estimated_duration_inherited?: boolean;
-}
+export type EffectiveQueueConfig = EffectiveQueueConfigResponse;
 
 export interface Queue {
 	id: string;
@@ -127,6 +125,34 @@ export interface ScannerCheckInResponse {
 	action: "register" | "forward";
 	queue: Queue;
 }
+
+export const qmsClientsApi = {
+	create: (data: QMSClientCreateRequest) =>
+		api.post<{ data: QMSClientCreateResponse }>("/qms-clients", data),
+	createCredential: (data: QMSClientCredentialCreateRequest) =>
+		api.post<{ data: QMSClientCredentialCreateResponse }>(
+			"/qms-clients/credentials",
+			data,
+		),
+};
+
+export const callerApi = {
+	login: (data: CallerLoginRequest) =>
+		api.post<{ data: CallerLoginResponse }>("/caller/login", data),
+	me: () => api.get<{ data: CallerMeResponse }>("/caller/me"),
+	action: (journeyId: string, data: CallerActionRequest) =>
+		api.post<{ data: CallerActionResponse }>(
+			`/caller/queue-journeys/${journeyId}/action`,
+			data,
+		),
+};
+
+export const signageApi = {
+	me: () => api.get<{ data: SignageMeResponse }>("/signage/me"),
+	getCurrentCalls: () =>
+		api.get<{ data: SignageCurrentCallResponse[] }>("/signage/current-calls"),
+	getQueues: () => api.get<{ data: unknown[] }>("/signage/queues"),
+};
 
 // -----------------------------------------------------------------------------
 // BRANCHES API
@@ -316,7 +342,7 @@ export const settingsApi = {
 			searchParams.append("counter_id", params.counter_id);
 
 		const query = searchParams.toString();
-		return api.get<{ data: EffectiveQueueConfig }>(
+		return api.get<{ data: EffectiveQueueConfigResponse }>(
 			`/settings/effective${query ? `?${query}` : ""}`,
 		);
 	},
