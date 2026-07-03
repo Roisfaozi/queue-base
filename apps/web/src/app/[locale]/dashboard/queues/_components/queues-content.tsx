@@ -188,6 +188,18 @@ export function QueuesContent() {
 		fetchViewData();
 	}, [fetchViewData]);
 
+	useEffect(() => {
+		if (selectedCounterId === "all") return;
+		const counterStillValid = counters.some(
+			(counter) =>
+				counter.id === selectedCounterId &&
+				counter.branch_id === selectedBranchId,
+		);
+		if (!counterStillValid) {
+			setSelectedCounterId("all");
+		}
+	}, [counters, selectedBranchId, selectedCounterId]);
+
 	const handleView = (queue: Queue) => {
 		setSelectedQueue(queue);
 		setDetailOpen(true);
