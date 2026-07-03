@@ -13,6 +13,8 @@ type SignageMeResponse struct {
 	BranchName         string `json:"branch_name,omitempty"`
 	ServiceName        string `json:"service_name,omitempty"`
 	CounterDisplayName string `json:"counter_display_name,omitempty"`
+	AudioID            string `json:"audio_id,omitempty"`
+	AudioEN            string `json:"audio_en,omitempty"`
 }
 
 type SignageCurrentCallResponse struct {

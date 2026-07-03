@@ -20,6 +20,10 @@ type Service struct {
 	Code                     string                 `gorm:"column:code;type:varchar(50);not null;uniqueIndex:uk_service_tenant_code"`
 	Name                     string                 `gorm:"column:name;type:varchar(255);not null"`
 	Type                     string                 `gorm:"column:type;type:varchar(50);not null;default:'general';index"`
+	AudioID                  string                 `gorm:"column:audio_id;type:varchar(36)"`
+	AudioEN                  string                 `gorm:"column:audio_en;type:varchar(36)"`
+	NarrativeInstructionID   string                 `gorm:"column:narrative_instruction_id;type:varchar(36)"`
+	NarrativeInstructionEN   string                 `gorm:"column:narrative_instruction_en;type:varchar(36)"`
 	DefaultEstimatedDuration int                    `gorm:"column:default_estimated_duration;type:int;not null;default:5"`
 	Status                   string                 `gorm:"column:status;type:varchar(20);default:'active';index"`
 	IsPharmacy               bool                   `gorm:"column:is_pharmacy;not null;default:false"`

@@ -49,7 +49,9 @@ func newSignageTestDB(t *testing.T) *gorm.DB {
 		CREATE TABLE services (
 			id TEXT PRIMARY KEY,
 			name TEXT,
-			type TEXT
+			type TEXT,
+			audio_id TEXT,
+			audio_en TEXT
 		);
 		CREATE TABLE counters (
 			id TEXT PRIMARY KEY,
@@ -95,6 +97,7 @@ func seedSignageTestData(t *testing.T, db *gorm.DB) {
 		`INSERT INTO branch_services (id, tenant_id, service_id) VALUES ('bs-2','t-1','svc-2')`,
 		`INSERT INTO services (id, name, type) VALUES ('svc-1','Customer Service','vip')`,
 		`INSERT INTO services (id, name, type) VALUES ('svc-2','Pharmacy','general')`,
+		`UPDATE services SET audio_id='audio-1', audio_en='audio-1-en' WHERE id='svc-1'`,
 		`INSERT INTO counters (id, tenant_id, display_name) VALUES ('c-1','t-1','Counter 1')`,
 		`INSERT INTO counters (id, tenant_id, display_name) VALUES ('c-2','t-1','Counter 2')`,
 		`INSERT INTO queues (id, tenant_id, branch_id, queue_date, ticket_no, queue_no, status, created_at, updated_at) VALUES ('q-1','t-1','b-1','2026-07-03','A001',1,'calling',100,110)`,
@@ -156,6 +159,8 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 				BranchName:         "Branch One",
 				ServiceName:        "Customer Service",
 				CounterDisplayName: "Counter 1",
+				AudioID:            "audio-1",
+				AudioEN:            "audio-1-en",
 			},
 		},
 		{
@@ -231,6 +236,8 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 					CounterDisplayName: "Counter 1",
 					ServiceID:          "svc-1",
 					ServiceType:        "vip",
+					AudioID:            "audio-1",
+					AudioEN:            "audio-1-en",
 				},
 			},
 		},
@@ -269,6 +276,8 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 					CounterDisplayName: "Counter 1",
 					ServiceID:          "svc-1",
 					ServiceType:        "vip",
+					AudioID:            "audio-1",
+					AudioEN:            "audio-1-en",
 				},
 			},
 		},

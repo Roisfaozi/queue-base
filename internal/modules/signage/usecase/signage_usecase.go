@@ -91,14 +91,22 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 		res.BranchServiceID = *cr.BranchServiceID
 		type svcRow struct {
 			ServiceName string `gorm:"column:service_name"`
+			AudioID     *string
+			AudioEN     *string
 		}
 		var sr svcRow
 		_ = u.db.WithContext(ctx).Table("branch_services").
 			Joins("JOIN services ON services.id = branch_services.service_id").
-			Select("services.name AS service_name").
+			Select("services.name AS service_name, services.audio_id, services.audio_en").
 			Where("branch_services.id = ? AND branch_services.tenant_id = ?", *cr.BranchServiceID, cr.TenantID).
 			Take(&sr).Error
 		res.ServiceName = sr.ServiceName
+		if sr.AudioID != nil {
+			res.AudioID = *sr.AudioID
+		}
+		if sr.AudioEN != nil {
+			res.AudioEN = *sr.AudioEN
+		}
 	}
 
 	if cr.CounterID != nil && *cr.CounterID != "" {
@@ -158,7 +166,7 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 	}
 	var rows []callRow
 	query := u.db.WithContext(ctx).Table("queue_journeys AS qj").
-		Select("qj.queue_id, q.ticket_no, COALESCE(qj.counter_id,'') AS counter_id, qj.service_id, c.display_name AS counter_display_name, COALESCE(s.type,'general') AS service_type").
+		Select("qj.queue_id, q.ticket_no, COALESCE(qj.counter_id,'') AS counter_id, qj.service_id, c.display_name AS counter_display_name, COALESCE(s.type,'general') AS service_type, s.audio_id, s.audio_en").
 		Joins("JOIN queues q ON q.id = qj.queue_id AND q.tenant_id = qj.tenant_id AND q.branch_id = qj.branch_id").
 		Joins("LEFT JOIN counters c ON c.id = qj.counter_id AND c.tenant_id = qj.tenant_id").
 		Joins("JOIN services s ON s.id = qj.service_id").
