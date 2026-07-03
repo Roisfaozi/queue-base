@@ -15,7 +15,6 @@ import (
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	webhookEntity "github.com/Roisfaozi/queue-base/internal/modules/webhook/entity"
 	"github.com/google/uuid"
@@ -40,7 +39,6 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		&serviceEntity.Service{},
 		&serviceEntity.BranchService{},
 		&counterEntity.Counter{},
-		&settingsEntity.Setting{},
 		&userEntity.UserSSOIdentity{},
 		&orgEntity.InvitationToken{},
 		&projectEntity.Project{},

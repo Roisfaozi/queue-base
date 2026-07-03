@@ -6,12 +6,10 @@ import (
 
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
-	settingsUsecase "github.com/Roisfaozi/queue-base/internal/modules/settings/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"gorm.io/gorm"
 )
 
-// typedConfigKeys are core QMS keys resolved from typed tables.
 var typedConfigKeys = map[string]bool{
 	"queue_reset_time":           true,
 	"reset_time":                 true,
@@ -22,12 +20,11 @@ var typedConfigKeys = map[string]bool{
 }
 
 type QueueSettingsResolver struct {
-	useCase settingsUsecase.SettingsUseCase
-	db      *gorm.DB
+	db *gorm.DB
 }
 
-func NewQueueSettingsResolver(db *gorm.DB, useCase settingsUsecase.SettingsUseCase) *QueueSettingsResolver {
-	return &QueueSettingsResolver{useCase: useCase, db: db}
+func NewQueueSettingsResolver(db *gorm.DB) *QueueSettingsResolver {
+	return &QueueSettingsResolver{db: db}
 }
 
 func (r *QueueSettingsResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
@@ -39,13 +36,11 @@ func (r *QueueSettingsResolver) Resolve(ctx context.Context, key string, branchI
 }
 
 func (r *QueueSettingsResolver) ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*settingsModel.ResolvedQueueSetting, error) {
-	// Step 1: try typed tables for core QMS keys
 	if typedConfigKeys[key] {
 		if resolved, err := r.resolveTypedDetailed(ctx, key, branchID, serviceID, counterID); err == nil && resolved != nil && resolved.Value != "" {
 			return resolved, nil
 		}
 	}
-
 	return nil, fmt.Errorf("not found")
 }
 
@@ -82,7 +77,6 @@ func (r *QueueSettingsResolver) resolveTypedDetailed(ctx context.Context, key st
 	return nil, fmt.Errorf("not found")
 }
 
-// typed table helpers
 func readTypedTenant(db *gorm.DB, tenantID, key string) (*string, error) {
 	var row entity.TenantQueueSetting
 	if err := db.Where("tenant_id = ?", tenantID).First(&row).Error; err != nil {

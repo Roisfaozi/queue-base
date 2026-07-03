@@ -3,10 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
-import {
-	ResolvePanel,
-	SettingsDialog,
-} from "~/components/dashboard/queue-settings";
 import { Icon } from "~/components/shared/icon";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -355,22 +351,11 @@ export function QueueSettingsContent() {
 								Core QMS config resolves from typed tenant, branch, service, and
 								counter tables.
 							</p>
-							<p>
-								Generic `settings` remains only for compatibility and manual
-								overrides outside core typed flow.
-							</p>
+							<p></p>
 						</CardContent>
 					</Card>
-					<ResolvePanel />
 				</div>
 			</div>
-
-			<SettingsDialog
-				open={dialogOpen}
-				onOpenChange={setDialogOpen}
-				setting={null}
-				onSuccess={() => void handleDialogSuccess()}
-			/>
 		</>
 	);
 }

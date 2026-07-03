@@ -217,7 +217,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	statsModule := stats.NewStatsModule(dbConnection, logger)
 
 	projectModule := project.NewProjectModule(dbConnection, validate)
-	settingsModule := settings.NewSettingsModule(dbConnection, validate, logger, auditModule.AuditUseCase)
+	settingsModule := settings.NewSettingsModule(dbConnection, validate, logger)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
 	branchModule := organization.NewBranchModule(dbConnection, validate, logger)

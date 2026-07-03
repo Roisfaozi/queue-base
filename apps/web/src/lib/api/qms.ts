@@ -320,31 +320,4 @@ export const settingsApi = {
 			`/settings/effective${query ? `?${query}` : ""}`,
 		);
 	},
-	resolve: (params: {
-		key: string;
-		branch_id?: string;
-		service_id?: string;
-		counter_id?: string;
-	}) => {
-		const searchParams = new URLSearchParams();
-		searchParams.append("key", params.key);
-		if (params.branch_id) searchParams.append("branch_id", params.branch_id);
-		if (params.service_id) searchParams.append("service_id", params.service_id);
-		if (params.counter_id) searchParams.append("counter_id", params.counter_id);
-
-		return api.get<{ data: Setting }>(
-			`/settings/resolve?${searchParams.toString()}`,
-		);
-	},
-	getById: (id: string) => api.get<{ data: Setting }>(`/settings/${id}`),
-	create: (data: {
-		scope_type: "tenant" | "branch" | "service" | "counter";
-		scope_id: string;
-		key: string;
-		value: string;
-		value_type?: "string" | "number" | "boolean" | "json";
-	}) => api.post<{ data: Setting }>("/settings", data),
-	update: (id: string, data: { value?: string; is_active?: boolean }) =>
-		api.put<{ data: Setting }>(`/settings/${id}`, data),
-	delete: (id: string) => api.delete(`/settings/${id}`),
 };

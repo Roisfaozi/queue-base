@@ -15,8 +15,6 @@ import (
 	branchRepoPkg "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	serviceModule "github.com/Roisfaozi/queue-base/internal/modules/service"
 	serviceModel "github.com/Roisfaozi/queue-base/internal/modules/service/model"
-	settingsModule "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
@@ -40,7 +38,6 @@ func TestQMSAuditIntegration_CRUDVisibility(t *testing.T) {
 	branchRepo := branchRepoPkg.NewBranchRepository(env.DB)
 	serviceMod := serviceModule.NewServiceModule(env.DB, validate, branchRepo, env.Logger, auditUC)
 	counterMod := counterModule.NewCounterModule(env.DB, validate, branchRepo, serviceMod.BranchServiceRepo, env.Logger, auditUC)
-	settingsMod := settingsModule.NewSettingsModule(env.DB, validate, env.Logger, auditUC)
 
 	tenantID := uuid.New().String()
 	branchID := uuid.New().String()
@@ -63,13 +60,6 @@ func TestQMSAuditIntegration_CRUDVisibility(t *testing.T) {
 	err = serviceMod.BranchServiceUseCase.DeleteBranchService(ctx, branchID, branchService.ID)
 	require.NoError(t, err)
 
-	setting, err := settingsMod.SettingsUseCase.CreateSetting(ctx, &settingsModel.CreateSettingRequest{ScopeType: "tenant", Key: "queue_prefix", Value: "A", ValueType: "string"})
-	require.NoError(t, err)
-	_, err = settingsMod.SettingsUseCase.UpdateSetting(ctx, setting.ID, &settingsModel.UpdateSettingRequest{Value: strPtr("B")})
-	require.NoError(t, err)
-	err = settingsMod.SettingsUseCase.DeleteSetting(ctx, setting.ID)
-	require.NoError(t, err)
-
 	logs, _, err := auditUC.GetLogsDynamic(ctx, &querybuilder.DynamicFilter{Sort: &[]querybuilder.SortModel{{ColId: "CreatedAt", Sort: "asc"}}})
 	require.NoError(t, err)
 
@@ -83,9 +73,6 @@ func TestQMSAuditIntegration_CRUDVisibility(t *testing.T) {
 	assert.Contains(t, body, "BRANCH_SERVICE_CREATE")
 	assert.Contains(t, body, "BRANCH_SERVICE_UPDATE")
 	assert.Contains(t, body, "BRANCH_SERVICE_DELETE")
-	assert.Contains(t, body, "SETTING_CREATE")
-	assert.Contains(t, body, "SETTING_UPDATE")
-	assert.Contains(t, body, "SETTING_DELETE")
 	assert.NotEmpty(t, counter.ID)
 }
 

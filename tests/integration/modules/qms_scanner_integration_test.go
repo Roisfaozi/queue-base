@@ -22,8 +22,6 @@ import (
 	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
 	"github.com/Roisfaozi/queue-base/pkg/database"

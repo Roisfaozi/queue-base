@@ -5,35 +5,12 @@ import (
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
-
-type stubSettingsUseCase struct {
-	val string
-	err error
-}
-
-func (s *stubSettingsUseCase) ResolveSetting(ctx context.Context, req *settingsModel.ResolveSettingRequest) (*settingsModel.SettingResponse, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	return &settingsModel.SettingResponse{Value: s.val}, nil
-}
-func (s *stubSettingsUseCase) CreateSetting(ctx context.Context, req *settingsModel.CreateSettingRequest) (*settingsModel.SettingResponse, error) {
-	return nil, nil
-}
-func (s *stubSettingsUseCase) GetSetting(ctx context.Context, settingID string) (*settingsModel.SettingResponse, error) {
-	return nil, nil
-}
-func (s *stubSettingsUseCase) UpdateSetting(ctx context.Context, settingID string, req *settingsModel.UpdateSettingRequest) (*settingsModel.SettingResponse, error) {
-	return nil, nil
-}
-func (s *stubSettingsUseCase) DeleteSetting(ctx context.Context, settingID string) error { return nil }
 
 func newResolverTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
@@ -51,48 +28,16 @@ func newResolverTestDB(t *testing.T) *gorm.DB {
 func TestQueueSettingsResolver_Resolve(t *testing.T) {
 	db := newResolverTestDB(t)
 
-	// Seed tenant default
-	require.NoError(t, db.Create(&entity.TenantQueueSetting{
-		ID:                  "ts-1",
-		TenantID:            "t-1",
-		QueueResetTime:      "04:00",
-		DefaultTicketPrefix: "A",
-	}).Error)
-
+	require.NoError(t, db.Create(&entity.TenantQueueSetting{ID: "ts-1", TenantID: "t-1", QueueResetTime: "04:00", DefaultTicketPrefix: "A"}).Error)
 	val0500 := "05:00"
 	valPrefixC := "C"
 	autoCallNext := true
-
-	// Seed branch override
-	require.NoError(t, db.Create(&entity.BranchQueueSetting{
-		ID:             "bs-1",
-		TenantID:       "t-1",
-		BranchID:       "b-1",
-		QueueResetTime: &val0500,
-		// TicketPrefix is null, should inherit
-	}).Error)
-
-	// Seed branch service override
-	require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{
-		ID:                       "bss-1",
-		TenantID:                 "t-1",
-		BranchID:                 "b-1",
-		BranchServiceID:          "bsvc-1",
-		DefaultEstimatedDuration: &[]int{20}[0],
-		AutoCallNext:             &autoCallNext,
-	}).Error)
-
-	// Seed counter override
-	require.NoError(t, db.Create(&entity.CounterQueueSetting{
-		ID:           "cs-1",
-		TenantID:     "t-1",
-		CounterID:    "c-1",
-		TicketPrefix: &valPrefixC,
-	}).Error)
+	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", QueueResetTime: &val0500}).Error)
+	require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{ID: "bss-1", TenantID: "t-1", BranchID: "b-1", BranchServiceID: "bsvc-1", DefaultEstimatedDuration: &[]int{20}[0], AutoCallNext: &autoCallNext}).Error)
+	require.NoError(t, db.Create(&entity.CounterQueueSetting{ID: "cs-1", TenantID: "t-1", CounterID: "c-1", TicketPrefix: &valPrefixC}).Error)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
-	uc := &stubSettingsUseCase{val: "generic_val"}
-	resolver := NewQueueSettingsResolver(db, uc)
+	resolver := NewQueueSettingsResolver(db)
 
 	tests := []struct {
 		name      string
@@ -102,54 +47,12 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 		counterID string
 		want      string
 	}{
-		{
-			name:      "Positive_InheritsTenantDefault",
-			key:       "ticket_prefix",
-			branchID:  "b-1",
-			serviceID: "",
-			counterID: "",
-			want:      "A", // from tenant, branch is null
-		},
-		{
-			name:      "Positive_ResolvesBranchOverride",
-			key:       "queue_reset_time",
-			branchID:  "b-1",
-			serviceID: "",
-			counterID: "",
-			want:      "05:00", // from branch
-		},
-		{
-			name:      "Positive_ResolvesCounterOverride",
-			key:       "ticket_prefix",
-			branchID:  "b-1",
-			serviceID: "",
-			counterID: "c-1",
-			want:      "C", // from counter
-		},
-		{
-			name:      "Positive_ResolvesBranchServiceOverride",
-			key:       "default_estimated_duration",
-			branchID:  "b-1",
-			serviceID: "bsvc-1",
-			counterID: "",
-			want:      "20",
-		},
-		{
-			name:      "Positive_ResolvesAutoCallNextFromTypedTable",
-			key:       "auto_call_next",
-			branchID:  "b-1",
-			serviceID: "bsvc-1",
-			counterID: "",
-			want:      "true",
-		},
-		{
-			name:      "Negative_NoGenericFallback",
-			key:       "custom_theme_color",
-			branchID:  "b-1",
-			serviceID: "",
-			counterID: "",
-			want:      "", // expect error
-		},
+		{name: "Positive_InheritsTenantDefault", key: "ticket_prefix", branchID: "b-1", want: "A"},
+		{name: "Positive_ResolvesBranchOverride", key: "queue_reset_time", branchID: "b-1", want: "05:00"},
+		{name: "Positive_ResolvesCounterOverride", key: "ticket_prefix", branchID: "b-1", counterID: "c-1", want: "C"},
+		{name: "Positive_ResolvesBranchServiceOverride", key: "default_estimated_duration", branchID: "b-1", serviceID: "bsvc-1", want: "20"},
+		{name: "Positive_ResolvesAutoCallNextFromTypedTable", key: "auto_call_next", branchID: "b-1", serviceID: "bsvc-1", want: "true"},
+		{name: "Negative_NoGenericFallback", key: "custom_theme_color", branchID: "b-1", want: ""},
 	}
 
 	for _, tt := range tests {
