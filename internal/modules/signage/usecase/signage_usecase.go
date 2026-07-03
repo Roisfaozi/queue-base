@@ -53,11 +53,20 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 		RunningText *string
 		LogoAssetID *string
 	}
+	type tenantRow struct {
+		RunningText *string
+		LogoAssetID *string
+	}
 	var br branchRow
 	_ = u.db.WithContext(ctx).Table("branches").
 		Select("name, running_text, logo_asset_id").
 		Where("id = ? AND tenant_id = ?", cr.BranchID, cr.TenantID).
 		First(&br).Error
+	var tenant tenantRow
+	_ = u.db.WithContext(ctx).Table("organizations").
+		Select("running_text, logo_asset_id").
+		Where("id = ?", cr.TenantID).
+		First(&tenant).Error
 
 	res := &model.SignageMeResponse{
 		ClientID:   cr.ID,
@@ -69,9 +78,13 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 	}
 	if br.RunningText != nil {
 		res.RunningText = *br.RunningText
+	} else if tenant.RunningText != nil {
+		res.RunningText = *tenant.RunningText
 	}
 	if br.LogoAssetID != nil {
 		res.LogoAssetID = *br.LogoAssetID
+	} else if tenant.LogoAssetID != nil {
+		res.LogoAssetID = *tenant.LogoAssetID
 	}
 
 	if cr.BranchServiceID != nil && *cr.BranchServiceID != "" {

@@ -19,6 +19,11 @@ func newSignageTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 	require.NoError(t, db.Exec(`
+		CREATE TABLE organizations (
+			id TEXT PRIMARY KEY,
+			running_text TEXT,
+			logo_asset_id TEXT
+		);
 		CREATE TABLE qms_clients (
 			id TEXT PRIMARY KEY,
 			tenant_id TEXT,
@@ -82,7 +87,10 @@ func seedSignageTestData(t *testing.T, db *gorm.DB) {
 		`INSERT INTO qms_clients (id, tenant_id, branch_id, branch_service_id, counter_id, client_type, name, is_active) VALUES ('signage-1','t-1','b-1','bs-1','c-1','signage','Main Signage',1)`,
 		`INSERT INTO qms_clients (id, tenant_id, branch_id, branch_service_id, counter_id, client_type, name, is_active) VALUES ('signage-2','t-1','b-1','bs-2',NULL,'signage','Service Signage',1)`,
 		`INSERT INTO qms_clients (id, tenant_id, branch_id, branch_service_id, counter_id, client_type, name, is_active) VALUES ('signage-3','t-1','b-1',NULL,NULL,'signage','Lobby Signage',1)`,
+		`INSERT INTO qms_clients (id, tenant_id, branch_id, branch_service_id, counter_id, client_type, name, is_active) VALUES ('signage-4','t-1','b-2',NULL,NULL,'signage','Fallback Signage',1)`,
+		`INSERT INTO organizations (id, running_text, logo_asset_id) VALUES ('t-1','Tenant Welcome','tenant-logo')`,
 		`INSERT INTO branches (id, tenant_id, name, running_text, logo_asset_id) VALUES ('b-1','t-1','Branch One','Welcome','logo-1')`,
+		`INSERT INTO branches (id, tenant_id, name, running_text, logo_asset_id) VALUES ('b-2','t-1','Branch Two',NULL,NULL)`,
 		`INSERT INTO branch_services (id, tenant_id, service_id) VALUES ('bs-1','t-1','svc-1')`,
 		`INSERT INTO branch_services (id, tenant_id, service_id) VALUES ('bs-2','t-1','svc-2')`,
 		`INSERT INTO services (id, name, type) VALUES ('svc-1','Customer Service','vip')`,
@@ -148,6 +156,20 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 				BranchName:         "Branch One",
 				ServiceName:        "Customer Service",
 				CounterDisplayName: "Counter 1",
+			},
+		},
+		{
+			name:     "falls back to tenant branding when branch empty",
+			clientID: "signage-4",
+			expectedModel: &model.SignageMeResponse{
+				ClientID:    "signage-4",
+				TenantID:    "t-1",
+				BranchID:    "b-2",
+				ClientType:  "signage",
+				Name:        "Fallback Signage",
+				RunningText: "Tenant Welcome",
+				LogoAssetID: "tenant-logo",
+				BranchName:  "Branch Two",
 			},
 		},
 	}
