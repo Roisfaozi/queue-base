@@ -11,12 +11,15 @@ import (
 )
 
 var typedConfigKeys = map[string]bool{
-	"queue_reset_time":           true,
-	"reset_time":                 true,
-	"ticket_prefix":              true,
-	"numbering_strategy":         true,
-	"default_estimated_duration": true,
-	"auto_call_next":             true,
+	"queue_reset_time":            true,
+	"reset_time":                  true,
+	"ticket_prefix":               true,
+	"numbering_strategy":          true,
+	"default_estimated_duration":  true,
+	"auto_call_next":              true,
+	"pharmacy_flow_enabled":       true,
+	"require_counter":             true,
+	"require_counter_for_service": true,
 }
 
 type QueueSettingsResolver struct {
@@ -146,7 +149,7 @@ func typedFieldNullable(row any, key string) *string {
 			if r.DefaultEstimatedDuration != nil {
 				return strPtr(fmt.Sprintf("%d", *r.DefaultEstimatedDuration))
 			}
-		case "require_counter":
+		case "require_counter", "require_counter_for_service":
 			return boolPtrToString(r.RequireCounter)
 		case "allow_forward_from":
 			return boolPtrToString(r.AllowForwardFrom)
