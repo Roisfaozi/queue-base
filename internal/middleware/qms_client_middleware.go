@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	qmsClientUsecase "github.com/Roisfaozi/queue-base/internal/modules/qms_client/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/constants"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -36,7 +37,8 @@ func (m *QMSClientMiddleware) Authenticate() gin.HandlerFunc {
 
 		identity, err := m.Authenticator.Authenticate(c.Request.Context(), clientID, apiKey)
 		if err != nil {
-			m.Log.WithError(err).Warn("QMS Client authentication failed")
+			entry := m.Log.WithError(err).WithField("request_id", c.GetString(string(constants.RequestIDKey)))
+			entry.Warn("QMS Client authentication failed")
 			response.Unauthorized(c, err, "unauthorized client")
 			c.Abort()
 			return
