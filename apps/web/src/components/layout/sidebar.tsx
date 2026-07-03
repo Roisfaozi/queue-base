@@ -97,6 +97,11 @@ const navItems: NavEntry[] = [
 		href: "/dashboard/queue-settings",
 		iconName: "Settings2",
 	},
+	{
+		title: "QMS Clients",
+		href: "/dashboard/qms-clients",
+		iconName: "KeyRound",
+	},
 	{ type: "separator" },
 	{
 		title: "Settings",
