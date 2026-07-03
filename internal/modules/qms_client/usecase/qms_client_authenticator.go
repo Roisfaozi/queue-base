@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/repository"
 	"github.com/Roisfaozi/queue-base/pkg"
@@ -49,6 +50,9 @@ func (a *qmsClientAuthenticator) Authenticate(ctx context.Context, clientID, api
 	}
 
 	if !pkg.CheckPasswordHash(apiKey, cred.ClientSecretHash) {
+		return nil, exception.ErrUnauthorized
+	}
+	if cred.ExpiresAt != nil && *cred.ExpiresAt > 0 && *cred.ExpiresAt <= time.Now().UnixMilli() {
 		return nil, exception.ErrUnauthorized
 	}
 
