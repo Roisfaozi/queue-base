@@ -53,9 +53,21 @@ func (a *qmsClientAuthenticator) Authenticate(ctx context.Context, clientID, api
 	}
 
 	return &QMSClientIdentity{
-		ClientID:   client.ID,
-		TenantID:   client.TenantID,
-		BranchID:   client.BranchID,
+		ClientID: client.ID,
+		TenantID: client.TenantID,
+		BranchID: client.BranchID,
+		BranchServiceID: func() string {
+			if client.BranchServiceID == nil {
+				return ""
+			}
+			return *client.BranchServiceID
+		}(),
+		CounterID: func() string {
+			if client.CounterID == nil {
+				return ""
+			}
+			return *client.CounterID
+		}(),
 		ClientType: string(client.ClientType),
 	}, nil
 }
