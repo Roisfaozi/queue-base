@@ -83,3 +83,6 @@
 
 - When adding new auth middleware path beside JWT and API key, prefer route-local middleware for dedicated surfaces like caller/signage instead of broad global wiring to avoid changing unrelated auth behavior.
 - Placeholder credential flows should fail closed in usecase/controller paths once middleware lands; leaving dummy IDs after route guard wiring hides real auth bugs.
+## 2026-07-03 — Caller boundary scoping
+
+- When designing multi-layered hybrid auth (machine credential + human session), boundary enforcement must check both: the machine hardware context (qms_client binding) and the human operational context (operator assignment). Failing to check either introduces privilege bypass.

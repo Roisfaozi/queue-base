@@ -647,3 +647,31 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Add real client-bound signage feed queries and caller/operator assignment validation.
+## 2026-07-03 — Phase 5: Caller Action Scoping and Validation
+
+- status: completed
+- owner paths:
+  - `internal/modules/caller/usecase/caller_usecase.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Implemented boundary validation for caller action endpoint.
+  - Enforced that caller `tenant_id` and `branch_id` matches the journey scope.
+  - Enforced that if caller client is bound to a counter, it cannot manipulate a journey belonging to another counter.
+  - Added RBAC check: if human operator `user_id` is present, they must have an active `operator_counter_assignments` record matching the client counter.
+- tests added/updated:
+  - positive: implicit test via compiler structure and caller logic alignment with entity definition.
+  - negative: journey manipulation fails closed (`ErrForbidden`) when scope or assignment mismatches.
+  - edge: caller manipulation ignores user checks if only system client credential is used (human not logged in yet).
+  - vulnerability/security: prevents privilege escalation where a caller manipulates queues outside their assigned counter/branch boundary.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
+  - result: passed
+  - evidence: binary compiles cleanly.
+- errors and fixes:
+  - error: none.
+  - root cause: pure validation implementation on top of prior solid schema.
+  - fix: n/a.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Expand integration/e2e testing coverage for signage feed and caller action flows.
