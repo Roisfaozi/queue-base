@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -501,11 +502,41 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		telemetry.QueueOperationsTotal.WithLabelValues("transition", "failed").Inc()
 		return nil, err
 	}
+	if req.Action == model.QueueActionComplete {
+		u.autoCallNext(ctx, tenantID, branchID, queue.QueueDate, queue.ID, currentJourney.ServiceID, nowMs)
+	}
 
 	u.tryAudit(ctx, "QUEUE_"+strings.ToUpper(req.Action), queue.ID, map[string]string{"branch_id": branchID, "journey_id": currentJourney.ID, "status": queue.Status})
 	telemetry.QueueOperationsTotal.WithLabelValues("transition", "success").Inc()
 	res := mapQueueResponse(queue)
 	return &res, nil
+}
+
+func (u *queueUseCase) autoCallNext(ctx context.Context, tenantID, branchID, queueDate, afterQueueID, serviceID string, nowMs int64) {
+	if u.settingsResolver == nil {
+		return
+	}
+	resolved, err := u.settingsResolver.Resolve(ctx, "auto_call_next", branchID, serviceID, "")
+	if err != nil || !strings.EqualFold(resolved, "true") {
+		return
+	}
+	nextQueue, err := u.repo.FindNextWaitingQueue(ctx, tenantID, branchID, queueDate, afterQueueID)
+	if err != nil || nextQueue == nil {
+		return
+	}
+	nextJourney, err := u.repo.FindCurrentJourney(ctx, tenantID, branchID, nextQueue.ID, nextQueue.CurrentJourneyID)
+	if err != nil || nextJourney == nil {
+		return
+	}
+	nextQueue.Status = entity.QueueStatusCalling
+	nextQueue.UpdatedAt = nowMs
+	nextJourney.Status = entity.JourneyStatusCalling
+	nextJourney.UpdatedAt = nowMs
+	visit := &entity.VisitJourney{ID: uuid.New().String(), QueueID: nextQueue.ID, TenantID: tenantID, BranchID: branchID, EventType: "call", CreatedAt: nowMs}
+	if err := u.repo.UpdateQueueState(ctx, nextQueue, nextJourney, visit); err != nil && !errors.Is(err, exception.ErrNotFound) {
+		return
+	}
+	u.tryAudit(ctx, "QUEUE_AUTO_CALL", nextQueue.ID, map[string]string{"branch_id": branchID, "journey_id": nextJourney.ID, "status": nextQueue.Status})
 }
 
 func (u *queueUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {

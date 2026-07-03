@@ -22,6 +22,7 @@ import (
 
 type stubQueueRepo struct {
 	FindQueueByTenantIDFunc func(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
+	FindCurrentJourneyFunc  func(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error)
 	q                       *entity.Queue
 	queues                  []*entity.Queue
 	j                       *entity.QueueJourney
@@ -37,6 +38,7 @@ type stubQueueRepo struct {
 	lastPrefix              string
 	visits                  []*entity.VisitJourney
 	statsRes                model.QueueStatsResponse
+	nextWaiting             *entity.Queue
 }
 
 type stubSettingsResolver struct {
@@ -250,10 +252,23 @@ func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, branchID, q
 }
 
 func (s *stubQueueRepo) FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error) {
+	if s.FindCurrentJourneyFunc != nil {
+		return s.FindCurrentJourneyFunc(ctx, tenantID, branchID, queueID, journeyID)
+	}
 	if s.err != nil {
 		return nil, s.err
 	}
 	return s.j, nil
+}
+
+func (s *stubQueueRepo) FindNextWaitingQueue(ctx context.Context, tenantID, branchID, queueDate, afterQueueID string) (*entity.Queue, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	if s.nextWaiting == nil {
+		return nil, exception.ErrNotFound
+	}
+	return s.nextWaiting, nil
 }
 
 func (s *stubQueueRepo) NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error) {
@@ -803,6 +818,30 @@ func TestTransitionQueue(t *testing.T) {
 			branchID: "b-1",
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCompleted, res.Status)
+			},
+		},
+		{
+			name:     "Edge_AutoCallNextAfterComplete",
+			category: "edge",
+			repo: &stubQueueRepo{
+				q:           &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusServing, CurrentJourneyID: "j-1", QueueDate: "2026-07-03"},
+				j:           &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusServing, ServiceID: "svc-1"},
+				nextWaiting: &entity.Queue{ID: "q-2", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-2", QueueDate: "2026-07-03"},
+				FindCurrentJourneyFunc: func(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error) {
+					if queueID == "q-2" {
+						return &entity.QueueJourney{ID: "j-2", QueueID: "q-2", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending, ServiceID: "svc-1"}, nil
+					}
+					return &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusServing, ServiceID: "svc-1"}, nil
+				},
+			},
+			settings: map[string]string{"auto_call_next": "true"},
+			queueID:  "q-1",
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionComplete},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+				assert.Equal(t, entity.QueueStatusCompleted, res.Status)
+				assert.Equal(t, "call", repo.visit.EventType)
 			},
 		},
 		{

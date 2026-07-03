@@ -22,6 +22,7 @@ type QueueRepository interface {
 	FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error)
 	FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
 	FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error)
+	FindNextWaitingQueue(ctx context.Context, tenantID, branchID, queueDate, afterQueueID string) (*entity.Queue, error)
 	NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error)
 	CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error
@@ -227,6 +228,20 @@ func (r *queueRepository) FindCurrentJourney(ctx context.Context, tenantID, bran
 		return nil, err
 	}
 	return &j, nil
+}
+
+func (r *queueRepository) FindNextWaitingQueue(ctx context.Context, tenantID, branchID, queueDate, afterQueueID string) (*entity.Queue, error) {
+	var q entity.Queue
+	query := r.getDB(ctx).
+		Where("tenant_id = ? AND branch_id = ? AND queue_date = ? AND status = ?", tenantID, branchID, queueDate, entity.QueueStatusWaiting).
+		Order("queue_no ASC")
+	if afterQueueID != "" {
+		query = query.Where("id > ?", afterQueueID)
+	}
+	if err := query.First(&q).Error; err != nil {
+		return nil, err
+	}
+	return &q, nil
 }
 
 func (r *queueRepository) NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error) {
