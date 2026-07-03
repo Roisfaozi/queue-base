@@ -13,9 +13,7 @@ import (
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	settingsModule "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/settings"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
@@ -44,7 +42,7 @@ func setupQMSIntegration(t *testing.T) *qmsDeps {
 
 	v := validator.New()
 	log := env.Logger
-	settingsMod := settingsModule.NewSettingsModule(env.DB, v, log)
+	settingsMod := settings.NewSettingsModule(env.DB, v, log)
 	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, log)
 
 	deps := &qmsDeps{
@@ -63,8 +61,6 @@ func setupQMSIntegration(t *testing.T) *qmsDeps {
 	require.NoError(t, deps.db.Create(&serviceEntity.BranchService{ID: uuid.New().String(), TenantID: deps.tenantID, BranchID: deps.branchID, ServiceID: deps.regServiceID, IsActive: true}).Error)
 	require.NoError(t, deps.db.Create(&serviceEntity.BranchService{ID: uuid.New().String(), TenantID: deps.tenantID, BranchID: deps.branchID, ServiceID: deps.pharmacyServiceID, IsActive: true}).Error)
 	require.NoError(t, deps.db.Create(&counterEntity.Counter{ID: deps.counterID, TenantID: deps.tenantID, BranchID: deps.branchID, Code: "C1", Name: "Counter 1", Status: counterEntity.CounterStatusActive}).Error)
-	require.NoError(t, deps.db.Create(&settingsEntity.Setting{ID: uuid.New().String(), TenantID: deps.tenantID, ScopeType: settingsEntity.ScopeTypeService, ScopeID: deps.pharmacyServiceID, Key: settingsModel.SettingKeyPharmacyFlowEnabled, Value: "true", ValueType: "boolean", IsActive: true}).Error)
-	require.NoError(t, deps.db.Create(&settingsEntity.Setting{ID: uuid.New().String(), TenantID: deps.tenantID, ScopeType: settingsEntity.ScopeTypeService, ScopeID: deps.pharmacyServiceID, Key: settingsModel.SettingKeyRequireCounterForService, Value: "true", ValueType: "boolean", IsActive: true}).Error)
 
 	return deps
 }
@@ -123,16 +119,17 @@ func TestQMSQueueIntegration(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, queueEntity.QueueStatusCalling, serving.Status)
 
-				// Invalid transition
+				// A second call triggers a recall
 				_, err = deps.queueMod.QueueUseCase.TransitionQueue(ctx, queueRes.ID, &queueModel.QueueTransitionRequest{Action: queueModel.QueueActionCall})
-				assert.ErrorIs(t, err, exception.ErrBadRequest)
+				require.NoError(t, err)
 
 				visits, err := deps.queueMod.QueueUseCase.GetVisitJourneys(ctx, queueRes.ID)
 				require.NoError(t, err)
-				assert.Len(t, visits, 3)
+				assert.Len(t, visits, 4)
 				assert.Equal(t, "registration", visits[0].EventType)
 				assert.Equal(t, "forward", visits[1].EventType)
 				assert.Equal(t, "call", visits[2].EventType)
+				assert.Equal(t, "recall", visits[3].EventType)
 			},
 		},
 		{

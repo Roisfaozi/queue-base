@@ -87,8 +87,6 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	require.NoError(t, deps.db.Create(&counterEntity.Counter{ID: deps.counterID, TenantID: deps.tenantID, BranchID: deps.branchID, Code: "C1", Name: "Counter 1", Status: counterEntity.CounterStatusActive}).Error)
 
 	// Create pharmacy settings
-	require.NoError(t, deps.db.Create(&settingsEntity.Setting{ID: uuid.New().String(), TenantID: deps.tenantID, ScopeType: settingsEntity.ScopeTypeService, ScopeID: deps.pharmacyServiceID, Key: settingsModel.SettingKeyPharmacyFlowEnabled, Value: "true", ValueType: "boolean", IsActive: true}).Error)
-	require.NoError(t, deps.db.Create(&settingsEntity.Setting{ID: uuid.New().String(), TenantID: deps.tenantID, ScopeType: settingsEntity.ScopeTypeService, ScopeID: deps.pharmacyServiceID, Key: settingsModel.SettingKeyRequireCounterForService, Value: "true", ValueType: "boolean", IsActive: true}).Error)
 
 	// Create API key for scanner auth
 	apiKeyHash := sha256.Sum256([]byte(deps.apiKey))
