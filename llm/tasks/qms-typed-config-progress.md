@@ -750,3 +750,32 @@ Design sources:
   - result: passed
 - next step:
   - Docker E2E testing for all completed caller and signage endpoints.
+## 2026-07-03 — Final Alignment Status for QMS Typed Configuration Rebuild
+
+- status: completed
+- plan source:
+  - `llm/plans/roadmap/qms-typed-configuration-alignment.md`
+- final phase status:
+  - Phase A — Schema/Entity Migration: completed
+  - Phase C — Typed Config Resolver: completed
+  - Phase D — Client Binding + Auth Middleware: completed
+  - Phase E — Audit/Logging: partially completed
+    - completed: caller audit events, queue audit continuity, request-id logging in `QMSClientMiddleware`
+    - deferred: `QMS_CLIENT_CREATE`, `QMS_CLIENT_CREDENTIAL_CREATE`, `OPERATOR_ASSIGNMENT_CREATE` because no write path/controller/usecase exists yet in repo
+  - Phase F — Queue Hardening: completed
+    - completed: `allow_recall`, `allow_skip`, `allow_cancel`, `auto_call_next`
+  - Phase G — Caller Endpoint: completed
+    - completed: caller action + caller login + caller me
+  - Phase H — Signage Endpoint: completed
+    - completed: signage me/current-calls/queues + tenant branding fallback + service audio exposure
+  - Phase 5 — Frontend contract sync: no backend action needed now
+    - reason: `apps/web/src/app/api/v1/[...path]/route.ts` already proxies generic `/api/v1/*` traffic without route allowlist
+  - Phase 7 — Verification: completed for backend slice scope
+- verification summary:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/queue/... ./internal/modules/caller/... ./internal/modules/signage/... ./internal/modules/qms_client/usecase ./internal/router ./internal/modules/settings/... -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
+  - result: passed
+- remaining out-of-scope work:
+  - Docker integration/E2E
+  - future QMS client/operator assignment CRUD plus matching audit events if product needs admin UI/API
