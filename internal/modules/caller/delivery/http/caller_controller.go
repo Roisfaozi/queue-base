@@ -21,6 +21,39 @@ func NewCallerController(uc usecase.CallerUseCase, v *validator.Validate, log *l
 	return &CallerController{useCase: uc, validate: v, log: log}
 }
 
+func (h *CallerController) Login(c *gin.Context) {
+	var req model.CallerLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, nil, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	clientID := middleware.GetQMSClientIDFromContext(c)
+	res, refreshToken, err := h.useCase.Login(c.Request.Context(), clientID, req)
+	if err != nil {
+		h.log.WithError(err).Error("caller login failed")
+		response.HandleError(c, err, "caller login failed")
+		return
+	}
+	c.SetCookie("access_token", res.AccessToken, 0, "/", "", false, true)
+	_ = refreshToken
+	response.Success(c, res)
+}
+
+func (h *CallerController) Me(c *gin.Context) {
+	clientID := middleware.GetQMSClientIDFromContext(c)
+	res, err := h.useCase.Me(c.Request.Context(), clientID)
+	if err != nil {
+		h.log.WithError(err).Error("caller me failed")
+		response.HandleError(c, err, "caller me failed")
+		return
+	}
+	response.Success(c, res)
+}
+
 // Action godoc
 // @Summary      Caller action on queue journey
 // @Description  Perform call/serve/complete/skip/cancel on a queue journey.

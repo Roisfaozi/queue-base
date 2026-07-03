@@ -10,6 +10,8 @@ func RegisterCallerRoutes(router *gin.RouterGroup, controller *CallerController,
 	group.Use(qmsClientMiddleware.Authenticate())
 	group.Use(qmsClientMiddleware.RequireClientType("caller"))
 	{
+		group.POST("/login", controller.Login)
+		group.GET("/me", controller.Me)
 		group.POST("/queue-journeys/:journey_id/action", controller.Action)
 	}
 }
