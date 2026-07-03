@@ -15,6 +15,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
 	"github.com/Roisfaozi/queue-base/internal/modules/project"
+	"github.com/Roisfaozi/queue-base/internal/modules/qms_client"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue"
 	"github.com/Roisfaozi/queue-base/internal/modules/role"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner"
@@ -52,6 +53,7 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&settings.SettingsModule{},
 		&queue.QueueModule{},
 		&caller.CallerModule{},
+		&qms_client.QMSClientModule{},
 		&middleware.QMSClientMiddleware{},
 		&signage.SignageModule{},
 		&scanner.ScannerModule{},

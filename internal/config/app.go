@@ -225,7 +225,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
 	queueModule := queue.NewQueueModule(dbConnection, validate, settingsModule.QueueSettingsResolver, logger, auditModule.AuditUseCase)
 	callerModule := caller.NewCallerModule(dbConnection, queueModule.QueueUseCase, authModule.AuthUseCase, auditModule.AuditUseCase, validate, logger)
-	qmsClientModule := qms_client.NewQMSClientModule(dbConnection)
+	qmsClientModule := qms_client.NewQMSClientModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 	qmsClientMiddleware := middleware.NewQMSClientMiddleware(qmsClientModule.Authenticator, logger)
 	signageModule := signage.NewSignageModule(dbConnection, queueModule.QueueUseCase, validate, logger)
 	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, settingsModule, validate, scanner.NewAPIKeyAuthenticator(apiKeyModule.UseCase), logger, auditModule.AuditUseCase)
@@ -386,6 +386,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		settingsModule,
 		queueModule,
 		callerModule,
+		qmsClientModule,
 		qmsClientMiddleware,
 		signageModule,
 		scannerModule,

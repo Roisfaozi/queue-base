@@ -779,6 +779,39 @@ Design sources:
 - remaining out-of-scope work:
   - Docker integration/E2E
   - future QMS client/operator assignment CRUD plus matching audit events if product needs admin UI/API
+
+## 2026-07-03 — QMS client admin create and credential slice
+
+- status: completed
+- owner paths:
+  - `internal/modules/qms_client/model/qms_client_model.go`
+  - `internal/modules/qms_client/usecase/qms_client_admin_usecase.go`
+  - `internal/modules/qms_client/usecase/qms_client_admin_usecase_test.go`
+  - `internal/modules/qms_client/delivery/http/qms_client_controller.go`
+  - `internal/modules/qms_client/delivery/http/qms_client_routes.go`
+  - `internal/modules/qms_client/module.go`
+  - `internal/router/router.go`
+  - `internal/router/router_test.go`
+  - `internal/config/app.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Added tenant-scoped admin create path for `POST /api/v1/qms-clients` guarded by `qms_client:manage`.
+  - Added tenant-scoped admin credential create path for `POST /api/v1/qms-clients/credentials` guarded by `qms_client:manage`.
+  - Wired QMS client admin usecase/controller/module into app composition root and tenant-authorized router.
+  - Persisted credential as hash only and emitted `QMS_CLIENT_CREATE` plus `QMS_CLIENT_CREDENTIAL_CREATE` audit events from real write paths.
+  - Kept scope minimal: no list/update/delete yet.
+- tests added/updated:
+  - positive: create client succeeds with tenant context.
+  - negative: bad request and cross-tenant client credential creation rejected.
+  - edge: missing tenant context rejected.
+  - vulnerability/security: audit payload omits `api_key` and `client_secret_hash`.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/qms_client/... ./internal/router ./internal/config -count=1`
+  - result: passed
+  - evidence: admin usecase tests, router compile path, and app wiring all green.
+- next step:
+  - add operator assignment admin write path if product needs managed caller staffing API.
 ## 2026-07-03 — auto_call_next typed schema/entity/resolver gap fix
 - status: completed
 - owner paths:

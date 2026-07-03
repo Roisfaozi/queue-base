@@ -20,6 +20,8 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
 	permissionHttp "github.com/Roisfaozi/queue-base/internal/modules/permission/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/project"
+	qmsClientModulePkg "github.com/Roisfaozi/queue-base/internal/modules/qms_client"
+	qmsClientHttp "github.com/Roisfaozi/queue-base/internal/modules/qms_client/delivery/http"
 	queueModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queueHttp "github.com/Roisfaozi/queue-base/internal/modules/queue/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/role"
@@ -85,6 +87,7 @@ func SetupRouter(
 	settingsModule *settingsModulePkg.SettingsModule,
 	queueModule *queueModulePkg.QueueModule,
 	callerModule *caller.CallerModule,
+	qmsClientModule *qmsClientModulePkg.QMSClientModule,
 	qmsClientMiddleware *middleware.QMSClientMiddleware,
 	signageModule *signageModulePkg.SignageModule,
 	scannerModule *scannerModulePkg.ScannerModule,
@@ -244,6 +247,7 @@ func SetupRouter(
 		serviceHttp.RegisterBranchServiceRoutes(tenantAuthorized, serviceModule.BranchServiceController, apiKeyMiddleware)
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
 		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
+		qmsClientHttp.RegisterQMSClientRoutes(tenantAuthorized, qmsClientModule.Controller, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)
 		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, qmsClientMiddleware)
 		signageHttp.RegisterSignageRoutes(tenantAuthorized, signageModule.SignageController, qmsClientMiddleware)
