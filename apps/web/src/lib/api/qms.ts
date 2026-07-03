@@ -65,6 +65,12 @@ export interface BranchService {
 }
 
 export type EffectiveQueueConfig = EffectiveQueueConfigResponse;
+export type {
+	CallerActionResponse,
+	CallerMeResponse,
+	SignageCurrentCallResponse,
+	SignageMeResponse,
+};
 
 export interface Queue {
 	id: string;
@@ -124,21 +130,48 @@ export const qmsClientsApi = {
 };
 
 export const callerApi = {
-	login: (data: CallerLoginRequest) =>
-		api.post<{ data: CallerLoginResponse }>("/caller/login", data),
-	me: () => api.get<{ data: CallerMeResponse }>("/caller/me"),
-	action: (journeyId: string, data: CallerActionRequest) =>
+	login: (data: CallerLoginRequest, headers: QMSClientHeaders) =>
+		api.post<{ data: CallerLoginResponse }>("/caller/login", data, {
+			headers: qmsClientHeaders(headers),
+		}),
+	me: (headers: QMSClientHeaders) =>
+		api.get<{ data: CallerMeResponse }>("/caller/me", {
+			headers: qmsClientHeaders(headers),
+		}),
+	action: (
+		journeyId: string,
+		data: CallerActionRequest,
+		headers: QMSClientHeaders,
+	) =>
 		api.post<{ data: CallerActionResponse }>(
 			`/caller/queue-journeys/${journeyId}/action`,
 			data,
+			{ headers: qmsClientHeaders(headers) },
 		),
 };
 
+type QMSClientHeaders = { clientId: string; apiKey: string };
+
+function qmsClientHeaders(headers: QMSClientHeaders) {
+	return {
+		"X-Client-ID": headers.clientId,
+		"X-API-Key": headers.apiKey,
+	};
+}
+
 export const signageApi = {
-	me: () => api.get<{ data: SignageMeResponse }>("/signage/me"),
-	getCurrentCalls: () =>
-		api.get<{ data: SignageCurrentCallResponse[] }>("/signage/current-calls"),
-	getQueues: () => api.get<{ data: unknown[] }>("/signage/queues"),
+	me: (headers: QMSClientHeaders) =>
+		api.get<{ data: SignageMeResponse }>("/signage/me", {
+			headers: qmsClientHeaders(headers),
+		}),
+	getCurrentCalls: (headers: QMSClientHeaders) =>
+		api.get<{ data: SignageCurrentCallResponse[] }>("/signage/current-calls", {
+			headers: qmsClientHeaders(headers),
+		}),
+	getQueues: (headers: QMSClientHeaders) =>
+		api.get<{ data: Queue[] }>("/signage/queues", {
+			headers: qmsClientHeaders(headers),
+		}),
 };
 
 // -----------------------------------------------------------------------------
@@ -294,13 +327,10 @@ export const scannerApi = {
 			destination_service_id?: string;
 			destination_counter_id?: string;
 		},
-		headers: { clientId: string; apiKey: string },
+		headers: QMSClientHeaders,
 	) =>
 		api.post<{ data: ScannerCheckInResponse }>("/scanner/check-in", data, {
-			headers: {
-				"X-Client-ID": headers.clientId,
-				"X-API-Key": headers.apiKey,
-			},
+			headers: qmsClientHeaders(headers),
 		}),
 };
 

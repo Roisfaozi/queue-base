@@ -93,6 +93,16 @@ const navItems: NavEntry[] = [
 		iconName: "Scan",
 	},
 	{
+		title: "Caller",
+		href: "/dashboard/caller",
+		iconName: "PhoneCall",
+	},
+	{
+		title: "Signage",
+		href: "/dashboard/signage",
+		iconName: "MonitorPlay",
+	},
+	{
 		title: "Queue Settings",
 		href: "/dashboard/queue-settings",
 		iconName: "Settings2",
