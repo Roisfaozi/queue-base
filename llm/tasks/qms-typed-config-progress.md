@@ -675,3 +675,28 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Expand integration/e2e testing coverage for signage feed and caller action flows.
+## 2026-07-03 — Test coverage table-driven + signage vulnerability fix
+
+**changed files:**
+- `internal/modules/caller/usecase/caller_usecase_test.go`
+- `internal/modules/signage/usecase/signage_usecase.go`
+- `internal/modules/signage/usecase/signage_usecase_test.go`
+
+**what changed:**
+- Refactored caller test from separate `t.Run` blocks to proper table-driven `tests []struct` format.
+- Added signage usecase unit tests `TestSignageUseCase_GetMe`, `TestSignageUseCase_GetCurrentCalls`, `TestSignageUseCase_GetQueues` with table-driven cases.
+- Fixed GORM SQLite JOIN ordering issue by replacing `First` with `Take` in signage `GetMe`.
+- Added cross-tenant/branch context validation in `GetCurrentCalls` and `GetQueues`, returning `ErrForbidden` when context dot not match qms_client binding.
+- Included vulnerability test case: context crosses client tenant/branch.
+
+**test categories per signage endpoint:**
+- positive: valid signage feed returns scoped data
+- negative: unauthorized when client missing, not found when inactive, bad request when no tenant/branch context
+- edge: signage bound to branch-service only, signage bound to counter, signage with no binding
+- vulnerability: cross-tenant/branch context returns forbidden
+
+**command:** `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/caller/... ./internal/modules/signage/... -count=1`
+
+**result:** 3 test functions, 15 test cases, all PASS
+
+**lesson:** GORM `First` appends `ORDER BY` for PK even when selecting from a joined column alias; `Take` avoid order-by clause.

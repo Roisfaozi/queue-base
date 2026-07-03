@@ -86,3 +86,8 @@
 ## 2026-07-03 — Caller boundary scoping
 
 - When designing multi-layered hybrid auth (machine credential + human session), boundary enforcement must check both: the machine hardware context (qms_client binding) and the human operational context (operator assignment). Failing to check either introduces privilege bypass.
+
+## 2026-07-03 — Signage context binding and GORM order-by footgun
+
+- Usecase validation must happen at each boundary method, not only in middleware; signage `GetCurrentCalls`/`GetQueues` lacked tenant/branch context matching against client binding, allowing cross-tenant reads when middleware already validated.
+- GORM `First(&dest).Error` appends `ORDER BY <table>.<pk>` even for raw `Select` on joined columns; with SQLite memory DB the missing column from an aliased `SELECT` expression became `ORDER BY branch_services.service_name` which fails. `Take` avoids this.
