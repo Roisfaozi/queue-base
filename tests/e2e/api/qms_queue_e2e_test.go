@@ -12,7 +12,6 @@ import (
 	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
 	integrationSetup "github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/google/uuid"
@@ -94,15 +93,6 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 					} `json:"data"`
 				}
 				require.NoError(t, createCounterResp.JSON(&counterData))
-
-				for _, payload := range []map[string]any{
-					{"scope_type": "service", "scope_id": pharmacyData.Data.ID, "key": settingsModel.SettingKeyPharmacyFlowEnabled, "value": "true", "value_type": "boolean"},
-					{"scope_type": "service", "scope_id": pharmacyData.Data.ID, "key": settingsModel.SettingKeyRequireCounterForService, "value": "true", "value_type": "boolean"},
-				} {
-					_ = payload // Suppress unused var
-					// resp := server.Client.POST("/api/v1/configurations", payload, setup.WithAuth(token), setup.WithOrg(orgID))
-					// require.Equal(t, http.StatusCreated, resp.StatusCode, resp.String())
-				}
 
 				queueResp := server.Client.POST("/api/v1/queues", map[string]any{"branch_id": branchData.Data.ID, "service_id": regServiceData.Data.ID, "patient_name": "Queue Patient"}, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusCreated, queueResp.StatusCode, queueResp.String())
