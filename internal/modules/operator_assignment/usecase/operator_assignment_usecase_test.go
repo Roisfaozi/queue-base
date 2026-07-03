@@ -68,6 +68,37 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 				require.ErrorIs(t, err, exception.ErrBadRequest)
 			},
 		},
+		{
+			name: "Negative_InvalidOrMissingRequestFields",
+			fn: func(t *testing.T) {
+				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "", UserID: "u-1", CounterID: "c-1"})
+				require.ErrorIs(t, err, exception.ErrBadRequest)
+				_, err = uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "", CounterID: "c-1"})
+				require.ErrorIs(t, err, exception.ErrBadRequest)
+				_, err = uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-1", CounterID: ""})
+				require.ErrorIs(t, err, exception.ErrBadRequest)
+			},
+		},
+		{
+			name: "Edge_UnassignAlreadyUnassigned",
+			fn: func(t *testing.T) {
+				now := int64(123456789)
+				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-unassigned", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-2", CounterID: "c-2", AssignedAt: now, UnassignedAt: &now}).Error)
+
+				err := uc.Delete(ctx, "assign-unassigned")
+				require.NoError(t, err) // should not error if already unassigned
+			},
+		},
+		{
+			name: "Vulnerability_CrossTenantDeleteRejected",
+			fn: func(t *testing.T) {
+				otherCtx := database.SetOrganizationContext(context.Background(), "tenant-2")
+				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-cross", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-3", CounterID: "c-3", AssignedAt: int64(123456789)}).Error)
+
+				err := uc.Delete(otherCtx, "assign-cross")
+				require.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
 	}
 
 	for _, tt := range tests {

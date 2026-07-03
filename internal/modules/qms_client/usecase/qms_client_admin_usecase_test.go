@@ -186,6 +186,20 @@ func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
 			},
 		},
 		{
+			name: "Edge_DeactivateAlreadyInactive",
+			run: func(t *testing.T) {
+				require.NoError(t, db.Create(&entity.QMSClient{ID: "c-inactive", TenantID: "t-1", BranchID: "b-1", ClientType: entity.ClientTypeCaller, Name: "Inactive", IsActive: false}).Error)
+
+				err := uc.Delete(ctx, "c-inactive")
+				// must not error because already inactive is a no-op
+				require.NoError(t, err)
+
+				var client entity.QMSClient
+				require.NoError(t, db.First(&client, "id = ?", "c-inactive").Error)
+				assert.False(t, client.IsActive)
+			},
+		},
+		{
 			name: "Vulnerability_CrossTenantUpdateRejected",
 			run: func(t *testing.T) {
 				_, err := uc.Update(otherCtx, "c-1", &model.QMSClientUpdateRequest{Name: "Owned"})
