@@ -700,3 +700,31 @@ Design sources:
 **result:** 3 test functions, 15 test cases, all PASS
 
 **lesson:** GORM `First` appends `ORDER BY` for PK even when selecting from a joined column alias; `Take` avoid order-by clause.
+## 2026-07-03 — Phase 4B: Caller Login and Me Endpoint
+
+- status: completed
+- owner paths:
+  - `internal/modules/caller/*`
+  - `internal/config/app.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Added `POST /api/v1/caller/login` and `GET /api/v1/caller/me` under existing QMS client caller route group.
+  - Reused existing `auth` login flow instead of new caller-only auth stack.
+  - Added caller context resolver to return tenant, branch, service, and counter binding from `qms_clients`.
+  - Enforced hybrid auth boundary: machine credential required by middleware, operator membership and counter assignment required in caller usecase.
+  - Added caller action audit emission through existing audit usecase with `CALLER_*` action names.
+- tests added/updated:
+  - positive: `TestCallerUseCase_Login` returns caller context for valid client and assigned operator.
+  - negative: rejects missing client credential and missing session user in `Me`.
+  - edge: allows login for caller client without counter binding.
+  - vulnerability/security: rejects operator without active assignment for bound counter.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/caller/... -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/router ./internal/modules/settings/... -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
+  - result: passed
+- next step:
+  - sync frontend caller proxy/types if UI starts consuming `/api/v1/caller/login` and `/api/v1/caller/me`.

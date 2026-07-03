@@ -91,3 +91,9 @@
 
 - Usecase validation must happen at each boundary method, not only in middleware; signage `GetCurrentCalls`/`GetQueues` lacked tenant/branch context matching against client binding, allowing cross-tenant reads when middleware already validated.
 - GORM `First(&dest).Error` appends `ORDER BY <table>.<pk>` even for raw `Select` on joined columns; with SQLite memory DB the missing column from an aliased `SELECT` expression became `ORDER BY branch_services.service_name` which fails. `Take` avoids this.
+## 2026-07-03 — Caller login/me reuse existing auth stack
+
+- problem: Caller login needed hybrid machine-plus-human auth without duplicating token/session code.
+- root cause: no caller-specific session stack existed, but repo already had stable `auth` login/session flow.
+- fix: reuse `authModule.AuthUseCase.Login`, then layer caller binding and operator assignment checks in caller usecase.
+- lesson: for QMS caller login, keep machine binding in `qms_client` middleware/usecase and keep human session issuance in shared auth usecase; do not fork token logic unless caller session semantics truly diverge.
