@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/Roisfaozi/queue-base/internal/middleware"
 	"github.com/Roisfaozi/queue-base/internal/modules/signage/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -31,8 +32,7 @@ func NewSignageController(uc usecase.SignageUseCase, v *validator.Validate, log 
 // @Failure      500  {object}  response.SwaggerErrorResponseWrapper
 // @Router       /signage/me [get]
 func (h *SignageController) Me(c *gin.Context) {
-	// TODO: implement context extraction
-	res, err := h.useCase.GetMe(c.Request.Context(), "dummy-client-id")
+	res, err := h.useCase.GetMe(c.Request.Context(), middleware.GetQMSClientIDFromContext(c))
 	if err != nil {
 		response.HandleError(c, err, "failed to get signage info")
 		return
@@ -50,7 +50,7 @@ func (h *SignageController) Me(c *gin.Context) {
 // @Success      200  {object}  response.SwaggerSuccessResponseWrapper
 // @Router       /signage/current-calls [get]
 func (h *SignageController) CurrentCalls(c *gin.Context) {
-	res, err := h.useCase.GetCurrentCalls(c.Request.Context(), "dummy-client-id")
+	res, err := h.useCase.GetCurrentCalls(c.Request.Context(), middleware.GetQMSClientIDFromContext(c))
 	if err != nil {
 		response.HandleError(c, err, "failed to get current calls")
 		return
@@ -68,7 +68,7 @@ func (h *SignageController) CurrentCalls(c *gin.Context) {
 // @Success      200  {object}  response.SwaggerSuccessResponseWrapper
 // @Router       /signage/queues [get]
 func (h *SignageController) Queues(c *gin.Context) {
-	res, err := h.useCase.GetQueues(c.Request.Context(), "dummy-client-id")
+	res, err := h.useCase.GetQueues(c.Request.Context(), middleware.GetQMSClientIDFromContext(c))
 	if err != nil {
 		response.HandleError(c, err, "failed to get waiting queues")
 		return

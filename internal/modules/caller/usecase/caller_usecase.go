@@ -12,7 +12,7 @@ import (
 )
 
 type CallerUseCase interface {
-	ExecuteAction(ctx context.Context, journeyID, action string) (*model.CallerActionResponse, error)
+	ExecuteAction(ctx context.Context, clientID, journeyID, action string) (*model.CallerActionResponse, error)
 }
 
 type callerUseCase struct {
@@ -24,7 +24,10 @@ func NewCallerUseCase(db *gorm.DB, qu queueUsecase.QueueUseCase) CallerUseCase {
 	return &callerUseCase{db: db, queueUC: qu}
 }
 
-func (u *callerUseCase) ExecuteAction(ctx context.Context, journeyID, action string) (*model.CallerActionResponse, error) {
+func (u *callerUseCase) ExecuteAction(ctx context.Context, clientID, journeyID, action string) (*model.CallerActionResponse, error) {
+	if clientID == "" {
+		return nil, exception.ErrUnauthorized
+	}
 	type journeyRow struct {
 		QueueID  string
 		TenantID string

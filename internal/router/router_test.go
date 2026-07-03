@@ -52,6 +52,7 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&settings.SettingsModule{},
 		&queue.QueueModule{},
 		&caller.CallerModule{},
+		&middleware.QMSClientMiddleware{},
 		&signage.SignageModule{},
 		&scanner.ScannerModule{},
 		&api_key.ApiKeyModule{},

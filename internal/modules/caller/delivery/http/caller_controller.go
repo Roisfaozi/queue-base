@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/Roisfaozi/queue-base/internal/middleware"
 	"github.com/Roisfaozi/queue-base/internal/modules/caller/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/caller/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/response"
@@ -50,7 +51,8 @@ func (h *CallerController) Action(c *gin.Context) {
 		response.BadRequest(c, nil, "missing journey_id")
 		return
 	}
-	res, err := h.useCase.ExecuteAction(c.Request.Context(), journeyID, req.Action)
+	clientID := middleware.GetQMSClientIDFromContext(c)
+	res, err := h.useCase.ExecuteAction(c.Request.Context(), clientID, journeyID, req.Action)
 	if err != nil {
 		h.log.WithError(err).Error("caller action failed")
 		response.HandleError(c, err, "caller action failed")

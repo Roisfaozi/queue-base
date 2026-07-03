@@ -85,6 +85,7 @@ func SetupRouter(
 	settingsModule *settingsModulePkg.SettingsModule,
 	queueModule *queueModulePkg.QueueModule,
 	callerModule *caller.CallerModule,
+	qmsClientMiddleware *middleware.QMSClientMiddleware,
 	signageModule *signageModulePkg.SignageModule,
 	scannerModule *scannerModulePkg.ScannerModule,
 	apiKeyModule *api_key.ApiKeyModule,
@@ -244,8 +245,8 @@ func SetupRouter(
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
 		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)
-		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, apiKeyMiddleware)
-		signageHttp.RegisterSignageRoutes(tenantAuthorized, signageModule.SignageController, apiKeyMiddleware)
+		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, qmsClientMiddleware)
+		signageHttp.RegisterSignageRoutes(tenantAuthorized, signageModule.SignageController, qmsClientMiddleware)
 		scannerHttp.RegisterScannerRoutes(tenantAuthorized, scannerModule.ScannerController)
 
 		// Project Routes
