@@ -28,6 +28,7 @@ type BranchQueueSetting struct {
 	AllowSkip                *bool   `gorm:"column:allow_skip"`
 	AllowRecall              *bool   `gorm:"column:allow_recall"`
 	AllowCancel              *bool   `gorm:"column:allow_cancel"`
+	AutoCallNext             *bool   `gorm:"column:auto_call_next"`
 	NumberingStrategy        *string `gorm:"column:numbering_strategy;type:varchar(50)"`
 	CreatedAt                int64   `gorm:"column:created_at;autoCreateTime:milli"`
 	UpdatedAt                int64   `gorm:"column:updated_at;autoCreateTime:milli;autoUpdateTime:milli"`
@@ -47,6 +48,7 @@ type BranchServiceQueueSetting struct {
 	AllowSkip                *bool  `gorm:"column:allow_skip"`
 	AllowRecall              *bool  `gorm:"column:allow_recall"`
 	AllowCancel              *bool  `gorm:"column:allow_cancel"`
+	AutoCallNext             *bool  `gorm:"column:auto_call_next"`
 	CreatedAt                int64  `gorm:"column:created_at;autoCreateTime:milli"`
 	UpdatedAt                int64  `gorm:"column:updated_at;autoCreateTime:milli;autoUpdateTime:milli"`
 }
@@ -64,6 +66,7 @@ type CounterQueueSetting struct {
 	AllowSkip                *bool   `gorm:"column:allow_skip"`
 	AllowRecall              *bool   `gorm:"column:allow_recall"`
 	AllowCancel              *bool   `gorm:"column:allow_cancel"`
+	AutoCallNext             *bool   `gorm:"column:auto_call_next"`
 	NumberingStrategy        *string `gorm:"column:numbering_strategy;type:varchar(50)"`
 	CreatedAt                int64   `gorm:"column:created_at;autoCreateTime:milli"`
 	UpdatedAt                int64   `gorm:"column:updated_at;autoCreateTime:milli;autoUpdateTime:milli"`

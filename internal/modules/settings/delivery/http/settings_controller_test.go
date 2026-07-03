@@ -232,12 +232,14 @@ func TestSettingsController(t *testing.T) {
 			query    string
 			tenantID string
 			wantCode int
+			wantAuto *bool
 		}{
 			{
 				name:     "Positive_ResolvesTypedConfig",
 				query:    "?branch_id=550e8400-e29b-41d4-a716-446655440000",
 				tenantID: "tenant-1",
 				wantCode: http.StatusOK,
+				wantAuto: boolPtr(true),
 			},
 			{
 				name:     "Negative_RejectsMissingTenantContext",
@@ -255,6 +257,7 @@ func TestSettingsController(t *testing.T) {
 					"ticket_prefix":              "A",
 					"numbering_strategy":         "daily_branch_sequence",
 					"default_estimated_duration": "5",
+					"auto_call_next":             "true",
 				}}, nil)
 				router := gin.New()
 				router.GET("/settings/effective", func(c *gin.Context) {
@@ -270,7 +273,16 @@ func TestSettingsController(t *testing.T) {
 				w := httptest.NewRecorder()
 				router.ServeHTTP(w, req)
 				assert.Equal(t, tt.wantCode, w.Code)
+				if tt.wantCode == http.StatusOK {
+					var resp struct {
+						Data model.EffectiveQueueConfigResponse `json:"data"`
+					}
+					require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+					assert.Equal(t, tt.wantAuto, resp.Data.AutoCallNext)
+				}
 			})
 		}
 	})
 }
+
+func boolPtr(v bool) *bool { return &v }

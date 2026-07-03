@@ -779,3 +779,29 @@ Design sources:
 - remaining out-of-scope work:
   - Docker integration/E2E
   - future QMS client/operator assignment CRUD plus matching audit events if product needs admin UI/API
+## 2026-07-03 — auto_call_next typed schema/entity/resolver gap fix
+- status: completed
+- owner paths:
+  - `db/migrations/000032_align_qms_typed_configuration.up.sql`
+  - `internal/modules/settings/entity/qms_queue_settings_entity.go`
+  - `internal/modules/settings/queue_settings_resolver.go`
+  - `internal/modules/settings/delivery/http/settings_controller.go`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Added `auto_call_next BOOLEAN NULL` columns to `branch_queue_settings`, `service_queue_settings`, and `counter_queue_settings` CREATE TABLE statements.
+  - Added `AutoCallNext` field to `BranchQueueSetting`, `BranchServiceQueueSetting`, and `CounterQueueSetting` entities.
+  - Added `auto_call_next` to `typedConfigKeys` and resolver `typedFieldNullable` switches.
+  - Exposed `AutoCallNext` in `EffectiveQueueConfigResponse` via resolver.
+  - Synced stale coverage doc lines for auto_call_next, qms_clients, operator_counter_assignments, caller, and signage.
+- tests added/updated:
+  - Entity field presence: `TestTypedQueueSettingFields` now asserts `AutoCallNext` on BranchServiceQueueSetting and CounterQueueSetting.
+  - Resolver: `TestQueueSettingsResolver_Resolve` seeds branch service with `AutoCallNext=true` and asserts positive resolve.
+  - Controller: `TestSettingsController/EffectiveQueueConfig/Positive_ResolvesTypedConfig` now asserts `AutoCallNext` in response body.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/settings/... -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/caller/... ./internal/modules/signage/... ./internal/modules/qms_client/usecase ./internal/router ./internal/modules/queue/... -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
+  - result: passed
+- next-step: sync left docs or start Docker E2E.

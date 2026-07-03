@@ -78,6 +78,7 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 		return nil, err
 	}
 	defaultEstimatedDuration, _ := resolver.Resolve(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
+	autoCallNext, _ := resolver.Resolve(ctx, "auto_call_next", req.BranchID, req.ServiceID, req.CounterID)
 	queueResetTimeResolved, _ := resolver.ResolveDetailed(ctx, "queue_reset_time", req.BranchID, req.ServiceID, req.CounterID)
 	ticketPrefixResolved, _ := resolver.ResolveDetailed(ctx, "ticket_prefix", req.BranchID, req.ServiceID, req.CounterID)
 	numberingStrategyResolved, _ := resolver.ResolveDetailed(ctx, "numbering_strategy", req.BranchID, req.ServiceID, req.CounterID)
@@ -100,6 +101,7 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 		DefaultEstimatedDuration:          defaultEstimatedDuration,
 		DefaultEstimatedDurationSource:    sourceOf(defaultEstimatedDurationResolved),
 		DefaultEstimatedDurationInherited: inheritedOf(defaultEstimatedDurationResolved),
+		AutoCallNext:                      parseBoolPtr(autoCallNext),
 	}, nil
 }
 
@@ -140,6 +142,18 @@ func inheritedOf(resolved *model.ResolvedQueueSetting) bool {
 		return false
 	}
 	return resolved.Inherited
+}
+
+func parseBoolPtr(value string) *bool {
+	if value == "true" {
+		v := true
+		return &v
+	}
+	if value == "false" {
+		v := false
+		return &v
+	}
+	return nil
 }
 
 func NewSettingsController(useCase usecase.SettingsUseCase, validate *validator.Validate, log *logrus.Logger) *SettingsController {

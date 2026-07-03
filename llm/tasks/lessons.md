@@ -102,3 +102,8 @@
 - plan listed `QMS_CLIENT_CREATE`, `QMS_CLIENT_CREDENTIAL_CREATE`, and `OPERATOR_ASSIGNMENT_CREATE`, but repo currently has no controller/usecase write path for those resources.
 - adding audit events without a real mutation boundary creates fake completeness and dead code.
 - finish request-id logging and queue/caller operational audits now; add CRUD audit events only when actual create/update/delete flow exists.
+## 2026-07-03 — Syncing design coverage with real implementation
+
+- stale coverage docs cause agents to misreport missing features that were already built but not documented.
+- `auto_call_next` queue transition behavior was already built in queue usecase (via `tryCallNextQueue`), but typed schema storage and effective config exposure was genuinely missing.
+- always verify actual code paths, test files, and DB schemas before declaring a gap missing or completed.

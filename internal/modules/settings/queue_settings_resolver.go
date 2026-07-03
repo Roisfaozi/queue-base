@@ -18,6 +18,7 @@ var typedConfigKeys = map[string]bool{
 	"ticket_prefix":              true,
 	"numbering_strategy":         true,
 	"default_estimated_duration": true,
+	"auto_call_next":             true,
 }
 
 type QueueSettingsResolver struct {
@@ -142,6 +143,8 @@ func typedFieldNullable(row any, key string) *string {
 			return r.TicketPrefix
 		case "numbering_strategy":
 			return r.NumberingStrategy
+		case "auto_call_next":
+			return boolPtrToString(r.AutoCallNext)
 		}
 	case *entity.BranchServiceQueueSetting:
 		switch key {
@@ -161,6 +164,8 @@ func typedFieldNullable(row any, key string) *string {
 			return boolPtrToString(r.AllowRecall)
 		case "allow_cancel":
 			return boolPtrToString(r.AllowCancel)
+		case "auto_call_next":
+			return boolPtrToString(r.AutoCallNext)
 		}
 	case *entity.CounterQueueSetting:
 		switch key {
@@ -170,6 +175,8 @@ func typedFieldNullable(row any, key string) *string {
 			return r.TicketPrefix
 		case "numbering_strategy":
 			return r.NumberingStrategy
+		case "auto_call_next":
+			return boolPtrToString(r.AutoCallNext)
 		}
 	}
 	return nil

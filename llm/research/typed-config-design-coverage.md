@@ -29,7 +29,7 @@
 | queue_reset_time example | ✅ done | `internal/modules/settings/queue_settings_resolver.go:105-113`, test: `internal/modules/settings/usecase/settings_usecase_test.go:232` |
 | ticket_prefix example | ✅ done | `internal/modules/settings/queue_settings_resolver.go:146` |
 | estimated_duration example | ✅ done | `internal/modules/settings/queue_settings_resolver.go:142` |
-| auto_call_next example | ❌ missing | `counter_queue_settings.auto_call_next` field not in entity (`internal/modules/settings/entity/qms_queue_settings_entity.go:54-71`) nor resolver |
+| auto_call_next example | ✅ done | `auto_call_next` now exists in typed entities and resolver (`internal/modules/settings/entity/qms_queue_settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:12`, `internal/modules/settings/queue_settings_resolver.go:150`) |
 
 ### 5.2 Effective Config Response
 
@@ -300,7 +300,7 @@
 | 16 Queues | done | Queue master row has tenant, branch, date, ticket, number, status, current journey. | `internal/modules/queue/entity/queue_entity.go:22`, `internal/modules/queue/model/queue_model.go:7`, `db/migrations/000027_create_queues_and_journeys.up.sql:1` |
 | 17 Queue journeys | done | Journey entity has queue, tenant, branch, service, counter, seq, status; forwarding enforces active journey guard. | `internal/modules/queue/entity/queue_entity.go:38`, `internal/modules/queue/repository/queue_repository.go:246`, `internal/modules/queue/repository/queue_repository.go:248` |
 | 18 Mapping concept | done | Queue points to current journey and list endpoints filter journeys by branch/service/counter. | `internal/modules/queue/entity/queue_entity.go:32`, `internal/modules/queue/delivery/http/queue_routes.go:22`, `internal/modules/queue/delivery/http/queue_routes.go:23` |
-| 19 Operational actions | partial | Generic queue transition supports call/serve/complete/skip/cancel; caller-specific single action endpoint is missing. | `internal/modules/queue/model/queue_model.go:38`, `internal/modules/queue/usecase/queue_usecase.go:391`, `internal/modules/queue/delivery/http/queue_routes.go:16` |
+| 19 Operational actions | done | Generic queue transition exists and caller-specific single action endpoint is implemented. | `internal/modules/queue/model/queue_model.go:38`, `internal/modules/caller/delivery/http/caller_routes.go:10`, `internal/modules/caller/usecase/caller_usecase.go:92` |
 | 21 Queue-left and estimate response | partial | Queue stats and active journeys exist, but doc-level estimate response shape and estimate endpoint are absent. | `internal/modules/queue/usecase/queue_usecase.go:78`, `internal/modules/queue/usecase/queue_usecase.go:107`, `internal/modules/queue/model/queue_model.go:70` |
 | 22 Visit journeys | done | Visit journey entity and event writes exist for register/forward/transition. | `internal/modules/queue/entity/queue_entity.go:51`, `internal/modules/queue/usecase/queue_usecase.go:367`, `internal/modules/queue/usecase/queue_usecase.go:415` |
 | 23 `queue_counters` | partial | Atomic create/numbering exists in repository flow, but no explicit `queue_counters` table found. | `internal/modules/queue/usecase/queue_usecase.go:149`, `internal/modules/queue/repository/queue_repository.go:232`, `internal/modules/queue/repository/queue_repository.go:240` |
@@ -309,12 +309,12 @@
 
 | Section | Status | Gap / Finding | Live Evidence |
 |---|---|---|---|
-| 28 `operator_counter_assignments` | missing | No migration/entity/repository/usecase/route found. | `documentation/New Design Document — QMS MVP Operatio.md:1773`; `rg 'operator_counter_assignments|OperatorCounter|operator_counter' internal db tests` returned no implementation |
-| 29 `qms_clients` | missing | No migration/entity/repository/usecase/route found. | `documentation/New Design Document — QMS MVP Operatio.md:1824`; `rg 'qms_clients|QMSClient|qms_client' internal db tests` returned no implementation |
-| 30 `qms_client_credentials` | missing | No credential table or hash/auth binding for QMS clients exists. | `documentation/New Design Document — QMS MVP Operatio.md:1889`; `rg 'qms_client_credentials|ClientCredential|client_credential' internal db tests` returned no implementation |
-| 31 Caller login context binding | missing | No two-step client credential + human operator login context exists; scanner has its own request authenticator only. | `internal/modules/scanner/usecase/scanner_usecase.go:75`, `internal/modules/scanner/usecase/scanner_usecase.go:93`, `internal/modules/scanner/usecase/scanner_usecase.go:119` |
-| 32 Caller endpoints | missing | No `/caller` routes/controllers; current queue route is generic `/queues/:id/transition`. | `internal/router/router.go:223`, `internal/router/router.go:240`, `internal/modules/queue/delivery/http/queue_routes.go:16` |
-| 34 Signage endpoints | missing | No `/signage/me` or `/signage/current-calls` route/controller/usecase. | `documentation/New Design Document — QMS MVP Operatio.md:2093`, `documentation/New Design Document — QMS MVP Operatio.md:2126`; `rg 'signage|Signage|/signage' internal` returned no implementation |
+| 28 `operator_counter_assignments` | partial | Migration/entity and runtime enforcement exist, but no admin CRUD/write path exists yet. | `db/migrations/000033_qms_mvp_alignment.up.sql:61`, `internal/modules/operator_assignment/entity/operator_counter_assignment_entity.go:13`, `internal/modules/caller/usecase/caller_usecase.go:225` |
+| 29 `qms_clients` | partial | Migration/entity/repository/auth middleware and route bindings exist, but no admin CRUD/write path exists yet. | `db/migrations/000033_qms_mvp_alignment.up.sql:35`, `internal/modules/qms_client/entity/qms_client_entity.go:26`, `internal/middleware/qms_client_middleware.go:20`, `internal/router/router.go:240` |
+| 30 `qms_client_credentials` | partial | Credential table, hash verification, and expiry enforcement exist, but no admin CRUD/write path exists yet. | `db/migrations/000033_qms_mvp_alignment.up.sql:49`, `internal/modules/qms_client/entity/qms_client_entity.go:38`, `internal/modules/qms_client/usecase/qms_client_authenticator.go:34` |
+| 31 Caller login context binding | done | Two-step client credential + human operator session binding exists with operator assignment enforcement. | `internal/modules/caller/usecase/caller_usecase.go:33`, `internal/modules/caller/usecase/caller_usecase.go:225`, `internal/middleware/qms_client_middleware.go:20` |
+| 32 Caller endpoints | done | `/caller/login`, `/caller/me`, and `/caller/queue-journeys/:journey_id/action` are implemented. | `internal/modules/caller/delivery/http/caller_routes.go:10`, `internal/modules/caller/delivery/http/caller_controller.go:1`, `internal/router/router.go:240` |
+| 34 Signage endpoints | done | `/signage/me`, `/signage/current-calls`, and `/signage/queues` are implemented. | `internal/modules/signage/delivery/http/signage_routes.go:10`, `internal/modules/signage/usecase/signage_usecase.go:21`, `internal/router/router.go:241` |
 
 ### 16.5 Typed Behavior Consumption — Section 36
 
@@ -323,10 +323,10 @@
 | 36.1 Queue reset time | done | Queue stats/register use resolver-provided reset time for business date. | `internal/modules/queue/usecase/queue_usecase.go:90`, `internal/modules/queue/usecase/queue_usecase.go:149`, `internal/modules/queue/usecase/queue_usecase.go:160` |
 | 36.2 Ticket prefix | done | Ticket prefix resolved through settings resolver. | `internal/modules/queue/usecase/queue_usecase.go:161`, `internal/modules/settings/queue_settings_resolver.go:146` |
 | 36.3 Estimated duration | partial | Fields exist; resolver handling is incomplete for nullable typed fields and no full estimate response wiring exists. | `db/migrations/000032_align_qms_typed_configuration.up.sql:59`, `db/migrations/000032_align_qms_typed_configuration.up.sql:94`, `internal/modules/settings/queue_settings_resolver.go:155` |
-| 36.4 Audio | missing | No audio field/resolver/endpoint found in QMS live code. | `documentation/New Design Document — QMS MVP Operatio.md:2232`; `rg 'audio|Audio' internal/modules db/migrations` has no QMS implementation |
-| 36.5 Narrative | missing | No narrative field/resolver/endpoint found in QMS live code. | `documentation/New Design Document — QMS MVP Operatio.md:2240`; `rg 'narrative|Narrative' internal/modules db/migrations` has no QMS implementation |
-| 36.6 Auto call next | missing | `auto_call_next` absent from schema/entity/resolver. | `documentation/New Design Document — QMS MVP Operatio.md:2248`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:142` |
-| 36.7 Allow recall | partial | `allow_recall` columns exist, but caller recall semantics and caller endpoint are missing. | `db/migrations/000032_align_qms_typed_configuration.up.sql:62`, `db/migrations/000032_align_qms_typed_configuration.up.sql:80`, `db/migrations/000032_align_qms_typed_configuration.up.sql:117` |
+| 36.4 Audio | partial | Service audio schema and signage exposure exist, but effective config resolver does not project audio fallback yet. | `db/migrations/000035_add_service_audio_columns.up.sql:2`, `internal/modules/service/entity/service_entity.go:23`, `internal/modules/signage/usecase/signage_usecase.go:125` |
+| 36.5 Narrative | partial | Service narrative schema exists, but runtime signage/effective resolver does not project narrative fields yet. | `db/migrations/000035_add_service_audio_columns.up.sql:4`, `internal/modules/service/entity/service_entity.go:25`, `internal/modules/settings/model/settings_model.go:76` |
+| 36.6 Auto call next | done | `auto_call_next` wired in schema/entity/resolver and surfaced in effective config. | `documentation/New Design Document — QMS MVP Operatio.md:2248`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:12`, `internal/modules/settings/delivery/http/settings_controller.go:63` |
+| 36.7 Allow recall | partial | `allow_recall` columns and queue guard exist, but effective config does not expose per-source recall metadata beyond flat bool fields. | `db/migrations/000032_align_qms_typed_configuration.up.sql:62`, `internal/modules/queue/usecase/queue_usecase.go:470`, `internal/modules/settings/model/settings_model.go:68` |
 
 ### 16.6 Audit, Logging, UI, Tests — Sections 38 to 42
 
@@ -551,7 +551,7 @@ This section expands the raw `partial/missing` markers into concrete implementat
 **Current runtime**
 
 - Effective config endpoint is flat and mostly queue-reset/prefix/strategy oriented.
-- No effective logo fallback, no audio/narrative, no `auto_call_next`, no `allow_recall` metadata.
+- No effective logo fallback, no audio/narrative, no `allow_recall` metadata.
 
 **Evidence**
 
@@ -708,19 +708,19 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Design target**
 
-- Effective config and runtime should support estimated duration, audio fallback, narrative fallback, `auto_call_next`, `allow_recall`.
+- Effective config and runtime should support estimated duration, audio fallback, narrative fallback, `allow_recall`.
 
 **Current runtime**
 
 - Duration partially exists.
 - Audio/narrative fallback not implemented in effective resolver.
-- `auto_call_next` and `allow_recall` not wired as typed runtime behavior.
+- `allow_recall` runtime guard exists, but response metadata is still partial.
 
 **Evidence**
 
 - Service entity has duration field: `internal/modules/service/entity/service_entity.go:23`
 - No audio/narrative fields in effective resolver path.
-- No `auto_call_next` fields in `counter_queue_settings` entity.
+- `auto_call_next` now exists in typed entities and effective config path.
 
 **Gap impact**
 

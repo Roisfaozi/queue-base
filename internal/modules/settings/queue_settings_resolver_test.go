@@ -61,6 +61,7 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 
 	val0500 := "05:00"
 	valPrefixC := "C"
+	autoCallNext := true
 
 	// Seed branch override
 	require.NoError(t, db.Create(&entity.BranchQueueSetting{
@@ -78,6 +79,7 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 		BranchID:                 "b-1",
 		BranchServiceID:          "bsvc-1",
 		DefaultEstimatedDuration: &[]int{20}[0],
+		AutoCallNext:             &autoCallNext,
 	}).Error)
 
 	// Seed counter override
@@ -131,6 +133,14 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 			serviceID: "bsvc-1",
 			counterID: "",
 			want:      "20",
+		},
+		{
+			name:      "Positive_ResolvesAutoCallNextFromTypedTable",
+			key:       "auto_call_next",
+			branchID:  "b-1",
+			serviceID: "bsvc-1",
+			counterID: "",
+			want:      "true",
 		},
 		{
 			name:      "Negative_NoGenericFallback",

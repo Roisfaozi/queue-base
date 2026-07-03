@@ -35,7 +35,9 @@ func TestTypedQueueSettingFields(t *testing.T) {
 		{name: "tenant queue reset time", typeValue: TenantQueueSetting{}, fieldName: "QueueResetTime"},
 		{name: "branch ticket prefix", typeValue: BranchQueueSetting{}, fieldName: "TicketPrefix"},
 		{name: "branch service require counter", typeValue: BranchServiceQueueSetting{}, fieldName: "RequireCounter"},
+		{name: "branch service auto call next", typeValue: BranchServiceQueueSetting{}, fieldName: "AutoCallNext"},
 		{name: "branch service branch id", typeValue: BranchServiceQueueSetting{}, fieldName: "BranchID"},
+		{name: "counter auto call next", typeValue: CounterQueueSetting{}, fieldName: "AutoCallNext"},
 		{name: "counter numbering strategy", typeValue: CounterQueueSetting{}, fieldName: "NumberingStrategy"},
 	}
 
