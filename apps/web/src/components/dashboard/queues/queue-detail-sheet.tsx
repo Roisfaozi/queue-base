@@ -55,6 +55,9 @@ export function QueueDetailSheet({
 		}
 	};
 
+	const formatUnixTime = (value: number) =>
+		format(new Date(value * 1000), "HH:mm:ss");
+
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent className="sm:max-w-xl w-full flex flex-col gap-0 p-0">
@@ -92,32 +95,32 @@ export function QueueDetailSheet({
 								/>
 							) : (
 								<div className="relative border-l-2 ml-3 space-y-8">
-									{journeys.map((j) => (
-										<div key={j.id} className="relative pl-6">
-											<div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full border-2 border-background bg-primary" />
-											<div className="flex flex-col gap-1">
-												<div className="flex items-center gap-2">
-													<span className="font-semibold capitalize text-sm">
-														{j.event_type}
-													</span>
-													<span className="text-xs text-muted-foreground">
-														{format(new Date(j.created_at), "HH:mm:ss")}
-													</span>
+									{journeys.map((j) => {
+										const payload = parsePayload(j.payload);
+
+										return (
+											<div key={j.id} className="relative pl-6">
+												<div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full border-2 border-background bg-primary" />
+												<div className="flex flex-col gap-1">
+													<div className="flex items-center gap-2">
+														<span className="font-semibold capitalize text-sm">
+															{j.event_type}
+														</span>
+														<span className="text-xs text-muted-foreground">
+															{formatUnixTime(j.created_at)}
+														</span>
+													</div>
+													{payload && (
+														<pre className="mt-2 rounded-md bg-muted p-2 text-xs text-muted-foreground overflow-auto">
+															{typeof payload === "string"
+																? payload
+																: JSON.stringify(payload, null, 2)}
+														</pre>
+													)}
 												</div>
-												{parsePayload(j.payload) && (
-													<pre className="mt-2 rounded-md bg-muted p-2 text-xs text-muted-foreground overflow-auto">
-														{typeof parsePayload(j.payload) === "string"
-															? parsePayload(j.payload)
-															: JSON.stringify(
-																	parsePayload(j.payload),
-																	null,
-																	2,
-																)}
-													</pre>
-												)}
 											</div>
-										</div>
-									))}
+										);
+									})}
 								</div>
 							)}
 						</div>
