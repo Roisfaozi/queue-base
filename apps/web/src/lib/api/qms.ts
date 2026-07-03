@@ -52,19 +52,6 @@ export interface Counter {
 	updated_at: number;
 }
 
-export interface Setting {
-	id: string;
-	tenant_id: string;
-	scope_type: "tenant" | "branch" | "service" | "counter";
-	scope_id: string;
-	key: string;
-	value: string;
-	value_type: "string" | "number" | "boolean" | "json";
-	is_active: boolean;
-	created_at: number;
-	updated_at: number;
-}
-
 export interface BranchService {
 	id: string;
 	tenant_id: string;
