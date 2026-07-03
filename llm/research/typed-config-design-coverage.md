@@ -15,7 +15,7 @@
 | branches → branch_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:71`, `internal/modules/settings/entity/qms_queue_settings_entity.go:20` |
 | branches → branch_services → counters | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:29`, `db/migrations/000032_align_qms_typed_configuration.up.sql:49` |
 | counters → counter_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:78`, `internal/modules/settings/entity/qms_queue_settings_entity.go:54` |
-| services → service_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:84`, `internal/modules/settings/entity/qms_queue_settings_entity.go:38` |
+| services → branch_service_queue_settings | ✅ done | `db/migrations/000033_qms_mvp_alignment.up.sql:3`, `internal/modules/settings/entity/qms_queue_settings_entity.go:38` |
 
 ---
 
@@ -57,8 +57,8 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| `GET /api/v1/tenant/queue-settings` | ❌ missing | No dedicated endpoint. Must read via generic `GET /api/v1/settings/:id` or `GET /api/v1/settings/resolve` |
-| `PATCH /api/v1/tenant/queue-settings` | ❌ missing | No dedicated PATCH endpoint. Must write via `POST /api/v1/settings` (generic) |
+| `GET /api/v1/tenant/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
+| `PATCH /api/v1/tenant/queue-settings` | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
 
 ### 6.3 Branch Profile
 
@@ -71,8 +71,8 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| `GET /api/v1/branches/{branch_id}/queue-settings` | ❌ missing | Must use generic settings resolve |
-| `PATCH /api/v1/branches/{branch_id}/queue-settings` | ❌ missing | Must use generic settings POST |
+| `GET /api/v1/branches/{branch_id}/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
+| `PATCH /api/v1/branches/{branch_id}/queue-settings` | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
 | `DELETE .../queue-settings/{field}` | ❌ missing | No reset-to-inherit API |
 
 ### 6.5 Service
@@ -100,8 +100,8 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| `GET /api/v1/services/{service_id}/queue-settings` | ❌ missing | No dedicated typed endpoint |
-| `PATCH /api/v1/services/{service_id}/queue-settings` | ❌ missing | Must use generic settings |
+| `GET /api/v1/services/{service_id}/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
+| `PATCH /api/v1/services/{service_id}/queue-settings` | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
 | `DELETE .../queue-settings/{field}` | ❌ missing | No reset-to-inherit API |
 
 ### 6.8 Counter
@@ -119,7 +119,7 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| Dedicated typed endpoints | ❌ missing | All missing — must use generic settings |
+| Dedicated typed endpoints | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
 
 ### 6.10 Effective Config
 
@@ -248,7 +248,7 @@
 |-----------|--------|----------|
 | tenant_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:54` |
 | branch_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:71` |
-| service_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:84` |
+| branch_service_queue_settings | ✅ done | `db/migrations/000033_qms_mvp_alignment.up.sql:3` |
 | counter_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:78` |
 | branch_services | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:29` |
 
@@ -275,9 +275,9 @@
 | 4.2 Branch under tenant | done | Branch entity and branch-owned queue queries are tenant+branch scoped. | `internal/modules/organization/entity/branch_entity.go:13`, `internal/modules/queue/repository/queue_repository.go:168`, `internal/modules/queue/repository/queue_repository.go:210` |
 | 4.3 One queue record per ticket/visit | done | Queue master has one `ticket_no`, one `queue_no`, and `current_journey_id`; journey/history separated. | `internal/modules/queue/entity/queue_entity.go:22`, `internal/modules/queue/entity/queue_entity.go:38`, `internal/modules/queue/entity/queue_entity.go:51` |
 | 4.4 Forwarding uses queue journey | done | Forward updates current queue and appends next `queue_journey`; no new queue master row. | `internal/modules/queue/usecase/queue_usecase.go:351`, `internal/modules/queue/usecase/queue_usecase.go:377`, `internal/modules/queue/repository/queue_repository.go:240` |
-| 4.5 No generic settings anywhere | partial | Typed resolver exists, but legacy `settings` table/module still exists and resolver supports fallback path. | `internal/modules/settings/entity/settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:47`, `internal/modules/settings/queue_settings_resolver.go:54` |
+| 4.5 No generic settings anywhere | ✅ done | Generic settings module and table fully removed. Resolver uses strict typed path. | `internal/modules/settings/queue_settings_resolver.go:32` |
 | 4.6 Profile data is not settings | done | Tenant/branch profile fields live on main organization/branch entities. | `internal/modules/organization/entity/organization_entity.go:18`, `internal/modules/organization/entity/organization_entity.go:21`, `internal/modules/organization/entity/branch_entity.go:16` |
-| 4.7 Behavior config uses typed tables | partial | Typed tables exist, but design-named `branch_service_queue_settings` is absent; live code uses `service_queue_settings` and `counter_queue_settings`. | `db/migrations/000032_align_qms_typed_configuration.up.sql:54`, `db/migrations/000032_align_qms_typed_configuration.up.sql:90`, `db/migrations/000032_align_qms_typed_configuration.up.sql:108` |
+| 4.7 Behavior config uses typed tables | ✅ done | Typed tenant, branch, branch-service, and counter queue settings exist. | `db/migrations/000032_align_qms_typed_configuration.up.sql:54`, `db/migrations/000033_qms_mvp_alignment.up.sql:3`, `db/migrations/000032_align_qms_typed_configuration.up.sql:108` |
 
 ### 16.2 Tenant, Branch, Services, Counters — Sections 7 to 15
 
@@ -289,7 +289,7 @@
 | 10 `branch_queue_settings` | done | Nullable override fields and tenant+branch unique key exist. | `db/migrations/000032_align_qms_typed_configuration.up.sql:71`, `db/migrations/000032_align_qms_typed_configuration.up.sql:85`, `internal/modules/settings/entity/qms_queue_settings_entity.go:20` |
 | 11 Services | partial | Service type/duration/pharmacy flags exist; audio/narrative fallback rules are not implemented. | `db/migrations/000032_align_qms_typed_configuration.up.sql:25`, `internal/modules/service/entity/service_entity.go:13`, `internal/modules/service/entity/service_entity.go:17` |
 | 12 Branch services | done | Branch-service table and CRUD/usecase exist with tenant/branch/service binding. | `db/migrations/000032_align_qms_typed_configuration.up.sql:29`, `internal/modules/service/usecase/branch_service_usecase.go:31`, `internal/modules/service/repository/branch_service_repository.go:1` |
-| 13 `branch_service_queue_settings` | missing | Design table by this name is absent; current schema has `service_queue_settings`, not branch-service-specific settings. | `documentation/New Design Document — QMS MVP Operatio.md:778`, `db/migrations/000032_align_qms_typed_configuration.up.sql:90`, `internal/modules/settings/entity/qms_queue_settings_entity.go:38` |
+| 13 `branch_service_queue_settings` | done | Design table exists after MVP alignment migration and entity uses branch-service scope. | `db/migrations/000033_qms_mvp_alignment.up.sql:3`, `internal/modules/settings/entity/qms_queue_settings_entity.go:38` |
 | 14 Counters | done | Counter has `branch_service_id`, display name, status, and branch-service validation. | `db/migrations/000032_align_qms_typed_configuration.up.sql:48`, `internal/modules/counter/entity/counter_entity.go:14`, `internal/modules/counter/usecase/counter_usecase.go:151` |
 | 15 `counter_queue_settings` | done | Counter settings table/entity exist with nullable override fields. | `db/migrations/000032_align_qms_typed_configuration.up.sql:108`, `db/migrations/000032_align_qms_typed_configuration.up.sql:122`, `internal/modules/settings/entity/qms_queue_settings_entity.go:57` |
 
@@ -310,7 +310,7 @@
 | Section | Status | Gap / Finding | Live Evidence |
 |---|---|---|---|
 | 28 `operator_counter_assignments` | partial | Migration/entity and runtime enforcement exist, but no admin CRUD/write path exists yet. | `db/migrations/000033_qms_mvp_alignment.up.sql:61`, `internal/modules/operator_assignment/entity/operator_counter_assignment_entity.go:13`, `internal/modules/caller/usecase/caller_usecase.go:225` |
-| 29 `qms_clients` | partial | Migration/entity/repository/auth middleware and route bindings exist, but no admin CRUD/write path exists yet. | `db/migrations/000033_qms_mvp_alignment.up.sql:35`, `internal/modules/qms_client/entity/qms_client_entity.go:26`, `internal/middleware/qms_client_middleware.go:20`, `internal/router/router.go:240` |
+| 29 `qms_clients` | partial | Migration/entity/repository/auth middleware and minimal admin create/write paths exist; full list/update/delete deferred. | `db/migrations/000033_qms_mvp_alignment.up.sql:35`, `internal/modules/qms_client/usecase/qms_client_admin_usecase.go:36`, `internal/middleware/qms_client_middleware.go:20`, `internal/router/router.go:240` |
 | 30 `qms_client_credentials` | partial | Credential table, hash verification, and expiry enforcement exist, but no admin CRUD/write path exists yet. | `db/migrations/000033_qms_mvp_alignment.up.sql:49`, `internal/modules/qms_client/entity/qms_client_entity.go:38`, `internal/modules/qms_client/usecase/qms_client_authenticator.go:34` |
 | 31 Caller login context binding | done | Two-step client credential + human operator session binding exists with operator assignment enforcement. | `internal/modules/caller/usecase/caller_usecase.go:33`, `internal/modules/caller/usecase/caller_usecase.go:225`, `internal/middleware/qms_client_middleware.go:20` |
 | 32 Caller endpoints | done | `/caller/login`, `/caller/me`, and `/caller/queue-journeys/:journey_id/action` are implemented. | `internal/modules/caller/delivery/http/caller_routes.go:10`, `internal/modules/caller/delivery/http/caller_controller.go:1`, `internal/router/router.go:240` |
@@ -346,15 +346,15 @@
 
 | Focus Area | Status | Required Next Work | Evidence |
 |---|---|---|---|
-| `branch_service_queue_settings` | missing | Add migration/entity/repository/resolver scope keyed by `tenant_id + branch_service_id`, or explicitly revise design to use `service_queue_settings`. | `documentation/New Design Document — QMS MVP Operatio.md:778`, `db/migrations/000032_align_qms_typed_configuration.up.sql:90` |
-| `qms_clients` | missing | Add client table/domain for caller/signage/scanner/kiosk binding. | `documentation/New Design Document — QMS MVP Operatio.md:1824` |
+| `branch_service_queue_settings` | done | Migration/entity/resolver scope keyed by tenant, branch, and branch-service exists. | `db/migrations/000033_qms_mvp_alignment.up.sql:3`, `internal/modules/settings/queue_settings_resolver.go:73` |
+| `qms_clients` | partial | Client table/domain/auth and minimal admin create endpoints exist; full CRUD deferred. | `internal/modules/qms_client/usecase/qms_client_admin_usecase.go:36` |
 | `qms_client_credentials` | missing | Add hashed credential table and auth middleware/resolver. | `documentation/New Design Document — QMS MVP Operatio.md:1889` |
-| `operator_counter_assignments` | missing | Add assignment table/domain and validate operator/counter scope at caller login. | `documentation/New Design Document — QMS MVP Operatio.md:1773` |
-| Caller action endpoint | missing | Add `/caller/action` endpoint resolving queue operations from bound caller context. | `documentation/New Design Document — QMS MVP Operatio.md:2002`, `internal/modules/queue/delivery/http/queue_routes.go:16` |
-| Signage endpoint | missing | Add `/signage/me` and `/signage/current-calls` using client credential branch context. | `documentation/New Design Document — QMS MVP Operatio.md:2093`, `documentation/New Design Document — QMS MVP Operatio.md:2126` |
-| Effective config response | partial | Existing endpoint resolves queue values, but response shape lacks full nested metadata and logo fallback. | `internal/modules/settings/delivery/http/settings_routes.go:12`, `internal/modules/settings/delivery/http/settings_controller.go:63` |
-| Branch logo fallback | missing | Fields exist, but no resolver returns branch logo fallback to tenant logo. | `internal/modules/organization/entity/organization_entity.go:27`, `internal/modules/organization/entity/branch_entity.go:22` |
-| Activation rules tenant/branch | partial | Status fields exist, but activation completeness validation is missing. | `internal/modules/organization/entity/organization_entity.go:30`, `internal/modules/organization/entity/branch_entity.go:25`, `internal/modules/organization/usecase/branch_usecase.go:132` |
+| `operator_counter_assignments` | partial | Assignment table/domain and caller validation exist; admin CRUD deferred. | `db/migrations/000033_qms_mvp_alignment.up.sql:61`, `internal/modules/caller/usecase/caller_usecase.go:225` |
+| Caller action endpoint | done | `/api/v1/caller/queue-journeys/{journey_id}/action` implemented with caller-bound context enforcement. | `internal/modules/caller/delivery/http/caller_routes.go:15`, `internal/modules/caller/usecase/caller_usecase.go:64` |
+| Signage endpoint | done | `/signage/me`, `/signage/current-calls`, and `/signage/queues` implemented with client binding checks. | `internal/modules/signage/delivery/http/signage_routes.go:10`, `internal/modules/signage/usecase/signage_usecase.go:21` |
+| Effective config response | done | Effective config includes typed fields and source metadata for inheritance. | `internal/modules/settings/delivery/http/settings_controller.go:63`, `internal/modules/settings/model/settings_model.go:187` |
+| Branch logo fallback | done | Signage `GetMe` falls back to tenant branding when branch branding is null. | `internal/modules/signage/usecase/signage_usecase.go:80` |
+| Activation rules tenant/branch | deferred | Explicitly skipped for MVP; no activation completeness guard yet. | `documentation/New Design Document — QMS MVP Operatio.md` |
 
 ### 16.8 Recommended MVP Implementation Order
 
