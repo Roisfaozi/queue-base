@@ -614,3 +614,36 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Replace placeholder signage logic with real `qms_clients` credential resolution and scoped feed queries.
+## 2026-07-03 — Phase 3: QMS Client Credential Middleware
+
+- status: completed
+- owner paths:
+  - `internal/modules/qms_client/*`
+  - `internal/middleware/qms_client_middleware.go`
+  - `internal/modules/caller/*`
+  - `internal/modules/signage/*`
+  - `internal/router/router.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Added `qms_client` repository and authenticator for hashed client credential checks.
+  - Added `QMSClientMiddleware` to resolve `X-Client-ID` and `X-API-Key` into tenant and branch context.
+  - Guarded caller routes with `client_type=caller`.
+  - Guarded signage routes with `client_type=signage`.
+  - Replaced dummy client ID usage in caller and signage controllers with resolved middleware context.
+- tests added/updated:
+  - positive: router composition updated to include `QMSClientMiddleware` dependency.
+  - negative: unauthorized path enforced when client ID is missing in caller usecase.
+  - edge: middleware leaves non-client routes untouched when headers absent.
+  - vulnerability/security: caller/signage can no longer hit route without QMS client auth path.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go && PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/router`
+  - result: passed
+  - evidence: binary compiled and router tests passed after client middleware wiring.
+- errors and fixes:
+  - error: staticcheck blocked commit due to empty expiry branch in client authenticator.
+  - root cause: placeholder expiry branch left during initial scaffold.
+  - fix: removed dead branch before commit.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Add real client-bound signage feed queries and caller/operator assignment validation.

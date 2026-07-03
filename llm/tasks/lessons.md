@@ -79,3 +79,7 @@
 ## 2026-07-02 — Signage skeleton follow-up
 
 - For staged QMS rebuild work, route skeletons can land first, but progress log must mark auth/credential validation as pending so placeholder handlers are not mistaken for complete feature delivery.
+## 2026-07-03 — QMS client auth wiring
+
+- When adding new auth middleware path beside JWT and API key, prefer route-local middleware for dedicated surfaces like caller/signage instead of broad global wiring to avoid changing unrelated auth behavior.
+- Placeholder credential flows should fail closed in usecase/controller paths once middleware lands; leaving dummy IDs after route guard wiring hides real auth bugs.
