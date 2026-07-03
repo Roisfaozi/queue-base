@@ -30,13 +30,16 @@ import { toast } from "sonner";
 import { Icon } from "~/components/shared/icon";
 import {
 	queuesApi,
+	countersApi,
 	servicesApi,
+	type Counter,
 	type Service,
 	type Queue,
 } from "~/lib/api/qms";
 
 const forwardSchema = z.object({
 	destination_service_id: z.string().min(1, "Destination service is required."),
+	destination_counter_id: z.string().optional(),
 });
 
 type ForwardFormValues = z.infer<typeof forwardSchema>;
@@ -56,16 +59,25 @@ export function QueueForwardDialog({
 }: QueueForwardDialogProps) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [services, setServices] = useState<Service[]>([]);
+	const [counters, setCounters] = useState<Counter[]>([]);
 
 	const form = useForm<ForwardFormValues>({
 		resolver: zodResolver(forwardSchema),
-		defaultValues: { destination_service_id: "" },
+		defaultValues: { destination_service_id: "", destination_counter_id: "" },
 	});
 
 	const fetchServices = useCallback(async () => {
 		try {
-			const resp = await servicesApi.getAll();
-			setServices(resp.data?.filter((s) => s.status === "active") || []);
+			const [servicesResp, countersResp] = await Promise.all([
+				servicesApi.getAll(),
+				countersApi.getAll(),
+			]);
+			setServices(
+				servicesResp.data?.filter((s) => s.status === "active") || [],
+			);
+			setCounters(
+				countersResp.data?.filter((c) => c.status === "active") || [],
+			);
 		} catch {
 			// silently ignore
 		}
@@ -73,10 +85,17 @@ export function QueueForwardDialog({
 
 	useEffect(() => {
 		if (open) {
-			form.reset({ destination_service_id: "" });
+			form.reset({ destination_service_id: "", destination_counter_id: "" });
 			fetchServices();
 		}
 	}, [open, form, fetchServices]);
+
+	const selectedServiceId = form.watch("destination_service_id");
+	const availableCounters = counters.filter((counter) => {
+		if (counter.branch_id !== queue?.branch_id) return false;
+		if (!selectedServiceId) return true;
+		return !counter.branch_service_id || counter.branch_service_id.length > 0;
+	});
 
 	async function onSubmit(data: ForwardFormValues) {
 		if (!queue) return;
@@ -84,6 +103,7 @@ export function QueueForwardDialog({
 		try {
 			await queuesApi.forward(queue.id, {
 				destination_service_id: data.destination_service_id,
+				destination_counter_id: data.destination_counter_id || undefined,
 			});
 			toast.success(`Queue ${queue.ticket_no} forwarded`);
 			onSuccess();
@@ -129,6 +149,34 @@ export function QueueForwardDialog({
 											{services.map((svc) => (
 												<SelectItem key={svc.id} value={svc.id}>
 													{svc.code} — {svc.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="destination_counter_id"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Destination Counter</FormLabel>
+									<Select
+										onValueChange={field.onChange}
+										value={field.value || ""}
+									>
+										<FormControl>
+											<SelectTrigger>
+												<SelectValue placeholder="Optional" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value="">No counter</SelectItem>
+											{availableCounters.map((counter) => (
+												<SelectItem key={counter.id} value={counter.id}>
+													{counter.code} — {counter.name}
 												</SelectItem>
 											))}
 										</SelectContent>
