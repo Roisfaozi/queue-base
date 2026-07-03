@@ -627,6 +627,7 @@ func TestTransitionQueue(t *testing.T) {
 		name     string
 		category string
 		repo     *stubQueueRepo
+		settings map[string]string
 		queueID  string
 		req      *model.QueueTransitionRequest
 		tenantID string
@@ -665,6 +666,65 @@ func TestTransitionQueue(t *testing.T) {
 			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCanceled, res.Status)
 			},
+		},
+		{
+			name:     "Edge_RecallWhenAllowRecallTrue",
+			category: "edge",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
+			},
+			queueID:  "q-1",
+			settings: map[string]string{"allow_recall": "true"},
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+				assert.Equal(t, entity.QueueStatusCalling, res.Status)
+				assert.Equal(t, "recall", repo.visit.EventType)
+			},
+		},
+		{
+			name:     "Negative_RecallWhenAllowRecallFalse",
+			category: "negative",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
+			},
+			queueID:  "q-1",
+			settings: map[string]string{"allow_recall": "false"},
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_SkipWhenAllowSkipFalse",
+			category: "negative",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
+			},
+			queueID:  "q-1",
+			settings: map[string]string{"allow_skip": "false"},
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionSkip},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Negative_CancelWhenAllowCancelFalse",
+			category: "negative",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
+			},
+			queueID:  "q-1",
+			settings: map[string]string{"allow_cancel": "false"},
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
 		},
 		{
 			name:     "Positive_SuccessSkip",
@@ -828,7 +888,11 @@ func TestTransitionQueue(t *testing.T) {
 			if repo == nil {
 				repo = &stubQueueRepo{}
 			}
-			uc := NewQueueUseCase(repo, nil, nil)
+			var settings SettingsResolver
+			if tt.settings != nil {
+				settings = &stubSettingsResolver{values: tt.settings}
+			}
+			uc := NewQueueUseCase(repo, settings, nil)
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)

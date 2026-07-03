@@ -416,6 +416,20 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 
 	switch req.Action {
 	case model.QueueActionCall:
+		if queue.Status == entity.QueueStatusCalling {
+			allowRecall := true
+			if u.settingsResolver != nil {
+				if resolved, err := u.settingsResolver.Resolve(ctx, "allow_recall", branchID, currentJourney.ServiceID, currentJourney.CounterID); err == nil && resolved != "" {
+					allowRecall = strings.EqualFold(resolved, "true")
+				}
+			}
+			if !allowRecall {
+				telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+				return nil, exception.ErrBadRequest
+			}
+			visit.EventType = "recall"
+			break
+		}
 		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusSkipped {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
@@ -440,6 +454,16 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusCompleted
 		visit.EventType = "complete"
 	case model.QueueActionSkip:
+		allowSkip := true
+		if u.settingsResolver != nil {
+			if resolved, err := u.settingsResolver.Resolve(ctx, "allow_skip", branchID, currentJourney.ServiceID, currentJourney.CounterID); err == nil && resolved != "" {
+				allowSkip = strings.EqualFold(resolved, "true")
+			}
+		}
+		if !allowSkip {
+			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+			return nil, exception.ErrBadRequest
+		}
 		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusCalling {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
@@ -448,6 +472,16 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusSkipped
 		visit.EventType = "skip"
 	case model.QueueActionCancel:
+		allowCancel := true
+		if u.settingsResolver != nil {
+			if resolved, err := u.settingsResolver.Resolve(ctx, "allow_cancel", branchID, currentJourney.ServiceID, currentJourney.CounterID); err == nil && resolved != "" {
+				allowCancel = strings.EqualFold(resolved, "true")
+			}
+		}
+		if !allowCancel {
+			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+			return nil, exception.ErrBadRequest
+		}
 		if queue.Status == entity.QueueStatusCompleted || queue.Status == entity.QueueStatusCanceled {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
