@@ -90,12 +90,9 @@ export function QueueForwardDialog({
 		}
 	}, [open, form, fetchServices]);
 
-	const selectedServiceId = form.watch("destination_service_id");
-	const availableCounters = counters.filter((counter) => {
-		if (counter.branch_id !== queue?.branch_id) return false;
-		if (!selectedServiceId) return true;
-		return !counter.branch_service_id || counter.branch_service_id.length > 0;
-	});
+	const availableCounters = counters.filter(
+		(counter) => counter.branch_id === queue?.branch_id,
+	);
 
 	async function onSubmit(data: ForwardFormValues) {
 		if (!queue) return;
