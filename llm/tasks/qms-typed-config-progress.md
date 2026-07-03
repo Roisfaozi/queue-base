@@ -728,3 +728,25 @@ Design sources:
   - result: passed
 - next step:
   - sync frontend caller proxy/types if UI starts consuming `/api/v1/caller/login` and `/api/v1/caller/me`.
+## 2026-07-03 — Phase 4C: Service Audio and Narrative Schema
+
+- status: completed
+- owner paths:
+  - `db/migrations/000035_add_service_audio_columns.up.sql`
+  - `internal/modules/service/entity/service_entity.go`
+  - `internal/modules/signage/usecase/signage_usecase.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Added schema migration for `audio_id`, `audio_en`, `narrative_instruction_id`, `narrative_instruction_en` to `services` table.
+  - Added new columns to `Service` entity model.
+  - Exposed service audio IDs to `SignageMeResponse` through `branch_services` mapping.
+  - Exposed service audio IDs to `SignageCurrentCallResponse` through active journey mapping.
+- tests added/updated:
+  - positive: Test `TestSignageUseCase_GetCurrentCalls` now validates expected `AudioID` fields on matched journeys.
+  - positive: Test `TestSignageUseCase_GetMe` now validates injected `AudioID` mapped from branch service.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/signage/... -count=1`
+  - result: passed
+- next step:
+  - Docker E2E testing for all completed caller and signage endpoints.
