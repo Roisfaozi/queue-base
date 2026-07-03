@@ -107,3 +107,9 @@
 - stale coverage docs cause agents to misreport missing features that were already built but not documented.
 - `auto_call_next` queue transition behavior was already built in queue usecase (via `tryCallNextQueue`), but typed schema storage and effective config exposure was genuinely missing.
 - always verify actual code paths, test files, and DB schemas before declaring a gap missing or completed.
+
+## 2026-07-03 — Jalur C admin API minimal slice
+
+- operator assignment had only entity + caller-side enforcement; backend UI needed real admin API to avoid manual DB seeding.
+- qms client admin CRUD is enough as soft-deactivate + list/update; hard delete is unnecessary for MVP.
+- when adding a new admin surface, keep audit on mutate-only paths and avoid introducing repository layers if direct GORM in usecase already matches repo style.

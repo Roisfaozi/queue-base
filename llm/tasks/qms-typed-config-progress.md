@@ -812,6 +812,30 @@ Design sources:
   - evidence: admin usecase tests, router compile path, and app wiring all green.
 - next step:
   - add operator assignment admin write path if product needs managed caller staffing API.
+
+## 2026-07-03 — Jalur C admin APIs
+
+- status: completed
+- owner paths:
+  - `internal/modules/qms_client/*`
+  - `internal/modules/operator_assignment/*`
+  - `internal/config/app.go`
+  - `internal/router/router.go`
+  - `internal/router/router_test.go`
+- work done:
+  - Added `GET/PATCH/DELETE /api/v1/qms-clients/:id` plus `GET /api/v1/qms-clients`.
+  - Implemented soft deactivate for QMS clients via `is_active=false`.
+  - Added minimal operator assignment admin API: create, list, unassign.
+  - Wired operator assignment module into app and tenant-authorized router.
+- tests added/updated:
+  - positive: qms client update/deactivate and operator assignment create/list/delete.
+  - negative: missing tenant rejected.
+  - vulnerability/security: cross-tenant qms client update rejected.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/qms_client/... ./internal/modules/operator_assignment/... ./internal/router ./internal/config -count=1`
+  - result: passed
+- next step:
+  - frontend can now build operator assignment UI against real backend API.
 ## 2026-07-03 — auto_call_next typed schema/entity/resolver gap fix
 - status: completed
 - owner paths:
