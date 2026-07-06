@@ -85,7 +85,7 @@ func (uc *organizationUseCase) CreateOrganization(ctx context.Context, userID st
 		}
 
 		// Create organization
-		statusActive := request.Address != "" && request.City != "" && request.Province != "" && request.Phone != "" && request.Timezone != ""
+		statusActive := request.Address != "" && request.City != "" && request.Province != "" && request.Phone != "" && request.Timezone != "" && request.LogoAssetID != ""
 		orgStatus := entity.OrgStatusDraft
 		if statusActive {
 			orgStatus = entity.OrgStatusActive
@@ -239,7 +239,7 @@ func (uc *organizationUseCase) UpdateOrganization(ctx context.Context, id string
 		}
 
 		// guard: active requires profile fields
-		if org.Status == entity.OrgStatusActive && uc.missingActivationFields(org) && request.Status == entity.OrgStatusActive {
+		if request.Status == entity.OrgStatusActive && uc.missingActivationFields(org) {
 			return exception.ErrBadRequest
 		}
 
@@ -263,7 +263,7 @@ func (uc *organizationUseCase) UpdateOrganization(ctx context.Context, id string
 }
 
 func (uc *organizationUseCase) missingActivationFields(org *entity.Organization) bool {
-	return org.Address == "" || org.City == "" || org.Province == "" || org.Phone == "" || org.Timezone == ""
+	return org.Address == "" || org.City == "" || org.Province == "" || org.Phone == "" || org.Timezone == "" || org.LogoAssetID == ""
 }
 
 func (uc *organizationUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
