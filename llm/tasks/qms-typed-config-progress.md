@@ -1286,3 +1286,41 @@ Design sources:
   - fix: Removed unused variable and import.
 - next step:
   - Implement `internal/modules/qms/model` and actual QMS backend logic to make these tests compile and pass.
+
+## 2026-07-07 — Final Sweep: Organization Activation and Coverage Sync
+
+- status: completed
+- owner paths:
+  - `internal/modules/organization/usecase/organization_usecase.go`
+  - `internal/modules/organization/test/organization_usecase_test.go`
+  - `llm/research/typed-config-design-coverage.md`
+  - `llm/tasks/qms-typed-config-progress.md`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Confirmed tenant activation guard now requires address, city, province, phone, timezone, and logo asset on organization create/update.
+  - Aligned organization tests to current runtime behavior: negative activation cases now assert `ErrBadRequest`, and update audit expectation now uses `ORGANIZATION_UPDATE`.
+  - Rebased coverage doc so tenant activation and its tests no longer read as missing.
+- tests added/updated:
+  - positive: organization update audit and activation paths remain covered by existing table-driven cases.
+  - negative: activation guard cases now assert `ErrBadRequest`.
+  - edge: no new edge case added in this sweep.
+  - vulnerability/security: cross-tenant/org boundary behavior unchanged in this sweep.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./internal/modules/organization/test -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make lint`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make build`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make test`
+  - result: passed
+  - evidence: full suite completed with only expected environment-driven websocket socket skips.
+- errors and fixes:
+  - error: coverage doc still marked tenant activation as missing after runtime fix landed.
+  - root cause: doc lag behind organization usecase/test updates.
+  - fix: synchronized coverage rows and recorded final-sweep progress here.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Finalize commit split only for touched org test/doc files if user wants git checkpointing; otherwise continue remaining unresolved QMS gaps.

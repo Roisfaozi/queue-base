@@ -154,8 +154,8 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| cannot activate without address/city/province/phone/logo/timezone | ❌ missing | No activation guard in org usecase (`internal/modules/organization/usecase/organization_usecase.go`) |
-| tenant status enum (draft/active/inactive/suspended) | ⚠️ partial | Entity has `OrgStatusActive/Inactive/Suspended/Draft` but activation rule not enforced |
+| cannot activate without address/city/province/phone/logo/timezone | ✅ done | Guard enforced in `internal/modules/organization/usecase/organization_usecase.go`; activation only allowed when full profile exists |
+| tenant status enum (draft/active/inactive/suspended) | ✅ done | Entity status exists and activation completeness rule is enforced in `internal/modules/organization/usecase/organization_usecase.go` |
 
 ### 8.2 Branch Validation
 
@@ -286,7 +286,7 @@
 
 | Section | Status | Gap / Finding | Live Evidence |
 |---|---|---|---|
-| 7 Tenant design | partial | Tenant profile fields and status exist, but activation completeness rule is not enforced. | `internal/modules/organization/entity/organization_entity.go:15`, `internal/modules/organization/entity/organization_entity.go:30`, `internal/modules/organization/usecase/organization_usecase.go:55` |
+| 7 Tenant design | done | Tenant profile fields and status exist, and activation completeness rule is enforced including logo/timezone requirements. | `internal/modules/organization/entity/organization_entity.go:15`, `internal/modules/organization/entity/organization_entity.go:30`, `internal/modules/organization/usecase/organization_usecase.go:55`, `internal/modules/organization/usecase/organization_usecase.go:241` |
 | 8 `tenant_queue_settings` | done | Table/entity include defaults and tenant unique constraint. | `db/migrations/000032_align_qms_typed_configuration.up.sql:54`, `db/migrations/000032_align_qms_typed_configuration.up.sql:67`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3` |
 | 9 Branch design | partial | Branch profile fields exist; branch logo field exists; explicit branch-logo-fallback-to-tenant resolver is missing. | `db/migrations/000032_align_qms_typed_configuration.up.sql:14`, `internal/modules/organization/entity/branch_entity.go:22`, `internal/modules/organization/model/branch_model.go:20` |
 | 10 `branch_queue_settings` | done | Nullable override fields and tenant+branch unique key exist. | `db/migrations/000032_align_qms_typed_configuration.up.sql:71`, `db/migrations/000032_align_qms_typed_configuration.up.sql:85`, `internal/modules/settings/entity/qms_queue_settings_entity.go:20` |
@@ -392,12 +392,12 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| cannot activate without address | ❌ missing | No tenant activation tests |
-| cannot activate without city | ❌ missing | Same |
-| cannot activate without province | ❌ missing | Same |
-| cannot activate without phone | ❌ missing | Same |
-| cannot activate without logo | ❌ missing | Same |
-| profile update writes audit log | ❌ missing | No test |
+| cannot activate without address | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
+| cannot activate without city | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
+| cannot activate without province | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
+| cannot activate without phone | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
+| cannot activate without logo | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
+| profile update writes audit log | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` asserts `ORGANIZATION_UPDATE` audit emission |
 | queue settings update writes audit log | ❌ missing | No test |
 
 ### Branch Tests
