@@ -1296,21 +1296,21 @@ func TestUserUseCase_UpdateAvatar_Security(t *testing.T) {
 		errExpected error
 	}{
 		{
-			name:        "Block SVG (potential XSS)",
+			name:        "Vulnerability_BlockSVGPotentialXSS",
 			filename:    "image.svg",
 			contentType: "image/svg+xml",
 			fileContent: strings.NewReader(`<?xml version="1.0" standalone="no"?><!DOCTYPE sql SYSTEM "http://malicious.com"><svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"></svg>`),
 			errExpected: exception.ErrValidationError,
 		},
 		{
-			name:        "Block HTML disguised as image",
+			name:        "Vulnerability_BlockHTMLDisguisedAsImage",
 			filename:    "fake.png",
 			contentType: "image/png",
 			fileContent: strings.NewReader(`<html><body><h1>Not an image</h1><script>alert(1)</script></body></html>`),
 			errExpected: exception.ErrValidationError,
 		},
 		{
-			name:        "Block Polyglot (PNG with PHP payload)",
+			name:        "Vulnerability_BlockPolyglotPNGWithPHPPayload",
 			filename:    "poly.png",
 			contentType: "image/png",
 			fileContent: io.MultiReader(
@@ -1320,7 +1320,7 @@ func TestUserUseCase_UpdateAvatar_Security(t *testing.T) {
 			errExpected: nil,
 		},
 		{
-			name:        "Block Script File",
+			name:        "Vulnerability_BlockScriptFile",
 			filename:    "exploit.sh",
 			contentType: "text/x-shellscript",
 			fileContent: strings.NewReader("#!/bin/bash\necho 'hacked'"),
@@ -1841,7 +1841,7 @@ func TestUserXSSValidation(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			name:   "RegisterUser XSS in Name",
+			name:   "Vulnerability_RegisterUserXSSInName",
 			method: "POST",
 			url:    "/users",
 			payload: model.RegisterUserRequest{
@@ -1853,7 +1853,7 @@ func TestUserXSSValidation(t *testing.T) {
 			expectedCode: http.StatusUnprocessableEntity,
 		},
 		{
-			name:   "RegisterUser XSS in Username",
+			name:   "Vulnerability_RegisterUserXSSInUsername",
 			method: "POST",
 			url:    "/users",
 			payload: model.RegisterUserRequest{
@@ -1865,7 +1865,7 @@ func TestUserXSSValidation(t *testing.T) {
 			expectedCode: http.StatusUnprocessableEntity,
 		},
 		{
-			name:   "UpdateUser XSS in Name",
+			name:   "Vulnerability_UpdateUserXSSInName",
 			method: "PUT",
 			url:    "/users/1",
 			payload: model.UpdateUserRequest{
