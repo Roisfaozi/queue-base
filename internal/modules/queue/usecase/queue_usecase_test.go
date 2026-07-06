@@ -89,7 +89,7 @@ func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID
 }
 
 func TestQueueAuditLogging(t *testing.T) {
-	t.Run("Register_EmitsAuditAndSurvivesAuditFailure", func(t *testing.T) {
+	t.Run("Edge_Register_EmitsAuditAndSurvivesAuditFailure", func(t *testing.T) {
 		repo := &stubQueueRepo{}
 		audit := &stubAuditLogger{err: assert.AnError}
 		broadcast := &stubBroadcaster{}
@@ -120,7 +120,7 @@ func TestQueueAuditLogging(t *testing.T) {
 		assert.Equal(t, res.TicketNo, values["ticket_no"])
 	})
 
-	t.Run("Forward_EmitsAudit", func(t *testing.T) {
+	t.Run("Edge_Forward_EmitsAudit", func(t *testing.T) {
 		repo := &stubQueueRepo{
 			q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
@@ -150,7 +150,7 @@ func TestQueueAuditLogging(t *testing.T) {
 		assert.Equal(t, "svc-2", values["to_service_id"])
 	})
 
-	t.Run("Transition_EmitsAudit", func(t *testing.T) {
+	t.Run("Edge_Transition_EmitsAudit", func(t *testing.T) {
 		repo := &stubQueueRepo{
 			q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
@@ -176,7 +176,7 @@ func TestQueueAuditLogging(t *testing.T) {
 		assert.Equal(t, entity.QueueStatusCalling, values["status"])
 	})
 
-	t.Run("Register_AuditFailureDoesNotFailBusinessFlow", func(t *testing.T) {
+	t.Run("Edge_Register_AuditFailureDoesNotFailBusinessFlow", func(t *testing.T) {
 		repo := &stubQueueRepo{}
 		audit := &stubAuditLogger{err: assert.AnError}
 		uc := NewQueueUseCase(repo, &stubSettingsResolver{}, nil, audit)
