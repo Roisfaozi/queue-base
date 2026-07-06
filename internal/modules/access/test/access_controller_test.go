@@ -44,7 +44,7 @@ func TestAccessHandler_CreateAccessRight(t *testing.T) {
 		assertMocks bool
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			body: `{"name":"test_access_right","description":"A description"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.CreateAccessRightRequest{Name: "test_access_right", Description: "A description"}
@@ -55,17 +55,17 @@ func TestAccessHandler_CreateAccessRight(t *testing.T) {
 			assertMocks: true,
 		},
 		{
-			name:       "invalid body",
+			name:       "Negative_InvalidBody",
 			body:       `{"name":`,
 			wantStatus: http.StatusBadRequest,
 		},
 		{
-			name:       "validation errors",
+			name:       "Negative_ValidationErrors",
 			body:       `{"name":""}`,
 			wantStatus: http.StatusUnprocessableEntity,
 		},
 		{
-			name: "usecase error",
+			name: "Negative_UseCaseError",
 			body: `{"name":"test_access_right"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.CreateAccessRightRequest{Name: "test_access_right"}
@@ -109,7 +109,7 @@ func TestAccessHandler_GetAllAccessRights(t *testing.T) {
 		wantStatus int
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				resBody := &model.AccessRightListResponse{Data: []model.AccessRightResponse{{ID: "1", Name: "right1"}, {ID: "2", Name: "right2"}}}
 				mockUseCase.On("GetAllAccessRights", mock.Anything).Return(resBody, nil).Once()
@@ -117,7 +117,7 @@ func TestAccessHandler_GetAllAccessRights(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
-			name: "usecase error",
+			name: "Negative_UseCaseError",
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				mockUseCase.On("GetAllAccessRights", mock.Anything).Return(nil, errors.New("db error")).Once()
 			},
@@ -152,7 +152,7 @@ func TestAccessHandler_CreateEndpoint(t *testing.T) {
 		assertMocks bool
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			body: `{"path":"/test/path","method":"GET"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.CreateEndpointRequest{Path: "/test/path", Method: "GET"}
@@ -163,17 +163,17 @@ func TestAccessHandler_CreateEndpoint(t *testing.T) {
 			assertMocks: true,
 		},
 		{
-			name:       "invalid body",
+			name:       "Negative_InvalidBody",
 			body:       `{"path":`,
 			wantStatus: http.StatusBadRequest,
 		},
 		{
-			name:       "validation errors",
+			name:       "Negative_ValidationErrors",
 			body:       `{"path":""}`,
 			wantStatus: http.StatusUnprocessableEntity,
 		},
 		{
-			name: "usecase error",
+			name: "Negative_UseCaseError",
 			body: `{"path":"/test/path","method":"GET"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.CreateEndpointRequest{Path: "/test/path", Method: "GET"}
@@ -219,7 +219,7 @@ func TestAccessHandler_LinkEndpointToAccessRight(t *testing.T) {
 		assertMocks bool
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			body: `{"access_right_id":"1","endpoint_id":"1"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "1"}
@@ -228,10 +228,10 @@ func TestAccessHandler_LinkEndpointToAccessRight(t *testing.T) {
 			wantStatus:  http.StatusOK,
 			assertMocks: true,
 		},
-		{name: "invalid body", body: `{"access_right_id":`, wantStatus: http.StatusBadRequest},
-		{name: "validation errors", body: `{"access_right_id":"","endpoint_id":""}`, wantStatus: http.StatusUnprocessableEntity},
+		{name: "Negative_InvalidBody", body: `{"access_right_id":`, wantStatus: http.StatusBadRequest},
+		{name: "Negative_ValidationErrors", body: `{"access_right_id":"","endpoint_id":""}`, wantStatus: http.StatusUnprocessableEntity},
 		{
-			name: "usecase error",
+			name: "Negative_UseCaseError",
 			body: `{"access_right_id":"1","endpoint_id":"1"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "1"}
@@ -276,7 +276,7 @@ func TestAccessHandler_DeleteAccessRight(t *testing.T) {
 		wantStatus int
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			path: "/access-rights/1",
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				mockUseCase.On("DeleteAccessRight", mock.Anything, "1").Return(nil).Once()
@@ -284,7 +284,7 @@ func TestAccessHandler_DeleteAccessRight(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
-			name: "not found",
+			name: "Negative_NotFound",
 			path: "/access-rights/1",
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				mockUseCase.On("DeleteAccessRight", mock.Anything, "1").Return(exception.ErrNotFound).Once()
@@ -319,7 +319,7 @@ func TestAccessHandler_DeleteEndpoint(t *testing.T) {
 		wantStatus int
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			path: "/endpoints/1",
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				mockUseCase.On("DeleteEndpoint", mock.Anything, "1").Return(nil).Once()
@@ -327,7 +327,7 @@ func TestAccessHandler_DeleteEndpoint(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
-			name: "not found",
+			name: "Negative_NotFound",
 			path: "/endpoints/1",
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				mockUseCase.On("DeleteEndpoint", mock.Anything, "1").Return(exception.ErrNotFound).Once()
@@ -362,7 +362,7 @@ func TestAccessHandler_GetEndpointsDynamic(t *testing.T) {
 		wantStatus int
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			body: `{"filter":{"Method":{"type":"equals","from":"GET"}}}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase, filter *querybuilder.DynamicFilter) {
 				expectedEndpoints := []*model.EndpointResponse{{ID: "1", Path: "/test", Method: "GET"}}
@@ -402,7 +402,7 @@ func TestAccessHandler_GetAccessRightsDynamic(t *testing.T) {
 		wantStatus int
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			body: `{"filter":{"Name":{"type":"contains","from":"Manage"}}}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase, filter *querybuilder.DynamicFilter) {
 				expectedResponse := &model.AccessRightListResponse{Data: []model.AccessRightResponse{{ID: "1", Name: "Manage Users"}}}
@@ -443,7 +443,7 @@ func TestAccessHandler_CreateAccessRight_XSS(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			name: "XSS in Name",
+			name: "Edge_XSSInName",
 			payload: model.CreateAccessRightRequest{
 				Name:        "<script>alert(1)</script>",
 				Description: "Valid Description",
@@ -451,7 +451,7 @@ func TestAccessHandler_CreateAccessRight_XSS(t *testing.T) {
 			expectedCode: http.StatusUnprocessableEntity,
 		},
 		{
-			name: "XSS in Description",
+			name: "Edge_XSSInDescription",
 			payload: model.CreateAccessRightRequest{
 				Name:        "Valid Name",
 				Description: "<img src=x onerror=alert(1)>",
@@ -459,7 +459,7 @@ func TestAccessHandler_CreateAccessRight_XSS(t *testing.T) {
 			expectedCode: http.StatusUnprocessableEntity,
 		},
 		{
-			name: "Safe content",
+			name: "Positive_SafeContent",
 			payload: model.CreateAccessRightRequest{
 				Name:        "Safe Name",
 				Description: "Safe Description",
@@ -505,7 +505,7 @@ func TestAccessHandler_CreateEndpoint_XSS(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			name: "XSS in Path",
+			name: "Edge_XSSInPath",
 			payload: model.CreateEndpointRequest{
 				Path:   "/api/<script>alert(1)</script>",
 				Method: "GET",
@@ -513,7 +513,7 @@ func TestAccessHandler_CreateEndpoint_XSS(t *testing.T) {
 			expectedCode: http.StatusUnprocessableEntity,
 		},
 		{
-			name: "XSS in Method",
+			name: "Edge_XSSInMethod",
 			payload: model.CreateEndpointRequest{
 				Path:   "/api/valid",
 				Method: "<script>",
@@ -521,7 +521,7 @@ func TestAccessHandler_CreateEndpoint_XSS(t *testing.T) {
 			expectedCode: http.StatusUnprocessableEntity,
 		},
 		{
-			name: "Safe content",
+			name: "Positive_SafeContent",
 			payload: model.CreateEndpointRequest{
 				Path:   "/api/valid",
 				Method: "POST",
@@ -567,7 +567,7 @@ func TestAccessHandler_UnlinkEndpointFromAccessRight(t *testing.T) {
 		assertMocks bool
 	}{
 		{
-			name: "success",
+			name: "Positive_Success",
 			body: `{"access_right_id":"1","endpoint_id":"1"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "1"}
@@ -576,10 +576,10 @@ func TestAccessHandler_UnlinkEndpointFromAccessRight(t *testing.T) {
 			wantStatus:  http.StatusOK,
 			assertMocks: true,
 		},
-		{name: "invalid body", body: `{"access_right_id":`, wantStatus: http.StatusBadRequest},
-		{name: "validation errors", body: `{"access_right_id":"","endpoint_id":""}`, wantStatus: http.StatusUnprocessableEntity},
+		{name: "Negative_InvalidBody", body: `{"access_right_id":`, wantStatus: http.StatusBadRequest},
+		{name: "Negative_ValidationErrors", body: `{"access_right_id":"","endpoint_id":""}`, wantStatus: http.StatusUnprocessableEntity},
 		{
-			name: "usecase error",
+			name: "Negative_UseCaseError",
 			body: `{"access_right_id":"1","endpoint_id":"1"}`,
 			setupMock: func(mockUseCase *mocks.MockIAccessUseCase) {
 				reqBody := model.LinkEndpointRequest{AccessRightID: "1", EndpointID: "1"}
