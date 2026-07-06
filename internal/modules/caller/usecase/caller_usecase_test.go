@@ -32,6 +32,7 @@ type stubQueueUC struct {
 
 func (s *stubQueueUC) SetEventBroadcaster(events queueUseCasePkg.EventBroadcaster) {}
 
+func (s *stubQueueUC) SetWSBroadcaster(ws queueUseCasePkg.WSBroadcaster) {}
 func (s *stubQueueUC) RegisterQueue(ctx context.Context, req *queueModel.RegisterQueueRequest) (*queueModel.QueueResponse, error) {
 	return nil, nil
 }

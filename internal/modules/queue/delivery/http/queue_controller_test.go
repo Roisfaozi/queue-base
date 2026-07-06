@@ -67,6 +67,8 @@ type stubQueueControllerUseCase struct {
 
 func (s *stubQueueControllerUseCase) SetEventBroadcaster(events queueUseCasePkg.EventBroadcaster) {}
 
+func (s *stubQueueControllerUseCase) SetWSBroadcaster(ws queueUseCasePkg.WSBroadcaster) {}
+
 func (s *stubQueueControllerUseCase) ResolveQueueBranchID(ctx context.Context, queueID string) (string, error) {
 	if s.ResolveQueueBranchIDFunc != nil {
 		return s.ResolveQueueBranchIDFunc(ctx, queueID)

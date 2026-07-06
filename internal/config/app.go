@@ -226,6 +226,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
 	queueModule := queue.NewQueueModule(dbConnection, validate, settingsModule.QueueSettingsResolver, logger, auditModule.AuditUseCase)
 	queueModule.QueueUseCase.SetEventBroadcaster(sseManager)
+	queueModule.QueueUseCase.SetWSBroadcaster(wsManager)
 	callerModule := caller.NewCallerModule(dbConnection, queueModule.QueueUseCase, authModule.AuthUseCase, auditModule.AuditUseCase, validate, logger)
 	operatorAssignmentModule := operator_assignment.NewModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 	qmsClientModule := qms_client.NewQMSClientModule(dbConnection, validate, logger, auditModule.AuditUseCase)

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -35,8 +36,14 @@ type EventBroadcaster interface {
 	Broadcast(eventName string, data interface{})
 }
 
+// WSBroadcaster is a narrow interface matching ws.Manager.BroadcastToChannel.
+type WSBroadcaster interface {
+	BroadcastToChannel(channel string, message []byte)
+}
+
 type QueueUseCase interface {
 	SetEventBroadcaster(events EventBroadcaster)
+	SetWSBroadcaster(ws WSBroadcaster)
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
 	ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error)
 	GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error)
@@ -54,6 +61,7 @@ type queueUseCase struct {
 	validator        RelationValidator
 	audit            AuditLogger
 	events           EventBroadcaster
+	ws               WSBroadcaster
 }
 
 func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver, validator RelationValidator, audit ...AuditLogger) QueueUseCase {
@@ -66,6 +74,10 @@ func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsR
 
 func (u *queueUseCase) SetEventBroadcaster(events EventBroadcaster) {
 	u.events = events
+}
+
+func (u *queueUseCase) SetWSBroadcaster(ws WSBroadcaster) {
+	u.ws = ws
 }
 
 func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
@@ -287,6 +299,7 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	telemetry.QueueOperationsTotal.WithLabelValues("register", "success").Inc()
 	res := mapQueueResponse(q)
 	u.tryEmitEvent("queue_registered", res)
+	u.emitWSEvent(ctx, "QUEUE_REGISTER", q.BranchID, res)
 	return &res, nil
 }
 
@@ -398,6 +411,7 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 	telemetry.QueueOperationsTotal.WithLabelValues("forward", "success").Inc()
 	res := mapQueueResponse(queue)
 	u.tryEmitEvent("queue_forwarded", res)
+	u.emitWSEvent(ctx, "QUEUE_FORWARD", queue.BranchID, res)
 	return &res, nil
 }
 
@@ -522,6 +536,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 	telemetry.QueueOperationsTotal.WithLabelValues("transition", "success").Inc()
 	res := mapQueueResponse(queue)
 	u.tryEmitEvent("queue_transitioned", res)
+	u.emitWSEvent(ctx, "QUEUE_"+strings.ToUpper(req.Action), queue.BranchID, res)
 	return &res, nil
 }
 
@@ -551,6 +566,7 @@ func (u *queueUseCase) autoCallNext(ctx context.Context, tenantID, branchID, que
 	}
 	u.tryAudit(ctx, "QUEUE_AUTO_CALL", nextQueue.ID, map[string]string{"branch_id": branchID, "journey_id": nextJourney.ID, "status": nextQueue.Status})
 	u.tryEmitEvent("queue_transitioned", mapQueueResponse(nextQueue))
+	u.emitWSEvent(ctx, "QUEUE_AUTO_CALL", branchID, mapQueueResponse(nextQueue))
 }
 
 func (u *queueUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
@@ -576,6 +592,25 @@ func (u *queueUseCase) tryEmitEvent(name string, payload interface{}) {
 		return
 	}
 	u.events.Broadcast(name, payload)
+}
+
+func (u *queueUseCase) emitWSEvent(ctx context.Context, action string, branchID string, res model.QueueResponse) {
+	if u.ws == nil {
+		return
+	}
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" || branchID == "" {
+		return
+	}
+	payload, err := json.Marshal(map[string]interface{}{
+		"type":  "queue_update",
+		"event": action,
+		"data":  res,
+	})
+	if err != nil {
+		return
+	}
+	u.ws.BroadcastToChannel("queue:"+tenantID+":"+branchID, payload)
 }
 
 func mapQueueResponse(queue *entity.Queue) model.QueueResponse {

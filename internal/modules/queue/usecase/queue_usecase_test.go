@@ -71,6 +71,14 @@ func (s *stubBroadcaster) Broadcast(name string, data interface{}) {
 	s.events = append(s.events, name)
 }
 
+type stubWSBroadcaster struct {
+	channels []string
+}
+
+func (s *stubWSBroadcaster) BroadcastToChannel(channel string, message []byte) {
+	s.channels = append(s.channels, channel)
+}
+
 func (s *stubAuditLogger) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
 	s.entries = append(s.entries, req)
 	return s.err
@@ -85,8 +93,10 @@ func TestQueueAuditLogging(t *testing.T) {
 		repo := &stubQueueRepo{}
 		audit := &stubAuditLogger{err: assert.AnError}
 		broadcast := &stubBroadcaster{}
+		wsBroadcast := &stubWSBroadcaster{}
 		uc := NewQueueUseCase(repo, &stubSettingsResolver{}, nil, audit)
 		uc.SetEventBroadcaster(broadcast)
+		uc.SetWSBroadcaster(wsBroadcast)
 
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
 		ctx = database.SetBranchContext(ctx, "b-1")
@@ -97,7 +107,9 @@ func TestQueueAuditLogging(t *testing.T) {
 		require.NotNil(t, res)
 		require.Len(t, audit.entries, 1)
 		require.Len(t, broadcast.events, 1)
+		require.Len(t, wsBroadcast.channels, 1)
 		assert.Equal(t, "queue_registered", broadcast.events[0])
+		assert.Equal(t, "queue:t-1:b-1", wsBroadcast.channels[0])
 		values, ok := audit.entries[0].NewValues.(map[string]string)
 		require.True(t, ok)
 		assert.Equal(t, "QUEUE_REGISTER", audit.entries[0].Action)
@@ -115,8 +127,10 @@ func TestQueueAuditLogging(t *testing.T) {
 		}
 		audit := &stubAuditLogger{}
 		broadcast := &stubBroadcaster{}
+		wsBroadcast := &stubWSBroadcaster{}
 		uc := NewQueueUseCase(repo, nil, &stubRelationValidator{}, audit)
 		uc.SetEventBroadcaster(broadcast)
+		uc.SetWSBroadcaster(wsBroadcast)
 
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
 		ctx = database.SetBranchContext(ctx, "b-1")
