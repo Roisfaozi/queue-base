@@ -2,6 +2,7 @@
 
 > **Source**: `documentation/New Design Document — QMS MVP Operatio.md`
 > **Generated**: 2026-07-02
+> **Last Rebased**: 2026-07-06
 > **Status**: Live-runtime audit against MVP operational design, with detailed gap register
 
 ---
@@ -472,20 +473,22 @@
 |----------|---------|------------|------------|
 | Section 4 — Relationship Design | 7 | 0 | 0 |
 | Section 5 — Effective Config | 4 | 1 | 2 |
-| Section 6 — API Design | 7 | 9 | 14 |
-| Section 7 — Setup Wizard | 0 | 0 | 7 |
+| Section 6 — API Design | 18 | 5 | 7 |
+| Section 7 — Setup Wizard | 1 | 1 | 5 |
 | Section 8 — Validation Rules | 4 | 1 | 4 |
 | Section 9 — Queue Config Usage | 3 | 1 | 0 |
 | Section 10 — Audit Log | 12 | 0 | 0 |
 | Section 11 — Error Logging | 1 | 2 | 0 |
 | Section 12 — Migration Strategy | 5 | 2 | 5 |
-| Section 13 — Testing | 8 | 1 | 11 |
+| Section 13 — Testing | 16 | 1 | 3 |
 | Section 14 — Architecture Decision | 6 | 1 | 0 |
 | Section 15 — Table List | 14 | 0 | 0 |
 
 ---
 
 ## Detailed Gap Register
+
+> **Note**: Gaps below reflect `2026-07-06` runtime. Items resolved since initial 2026-07-02 generation: caller/signage endpoint CRUD, QMS client admin CRUD, operator assignment CRUD, branch CRUD UI, setup wizard shell, table-driven caller/signage/operator_assignment tests, WS event pipeline, frontend contract sync.
 
 This section expands the raw `partial/missing` markers into concrete implementation gaps against the newer MVP operational design.
 

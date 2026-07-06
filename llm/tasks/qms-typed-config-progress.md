@@ -1076,3 +1076,21 @@ Design sources:
 - verification:
   - command: `pnpm --filter casbin-web typecheck`
   - result: passed
+
+## 2026-07-06 — Coverage doc rebase (post-Jalur A+B)
+
+- status: completed
+- owner paths:
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Updated header with "Last Rebased: 2026-07-06".
+  - Corrected summary table to reflect caller/signage/QMS client/operator/CRUD completion:
+    - Section 6 (API Design): 18✅ / 5⚠️ / 7❌ (was 7/9/14)
+    - Section 7 (Setup Wizard): 1✅ / 1⚠️ / 5❌ (was 0/0/7)
+    - Section 13 (Testing): 16✅ / 1⚠️ / 3❌ (was 8/1/11)
+  - Added note listing resolved item categories since initial 2026-07-02 generation.
+- verification:
+  - Manual review of commit history (HEAD: 4f2c6d7) against stale coverage counts.
+  - No runtime change; doc maintenance only.
+- next step:
+  - Full gap register row-by-row update if precise tracking needed per section detail.
