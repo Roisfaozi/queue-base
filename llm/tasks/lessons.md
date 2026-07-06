@@ -99,9 +99,8 @@
 - lesson: for QMS caller login, keep machine binding in `qms_client` middleware/usecase and keep human session issuance in shared auth usecase; do not fork token logic unless caller session semantics truly diverge.
 ## 2026-07-03 — Do not add audit events for non-existent write paths
 
-- plan listed `QMS_CLIENT_CREATE`, `QMS_CLIENT_CREDENTIAL_CREATE`, and `OPERATOR_ASSIGNMENT_CREATE`, but repo currently has no controller/usecase write path for those resources.
-- adding audit events without a real mutation boundary creates fake completeness and dead code.
-- finish request-id logging and queue/caller operational audits now; add CRUD audit events only when actual create/update/delete flow exists.
+- plan originally listed `QMS_CLIENT_CREATE`, `QMS_CLIENT_CREDENTIAL_CREATE`, and `OPERATOR_ASSIGNMENT_CREATE` before repo had controller/usecase write path for those resources.
+- adding audit events without a real mutation boundary creates fake completeness and dead code; Jalur C later closed that gap with real write paths.
 ## 2026-07-03 — Syncing design coverage with real implementation
 
 - stale coverage docs cause agents to misreport missing features that were already built but not documented.

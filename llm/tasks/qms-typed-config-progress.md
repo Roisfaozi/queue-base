@@ -762,6 +762,7 @@ Design sources:
   - Phase E — Audit/Logging: partially completed
     - completed: caller audit events, queue audit continuity, request-id logging in `QMSClientMiddleware`
     - deferred: `QMS_CLIENT_CREATE`, `QMS_CLIENT_CREDENTIAL_CREATE`, `OPERATOR_ASSIGNMENT_CREATE` because no write path/controller/usecase exists yet in repo
+    - now resolved: full CRUD usecase + controller + routes live for qms client and operator assignment, audit events emited from real write paths
   - Phase F — Queue Hardening: completed
     - completed: `allow_recall`, `allow_skip`, `allow_cancel`, `auto_call_next`
   - Phase G — Caller Endpoint: completed
@@ -801,6 +802,7 @@ Design sources:
   - Wired QMS client admin usecase/controller/module into app composition root and tenant-authorized router.
   - Persisted credential as hash only and emitted `QMS_CLIENT_CREATE` plus `QMS_CLIENT_CREDENTIAL_CREATE` audit events from real write paths.
   - Kept scope minimal: no list/update/delete yet.
+  - Now extended: list, update, soft-deactivate available; audit includes QMS_CLIENT_UPDATE, QMS_CLIENT_DEACTIVATE, OPERATOR_ASSIGNMENT_UNASSIGN
 - tests added/updated:
   - positive: create client succeeds with tenant context.
   - negative: bad request and cross-tenant client credential creation rejected.
