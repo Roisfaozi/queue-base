@@ -48,18 +48,7 @@ func TestQMSAuditE2E_Visibility(t *testing.T) {
 				}
 				require.NoError(t, svcResp.JSON(&svcData))
 
-				// 3. Create Counter
-				ctrPayload := map[string]any{"branch_id": branchData.Data.ID, "code": "CA", "name": "Counter Audit"}
-				ctrResp := server.Client.POST("/api/v1/counters", ctrPayload, setup.WithAuth(token), setup.WithOrg(orgID))
-				require.Equal(t, http.StatusCreated, ctrResp.StatusCode, ctrResp.String())
-				var ctrData struct {
-					Data struct {
-						ID string `json:"id"`
-					} `json:"data"`
-				}
-				require.NoError(t, ctrResp.JSON(&ctrData))
-
-				// 4. Create Branch Service
+				// 3. Create Branch Service
 				bsPayload := map[string]any{"service_id": svcData.Data.ID}
 				bsResp := server.Client.POST("/api/v1/branches/"+branchData.Data.ID+"/services", bsPayload, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusCreated, bsResp.StatusCode, bsResp.String())
@@ -69,6 +58,17 @@ func TestQMSAuditE2E_Visibility(t *testing.T) {
 					} `json:"data"`
 				}
 				require.NoError(t, bsResp.JSON(&bsData))
+
+				// 4. Create Counter
+				ctrPayload := map[string]any{"branch_id": branchData.Data.ID, "branch_service_id": bsData.Data.ID, "code": "CA", "name": "Counter Audit"}
+				ctrResp := server.Client.POST("/api/v1/counters", ctrPayload, setup.WithAuth(token), setup.WithOrg(orgID))
+				require.Equal(t, http.StatusCreated, ctrResp.StatusCode, ctrResp.String())
+				var ctrData struct {
+					Data struct {
+						ID string `json:"id"`
+					} `json:"data"`
+				}
+				require.NoError(t, ctrResp.JSON(&ctrData))
 
 				// 5. Update Branch Service
 				bsUpdatePayload := map[string]any{"custom_name": "Updated BS"}

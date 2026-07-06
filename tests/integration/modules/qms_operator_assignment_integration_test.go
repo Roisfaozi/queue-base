@@ -6,7 +6,6 @@ package modules
 import (
 	"context"
 	"testing"
-	"time"
 
 	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	operatorModule "github.com/Roisfaozi/queue-base/internal/modules/operator_assignment"
@@ -15,23 +14,28 @@ import (
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	"github.com/Roisfaozi/queue-base/pkg/database"
-	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
-func setupOperatorAssignmentIntegration(t *testing.T) (*gorm.DB, *operatorModule.OperatorAssignmentModule, string, string, string, string, string) {
+func ensureOperatorAssignmentTable(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	require.NoError(t, db.AutoMigrate(&operatorEntity.OperatorCounterAssignment{}))
+}
+
+func setupOperatorAssignmentIntegration(t *testing.T) (*gorm.DB, *operatorModule.Module, string, string, string, string, string) {
 	env := setup.SetupIntegrationEnvironment(t)
 	if env == nil {
 		t.Skip("Skipping integration test; DB not available")
 	}
 	db := env.DB
-	appCtx := env.App
+	ensureOperatorAssignmentTable(t, db)
 
-	mod := operatorModule.NewOperatorAssignmentModule(db, appCtx.Config, appCtx.AuditLogger, appCtx.Validator)
+	mod := operatorModule.NewModule(db, validator.New(), env.Logger)
 
 	tenantID := "tenant-" + uuid.NewString()[:8]
 	branchID := "branch-" + uuid.NewString()[:8]
