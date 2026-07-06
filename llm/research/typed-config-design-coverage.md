@@ -326,8 +326,8 @@
 | 36.1 Queue reset time | done | Queue stats/register use resolver-provided reset time for business date. | `internal/modules/queue/usecase/queue_usecase.go:90`, `internal/modules/queue/usecase/queue_usecase.go:149`, `internal/modules/queue/usecase/queue_usecase.go:160` |
 | 36.2 Ticket prefix | done | Ticket prefix resolved through settings resolver. | `internal/modules/queue/usecase/queue_usecase.go:161`, `internal/modules/settings/queue_settings_resolver.go:146` |
 | 36.3 Estimated duration | partial | Fields exist; resolver handling is incomplete for nullable typed fields and no full estimate response wiring exists. | `db/migrations/000032_align_qms_typed_configuration.up.sql:59`, `db/migrations/000032_align_qms_typed_configuration.up.sql:94`, `internal/modules/settings/queue_settings_resolver.go:155` |
-| 36.4 Audio | partial | Service audio schema and signage exposure exist, effective config resolver also projects it. | `internal/modules/settings/model/settings_model.go:57` |
-| 36.5 Narrative | partial | Service narrative schema exists, but runtime signage/effective resolver does not project narrative fields yet. | `db/migrations/000035_add_service_audio_columns.up.sql:4`, `internal/modules/service/entity/service_entity.go:25`, `internal/modules/settings/model/settings_model.go:76` |
+| 36.4 Audio | partial | Service audio schema exists, effective config and signage payload both project it. | `internal/modules/signage/model/signage_model.go:16` |
+| 36.5 Narrative | partial | Service narrative schema exists, effective config and signage payload both project it. | `internal/modules/signage/model/signage_model.go:18` |
 | 36.6 Auto call next | done | `auto_call_next` wired in schema/entity/resolver and surfaced in effective config. | `documentation/New Design Document — QMS MVP Operatio.md:2248`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:12`, `internal/modules/settings/delivery/http/settings_controller.go:63` |
 | 36.7 Allow recall | partial | `allow_recall` columns and queue guard exist, but effective config does not expose per-source recall metadata beyond flat bool fields. | `db/migrations/000032_align_qms_typed_configuration.up.sql:62`, `internal/modules/queue/usecase/queue_usecase.go:470`, `internal/modules/settings/model/settings_model.go:68` |
 
@@ -706,7 +706,7 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 - Add final integration/E2E proof for caller action lifecycle when Docker slice resumes.
 
-### Gap I — Estimate, Audio, Narrative, and Recall Coverage Missing [PARTIAL]
+### Gap I — Estimate and Recall Coverage Missing [PARTIAL]
 
 **Design target**
 
@@ -717,7 +717,9 @@ This section expands the raw `partial/missing` markers into concrete implementat
 - Duration exists in runtime.
 - Signage now exposes `audio_id` and `audio_en` on service/current-call payloads.
 - `auto_call_next` is present in typed config path.
-- Narrative fields and full effective-config narrative/audio projection remain incomplete.
+- Audio and Narrative fields are now correctly exposed in both the generic config resolver and the primary signage payload APIs (`GetMe`, `GetCurrentCalls`).
+- Estimating average wait time based on service metadata remains incomplete.
+- Re-calling a ticket explicitly remains partially unspecified on whether it bumps a recall count field.
 
 **Evidence**
 

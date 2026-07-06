@@ -1228,6 +1228,9 @@ Design sources:
   - update remaining design coverage sections that still show stale ❌ for branch rules already implemented.
   - keep docs in sync per slice, not batched too late.
 
+  - **Signage Narrative Payload**: Audio and Narrative instructions injected into `GetMe` and `GetCurrentCalls` signage queries.
+  - **Lefthook rules**: Pre-commit tools (`go-vet`, `go-lint`, `typecheck`, `lint`) patched to be truly stage-aware instead of evaluating unstaged files.
+
 ## 2026-07-06 — Branch CRUD UI confirmation in coverage doc
 
 - status: completed

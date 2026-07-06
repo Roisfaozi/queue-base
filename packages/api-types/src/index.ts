@@ -364,6 +364,8 @@ export interface SignageMeResponse {
 	counter_display_name?: string;
 	audio_id?: string;
 	audio_en?: string;
+	narrative_instruction_id?: string;
+	narrative_instruction_en?: string;
 }
 
 export interface SignageCurrentCallResponse {
@@ -375,6 +377,8 @@ export interface SignageCurrentCallResponse {
 	service_type?: string;
 	audio_id?: string;
 	audio_en?: string;
+	narrative_instruction_id?: string;
+	narrative_instruction_en?: string;
 }
 
 export interface EffectiveQueueConfigResponse {
