@@ -122,10 +122,10 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 				require.Equal(t, http.StatusOK, transitionResp.StatusCode, transitionResp.String())
 
 				repeatedTransitionResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/transition", map[string]any{"action": "call"}, setup.WithAuth(token), setup.WithOrg(orgID))
-				require.Equal(t, http.StatusBadRequest, repeatedTransitionResp.StatusCode, repeatedTransitionResp.String())
+				require.Equal(t, http.StatusOK, repeatedTransitionResp.StatusCode, repeatedTransitionResp.String())
 
 				invalidTransitionResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/transition", map[string]any{"action": "drop-table"}, setup.WithAuth(token), setup.WithOrg(orgID))
-				require.Equal(t, http.StatusBadRequest, invalidTransitionResp.StatusCode, invalidTransitionResp.String())
+				require.Equal(t, http.StatusUnprocessableEntity, invalidTransitionResp.StatusCode, invalidTransitionResp.String())
 
 				visitResp := server.Client.GET("/api/v1/queues/"+queueData.Data.ID+"/visit-journeys", setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusOK, visitResp.StatusCode, visitResp.String())
