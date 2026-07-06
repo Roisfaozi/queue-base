@@ -163,6 +163,7 @@ func TestCreateBranch(t *testing.T) {
 				require.NotNil(t, repo.branch)
 				assert.Equal(t, "MAIN", repo.branch.Code)
 				assert.Equal(t, "Main Branch", repo.branch.Name)
+				assert.Equal(t, entity.BranchStatusDraft, res.Status, "branch without required fields should be draft")
 			},
 		},
 		{
@@ -171,6 +172,16 @@ func TestCreateBranch(t *testing.T) {
 			req:      model.CreateBranchRequest{Code: "main", Name: "Main Branch"},
 			tenantID: "",
 			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Positive_CreateBranchWithFullProfile_SetsActive",
+			category: "positive",
+			req:      model.CreateBranchRequest{Code: "full", Name: "Full Branch", Address: "Jl. Raya", City: "Jakarta", Province: "DKI", Phone: "021123", Timezone: "Asia/Jakarta"},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, entity.BranchStatusActive, res.Status, "branch with all required fields should be active")
+			},
 		},
 	}
 

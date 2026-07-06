@@ -35,6 +35,10 @@ func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranc
 	}
 	req.Sanitize()
 	now := time.Now().UnixMilli()
+	status := entity.BranchStatusDraft
+	if req.Address != "" && req.City != "" && req.Province != "" && req.Phone != "" && req.Timezone != "" {
+		status = entity.BranchStatusActive
+	}
 	branch := &entity.Branch{
 		ID:          uuid.New().String(),
 		TenantID:    tenantID,
@@ -46,7 +50,7 @@ func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranc
 		Phone:       req.Phone,
 		RunningText: req.RunningText,
 		Timezone:    req.Timezone,
-		Status:      entity.BranchStatusActive,
+		Status:      status,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
