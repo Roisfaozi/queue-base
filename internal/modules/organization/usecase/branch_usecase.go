@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
@@ -20,12 +21,21 @@ type BranchUseCase interface {
 	DeleteBranch(ctx context.Context, branchID string) error
 }
 
-type branchUseCase struct {
-	repo repository.BranchRepository
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
 }
 
-func NewBranchUseCase(repo repository.BranchRepository) BranchUseCase {
-	return &branchUseCase{repo: repo}
+type branchUseCase struct {
+	repo  repository.BranchRepository
+	audit AuditLogger
+}
+
+func NewBranchUseCase(repo repository.BranchRepository, auditUC ...AuditLogger) BranchUseCase {
+	var audit AuditLogger
+	if len(auditUC) > 0 {
+		audit = auditUC[0]
+	}
+	return &branchUseCase{repo: repo, audit: audit}
 }
 
 func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranchRequest) (*model.BranchResponse, error) {
@@ -57,6 +67,7 @@ func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranc
 	if err := u.repo.Create(ctx, branch); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "BRANCH_CREATE", branch.ID, map[string]string{"tenant_id": branch.TenantID, "code": branch.Code, "status": branch.Status})
 	return u.mapToResponse(branch), nil
 }
 
@@ -149,6 +160,7 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 	if err := u.repo.Update(ctx, branch); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "BRANCH_UPDATE", branch.ID, map[string]string{"tenant_id": branch.TenantID, "code": branch.Code, "status": branch.Status})
 	return u.mapToResponse(branch), nil
 }
 
@@ -157,7 +169,11 @@ func (u *branchUseCase) DeleteBranch(ctx context.Context, branchID string) error
 	if tenantID == "" || branchID == "" {
 		return exception.ErrBadRequest
 	}
-	return u.repo.Delete(ctx, tenantID, branchID)
+	if err := u.repo.Delete(ctx, tenantID, branchID); err != nil {
+		return err
+	}
+	u.tryAudit(ctx, "BRANCH_DELETE", branchID, map[string]string{"tenant_id": tenantID})
+	return nil
 }
 
 func (u *branchUseCase) mapToResponse(branch *entity.Branch) *model.BranchResponse {
@@ -203,4 +219,21 @@ func (u *branchUseCase) missingRequiredFields(branch *entity.Branch, req *model.
 		timezone = *req.Timezone
 	}
 	return address == "" || city == "" || province == "" || phone == "" || timezone == ""
+}
+
+func (u *branchUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
+	if u.audit == nil {
+		return
+	}
+	userID, _ := ctx.Value("user_id").(string)
+	if userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		UserID:    userID,
+		Action:    action,
+		Entity:    "branch",
+		EntityID:  entityID,
+		NewValues: values,
+	})
 }

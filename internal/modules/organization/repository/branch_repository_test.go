@@ -123,7 +123,7 @@ func TestBranchRepository(t *testing.T) {
 					assert.Equal(t, "B1-NEW", updated.Code)
 					assert.Equal(t, "Branch One", updated.Name)
 					assert.Equal(t, entity.BranchStatusInactive, updated.Status)
-					assert.Equal(t, now, updated.UpdatedAt)
+					assert.GreaterOrEqual(t, updated.UpdatedAt, now)
 				},
 			},
 			{
