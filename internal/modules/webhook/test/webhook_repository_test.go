@@ -46,7 +46,7 @@ func TestWebhookRepository_Create(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully creates webhook",
+			name:     "Positive_SuccessfullyCreatesWebhook",
 			category: "positive",
 			run: func(t *testing.T) {
 				webhook := &entity.Webhook{
@@ -74,7 +74,7 @@ func TestWebhookRepository_Create(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - DB Error",
+			name:     "Negative_DBError",
 			category: "negative",
 			run: func(t *testing.T) {
 				webhook := &entity.Webhook{
@@ -109,7 +109,7 @@ func TestWebhookRepository_Update(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully updates webhook",
+			name:     "Positive_SuccessfullyUpdatesWebhook",
 			category: "positive",
 			run: func(t *testing.T) {
 				webhook := &entity.Webhook{
@@ -137,7 +137,7 @@ func TestWebhookRepository_Update(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - DB Error",
+			name:     "Negative_DBError",
 			category: "negative",
 			run: func(t *testing.T) {
 				webhook := &entity.Webhook{
@@ -171,7 +171,7 @@ func TestWebhookRepository_Delete(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully deletes webhook",
+			name:     "Positive_SuccessfullyDeletesWebhook",
 			category: "positive",
 			run: func(t *testing.T) {
 				mock.ExpectBegin()
@@ -185,7 +185,7 @@ func TestWebhookRepository_Delete(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - DB Error",
+			name:     "Negative_DBError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mock.ExpectBegin()
@@ -215,7 +215,7 @@ func TestWebhookRepository_FindByID(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully finds webhook",
+			name:     "Positive_SuccessfullyFindsWebhook",
 			category: "positive",
 			run: func(t *testing.T) {
 				rows := sqlmock.NewRows([]string{"id", "name", "organization_id", "url"}).
@@ -234,7 +234,7 @@ func TestWebhookRepository_FindByID(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - Not Found",
+			name:     "Negative_NotFound",
 			category: "negative",
 			run: func(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (id = ? AND organization_id = ?) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL ORDER BY `webhooks`.`id` LIMIT ?")).
@@ -265,7 +265,7 @@ func TestWebhookRepository_FindByOrganizationID(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully finds webhooks",
+			name:     "Positive_SuccessfullyFindsWebhooks",
 			category: "positive",
 			run: func(t *testing.T) {
 				rows := sqlmock.NewRows([]string{"id", "name", "organization_id"}).
@@ -282,7 +282,7 @@ func TestWebhookRepository_FindByOrganizationID(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - DB Error",
+			name:     "Negative_DBError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE organization_id = ? AND " + webhookVisibilityClause + " AND `webhooks`.`deleted_at` IS NULL")).
@@ -312,7 +312,7 @@ func TestWebhookRepository_FindByEvent(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully finds webhooks",
+			name:     "Positive_SuccessfullyFindsWebhooks",
 			category: "positive",
 			run: func(t *testing.T) {
 				rows := sqlmock.NewRows([]string{"id", "name", "organization_id"}).
@@ -328,7 +328,7 @@ func TestWebhookRepository_FindByEvent(t *testing.T) {
 			},
 		},
 		{
-			name:     "Vulnerability - SQL Injection attempt via Event string",
+			name:     "Vulnerability_SQLInjectionAttemptViaEventString",
 			category: "vulnerability",
 			run: func(t *testing.T) {
 				rows := sqlmock.NewRows([]string{"id"})
@@ -342,7 +342,7 @@ func TestWebhookRepository_FindByEvent(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - DB Error",
+			name:     "Negative_DBError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhooks` WHERE (organization_id = ? AND is_active = ? AND JSON_CONTAINS(events, JSON_QUOTE(?))) AND "+webhookVisibilityClause+" AND `webhooks`.`deleted_at` IS NULL")).
@@ -372,7 +372,7 @@ func TestWebhookRepository_CreateLog(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully creates log",
+			name:     "Positive_SuccessfullyCreatesLog",
 			category: "positive",
 			run: func(t *testing.T) {
 				log := &entity.WebhookLog{
@@ -399,7 +399,7 @@ func TestWebhookRepository_CreateLog(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - DB Error",
+			name:     "Negative_DBError",
 			category: "negative",
 			run: func(t *testing.T) {
 				log := &entity.WebhookLog{
@@ -433,7 +433,7 @@ func TestWebhookRepository_FindLogsByWebhookID(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Positive - Successfully finds logs",
+			name:     "Positive_SuccessfullyFindsLogs",
 			category: "positive",
 			run: func(t *testing.T) {
 				rows := sqlmock.NewRows([]string{"id", "webhook_id"}).
@@ -450,7 +450,7 @@ func TestWebhookRepository_FindLogsByWebhookID(t *testing.T) {
 			},
 		},
 		{
-			name:     "Positive - With Offset",
+			name:     "Positive_WithOffset",
 			category: "positive",
 			run: func(t *testing.T) {
 				rows := sqlmock.NewRows([]string{"id", "webhook_id"}).
@@ -466,7 +466,7 @@ func TestWebhookRepository_FindLogsByWebhookID(t *testing.T) {
 			},
 		},
 		{
-			name:     "Negative - DB Error",
+			name:     "Negative_DBError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `webhook_logs` WHERE webhook_id = ? ORDER BY created_at DESC LIMIT ?")).

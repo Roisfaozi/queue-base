@@ -22,7 +22,7 @@ func TestWebhookUseCase_Create(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_Create",
+			name:     "Positive_Success_Create",
 			category: "positive",
 			run: func(t *testing.T) {
 				repo := new(mocks.MockWebhookRepository)
@@ -66,7 +66,7 @@ func TestWebhookUseCase_Trigger(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_Trigger",
+			name:     "Positive_Success_Trigger",
 			category: "positive",
 			run: func(t *testing.T) {
 				repo := new(mocks.MockWebhookRepository)

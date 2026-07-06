@@ -22,7 +22,7 @@ func TestWebhookController_Create(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_Create",
+			name:     "Positive_Success_Create",
 			category: "positive",
 			run: func(t *testing.T) {
 				gin.SetMode(gin.TestMode)
@@ -73,7 +73,7 @@ func TestWebhookController_FindByID(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_FindByID",
+			name:     "Positive_Success_FindByID",
 			category: "positive",
 			run: func(t *testing.T) {
 				gin.SetMode(gin.TestMode)
