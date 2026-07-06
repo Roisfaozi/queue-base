@@ -46,7 +46,7 @@ func TestAuditController(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "GetLogsDynamic_Positive_Success",
+			name:     "Positive_GetLogsDynamic_Success",
 			category: "positive",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -80,7 +80,7 @@ func TestAuditController(t *testing.T) {
 			},
 		},
 		{
-			name:     "GetLogsDynamic_Negative_BindError",
+			name:     "Negative_GetLogsDynamic_BindError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -96,7 +96,7 @@ func TestAuditController(t *testing.T) {
 			},
 		},
 		{
-			name:     "GetLogsDynamic_Negative_UseCaseError",
+			name:     "Negative_GetLogsDynamic_UseCaseError",
 			category: "negative",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -118,7 +118,7 @@ func TestAuditController(t *testing.T) {
 			},
 		},
 		{
-			name:     "GetLogsDynamic_Security_XSS",
+			name:     "Vulnerability_GetLogsDynamic_XSS",
 			category: "security",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -150,7 +150,7 @@ func TestAuditController(t *testing.T) {
 			},
 		},
 		{
-			name:     "Export_Positive_Serialization",
+			name:     "Positive_Export_Serialization",
 			category: "positive",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
@@ -204,7 +204,7 @@ func TestAuditController(t *testing.T) {
 			},
 		},
 		{
-			name:     "Export_Security_CSVInjection",
+			name:     "Vulnerability_Export_CSVInjection",
 			category: "security",
 			run: func(t *testing.T) {
 				mockUC := new(mocks.MockAuditUseCase)
