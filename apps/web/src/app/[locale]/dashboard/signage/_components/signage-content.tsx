@@ -200,14 +200,26 @@ export function SignageContent() {
 									<div className="font-mono">{me.counter_display_name}</div>
 								</>
 							)}
-							{me.running_text && (
-								<>
-									<div>Running Text:</div>
-									<div className="font-mono">{me.running_text}</div>
-								</>
-							)}
-							<div>Name:</div>
-							<div className="font-mono">{me.name}</div>
+						{me.running_text && (
+							<>
+								<div>Running Text:</div>
+								<div className="font-mono">{me.running_text}</div>
+							</>
+						)}
+						{me.audio_id && (
+							<>
+								<div>Audio:</div>
+								<div className="font-mono">{me.audio_id}</div>
+							</>
+						)}
+						{me.narrative_instruction_id && (
+							<>
+								<div>Narrative:</div>
+								<div className="font-mono">{me.narrative_instruction_id}</div>
+							</>
+						)}
+						<div>Name:</div>
+						<div className="font-mono">{me.name}</div>
 							<div>Client Type:</div>
 							<div className="font-mono">{me.client_type}</div>
 						</div>
