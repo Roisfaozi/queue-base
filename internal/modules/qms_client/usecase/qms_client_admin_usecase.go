@@ -5,8 +5,11 @@ import (
 	"time"
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/model"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/pkg"
 	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -49,6 +52,9 @@ func (u *qmsClientAdminUseCase) CreateClient(ctx context.Context, req *model.QMS
 	cType := entity.ClientType(req.ClientType)
 	if !cType.IsValid() {
 		return nil, exception.ErrBadRequest
+	}
+	if err := u.ensureBranchInTenant(ctx, tenantID, req.BranchID); err != nil {
+		return nil, err
 	}
 	now := time.Now().UnixMilli()
 	client := &entity.QMSClient{
@@ -131,9 +137,19 @@ func (u *qmsClientAdminUseCase) Update(ctx context.Context, id string, req *mode
 		client.Name = req.Name
 	}
 	if req.BranchServiceID != nil {
+		if *req.BranchServiceID != "" {
+			if err := u.ensureBranchServiceInTenantBranch(ctx, tenantID, client.BranchID, *req.BranchServiceID); err != nil {
+				return nil, err
+			}
+		}
 		client.BranchServiceID = req.BranchServiceID
 	}
 	if req.CounterID != nil {
+		if *req.CounterID != "" {
+			if err := u.ensureCounterInTenantBranch(ctx, tenantID, client.BranchID, *req.CounterID); err != nil {
+				return nil, err
+			}
+		}
 		client.CounterID = req.CounterID
 	}
 	if req.IsActive != nil {
@@ -193,4 +209,37 @@ func (u *qmsClientAdminUseCase) tryAudit(ctx context.Context, action, entityID s
 		EntityID:       entityID,
 		NewValues:      values,
 	})
+}
+
+func (u *qmsClientAdminUseCase) ensureBranchInTenant(ctx context.Context, tenantID, branchID string) error {
+	var count int64
+	if err := u.db.WithContext(ctx).Model(&branchEntity.Branch{}).Where("id = ? AND tenant_id = ?", branchID, tenantID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return exception.ErrNotFound
+	}
+	return nil
+}
+
+func (u *qmsClientAdminUseCase) ensureBranchServiceInTenantBranch(ctx context.Context, tenantID, branchID, branchServiceID string) error {
+	var count int64
+	if err := u.db.WithContext(ctx).Model(&serviceEntity.BranchService{}).Where("id = ? AND tenant_id = ? AND branch_id = ?", branchServiceID, tenantID, branchID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return exception.ErrNotFound
+	}
+	return nil
+}
+
+func (u *qmsClientAdminUseCase) ensureCounterInTenantBranch(ctx context.Context, tenantID, branchID, counterID string) error {
+	var count int64
+	if err := u.db.WithContext(ctx).Model(&counterEntity.Counter{}).Where("id = ? AND tenant_id = ? AND branch_id = ?", counterID, tenantID, branchID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return exception.ErrNotFound
+	}
+	return nil
 }

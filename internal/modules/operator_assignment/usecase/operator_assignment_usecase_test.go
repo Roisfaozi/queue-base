@@ -5,8 +5,11 @@ import (
 	"testing"
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/model"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/glebarez/sqlite"
@@ -28,7 +31,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&entity.OperatorCounterAssignment{}))
+	require.NoError(t, db.AutoMigrate(&branchEntity.Branch{}, &counterEntity.Counter{}, &userEntity.User{}, &entity.OperatorCounterAssignment{}))
 	return db
 }
 
@@ -37,6 +40,15 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 	audit := &stubAudit{}
 	uc := NewOperatorAssignmentUseCase(db, audit)
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
+	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-2", TenantID: "tenant-2", Code: "B2", Name: "Branch 2", Status: branchEntity.BranchStatusActive}).Error)
+	require.NoError(t, db.Create(&counterEntity.Counter{ID: "c-1", TenantID: "tenant-1", BranchID: "b-1", Code: "C1", Name: "Counter 1", Status: counterEntity.CounterStatusActive}).Error)
+	require.NoError(t, db.Create(&counterEntity.Counter{ID: "c-2", TenantID: "tenant-2", BranchID: "b-2", Code: "C2", Name: "Counter 2", Status: counterEntity.CounterStatusActive}).Error)
+	tenant1 := "tenant-1"
+	tenant2 := "tenant-2"
+	require.NoError(t, db.Create(&userEntity.User{ID: "u-1", OrganizationID: &tenant1, Email: "u1@example.com", Username: "u1", Status: userEntity.UserStatusActive}).Error)
+	require.NoError(t, db.Create(&userEntity.User{ID: "u-2", OrganizationID: &tenant1, Email: "u2@example.com", Username: "u2", Status: userEntity.UserStatusActive}).Error)
+	require.NoError(t, db.Create(&userEntity.User{ID: "u-3", OrganizationID: &tenant2, Email: "u3@example.com", Username: "u3", Status: userEntity.UserStatusActive}).Error)
 
 	tests := []struct {
 		name string
@@ -83,20 +95,46 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 			name: "Edge_UnassignAlreadyUnassigned",
 			fn: func(t *testing.T) {
 				now := int64(123456789)
-				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-unassigned", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-2", CounterID: "c-2", AssignedAt: now, UnassignedAt: &now}).Error)
+				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-unassigned", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-2", CounterID: "c-1", AssignedAt: now, UnassignedAt: &now}).Error)
 
 				err := uc.Delete(ctx, "assign-unassigned")
-				require.NoError(t, err) // should not error if already unassigned
+				require.NoError(t, err)
 			},
 		},
 		{
 			name: "Vulnerability_CrossTenantDeleteRejected",
 			fn: func(t *testing.T) {
 				otherCtx := database.SetOrganizationContext(context.Background(), "tenant-2")
-				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-cross", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-3", CounterID: "c-3", AssignedAt: int64(123456789)}).Error)
+				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-cross", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-1", CounterID: "c-1", AssignedAt: int64(123456789)}).Error)
 
 				err := uc.Delete(otherCtx, "assign-cross")
 				require.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
+		{
+			name: "Vulnerability_CrossTenantCreateRejected",
+			fn: func(t *testing.T) {
+				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-3", CounterID: "c-1"})
+				require.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
+		{
+			name: "Negative_CounterBranchMismatchRejected",
+			fn: func(t *testing.T) {
+				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-1", CounterID: "c-2"})
+				require.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
+		{
+			name: "Audit_CreateDeleteEmitEvents",
+			fn: func(t *testing.T) {
+				audit.reqs = nil
+				res, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-2", CounterID: "c-1"})
+				require.NoError(t, err)
+				require.NoError(t, uc.Delete(ctx, res.ID))
+				require.Len(t, audit.reqs, 2)
+				assert.Equal(t, "OPERATOR_ASSIGNMENT_CREATE", audit.reqs[0].Action)
+				assert.Equal(t, "OPERATOR_ASSIGNMENT_UNASSIGN", audit.reqs[1].Action)
 			},
 		},
 	}

@@ -5,8 +5,11 @@ import (
 	"testing"
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/model"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/pkg"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
@@ -30,6 +33,9 @@ func newAdminTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(
+		&branchEntity.Branch{},
+		&serviceEntity.BranchService{},
+		&counterEntity.Counter{},
 		&entity.QMSClient{},
 		&entity.QMSClientCredential{},
 	))
@@ -42,6 +48,7 @@ func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 	uc := NewQMSClientAdminUseCase(db, audit)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
 
 	tests := []struct {
 		name      string
@@ -62,6 +69,12 @@ func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 			req:       &model.QMSClientRequest{BranchID: "b-1", ClientType: "caller", Name: "Test Caller"},
 			tenantID:  "",
 			wantError: exception.ErrBadRequest,
+		},
+		{
+			name:      "Vulnerability_CrossTenantBranchRejected",
+			req:       &model.QMSClientRequest{BranchID: "b-unknown", ClientType: "caller", Name: "Test Caller"},
+			tenantID:  "t-1",
+			wantError: exception.ErrNotFound,
 		},
 	}
 
@@ -98,6 +111,7 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 	uc := NewQMSClientAdminUseCase(db, audit)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
 	require.NoError(t, db.Create(&entity.QMSClient{ID: "c-1", TenantID: "t-1", BranchID: "b-1", ClientType: entity.ClientTypeCaller, Name: "A"}).Error)
 
 	tests := []struct {
@@ -139,7 +153,6 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, res)
 
-			// verify hash exists but differs from plain key
 			var cred entity.QMSClientCredential
 			require.NoError(t, db.First(&cred, "id = ?", res.ID).Error)
 			assert.NotEqual(t, tt.req.APIKey, cred.ClientSecretHash)
@@ -148,7 +161,6 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 			if tt.wantAudit != "" {
 				require.Len(t, audit.requests, 1)
 				assert.Equal(t, tt.wantAudit, audit.requests[0].Action)
-				// vulnerability check: audit should not log the secret
 				if newVals, ok := audit.requests[0].NewValues.(map[string]string); ok {
 					assert.NotContains(t, newVals, "client_secret_hash")
 					assert.NotContains(t, newVals, "api_key")
@@ -164,6 +176,12 @@ func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
 	uc := NewQMSClientAdminUseCase(db, audit)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	otherCtx := database.SetOrganizationContext(context.Background(), "t-2")
+	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
+	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-2", TenantID: "t-2", Code: "B2", Name: "Branch 2", Status: branchEntity.BranchStatusActive}).Error)
+	require.NoError(t, db.Create(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}).Error)
+	require.NoError(t, db.Create(&serviceEntity.BranchService{ID: "bs-2", TenantID: "t-2", BranchID: "b-2", ServiceID: "s-2", IsActive: true}).Error)
+	require.NoError(t, db.Create(&counterEntity.Counter{ID: "ctr-1", TenantID: "t-1", BranchID: "b-1", Code: "C1", Name: "Counter 1", Status: counterEntity.CounterStatusActive}).Error)
+	require.NoError(t, db.Create(&counterEntity.Counter{ID: "ctr-2", TenantID: "t-2", BranchID: "b-2", Code: "C2", Name: "Counter 2", Status: counterEntity.CounterStatusActive}).Error)
 	require.NoError(t, db.Create(&entity.QMSClient{ID: "c-1", TenantID: "t-1", BranchID: "b-1", ClientType: entity.ClientTypeCaller, Name: "Old", IsActive: true}).Error)
 
 	tests := []struct {
@@ -191,7 +209,6 @@ func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
 				require.NoError(t, db.Create(&entity.QMSClient{ID: "c-inactive", TenantID: "t-1", BranchID: "b-1", ClientType: entity.ClientTypeCaller, Name: "Inactive", IsActive: false}).Error)
 
 				err := uc.Delete(ctx, "c-inactive")
-				// must not error because already inactive is a no-op
 				require.NoError(t, err)
 
 				var client entity.QMSClient
@@ -206,9 +223,38 @@ func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
 				require.ErrorIs(t, err, exception.ErrNotFound)
 			},
 		},
+		{
+			name: "Vulnerability_CrossTenantBranchServiceRejected",
+			run: func(t *testing.T) {
+				_, err := uc.Update(ctx, "c-1", &model.QMSClientUpdateRequest{BranchServiceID: ptr("bs-2")})
+				require.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
+		{
+			name: "Vulnerability_CrossTenantCounterRejected",
+			run: func(t *testing.T) {
+				_, err := uc.Update(ctx, "c-1", &model.QMSClientUpdateRequest{CounterID: ptr("ctr-2")})
+				require.ErrorIs(t, err, exception.ErrNotFound)
+			},
+		},
+		{
+			name: "Audit_UpdateAndDeactivateEmitEvents",
+			run: func(t *testing.T) {
+				require.NoError(t, db.Create(&entity.QMSClient{ID: "c-audit", TenantID: "t-1", BranchID: "b-1", ClientType: entity.ClientTypeCaller, Name: "Audit", IsActive: true}).Error)
+				audit.requests = nil
+				_, err := uc.Update(ctx, "c-audit", &model.QMSClientUpdateRequest{Name: "Audit Name", BranchServiceID: ptr("bs-1"), CounterID: ptr("ctr-1")})
+				require.NoError(t, err)
+				require.NoError(t, uc.Delete(ctx, "c-audit"))
+				require.Len(t, audit.requests, 2)
+				assert.Equal(t, "QMS_CLIENT_UPDATE", audit.requests[0].Action)
+				assert.Equal(t, "QMS_CLIENT_DEACTIVATE", audit.requests[1].Action)
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, tt.run)
 	}
 }
+
+func ptr(v string) *string { return &v }
