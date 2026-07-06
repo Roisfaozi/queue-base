@@ -49,6 +49,43 @@ func (h *SettingsController) EffectiveQueueConfig(c *gin.Context) {
 	response.Success(c, res)
 }
 
+func (h *SettingsController) EffectiveBranchConfig(c *gin.Context) {
+	h.effectiveQueueConfigFor(c, model.EffectiveQueueConfigRequest{BranchID: branchParam(c)})
+}
+
+func (h *SettingsController) EffectiveBranchServiceConfig(c *gin.Context) {
+	h.effectiveQueueConfigFor(c, model.EffectiveQueueConfigRequest{BranchID: branchParam(c), ServiceID: c.Param("service_id")})
+}
+
+func (h *SettingsController) EffectiveCounterConfig(c *gin.Context) {
+	h.effectiveQueueConfigFor(c, model.EffectiveQueueConfigRequest{BranchID: branchParam(c), CounterID: c.Param("counter_id")})
+}
+
+func branchParam(c *gin.Context) string {
+	if v := c.Param("branch_id"); v != "" {
+		return v
+	}
+	return c.Param("id")
+}
+
+func (h *SettingsController) effectiveQueueConfigFor(c *gin.Context, req model.EffectiveQueueConfigRequest) {
+	tenantID := database.GetTenantID(c.Request.Context())
+	if tenantID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	if err := h.validate.Struct(req); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	res, err := h.resolveEffectiveQueueConfig(c.Request.Context(), tenantID, req)
+	if err != nil {
+		response.HandleError(c, err, "failed to resolve effective queue config")
+		return
+	}
+	response.Success(c, res)
+}
+
 func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, tenantID string, req model.EffectiveQueueConfigRequest) (*model.EffectiveQueueConfigResponse, error) {
 	queueResetTime, err := h.queueResolver.Resolve(ctx, "queue_reset_time", req.BranchID, req.ServiceID, req.CounterID)
 	if err != nil {

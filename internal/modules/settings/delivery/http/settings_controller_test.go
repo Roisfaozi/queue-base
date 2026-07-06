@@ -139,3 +139,41 @@ func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestSettingsController_EffectiveConfigAliasPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	controller := NewSettingsController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{
+		"queue_reset_time":           "04:00",
+		"ticket_prefix":              "A",
+		"numbering_strategy":         "daily_branch_sequence",
+		"default_estimated_duration": "5",
+		"auto_call_next":             "true",
+	}}, nil, newSettingsControllerTestDB(t))
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.GET("/branches/:branch_id/effective-config", controller.EffectiveBranchConfig)
+	router.GET("/branches/:branch_id/services/:service_id/effective-config", controller.EffectiveBranchServiceConfig)
+	router.GET("/branches/:branch_id/counters/:counter_id/effective-config", controller.EffectiveCounterConfig)
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "Positive_BranchEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/effective-config"},
+		{name: "Positive_ServiceEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/services/550e8400-e29b-41d4-a716-446655440002/effective-config"},
+		{name: "Positive_CounterEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/counters/550e8400-e29b-41d4-a716-446655440003/effective-config"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", tt.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Contains(t, w.Body.String(), `"effective_logo_asset_id":"branch-logo"`)
+		})
+	}
+}
