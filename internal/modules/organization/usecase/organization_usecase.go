@@ -180,6 +180,9 @@ func (uc *organizationUseCase) UpdateOrganization(ctx context.Context, id string
 		if err != nil {
 			return err
 		}
+		if request.Status == entity.OrgStatusActive && uc.missingActivationFields(org) {
+			return exception.ErrBadRequest
+		}
 
 		// Update fields
 		if request.Name != "" {
@@ -202,6 +205,10 @@ func (uc *organizationUseCase) UpdateOrganization(ctx context.Context, id string
 	})
 
 	return response, err
+}
+
+func (uc *organizationUseCase) missingActivationFields(org *entity.Organization) bool {
+	return org.Address == "" || org.City == "" || org.Province == "" || org.Phone == "" || org.Timezone == ""
 }
 
 func (uc *organizationUseCase) authorizeOrganizationManagement(ctx context.Context, orgID string) (*entity.Organization, error) {

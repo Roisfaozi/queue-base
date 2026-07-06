@@ -262,6 +262,12 @@ func TestListBranches(t *testing.T) {
 func TestUpdateBranch(t *testing.T) {
 	code := " sub "
 	name := " Branch Office "
+	active := entity.BranchStatusActive
+	address := "Jl. Test"
+	city := "Jakarta"
+	province := "DKI Jakarta"
+	phone := "021"
+	timezone := "Asia/Jakarta"
 	tests := []struct {
 		name     string
 		category string
@@ -315,6 +321,44 @@ func TestUpdateBranch(t *testing.T) {
 			},
 			tenantID: "tenant-1",
 			wantErr:  exception.ErrNotFound,
+		},
+		{
+			name:     "Negative_ActivateMissingRequiredFields",
+			category: "negative",
+			branchID: "branch-1",
+			req:      model.UpdateBranchRequest{Status: &active},
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusInactive},
+			},
+			tenantID: "tenant-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Positive_ActivateWithRequiredFieldsInRequest",
+			category: "positive",
+			branchID: "branch-1",
+			req: model.UpdateBranchRequest{
+				Address:  &address,
+				City:     &city,
+				Province: &province,
+				Phone:    &phone,
+				Timezone: &timezone,
+				Status:   &active,
+			},
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusInactive},
+			},
+			tenantID: "tenant-1",
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, entity.BranchStatusActive, res.Status)
+				assert.Equal(t, address, res.Address)
+			},
 		},
 	}
 

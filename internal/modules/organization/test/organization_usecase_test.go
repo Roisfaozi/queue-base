@@ -382,6 +382,28 @@ func TestOrganizationUseCase(t *testing.T) {
 			},
 		},
 		{
+			name:     "Negative_UpdateOrganization_ActivateMissingFields",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Status: entity.OrgStatusActive}
+				existingOrg := &entity.Organization{ID: orgID, OwnerID: "owner-1", Status: entity.OrgStatusInactive}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					err := fn(ctx)
+					assert.ErrorIs(t, err, exception.ErrBadRequest)
+				}).Return(exception.ErrBadRequest)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.ErrorIs(t, err, exception.ErrBadRequest)
+			},
+		},
+		{
 			name:     "Negative_UpdateOrganization_NotFound",
 			category: "negative",
 			run: func(t *testing.T) {

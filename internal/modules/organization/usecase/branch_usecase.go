@@ -96,6 +96,15 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 	if err != nil {
 		return nil, exception.ErrNotFound
 	}
+	newStatus := branch.Status
+	if req.Status != nil {
+		newStatus = *req.Status
+	}
+	if newStatus == entity.BranchStatusActive && branch.Status != entity.BranchStatusActive {
+		if u.missingRequiredFields(branch, req) {
+			return nil, exception.ErrBadRequest
+		}
+	}
 	if req.Code != nil {
 		branch.Code = *req.Code
 	}
@@ -166,4 +175,28 @@ func (u *branchUseCase) mapToResponse(branch *entity.Branch) *model.BranchRespon
 		CreatedAt:   branch.CreatedAt,
 		UpdatedAt:   branch.UpdatedAt,
 	}
+}
+
+func (u *branchUseCase) missingRequiredFields(branch *entity.Branch, req *model.UpdateBranchRequest) bool {
+	address := branch.Address
+	city := branch.City
+	province := branch.Province
+	phone := branch.Phone
+	timezone := branch.Timezone
+	if req.Address != nil {
+		address = *req.Address
+	}
+	if req.City != nil {
+		city = *req.City
+	}
+	if req.Province != nil {
+		province = *req.Province
+	}
+	if req.Phone != nil {
+		phone = *req.Phone
+	}
+	if req.Timezone != nil {
+		timezone = *req.Timezone
+	}
+	return address == "" || city == "" || province == "" || phone == "" || timezone == ""
 }
