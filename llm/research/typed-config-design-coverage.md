@@ -2,7 +2,7 @@
 
 > **Source**: `documentation/New Design Document — QMS MVP Operatio.md`
 > **Generated**: 2026-07-02
-> **Last Rebased**: 2026-07-06 (15:00)
+> **Last Rebased**: 2026-07-06 (latest live audit in this thread)
 > **Status**: Live-runtime audit against MVP operational design, with detailed gap register
 
 ---
@@ -16,7 +16,7 @@
 | branches → branch_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:71`, `internal/modules/settings/entity/qms_queue_settings_entity.go:20` |
 | branches → branch_services → counters | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:29`, `db/migrations/000032_align_qms_typed_configuration.up.sql:49` |
 | counters → counter_queue_settings | ✅ done | `db/migrations/000032_align_qms_typed_configuration.up.sql:78`, `internal/modules/settings/entity/qms_queue_settings_entity.go:54` |
-| services → branch_service_queue_settings | ✅ done | `db/migrations/000033_qms_mvp_alignment.up.sql:3`, `internal/modules/settings/entity/qms_queue_settings_entity.go:38` |
+| services → branch_service_queue_settings | ✅ done | `db/migrations/000033_qms_mvp_alignment.up.sql:3`, `internal/modules/settings/entity/qms_queue_settings_entity.go:39` |
 
 ---
 
@@ -790,3 +790,24 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 - Keep this audit updated after each slice.
 - Resume Docker-backed integration/E2E when environment scope allows it.
+
+---
+
+## 17. What Needs Work Next
+
+Priority order from current runtime (2026-07-06):
+
+1. **Typed write API for config**
+   - Expose first-class create/update endpoints for typed queue settings, or explicitly document that only read/effective config is supported for MVP.
+
+2. **Remove legacy JSON config from core entities**
+   - Drop or quarantine `services.settings` and `counters.settings` so core queue behavior cannot drift back to generic config.
+
+3. **Finish UI-facing effective config contract**
+   - If dashboard/caller/signage need one payload, expand `/settings/effective` into a richer contract with tenant/branch/service/counter presentation data.
+
+4. **Rebase cached overview docs**
+   - Update `llm/cache/project-overview.md` so it no longer says queue modules are missing.
+
+5. **Close proof gaps**
+   - Run narrow integration/E2E proof for caller, signage, and queue journey lifecycle when Docker-backed validation is available.
