@@ -1214,3 +1214,18 @@ Design sources:
 - next step:
   - update remaining design coverage sections that still show stale ❌ for branch rules already implemented.
   - keep docs in sync per slice, not batched too late.
+
+## 2026-07-06 — Branch CRUD UI confirmation in coverage doc
+
+- status: completed
+- owner paths:
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Re-verified live `apps/web` repository state for Branch CRUD UI.
+  - Confirmed `apps/web/src/app/[locale]/dashboard/branches/page.tsx` exists and was already implemented in an earlier slice.
+  - Updated coverage doc to accurately reflect that Branch CRUD UI exists and uses shared activation rules, replacing older stale gap claims.
+- verification:
+  - command: `test -f apps/web/src/app/[locale]/dashboard/branches/page.tsx`
+  - result: passed
+- next step:
+  - E2E parallel testing flow or tenant activation gap.

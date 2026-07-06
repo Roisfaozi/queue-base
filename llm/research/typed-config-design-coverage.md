@@ -67,6 +67,8 @@
 |-----------|--------|----------|
 | `GET /api/v1/branches/{branch_id}/profile` | ❌ missing | Branch CRUD exists at `/api/v1/branches/:id` via `internal/modules/organization/delivery/http/branch_routes.go` but no typed profile endpoint |
 | `PATCH /api/v1/branches/{branch_id}/profile` | ❌ missing | Same — uses generic branch update |
+| Branch CRUD UI | ✅ done | `apps/web/src/app/[locale]/dashboard/branches/page.tsx`, `apps/web/src/app/[locale]/dashboard/branches/_components/branches-content.tsx` |
+| Branch activation frontend validation | ✅ done | Branches page uses shared branch activation contract before sending active status updates |
 
 ### 6.4 Branch Queue Settings
 
@@ -138,7 +140,7 @@
 |-----------|--------|----------|
 | Step 1 — Tenant Profile wizard | ❌ missing | No wizard at all; profile editing via generic org CRUD |
 | Step 2 — Tenant Queue Default | ❌ missing | No wizard; manual settings CRUD |
-| Step 3 — Branch Profile | ⚠️ partial | Setup wizard handles branch draft status block, but actual CRUD uses admin forms |
+| Step 3 — Branch Profile | ⚠️ partial | Setup wizard handles branch draft status block and links to Branch CRUD UI; inline embedded branch form not built |
 | Step 4 — Branch Queue Override | ❌ missing | No wizard; queue-settings UI exists but standalone |
 | Step 5 — Service Setup | ❌ missing | No wizard; service dialog exists standalone (`apps/web/src/components/dashboard/services/service-dialog.tsx:1`) |
 | Step 6 — Enable Service for Branch | ❌ missing | No wizard; branch-service CRUD via admin forms |
