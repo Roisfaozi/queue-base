@@ -53,12 +53,13 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 		{name: "Positive_ResolvesBranchServiceOverride", key: "default_estimated_duration", branchID: "b-1", serviceID: "bsvc-1", want: "20"},
 		{name: "Positive_ResolvesAutoCallNextFromTypedTable", key: "auto_call_next", branchID: "b-1", serviceID: "bsvc-1", want: "true"},
 		{name: "Negative_NoGenericFallback", key: "custom_theme_color", branchID: "b-1", want: ""},
+		{name: "Negative_LogoFallbackMiss", key: "logo_url", branchID: "b-1", want: ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := resolver.Resolve(ctx, tt.key, tt.branchID, tt.serviceID, tt.counterID)
-			if tt.name == "Negative_NoGenericFallback" {
+			if tt.name == "Negative_NoGenericFallback" || tt.name == "Negative_LogoFallbackMiss" {
 				require.Error(t, err)
 				return
 			}

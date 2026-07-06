@@ -66,8 +66,9 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 	ticketPrefixResolved, _ := h.queueResolver.ResolveDetailed(ctx, "ticket_prefix", req.BranchID, req.ServiceID, req.CounterID)
 	numberingStrategyResolved, _ := h.queueResolver.ResolveDetailed(ctx, "numbering_strategy", req.BranchID, req.ServiceID, req.CounterID)
 	defaultEstimatedDurationResolved, _ := h.queueResolver.ResolveDetailed(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
+	autoCallNextPtr := parseBoolPtr(autoCallNext)
 
-	return &model.EffectiveQueueConfigResponse{
+	res := &model.EffectiveQueueConfigResponse{
 		TenantID:                          tenantID,
 		BranchID:                          req.BranchID,
 		ServiceID:                         req.ServiceID,
@@ -84,12 +85,29 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 		DefaultEstimatedDuration:          defaultEstimatedDuration,
 		DefaultEstimatedDurationSource:    sourceOf(defaultEstimatedDurationResolved),
 		DefaultEstimatedDurationInherited: inheritedOf(defaultEstimatedDurationResolved),
-		AutoCallNext:                      parseBoolPtr(autoCallNext),
-	}, nil
+		AutoCallNext:                      autoCallNextPtr,
+		Tenant: model.EffectiveConfigTenant{
+			TenantID: tenantID,
+		},
+		Branch: model.EffectiveConfigBranch{
+			BranchID: req.BranchID,
+		},
+		Queue: model.EffectiveConfigQueue{
+			QueueResetTime:           safeResolved(queueResetTimeResolved),
+			TicketPrefix:             safeResolved(ticketPrefixResolved),
+			NumberingStrategy:        safeResolved(numberingStrategyResolved),
+			DefaultEstimatedDuration: safeResolved(defaultEstimatedDurationResolved),
+			AutoCallNext:             autoCallNextPtr,
+		},
+	}
+	return res, nil
 }
 
-func NewSettingsController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger) *SettingsController {
-	return &SettingsController{queueResolver: resolver, validate: validate, log: log}
+func safeResolved(r *model.ResolvedQueueSetting) model.ResolvedQueueSetting {
+	if r == nil {
+		return model.ResolvedQueueSetting{}
+	}
+	return *r
 }
 
 func sourceOf(resolved *model.ResolvedQueueSetting) string {
@@ -116,4 +134,8 @@ func parseBoolPtr(value string) *bool {
 		return &v
 	}
 	return nil
+}
+
+func NewSettingsController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger) *SettingsController {
+	return &SettingsController{queueResolver: resolver, validate: validate, log: log}
 }

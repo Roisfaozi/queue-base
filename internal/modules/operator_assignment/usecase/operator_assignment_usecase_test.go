@@ -119,6 +119,14 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 			},
 		},
 		{
+			name: "Negative_InactiveBranchRejected",
+			fn: func(t *testing.T) {
+				require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-inactive", TenantID: "tenant-1", Code: "B3", Name: "Branch Inactive", Status: branchEntity.BranchStatusInactive}).Error)
+				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-inactive", UserID: "u-1", CounterID: "c-1"})
+				require.ErrorIs(t, err, exception.ErrNotFound, "expected rejection when branch is inactive but implementation might be missing")
+			},
+		},
+		{
 			name: "Negative_CounterBranchMismatchRejected",
 			fn: func(t *testing.T) {
 				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-1", CounterID: "c-2"})
