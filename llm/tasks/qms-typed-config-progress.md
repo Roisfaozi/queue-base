@@ -1038,3 +1038,41 @@ Design sources:
   - evidence: wizard stepper compiles with typed current-step logic and shared QMS contracts.
 - next step:
   - If product wants true inline setup, embed existing forms one by one instead of rebuilding new payload mappers.
+
+## 2026-07-06 — Backend WS event producer for queue state changes (Jalur A)
+
+- status: completed
+- owner paths:
+  - `internal/modules/queue/usecase/queue_usecase.go`
+  - `internal/modules/queue/usecase/queue_usecase_test.go`
+  - `internal/modules/queue/delivery/http/queue_controller_test.go`
+  - `internal/modules/caller/usecase/caller_usecase_test.go`
+  - `internal/config/app.go`
+- work done:
+  - Added `WSBroadcaster` interface (1 method) to queue usecase.
+  - Added `emitWSEvent` helper that publishes `{"channel":"queue:{tenant}:{branch}","type":"queue_update","event":"QUEUE_*","data":{...}}` on every state change: `Register`, `Forward`, `Transition`, `AutoCallNext`.
+  - Wired `wsManager` to queue usecase via `SetWSBroadcaster(wsManager)` in app.go.
+  - Added `SetWSBroadcaster` stub to all test QueueUseCase implementations.
+  - Added `stubWSBroadcaster` with assertion on channel name.
+- tests added/updated:
+  - positive: WS call count and channel name asserted in Register test.
+  - edge: nil WS broadcaster is safe (no-op).
+- verification:
+  - command: `go test ./internal/modules/queue/usecase -count=1`
+  - result: passed
+  - command: `make lint`
+  - result: passed (0 issues)
+
+## 2026-07-06 — Frontend QMS realtime consumer for queue dashboard (Jalur B)
+
+- status: completed
+- owner paths:
+  - `apps/web/src/app/[locale]/dashboard/queues/_components/queues-content.tsx`
+- work done:
+  - Imported `useWebSocket` from shared provider.
+  - Added `useEffect` that subscribes to `queue:{org}:{branch}` channel when `selectedBranchId` changes.
+  - On `queue_update` event, triggers `fetchViewData()` and `fetchStats()` to refresh displayed queues and stats without page reload.
+  - Uses `useRef` for stable handler to avoid re-subscribe churn.
+- verification:
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed

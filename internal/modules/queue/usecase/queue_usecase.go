@@ -603,9 +603,10 @@ func (u *queueUseCase) emitWSEvent(ctx context.Context, action string, branchID 
 		return
 	}
 	payload, err := json.Marshal(map[string]interface{}{
-		"type":  "queue_update",
-		"event": action,
-		"data":  res,
+		"channel": "queue:" + tenantID + ":" + branchID,
+		"type":    "queue_update",
+		"event":   action,
+		"data":    res,
 	})
 	if err != nil {
 		return
