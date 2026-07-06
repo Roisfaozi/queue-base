@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -11,6 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type stubBranchAudit struct {
+	requests []auditModel.CreateAuditLogRequest
+}
+
+func (s *stubBranchAudit) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.requests = append(s.requests, req)
+	return nil
+}
 
 type stubBranchRepo struct {
 	branch *entity.Branch
@@ -279,6 +289,7 @@ func TestUpdateBranch(t *testing.T) {
 	province := "DKI Jakarta"
 	phone := "021"
 	timezone := "Asia/Jakarta"
+	runningText := "Counter moved to floor 2"
 	tests := []struct {
 		name     string
 		category string
@@ -332,6 +343,24 @@ func TestUpdateBranch(t *testing.T) {
 			},
 			tenantID: "tenant-1",
 			wantErr:  exception.ErrNotFound,
+		},
+		{
+			name:     "Positive_RunningTextUpdateWritesAudit",
+			category: "positive",
+			branchID: "branch-1",
+			req: model.UpdateBranchRequest{
+				RunningText: &runningText,
+			},
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive},
+			},
+			tenantID: "tenant-1",
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, runningText, res.RunningText)
+			},
 		},
 		{
 			name:     "Negative_ActivateMissingRequiredFields",
@@ -424,7 +453,8 @@ func TestUpdateBranch(t *testing.T) {
 				branch: tt.stubRepo.branch,
 				err:    tt.stubRepo.err,
 			}
-			uc := NewBranchUseCase(repo)
+			audit := &stubBranchAudit{}
+			uc := NewBranchUseCase(repo, audit)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -440,6 +470,12 @@ func TestUpdateBranch(t *testing.T) {
 			require.NoError(t, err)
 			if tt.wantRes != nil {
 				tt.wantRes(t, res, repo)
+			}
+			if tt.name == "Positive_RunningTextUpdateWritesAudit" {
+				require.Len(t, audit.requests, 1)
+				assert.Equal(t, "BRANCH_UPDATE", audit.requests[0].Action)
+				assert.Equal(t, "branch", audit.requests[0].Entity)
+				assert.Equal(t, "branch-1", audit.requests[0].EntityID)
 			}
 		})
 	}
