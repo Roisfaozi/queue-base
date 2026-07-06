@@ -133,13 +133,14 @@ func TestOrganizationUseCase(t *testing.T) {
 				ctx := context.Background()
 				userID := "user-123"
 				req := &model.CreateOrganizationRequest{
-					Name:     "Acme Corp",
-					Slug:     "acme-corp",
-					Address:  "Jl. Test",
-					City:     "Jakarta",
-					Province: "DKI Jakarta",
-					Phone:    "021",
-					Timezone: "Asia/Jakarta",
+					Name:        "Acme Corp",
+					Slug:        "acme-corp",
+					Address:     "Jl. Test",
+					City:        "Jakarta",
+					Province:    "DKI Jakarta",
+					Phone:       "021",
+					Timezone:    "Asia/Jakarta",
+					LogoAssetID: "asset-123",
 				}
 
 				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -149,7 +150,7 @@ func TestOrganizationUseCase(t *testing.T) {
 
 				deps.OrgRepo.On("SlugExists", ctx, req.Slug).Return(false, nil)
 				deps.OrgRepo.On("Create", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
-					return org.Status == entity.OrgStatusActive && org.Address == req.Address && org.City == req.City
+					return org.Status == entity.OrgStatusActive && org.Address == req.Address && org.City == req.City && org.LogoAssetID == req.LogoAssetID
 				}), usecase.DefaultOwnerRoleID).Return(nil)
 				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{}, nil)
@@ -401,12 +402,13 @@ func TestOrganizationUseCase(t *testing.T) {
 				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
 				orgID := "org-1"
 				req := &model.UpdateOrganizationRequest{
-					Status:   entity.OrgStatusActive,
-					Address:  "Jl. Test",
-					City:     "Jakarta",
-					Province: "DKI Jakarta",
-					Phone:    "021",
-					Timezone: "Asia/Jakarta",
+					Status:      entity.OrgStatusActive,
+					Address:     "Jl. Test",
+					City:        "Jakarta",
+					Province:    "DKI Jakarta",
+					Phone:       "021",
+					Timezone:    "Asia/Jakarta",
+					LogoAssetID: "asset-123",
 				}
 				existingOrg := &entity.Organization{ID: orgID, OwnerID: "owner-1", Status: entity.OrgStatusDraft}
 
