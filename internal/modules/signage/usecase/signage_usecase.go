@@ -121,14 +121,16 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 	if cr.BranchServiceID != nil && *cr.BranchServiceID != "" {
 		res.BranchServiceID = *cr.BranchServiceID
 		type svcRow struct {
-			ServiceName string `gorm:"column:service_name"`
-			AudioID     *string
-			AudioEN     *string
+			ServiceName            string `gorm:"column:service_name"`
+			AudioID                *string
+			AudioEN                *string
+			NarrativeInstructionID *string
+			NarrativeInstructionEN *string
 		}
 		var sr svcRow
 		_ = u.db.WithContext(ctx).Table("branch_services").
 			Joins("JOIN services ON services.id = branch_services.service_id").
-			Select("services.name AS service_name, services.audio_id, services.audio_en").
+			Select("services.name AS service_name, services.audio_id, services.audio_en, services.narrative_instruction_id, services.narrative_instruction_en").
 			Where("branch_services.id = ? AND branch_services.tenant_id = ?", *cr.BranchServiceID, cr.TenantID).
 			Take(&sr).Error
 		res.ServiceName = sr.ServiceName
@@ -137,6 +139,12 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 		}
 		if sr.AudioEN != nil {
 			res.AudioEN = *sr.AudioEN
+		}
+		if sr.NarrativeInstructionID != nil {
+			res.NarrativeInstructionID = *sr.NarrativeInstructionID
+		}
+		if sr.NarrativeInstructionEN != nil {
+			res.NarrativeInstructionEN = *sr.NarrativeInstructionEN
 		}
 	}
 
@@ -200,18 +208,20 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 	}
 
 	type callRow struct {
-		QueueID            string
-		TicketNo           string
-		CounterID          string
-		ServiceID          string
-		CounterDisplayName *string
-		ServiceType        string
-		AudioID            *string
-		AudioEN            *string
+		QueueID                string
+		TicketNo               string
+		CounterID              string
+		ServiceID              string
+		CounterDisplayName     *string
+		ServiceType            string
+		AudioID                *string
+		AudioEN                *string
+		NarrativeInstructionID *string
+		NarrativeInstructionEN *string
 	}
 	var rows []callRow
 	query := u.db.WithContext(ctx).Table("queue_journeys AS qj").
-		Select("qj.queue_id, q.ticket_no, COALESCE(qj.counter_id,'') AS counter_id, qj.service_id, c.display_name AS counter_display_name, COALESCE(s.type,'general') AS service_type, s.audio_id, s.audio_en").
+		Select("qj.queue_id, q.ticket_no, COALESCE(qj.counter_id,'') AS counter_id, qj.service_id, c.display_name AS counter_display_name, COALESCE(s.type,'general') AS service_type, s.audio_id, s.audio_en, s.narrative_instruction_id, s.narrative_instruction_en").
 		Joins("JOIN queues q ON q.id = qj.queue_id AND q.tenant_id = qj.tenant_id AND q.branch_id = qj.branch_id").
 		Joins("LEFT JOIN counters c ON c.id = qj.counter_id AND c.tenant_id = qj.tenant_id").
 		Joins("JOIN services s ON s.id = qj.service_id").
@@ -260,6 +270,12 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 		}
 		if r.AudioEN != nil {
 			item.AudioEN = *r.AudioEN
+		}
+		if r.NarrativeInstructionID != nil {
+			item.NarrativeInstructionID = *r.NarrativeInstructionID
+		}
+		if r.NarrativeInstructionEN != nil {
+			item.NarrativeInstructionEN = *r.NarrativeInstructionEN
 		}
 		res = append(res, item)
 	}
