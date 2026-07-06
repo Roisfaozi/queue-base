@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { QMSClientCreateResponse } from "@casbin/api-types";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -14,10 +15,13 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import {
+	branchServicesApi,
 	branchesApi,
 	countersApi,
+	qmsClientsApi,
 	servicesApi,
 	type Branch,
+	type BranchService,
 	type Counter,
 	type Service,
 } from "~/lib/api/qms";
@@ -27,45 +31,25 @@ const steps = [
 		key: "tenant",
 		title: "Tenant Profile",
 		href: "/dashboard/organization/settings",
-		required: true,
 	},
-	{
-		key: "branch",
-		title: "Branches",
-		href: "/dashboard/branches",
-		required: true,
-	},
-	{
-		key: "service",
-		title: "Services",
-		href: "/dashboard/services",
-		required: true,
-	},
+	{ key: "branch", title: "Branches", href: "/dashboard/branches" },
+	{ key: "service", title: "Services", href: "/dashboard/services" },
 	{
 		key: "branch_service",
 		title: "Branch Services",
 		href: "/dashboard/queues",
-		required: true,
 	},
-	{
-		key: "counter",
-		title: "Counters",
-		href: "/dashboard/counters",
-		required: true,
-	},
-	{
-		key: "qms_client",
-		title: "QMS Clients",
-		href: "/dashboard/qms-clients",
-		required: true,
-	},
+	{ key: "counter", title: "Counters", href: "/dashboard/counters" },
+	{ key: "qms_client", title: "QMS Clients", href: "/dashboard/qms-clients" },
 ] as const;
 
 export function QMSSetupWizard() {
 	const { currentOrganization } = useDashboardShell();
 	const [branches, setBranches] = useState<Branch[]>([]);
 	const [services, setServices] = useState<Service[]>([]);
+	const [branchServices, setBranchServices] = useState<BranchService[]>([]);
 	const [counters, setCounters] = useState<Counter[]>([]);
+	const [clients, setClients] = useState<QMSClientCreateResponse[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
@@ -74,15 +58,25 @@ export function QMSSetupWizard() {
 			if (!currentOrganization) return;
 			setIsLoading(true);
 			try {
-				const [branchResp, serviceResp, counterResp] = await Promise.all([
-					branchesApi.getAll(),
-					servicesApi.getAll(),
-					countersApi.getAll(),
-				]);
+				const [branchResp, serviceResp, counterResp, clientResp] =
+					await Promise.all([
+						branchesApi.getAll(),
+						servicesApi.getAll(),
+						countersApi.getAll(),
+						qmsClientsApi.getAll(),
+					]);
+				const nextBranches = branchResp.data || [];
+				const branchServiceResp = await Promise.all(
+					nextBranches.map((branch) =>
+						branchServicesApi.getByBranch(branch.id),
+					),
+				);
 				if (!mounted) return;
-				setBranches(branchResp.data || []);
+				setBranches(nextBranches);
 				setServices(serviceResp.data || []);
 				setCounters(counterResp.data || []);
+				setClients(clientResp.data || []);
+				setBranchServices(branchServiceResp.flatMap((resp) => resp.data || []));
 			} catch (error: any) {
 				toast.error(error.message || "Failed to load setup progress");
 			} finally {
@@ -103,18 +97,23 @@ export function QMSSetupWizard() {
 		() => services.filter((service) => service.status === "active"),
 		[services],
 	);
+	const activeBranchServices = useMemo(
+		() => branchServices.filter((branchService) => branchService.is_active),
+		[branchServices],
+	);
 	const activeCounters = useMemo(
 		() => counters.filter((counter) => counter.status === "active"),
 		[counters],
 	);
-	const completed = [
-		activeBranches.length > 0,
-		activeServices.length > 0,
-		activeCounters.length > 0,
-		true, // client
-		true, // tenant
-		true, // branch_service
-	].filter(Boolean).length;
+	const stepDone = {
+		tenant: true,
+		branch: activeBranches.length > 0,
+		service: activeServices.length > 0,
+		branch_service: activeBranchServices.length > 0,
+		counter: activeCounters.length > 0,
+		qms_client: clients.length > 0,
+	};
+	const completed = Object.values(stepDone).filter(Boolean).length;
 	const percent = Math.round((completed / steps.length) * 100);
 
 	if (!currentOrganization) return null;
@@ -138,7 +137,9 @@ export function QMSSetupWizard() {
 					<CardTitle>Progress</CardTitle>
 					<CardDescription>
 						{activeBranches.length} active branches, {activeServices.length}{" "}
-						active services, {activeCounters.length} active counters.
+						active services, {activeBranchServices.length} active
+						branch-services, {activeCounters.length} active counters,{" "}
+						{clients.length} QMS clients.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -147,13 +148,7 @@ export function QMSSetupWizard() {
 					) : (
 						<div className="space-y-3">
 							{steps.map((step) => {
-								const done =
-									(step.key === "branch" && activeBranches.length > 0) ||
-									(step.key === "service" && activeServices.length > 0) ||
-									(step.key === "counter" && activeCounters.length > 0) ||
-									step.key === "tenant" ||
-									step.key === "branch_service" ||
-									step.key === "qms_client";
+								const done = stepDone[step.key];
 								return (
 									<div
 										key={step.key}

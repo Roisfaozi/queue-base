@@ -119,6 +119,7 @@ export interface ScannerCheckInResponse {
 }
 
 export const qmsClientsApi = {
+	getAll: () => api.get<{ data: QMSClientCreateResponse[] }>("/qms-clients"),
 	create: (data: QMSClientCreateRequest) =>
 		api.post<{ data: QMSClientCreateResponse }>("/qms-clients", data),
 	createCredential: (data: QMSClientCredentialCreateRequest) =>

@@ -986,3 +986,19 @@ Design sources:
   - result: passed
 - next step:
   - If product wants a real guided wizard, this shell can later embed or compose the same forms instead of rewriting them.
+
+## 2026-07-06 — QMS setup wizard progress accuracy
+
+- status: completed
+- owner paths:
+  - `apps/web/src/app/[locale]/dashboard/qms-setup/_components/qms-setup-wizard.tsx`
+  - `apps/web/src/lib/api/qms.ts`
+- work done:
+  - Added `qmsClientsApi.getAll()` to frontend API helper.
+  - Wizard shell now computes progress from real active branches, active services, active branch-services, active counters, and QMS client count.
+  - Removed fake static-done markers for branch-service and qms-client setup.
+- verification:
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed
+- next step:
+  - If needed, convert wizard shell into true multi-step form flow using these same modules.
