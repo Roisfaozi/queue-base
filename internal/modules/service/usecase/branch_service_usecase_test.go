@@ -9,6 +9,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +41,7 @@ func (s *stubBranchRepo) FindByID(_ context.Context, tenantID, branchID string) 
 	if s.branch != nil && s.branch.ID == branchID && s.branch.TenantID == tenantID {
 		return s.branch, nil
 	}
-	return nil, s.err
+	return nil, exception.ErrNotFound
 }
 func (s *stubBranchRepo) FindAll(_ context.Context, tenantID string) ([]*branchEntity.Branch, error) {
 	return []*branchEntity.Branch{}, s.err
@@ -118,4 +119,69 @@ func TestBranchServiceUseCase_AuditHooks(t *testing.T) {
 	assert.Equal(t, "BRANCH_SERVICE_UPDATE", audit.entries[1].Action)
 	assert.Equal(t, "BRANCH_SERVICE_DELETE", audit.entries[2].Action)
 	assert.Equal(t, "branch_service", audit.entries[0].Entity)
+}
+
+func TestBranchServiceUseCase_RelationGuard(t *testing.T) {
+	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+	t.Run("Positive_CreateBranchService", func(t *testing.T) {
+		audit := &stubBranchServiceAuditLogger{}
+		branchRepo := &stubBranchRepo{
+			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive},
+		}
+		serviceRepo := &stubServiceRepo{
+			service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive},
+		}
+		repo := &stubBranchServiceRepo{}
+		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
+		res, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		assert.Equal(t, "b-1", res.BranchID)
+		assert.Equal(t, "svc-1", res.ServiceID)
+		assert.True(t, res.IsActive)
+	})
+
+	t.Run("Negative_CreateBranchServiceForInactiveBranch", func(t *testing.T) {
+		audit := &stubBranchServiceAuditLogger{}
+		branchRepo := &stubBranchRepo{
+			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusInactive},
+		}
+		serviceRepo := &stubServiceRepo{
+			service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive},
+		}
+		repo := &stubBranchServiceRepo{}
+		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
+		_, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
+		require.ErrorIs(t, err, exception.ErrForbidden)
+	})
+
+	t.Run("Negative_CreateBranchServiceWithInactiveService", func(t *testing.T) {
+		audit := &stubBranchServiceAuditLogger{}
+		branchRepo := &stubBranchRepo{
+			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive},
+		}
+		serviceRepo := &stubServiceRepo{
+			service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusInactive},
+		}
+		repo := &stubBranchServiceRepo{}
+		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
+		_, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
+		require.ErrorIs(t, err, exception.ErrForbidden)
+	})
+
+	t.Run("Vulnerability_CrossTenantCreateRejected", func(t *testing.T) {
+		audit := &stubBranchServiceAuditLogger{}
+		// branch belongs to tenant-2 but we call with tenant-1 context
+		// stubBranchRepo.FindByID returns ErrNotFound for mismatched tenant
+		branchRepo := &stubBranchRepo{
+			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-2", Status: branchEntity.BranchStatusActive},
+		}
+		serviceRepo := &stubServiceRepo{
+			service: &entity.Service{ID: "svc-1", TenantID: "tenant-2", Status: entity.ServiceStatusActive},
+		}
+		repo := &stubBranchServiceRepo{}
+		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
+		_, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
+		require.ErrorIs(t, err, exception.ErrForbidden)
+	})
 }

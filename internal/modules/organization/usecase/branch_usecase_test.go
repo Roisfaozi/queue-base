@@ -360,6 +360,51 @@ func TestUpdateBranch(t *testing.T) {
 				assert.Equal(t, address, res.Address)
 			},
 		},
+		{
+			name:     "Edge_UpdateNonProfileFieldsWhenAlreadyActive",
+			category: "edge",
+			branchID: "branch-1",
+			req: model.UpdateBranchRequest{
+				Name: &name,
+			},
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				branch: &entity.Branch{
+					ID:       "branch-1",
+					TenantID: "tenant-1",
+					Code:     "MAIN",
+					Name:     "Main",
+					Status:   entity.BranchStatusActive,
+					Address:  "Jl. Test",
+					City:     "Jakarta",
+					Province: "DKI",
+					Phone:    "123",
+					Timezone: "Asia",
+				},
+			},
+			tenantID: "tenant-1",
+			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+				assert.Equal(t, entity.BranchStatusActive, res.Status)
+				assert.Equal(t, "Branch Office", res.Name)
+			},
+		},
+		{
+			name:     "Vulnerability_CrossTenantBranchUpdateRejected",
+			category: "vulnerability",
+			branchID: "branch-1",
+			req:      model.UpdateBranchRequest{Name: &name},
+			stubRepo: struct {
+				branch *entity.Branch
+				err    error
+			}{
+				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-2", Status: entity.BranchStatusActive},
+				err:    exception.ErrNotFound,
+			},
+			tenantID: "tenant-1",
+			wantErr:  exception.ErrNotFound,
+		},
 	}
 
 	for _, tt := range tests {
