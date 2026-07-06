@@ -1324,3 +1324,40 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Finalize commit split only for touched org test/doc files if user wants git checkpointing; otherwise continue remaining unresolved QMS gaps.
+
+## 2026-07-07 — Final Sweep: Branch Audit Test and Coverage Cleanup
+
+- status: completed
+- owner paths:
+  - `internal/modules/organization/usecase/branch_usecase_test.go`
+  - `llm/research/typed-config-design-coverage.md`
+  - `llm/tasks/qms-typed-config-progress.md`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Added a focused branch update audit test for `BRANCH_UPDATE` on running text update.
+  - Rechecked stale coverage rows and marked only verified items as done.
+  - Left unverified typed settings audit and effective logo API as gaps instead of pretending they are complete.
+- tests added/updated:
+  - positive: branch running text update emits `BRANCH_UPDATE` audit request.
+  - negative: no new negative case in this micro-slice.
+  - edge: no new edge case in this micro-slice.
+  - vulnerability/security: no new vulnerability case in this micro-slice.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./internal/modules/organization/usecase -run TestUpdateBranch -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make lint`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make build`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make test`
+  - result: passed
+  - evidence: full Go unit suite completed; websocket tests keep expected socket-permission skips.
+- errors and fixes:
+  - error: coverage doc mixed stale resolved items with still-real missing items.
+  - root cause: multiple agents updated runtime without fully rebasing coverage table.
+  - fix: updated only rows supported by live code/tests and kept remaining gaps explicit.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Implement or explicitly defer effective logo in effective-config response and typed settings write audit.

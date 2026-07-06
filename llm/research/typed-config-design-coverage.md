@@ -202,7 +202,7 @@
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
 | estimated_duration from typed resolver | ✅ done | Resolver supports `default_estimated_duration` key |
-| duration used in queue flow | ⚠️ partial | Entity has field but runtime propagation not fully wired in all call/journey flows |
+| duration used in queue flow | ✅ done | Journey and queue creation flows consume `default_estimated_duration` resolver `internal/modules/queue/usecase/queue_usecase.go:336` |
 
 ---
 
@@ -398,17 +398,17 @@
 | cannot activate without phone | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
 | cannot activate without logo | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
 | profile update writes audit log | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` asserts `ORGANIZATION_UPDATE` audit emission |
-| queue settings update writes audit log | ❌ missing | No test |
+| queue settings update writes audit log | ❌ missing | Current typed settings path is resolver/controller focused; no verified settings audit test found in repo |
 
 ### Branch Tests
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| activation rules (address/city/province/phone/running_text) | ❌ missing | No branch activation tests |
-| can activate without logo if tenant logo exists | ❌ missing | No logo fallback test |
-| effective logo fallback | ❌ missing | No logo fallback test |
-| running_text update audit | ❌ missing | No test |
-| queue settings update audit | ❌ missing | No test |
+| activation rules (address/city/province/phone/running_text) | ✅ done | Guard tests cover activation requirement |
+| can activate without logo if tenant logo exists | ❌ missing | Logo fallback logic not yet implemented |
+| effective logo fallback | ❌ missing | No effective logo API |
+| running_text update audit | ✅ done | `Positive_RunningTextUpdateWritesAudit` covers branch update audit side effect |
+| queue settings update audit | ❌ missing | No verified typed settings audit test found in current repo layout |
 
 ### Effective Config Tests
 
