@@ -1444,3 +1444,43 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Commit route parity, logging, and docs separately.
+
+## 2026-07-07 — Reset Inheritance, Branch Logo Activation, Journey Coverage Slice
+
+- status: completed
+- owner paths:
+  - `internal/modules/settings/delivery/http/settings_controller.go`
+  - `internal/modules/settings/delivery/http/settings_routes.go`
+  - `internal/modules/settings/delivery/http/settings_controller_test.go`
+  - `internal/modules/settings/queue_settings_resolver_test.go`
+  - `internal/modules/organization/repository/branch_repository.go`
+  - `internal/modules/organization/usecase/branch_usecase.go`
+  - `internal/modules/organization/usecase/branch_activation_logo_test.go`
+  - `internal/modules/queue/usecase/queue_usecase.go`
+  - `internal/modules/queue/usecase/queue_usecase_test.go`
+  - `llm/research/typed-config-design-coverage.md`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Added design-compatible reset-to-inherit API for branch, branch-service, and counter queue-setting fields.
+  - Reset endpoint nulls the selected typed override column so resolver inherits parent/default value again.
+  - Added non-blocking `SETTING_RESET` audit emission for reset writes.
+  - Allowed branch activation without branch logo when tenant logo exists; still rejects activation when both are missing.
+  - Tightened queue transition state machine to reject mismatched queue/journey statuses for recall, serve, complete, and skip paths.
+  - Added explicit resolver test for branch null override inheriting tenant value.
+  - Added explicit queue estimate tests for `queue_left × effective duration`, invalid duration fallback, and serving zero estimate.
+- tests added/updated:
+  - positive: reset branch/branch-service/counter override returns `204` and stores `NULL`.
+  - positive: tenant logo allows branch activation when branch logo is empty.
+  - positive: waiting estimate equals queue-left times effective duration.
+  - negative: invalid reset field rejected.
+  - negative: branch activation rejects missing branch and tenant logo.
+  - edge: branch null override inherits tenant ticket prefix.
+  - edge: serving queue returns zero queue-left and zero estimate.
+  - vulnerability/security: mismatched journey state cannot be recalled or served through parent queue status alone.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./internal/modules/settings/delivery/http ./internal/modules/settings ./internal/modules/organization/usecase ./internal/modules/queue/usecase ./internal/config -count=1`
+  - result: passed
+- next step:
+  - Run full `make lint`, `make build`, and `make test`; then commit by category if clean.

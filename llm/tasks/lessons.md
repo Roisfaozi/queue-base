@@ -139,3 +139,10 @@
   - for QMS rebuild work, update `llm/tasks/qms-typed-config-progress.md` and `llm/research/typed-config-design-coverage.md` in same slice or immediately after, otherwise later audits will over-report missing gaps.
 - action:
   - treat doc rebase as mandatory close-out step for each QMS runtime slice.
+
+## 2026-07-07 — Queue Usecase Constructor Returns Interface
+
+- context: adding unit coverage for internal `attachQueueEstimate` helper.
+- error: `NewQueueUseCase(...)` returns `QueueUseCase`, so concrete helper methods are not callable on the returned value.
+- fix: in same-package tests that need an unexported helper, type assert once to `*queueUseCase` after construction.
+- prevention: prefer public behavior tests first; only use concrete type assertion for focused internal helper coverage that avoids wider fixture setup.

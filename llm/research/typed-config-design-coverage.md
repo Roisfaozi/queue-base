@@ -76,7 +76,7 @@
 |-----------|--------|----------|
 | `GET /api/v1/branches/{branch_id}/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
 | `PATCH /api/v1/branches/{branch_id}/queue-settings` | ✅ done | Generic settings fallback removed; endpoints deleted. |
-| `DELETE .../queue-settings/{field}` | ❌ missing | No reset-to-inherit API |
+| `DELETE .../queue-settings/{field}` | ✅ done | Reset-to-inherit aliases added for branch queue settings in `internal/modules/settings/delivery/http/settings_routes.go`; controller nulls the typed column and emits `SETTING_RESET`. |
 
 ### 6.5 Service
 
@@ -105,7 +105,7 @@
 |-----------|--------|----------|
 | `GET /api/v1/services/{service_id}/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
 | `PATCH /api/v1/services/{service_id}/queue-settings` | ✅ done | Generic settings fallback removed; endpoints deleted. |
-| `DELETE .../queue-settings/{field}` | ❌ missing | No reset-to-inherit API |
+| `DELETE .../queue-settings/{field}` | ✅ done | Reset-to-inherit alias added for branch-service queue settings in `internal/modules/settings/delivery/http/settings_routes.go`; controller validates resettable fields. |
 
 ### 6.8 Counter
 
@@ -325,7 +325,7 @@
 |---|---|---|---|
 | 36.1 Queue reset time | done | Queue stats/register use resolver-provided reset time for business date. | `internal/modules/queue/usecase/queue_usecase.go:90`, `internal/modules/queue/usecase/queue_usecase.go:149`, `internal/modules/queue/usecase/queue_usecase.go:160` |
 | 36.2 Ticket prefix | done | Ticket prefix resolved through settings resolver. | `internal/modules/queue/usecase/queue_usecase.go:161`, `internal/modules/settings/queue_settings_resolver.go:146` |
-| 36.3 Estimated duration | partial | Fields exist; resolver handling is incomplete for nullable typed fields and no full estimate response wiring exists. | `db/migrations/000032_align_qms_typed_configuration.up.sql:59`, `db/migrations/000032_align_qms_typed_configuration.up.sql:94`, `internal/modules/settings/queue_settings_resolver.go:155` |
+| 36.3 Estimated duration | done | Resolver handles nullable override inheritance and queue response estimate uses `queue_left × default_estimated_duration`. | `internal/modules/settings/queue_settings_resolver.go`, `internal/modules/queue/usecase/queue_usecase.go`, `internal/modules/queue/usecase/queue_usecase_test.go` |
 | 36.4 Audio | partial | Service audio schema exists, effective config and signage payload both project it. | `internal/modules/signage/model/signage_model.go:16` |
 | 36.5 Narrative | partial | Service narrative schema exists, effective config and signage payload both project it. | `internal/modules/signage/model/signage_model.go:18` |
 | 36.6 Auto call next | done | `auto_call_next` wired in schema/entity/resolver and surfaced in effective config. | `documentation/New Design Document — QMS MVP Operatio.md:2248`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:12`, `internal/modules/settings/delivery/http/settings_controller.go:63` |
@@ -398,17 +398,17 @@
 | cannot activate without phone | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
 | cannot activate without logo | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` covers activate guard |
 | profile update writes audit log | ✅ done | `internal/modules/organization/test/organization_usecase_test.go` asserts `ORGANIZATION_UPDATE` audit emission |
-| queue settings update writes audit log | ❌ missing | Current typed settings path is resolver/controller focused; no verified settings audit test found in repo |
+| queue settings reset writes audit log | ✅ done | Reset-to-inherit endpoint emits non-blocking `SETTING_RESET`; controller test asserts audit emission. |
 
 ### Branch Tests
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
 | activation rules (address/city/province/phone/running_text) | ✅ done | Guard tests cover activation requirement |
-| can activate without logo if tenant logo exists | ❌ missing | Logo fallback logic not yet implemented |
+| can activate without logo if tenant logo exists | ✅ done | Branch activation guard accepts missing branch logo when the tenant has `logo_asset_id`; dedicated usecase test covers positive and negative cases. |
 | effective logo fallback | ✅ done | Controller test covers branch logo and tenant fallback cases |
 | running_text update audit | ✅ done | `Positive_RunningTextUpdateWritesAudit` covers branch update audit side effect |
-| queue settings update audit | ❌ missing | No verified typed settings audit test found in current repo layout |
+| queue settings reset audit | ✅ done | `TestSettingsController_ResetQueueSetting` verifies `SETTING_RESET` audit for reset-to-inherit writes. |
 
 ### Effective Config Tests
 
@@ -676,7 +676,7 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 - None.
 
-### Gap H — Queue Journey State Machine Partial vs MVP [PARTIAL]
+### Gap H — Queue Journey State Machine Partial vs MVP [BACKEND DONE / E2E PENDING]
 
 **Design target**
 
@@ -689,7 +689,9 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 - Queue transitions exist.
 - Caller single-action endpoint now fronts queue transitions.
-- Repeated call/recall semantics and typed journey flow are substantially covered in backend paths, but not yet fully closed by final E2E proof.
+- Repeated call/recall semantics and typed journey flow are covered in backend paths.
+- Queue transitions now reject mismatched queue/journey states, so a stale journey cannot be served or recalled only because the parent queue status matches.
+- Final E2E proof remains deferred to the testing agent/Docker slice.
 
 **Evidence**
 
@@ -699,14 +701,14 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Gap impact**
 
-- Backend mostly aligned.
+- Backend aligned for unit-level state machine rules.
 - Remaining risk is proof depth, not missing main runtime path.
 
 **Needed change**
 
 - Add final integration/E2E proof for caller action lifecycle when Docker slice resumes.
 
-### Gap I — Estimate and Recall Coverage Missing [PARTIAL]
+### Gap I — Estimate and Recall Coverage Missing [BACKEND DONE / E2E PENDING]
 
 **Design target**
 
@@ -718,8 +720,9 @@ This section expands the raw `partial/missing` markers into concrete implementat
 - Signage now exposes `audio_id` and `audio_en` on service/current-call payloads.
 - `auto_call_next` is present in typed config path.
 - Audio and Narrative fields are now correctly exposed in both the generic config resolver and the primary signage payload APIs (`GetMe`, `GetCurrentCalls`).
-- Estimating average wait time based on service metadata remains incomplete.
-- Re-calling a ticket explicitly remains partially unspecified on whether it bumps a recall count field.
+- Queue estimate test covers `queue_left × effective duration`, invalid duration fallback to zero, and serving queue zero estimate.
+- Recall test covers repeated call when `allow_recall=true`, rejection when disabled, and mismatched journey-state rejection.
+- Re-calling a ticket remains intentionally modeled as a visit event, not a separate recall counter field.
 
 **Evidence**
 
