@@ -2,7 +2,7 @@
 
 > **Source**: `documentation/New Design Document — QMS MVP Operatio.md`
 > **Generated**: 2026-07-02
-> **Last Rebased**: 2026-07-06
+> **Last Rebased**: 2026-07-06 (15:00)
 > **Status**: Live-runtime audit against MVP operational design, with detailed gap register
 
 ---
@@ -475,10 +475,10 @@
 | Section 5 — Effective Config | 4 | 1 | 2 |
 | Section 6 — API Design | 18 | 5 | 7 |
 | Section 7 — Setup Wizard | 1 | 1 | 5 |
-| Section 8 — Validation Rules | 4 | 1 | 4 |
+| Section 8 — Validation Rules | 5 | 1 | 3 |
 | Section 9 — Queue Config Usage | 3 | 1 | 0 |
 | Section 10 — Audit Log | 12 | 0 | 0 |
-| Section 11 — Error Logging | 1 | 2 | 0 |
+| Section 11 — Error Logging | 3 | 0 | 0 |
 | Section 12 — Migration Strategy | 5 | 2 | 5 |
 | Section 13 — Testing | 16 | 1 | 3 |
 | Section 14 — Architecture Decision | 6 | 1 | 0 |
