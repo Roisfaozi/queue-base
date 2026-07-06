@@ -37,10 +37,10 @@
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
 | effective config API exists | ✅ done | `internal/modules/settings/delivery/http/settings_routes.go:11` → `GET /settings/effective` |
-| tenant.branch.queue nested shape | ⚠️ partial | Current response is flat `ResolvedQueueSetting` array; doc wants nested `{tenant:{}, branch:{}, queue:{}}` shape |
+| tenant.branch.queue nested shape | ✅ done | Refactored in settings controller response while maintaining flat compat keys |
 | source metadata (`source`, `is_overridden`) | ✅ done | `internal/modules/settings/model/settings_model.go:82-90` (`Source`, `Inherited` fields) |
-| `can_override` / `can_reset` fields | ❌ missing | Not in current response model |
-| `effective_logo_asset_id` in response | ❌ missing | Not returned by effective config endpoint |
+| `can_override` / `can_reset` fields | ✅ done | Added to settings model via `ResolvedQueueSetting` |
+| `effective_logo_asset_id` in response | ⚠️ partial | Still absent, requires branch entity repo injection to settings |
 
 ---
 
@@ -326,7 +326,7 @@
 | 36.1 Queue reset time | done | Queue stats/register use resolver-provided reset time for business date. | `internal/modules/queue/usecase/queue_usecase.go:90`, `internal/modules/queue/usecase/queue_usecase.go:149`, `internal/modules/queue/usecase/queue_usecase.go:160` |
 | 36.2 Ticket prefix | done | Ticket prefix resolved through settings resolver. | `internal/modules/queue/usecase/queue_usecase.go:161`, `internal/modules/settings/queue_settings_resolver.go:146` |
 | 36.3 Estimated duration | partial | Fields exist; resolver handling is incomplete for nullable typed fields and no full estimate response wiring exists. | `db/migrations/000032_align_qms_typed_configuration.up.sql:59`, `db/migrations/000032_align_qms_typed_configuration.up.sql:94`, `internal/modules/settings/queue_settings_resolver.go:155` |
-| 36.4 Audio | partial | Service audio schema and signage exposure exist, but effective config resolver does not project audio fallback yet. | `db/migrations/000035_add_service_audio_columns.up.sql:2`, `internal/modules/service/entity/service_entity.go:23`, `internal/modules/signage/usecase/signage_usecase.go:125` |
+| 36.4 Audio | partial | Service audio schema and signage exposure exist, effective config resolver also projects it. | `internal/modules/settings/model/settings_model.go:57` |
 | 36.5 Narrative | partial | Service narrative schema exists, but runtime signage/effective resolver does not project narrative fields yet. | `db/migrations/000035_add_service_audio_columns.up.sql:4`, `internal/modules/service/entity/service_entity.go:25`, `internal/modules/settings/model/settings_model.go:76` |
 | 36.6 Auto call next | done | `auto_call_next` wired in schema/entity/resolver and surfaced in effective config. | `documentation/New Design Document — QMS MVP Operatio.md:2248`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3`, `internal/modules/settings/queue_settings_resolver.go:12`, `internal/modules/settings/delivery/http/settings_controller.go:63` |
 | 36.7 Allow recall | partial | `allow_recall` columns and queue guard exist, but effective config does not expose per-source recall metadata beyond flat bool fields. | `db/migrations/000032_align_qms_typed_configuration.up.sql:62`, `internal/modules/queue/usecase/queue_usecase.go:470`, `internal/modules/settings/model/settings_model.go:68` |
