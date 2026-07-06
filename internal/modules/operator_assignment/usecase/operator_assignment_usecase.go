@@ -14,6 +14,7 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -28,19 +29,24 @@ type OperatorAssignmentUseCase interface {
 }
 
 type operatorAssignmentUseCase struct {
+	log   *logrus.Logger
 	db    *gorm.DB
 	audit AuditLogger
 }
 
-func NewOperatorAssignmentUseCase(db *gorm.DB, audit ...AuditLogger) OperatorAssignmentUseCase {
+func NewOperatorAssignmentUseCase(db *gorm.DB, log *logrus.Logger, audit ...AuditLogger) OperatorAssignmentUseCase {
 	var auditLogger AuditLogger
 	if len(audit) > 0 {
 		auditLogger = audit[0]
 	}
-	return &operatorAssignmentUseCase{db: db, audit: auditLogger}
+	return &operatorAssignmentUseCase{db: db, audit: auditLogger, log: log}
 }
 
 func (u *operatorAssignmentUseCase) Create(ctx context.Context, req *model.OperatorAssignmentRequest) (*model.OperatorAssignmentResponse, error) {
+	entry := u.logEntry(ctx, "Create", nil)
+	if entry != nil {
+		entry.Info("start")
+	}
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || req == nil || req.BranchID == "" || req.UserID == "" || req.CounterID == "" {
 		return nil, exception.ErrBadRequest
@@ -51,29 +57,49 @@ func (u *operatorAssignmentUseCase) Create(ctx context.Context, req *model.Opera
 	now := time.Now().UnixMilli()
 	assignment := &entity.OperatorCounterAssignment{ID: uuid.New().String(), TenantID: tenantID, BranchID: req.BranchID, UserID: req.UserID, CounterID: req.CounterID, AssignedAt: now}
 	if err := u.db.WithContext(ctx).Create(assignment).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("create failed")
+		}
 		return nil, err
 	}
 	u.tryAudit(ctx, "OPERATOR_ASSIGNMENT_CREATE", assignment.ID, map[string]string{"branch_id": assignment.BranchID, "user_id": assignment.UserID, "counter_id": assignment.CounterID})
+	if entry != nil {
+		entry.WithField("assignment_id", assignment.ID).Info("ok")
+	}
 	return toAssignmentResponse(assignment), nil
 }
 
 func (u *operatorAssignmentUseCase) GetAll(ctx context.Context) ([]model.OperatorAssignmentResponse, error) {
+	entry := u.logEntry(ctx, "GetAll", nil)
+	if entry != nil {
+		entry.Info("start")
+	}
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" {
 		return nil, exception.ErrBadRequest
 	}
 	var rows []entity.OperatorCounterAssignment
 	if err := u.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Order("assigned_at desc").Find(&rows).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("query failed")
+		}
 		return nil, err
 	}
 	res := make([]model.OperatorAssignmentResponse, 0, len(rows))
 	for i := range rows {
 		res = append(res, *toAssignmentResponse(&rows[i]))
 	}
+	if entry != nil {
+		entry.WithField("count", len(res)).Info("ok")
+	}
 	return res, nil
 }
 
 func (u *operatorAssignmentUseCase) Delete(ctx context.Context, id string) error {
+	entry := u.logEntry(ctx, "Delete", logrus.Fields{"assignment_id": id})
+	if entry != nil {
+		entry.Info("start")
+	}
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || id == "" {
 		return exception.ErrBadRequest
@@ -83,15 +109,41 @@ func (u *operatorAssignmentUseCase) Delete(ctx context.Context, id string) error
 		return exception.ErrNotFound
 	}
 	if assignment.UnassignedAt != nil {
+		if entry != nil {
+			entry.Info("already unassigned")
+		}
 		return nil
 	}
 	now := time.Now().UnixMilli()
 	assignment.UnassignedAt = &now
 	if err := u.db.WithContext(ctx).Save(&assignment).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("unassign failed")
+		}
 		return err
 	}
 	u.tryAudit(ctx, "OPERATOR_ASSIGNMENT_UNASSIGN", assignment.ID, map[string]string{"unassigned": "true"})
+	if entry != nil {
+		entry.Info("ok")
+	}
 	return nil
+}
+
+func (u *operatorAssignmentUseCase) logEntry(ctx context.Context, action string, fields logrus.Fields) *logrus.Entry {
+	if u.log == nil {
+		return nil
+	}
+	f := logrus.Fields{"module": "operator_assignment", "action": action}
+	for k, v := range fields {
+		f[k] = v
+	}
+	if tenantID := database.GetTenantID(ctx); tenantID != "" {
+		f["tenant_id"] = tenantID
+	}
+	if userID, ok := authcontext.UserIDFromContext(ctx); ok && userID != "" {
+		f["user_id"] = userID
+	}
+	return u.log.WithFields(f)
 }
 
 func (u *operatorAssignmentUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {

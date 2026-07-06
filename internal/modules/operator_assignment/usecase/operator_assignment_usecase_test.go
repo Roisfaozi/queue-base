@@ -38,7 +38,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 func TestOperatorAssignmentUseCase(t *testing.T) {
 	db := newTestDB(t)
 	audit := &stubAudit{}
-	uc := NewOperatorAssignmentUseCase(db, audit)
+	uc := NewOperatorAssignmentUseCase(db, nil, audit)
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-2", TenantID: "tenant-2", Code: "B2", Name: "Branch 2", Status: branchEntity.BranchStatusActive}).Error)

@@ -14,6 +14,6 @@ type Module struct {
 }
 
 func NewModule(db *gorm.DB, validate *validator.Validate, log *logrus.Logger, audit ...usecase.AuditLogger) *Module {
-	uc := usecase.NewOperatorAssignmentUseCase(db, audit...)
+	uc := usecase.NewOperatorAssignmentUseCase(db, log, audit...)
 	return &Module{UseCase: uc, Controller: assignmentHttp.NewController(uc, validate, log)}
 }
