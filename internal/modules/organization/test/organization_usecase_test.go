@@ -460,7 +460,7 @@ func TestOrganizationUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "Security_UpdateOrganization_ForbiddenForNonManagerActor",
+			name:     "Vulnerability_UpdateOrganization_ForbiddenForNonManagerActor",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupOrganizationTest()
@@ -624,7 +624,7 @@ func TestOrganizationUseCase(t *testing.T) {
 		},
 
 		{
-			name:     "Security_CreateOrganization_XSS",
+			name:     "Vulnerability_CreateOrganization_XSS",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupOrganizationTest()
