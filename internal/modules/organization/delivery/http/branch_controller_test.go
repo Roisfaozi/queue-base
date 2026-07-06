@@ -68,7 +68,7 @@ func newBranchTestValidator(t *testing.T) *validator.Validate {
 func TestBranchController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	t.Run("Create", func(t *testing.T) {
+	t.Run("Positive_Create", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
@@ -128,7 +128,7 @@ func TestBranchController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByID", func(t *testing.T) {
+	t.Run("Positive_GetByID", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubBranchControllerUseCase
@@ -167,7 +167,7 @@ func TestBranchController(t *testing.T) {
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
+	t.Run("Positive_Update", func(t *testing.T) {
 		name := " Main Office "
 		tests := []struct {
 			name     string
@@ -214,7 +214,7 @@ func TestBranchController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("Positive_GetAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubBranchControllerUseCase
@@ -254,7 +254,7 @@ func TestBranchController(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubBranchControllerUseCase

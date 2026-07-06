@@ -67,7 +67,7 @@ func (s *stubServiceControllerUseCase) DeleteService(ctx context.Context, servic
 func TestServiceController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	t.Run("Create", func(t *testing.T) {
+	t.Run("Positive_Create", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
@@ -116,7 +116,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
+	t.Run("Positive_Update", func(t *testing.T) {
 		flag := false
 		tests := []struct {
 			name     string
@@ -166,7 +166,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByID", func(t *testing.T) {
+	t.Run("Positive_GetByID", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubServiceControllerUseCase
@@ -210,7 +210,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("Positive_GetAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubServiceControllerUseCase
@@ -267,7 +267,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubServiceControllerUseCase

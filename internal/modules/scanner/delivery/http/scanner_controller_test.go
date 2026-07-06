@@ -33,7 +33,7 @@ func (s *stubScannerControllerUseCase) CheckIn(ctx context.Context, req *usecase
 func TestScannerController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	t.Run("CheckIn", func(t *testing.T) {
+	t.Run("Positive_CheckIn", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
