@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/queue-base/internal/modules/qms/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -43,8 +43,8 @@ func TestSignageDisconnectReconnectE2E(t *testing.T) {
 		// The initial state should be empty branch state (no tickets yet)
 		var resData struct {
 			Data struct {
-				CurrentlyCalled []model.QueueJourney `json:"currently_called"`
-				WaitingList     []model.QueueJourney `json:"waiting_list"`
+				CurrentlyCalled []entity.QueueJourney `json:"currently_called"`
+				WaitingList     []entity.QueueJourney `json:"waiting_list"`
 			} `json:"data"`
 		}
 		err := resp.JSON(&resData)

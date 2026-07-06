@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/queue-base/internal/modules/qms/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +39,7 @@ func TestCallerSignageFlowE2E(t *testing.T) {
 	server.DB.Exec("INSERT INTO organization_members (id, organization_id, user_id, role_id, status) VALUES (?, ?, ?, ?, ?)", uuid.New().String(), tenantID, callerID, "caller", "active")
 
 	// Pre-create a ticket in waiting state
-	server.DB.Exec("INSERT INTO queue_journeys (id, tenant_id, branch_id, service_id, ticket_number, status) VALUES (?, ?, ?, ?, ?, ?)", ticketID, tenantID, branchID, serviceID, "FLW001", model.QueueStatusWaiting)
+	server.DB.Exec("INSERT INTO queue_journeys (id, tenant_id, branch_id, service_id, ticket_number, status) VALUES (?, ?, ?, ?, ?, ?)", ticketID, tenantID, branchID, serviceID, "FLW001", entity.JourneyStatusPending)
 
 	// Auth token simulation via DB bypass or token inject
 	// If auth blocks we check logic in DB
@@ -69,7 +69,7 @@ func TestCallerSignageFlowE2E(t *testing.T) {
 
 			var resData struct {
 				Data struct {
-					CurrentlyCalled []model.QueueJourney `json:"currently_called"`
+					CurrentlyCalled []entity.QueueJourney `json:"currently_called"`
 				} `json:"data"`
 			}
 			err := sigResp.JSON(&resData)
