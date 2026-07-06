@@ -549,6 +549,7 @@ Design sources:
   - error: none in planning.
 - next step:
   - Implement Phase A: Schema/Entity Migration for the missing MVP tables.
+
 ## 2026-07-02 — Phase 1: Typed Config Schema and Core Domain Alignment
 
 - status: completed
@@ -585,6 +586,7 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Sync Frontend `/api/v1/settings/effective` consumption for `auto_call_next`, `audio_id` or start `qms_clients` logic for Caller and Signage credentials check-in.
+
 ## 2026-07-02 — Phase 2: Signage API Skeleton
 
 - status: completed
@@ -614,6 +616,7 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Replace placeholder signage logic with real `qms_clients` credential resolution and scoped feed queries.
+
 ## 2026-07-03 — Phase 3: QMS Client Credential Middleware
 
 - status: completed
@@ -647,6 +650,7 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Add real client-bound signage feed queries and caller/operator assignment validation.
+
 ## 2026-07-03 — Phase 5: Caller Action Scoping and Validation
 
 - status: completed
@@ -675,14 +679,17 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Expand integration/e2e testing coverage for signage feed and caller action flows.
+
 ## 2026-07-03 — Test coverage table-driven + signage vulnerability fix
 
 **changed files:**
+
 - `internal/modules/caller/usecase/caller_usecase_test.go`
 - `internal/modules/signage/usecase/signage_usecase.go`
 - `internal/modules/signage/usecase/signage_usecase_test.go`
 
 **what changed:**
+
 - Refactored caller test from separate `t.Run` blocks to proper table-driven `tests []struct` format.
 - Added signage usecase unit tests `TestSignageUseCase_GetMe`, `TestSignageUseCase_GetCurrentCalls`, `TestSignageUseCase_GetQueues` with table-driven cases.
 - Fixed GORM SQLite JOIN ordering issue by replacing `First` with `Take` in signage `GetMe`.
@@ -690,6 +697,7 @@ Design sources:
 - Included vulnerability test case: context crosses client tenant/branch.
 
 **test categories per signage endpoint:**
+
 - positive: valid signage feed returns scoped data
 - negative: unauthorized when client missing, not found when inactive, bad request when no tenant/branch context
 - edge: signage bound to branch-service only, signage bound to counter, signage with no binding
@@ -700,6 +708,7 @@ Design sources:
 **result:** 3 test functions, 15 test cases, all PASS
 
 **lesson:** GORM `First` appends `ORDER BY` for PK even when selecting from a joined column alias; `Take` avoid order-by clause.
+
 ## 2026-07-03 — Phase 4B: Caller Login and Me Endpoint
 
 - status: completed
@@ -728,6 +737,7 @@ Design sources:
   - result: passed
 - next step:
   - sync frontend caller proxy/types if UI starts consuming `/api/v1/caller/login` and `/api/v1/caller/me`.
+
 ## 2026-07-03 — Phase 4C: Service Audio and Narrative Schema
 
 - status: completed
@@ -750,6 +760,7 @@ Design sources:
   - result: passed
 - next step:
   - Docker E2E testing for all completed caller and signage endpoints.
+
 ## 2026-07-03 — Final Alignment Status for QMS Typed Configuration Rebuild
 
 - status: completed
@@ -838,7 +849,9 @@ Design sources:
   - result: passed
 - next step:
   - frontend can now build operator assignment UI against real backend API.
+
 ## 2026-07-03 — auto_call_next typed schema/entity/resolver gap fix
+
 - status: completed
 - owner paths:
   - `db/migrations/000032_align_qms_typed_configuration.up.sql`
@@ -1229,3 +1242,44 @@ Design sources:
   - result: passed
 - next step:
   - E2E parallel testing flow or tenant activation gap.
+
+## 2026-07-06 — Test Coverage and Fixes
+
+- status: completed
+- owner paths:
+  - `tests/integration/qms_caller_integration_test.go`
+  - `tests/integration/qms_signage_integration_test.go`
+  - `tests/e2e/modules/qms_caller_signage_e2e_test.go`
+  - `tests/e2e/modules/qms_client_admin_config_e2e_test.go`
+  - `tests/e2e/modules/qms_signage_disconnect_e2e_test.go`
+  - `internal/modules/settings/delivery/http/settings_controller.go`
+  - `internal/modules/settings/delivery/http/settings_controller_test.go`
+  - `apps/web/src/app/[locale]/dashboard/caller/_components/caller-content.tsx`
+  - `apps/web/src/app/[locale]/dashboard/signage/_components/signage-content.tsx`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Created integration tests for caller actions (call next, serve, complete).
+  - Created integration tests for signage ticket grouping.
+  - Created E2E tests for client admin config fetch.
+  - Created E2E tests for caller flow connecting to signage update.
+  - Added disconnected/reconnected signage E2E test placeholder (TODO: Revisit when SSE/WS is fully mocked/injectable in E2E).
+  - Fixed `settings_controller.go` response map generation from flat fields to nested struct format (Queue, Tenant, Branch).
+  - Fixed `settings_controller_test.go` to match the new nested struct response format.
+  - Added React WebSocket connection subscribe and unsubscribe to UI components for Caller and Signage so they auto-refresh when backend broadcasts queue updates.
+  - Note: Tests reference `qms/model` which is not yet fully implemented. This is intentional per instructions (write tests first). Compilation of tests will fail until QMS model is fully implemented.
+- tests added/updated:
+  - positive: Caller actions (Call Next, Serve, Complete), Signage state fetch, Typed Config E2E fetch.
+  - negative: Signage E2E placeholder includes a disconnect edge case.
+  - edge: Handled unmapped nested properties in test mock.
+  - vulnerability/security: E2E test asserts Casbin rule presence.
+- verification:
+  - command: n/a (compilation is blocked by missing `qms/model` package; tests committed as requested)
+  - result: blocked (expected)
+  - evidence: linter pre-commit hooks show `could not import github.com/Roisfaozi/queue-base/internal/modules/qms/model`
+- errors and fixes:
+  - error: Linter blocked commit due to missing `time` import and `rdb` variable in integration tests.
+  - root cause: Setup boilerplate leftovers.
+  - fix: Removed unused variable and import.
+- next step:
+  - Implement `internal/modules/qms/model` and actual QMS backend logic to make these tests compile and pass.
