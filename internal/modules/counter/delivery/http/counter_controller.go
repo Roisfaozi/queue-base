@@ -57,6 +57,27 @@ func (h *CounterController) Create(c *gin.Context) {
 	response.Created(c, res)
 }
 
+func (h *CounterController) CreateUnderBranch(c *gin.Context) {
+	var req model.CreateCounterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
+		return
+	}
+	req.BranchID = branchIDParam(c)
+	if err := h.validate.Struct(req); err != nil {
+		h.logError(err, "validation error on create counter")
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	res, err := h.useCase.CreateCounter(c.Request.Context(), &req)
+	if err != nil {
+		h.logError(err, "failed to create counter")
+		response.HandleError(c, err, "failed to create counter")
+		return
+	}
+	response.Created(c, res)
+}
+
 // GetAll godoc
 // @Summary      List counters
 // @Description  Returns all counters under active tenant scope.
@@ -76,6 +97,23 @@ func (h *CounterController) GetAll(c *gin.Context) {
 		return
 	}
 	response.Success(c, res)
+}
+
+func (h *CounterController) GetAllUnderBranch(c *gin.Context) {
+	branchID := branchIDParam(c)
+	res, err := h.useCase.ListCounters(c.Request.Context())
+	if err != nil {
+		h.logError(err, "failed to get counters")
+		response.HandleError(c, err, "failed to get counters")
+		return
+	}
+	filtered := make([]model.CounterResponse, 0, len(res))
+	for _, counter := range res {
+		if counter.BranchID == branchID {
+			filtered = append(filtered, counter)
+		}
+	}
+	response.Success(c, filtered)
 }
 
 // GetByID godoc
@@ -98,6 +136,12 @@ func (h *CounterController) GetByID(c *gin.Context) {
 		return
 	}
 	response.Success(c, res)
+}
+
+func (h *CounterController) GetByIDUnderBranch(c *gin.Context) {
+	h.withBranchCounter(c, func(counter *model.CounterResponse) {
+		response.Success(c, counter)
+	})
 }
 
 // Update godoc
@@ -136,6 +180,13 @@ func (h *CounterController) Update(c *gin.Context) {
 	response.Success(c, res)
 }
 
+func (h *CounterController) UpdateUnderBranch(c *gin.Context) {
+	if !h.counterMatchesBranch(c) {
+		return
+	}
+	h.Update(c)
+}
+
 // Delete godoc
 // @Summary      Delete counter
 // @Description  Deletes counter under active tenant scope.
@@ -155,6 +206,47 @@ func (h *CounterController) Delete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *CounterController) DeleteUnderBranch(c *gin.Context) {
+	if !h.counterMatchesBranch(c) {
+		return
+	}
+	h.Delete(c)
+}
+
+func (h *CounterController) withBranchCounter(c *gin.Context, fn func(*model.CounterResponse)) {
+	counter, err := h.useCase.GetCounter(c.Request.Context(), counterIDParam(c))
+	if err != nil {
+		h.logError(err, "failed to get counter")
+		response.HandleError(c, err, "failed to get counter")
+		return
+	}
+	if counter.BranchID != branchIDParam(c) {
+		response.NotFound(c, exception.ErrNotFound, "counter not found")
+		return
+	}
+	fn(counter)
+}
+
+func branchIDParam(c *gin.Context) string {
+	if v := c.Param("branch_id"); v != "" {
+		return v
+	}
+	return c.Param("id")
+}
+
+func counterIDParam(c *gin.Context) string {
+	if v := c.Param("counter_id"); v != "" {
+		return v
+	}
+	return c.Param("id")
+}
+
+func (h *CounterController) counterMatchesBranch(c *gin.Context) bool {
+	ok := false
+	h.withBranchCounter(c, func(*model.CounterResponse) { ok = true })
+	return ok
 }
 
 func (h *CounterController) logError(err error, msg string) {
