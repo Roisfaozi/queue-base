@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/qms/model"
 	"github.com/Roisfaozi/queue-base/tests/integration/testutils"

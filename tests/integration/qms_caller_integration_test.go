@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/qms/model"
 	"github.com/Roisfaozi/queue-base/tests/integration/testutils"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestCallerActionsIntegration(t *testing.T) {
-	app, db, rdb, cleanup := testutils.SetupIntegrationApp(t)
+	app, db, _, cleanup := testutils.SetupIntegrationApp(t)
 	defer cleanup()
 
 	// 1. Setup tenant, branch, service, counter, caller user
