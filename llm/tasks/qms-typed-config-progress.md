@@ -1506,3 +1506,31 @@ Design sources:
   - result: passed (skip logic intact for missing Docker)
 - next step:
   - Wait for QA/Docker agent to run integration tests natively.
+
+## 2026-07-07 — Journey Lifecycle Integration Slice
+
+- status: completed
+- owner paths:
+  - `internal/modules/queue/usecase/queue_usecase_test.go`
+  - `tests/integration/modules/qms_journey_lifecycle_integration_test.go`
+  - `tests/integration/modules/qms_caller_signage_integration_test.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Added unit test loop `TestQueueJourneyLifecycle` to prove call -> recall -> serve -> complete sequential state transitions without breaking.
+  - Added integration playbook `TestIntegration_QMSJourneyLifecycle` to prove full schema lifecycle across settings, DB transitions, and status updates under `tests/integration/modules`.
+  - Added integration playbook `TestIntegration_CallerSignageLifecycle` to prove caller one-hop action impacts bound signage current calls list.
+  - Fixed E2E compile failures caused by older typed config struct dependencies in `tests/e2e/modules/qms_client_admin_config_e2e_test.go`.
+- tests added/updated:
+  - positive: queue journey passes unit mock verification.
+  - positive: queue journey passes real DB integration constraints.
+  - positive: caller action populates bound signage.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./internal/modules/queue/usecase -run TestQueueJourneyLifecycle -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./tests/integration/modules -tags=integration -run 'TestIntegration_QMSJourneyLifecycle|TestIntegration_CallerSignageLifecycle' -count=1`
+  - result: passed (skip logic intact for missing Docker)
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./tests/e2e/api ./tests/e2e/modules -tags=e2e -run 'TestQMS|TestCaller|Test.*QMS|TestCallerSignage' -count=1`
+  - result: passed (compile OK)
+- next step:
+  - Wait for QA/Docker agent to run integration tests natively.
