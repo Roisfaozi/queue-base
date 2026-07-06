@@ -9,6 +9,7 @@ import LocaleToggler from "~/components/shared/locale-toggler";
 import { UserNav } from "~/components/dashboard/user-nav";
 import { Separator } from "~/components/ui/separator";
 import { PresenceAvatarStack } from "~/components/dashboard/presence-avatar-stack";
+import { ConnectionIndicator } from "./connection-indicator";
 import { cn } from "~/lib/utils";
 
 export function DashboardHeader() {
@@ -29,6 +30,7 @@ export function DashboardHeader() {
 
 			{/* Right: Actions */}
 			<div className="flex items-center gap-3">
+				<ConnectionIndicator />
 				<PresenceAvatarStack className="hidden lg:flex" />
 				<Separator orientation="vertical" className="hidden h-6 lg:block" />
 				<div className="flex items-center gap-1">
