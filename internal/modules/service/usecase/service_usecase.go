@@ -61,6 +61,10 @@ func (u *serviceUseCase) CreateService(ctx context.Context, req *model.CreateSer
 		Name:                     req.Name,
 		Type:                     serviceType,
 		DefaultEstimatedDuration: estimatedDuration,
+		AudioID:                  req.AudioID,
+		AudioEN:                  req.AudioEN,
+		NarrativeInstructionID:   req.NarrativeInstructionID,
+		NarrativeInstructionEN:   req.NarrativeInstructionEN,
 		Status:                   entity.ServiceStatusActive,
 		IsPharmacy:               req.IsPharmacy,
 		IsPharmacyReception:      req.IsPharmacyReception,
@@ -124,6 +128,18 @@ func (u *serviceUseCase) UpdateService(ctx context.Context, serviceID string, re
 	if req.DefaultEstimatedDuration != nil {
 		service.DefaultEstimatedDuration = *req.DefaultEstimatedDuration
 	}
+	if req.AudioID != nil {
+		service.AudioID = *req.AudioID
+	}
+	if req.AudioEN != nil {
+		service.AudioEN = *req.AudioEN
+	}
+	if req.NarrativeInstructionID != nil {
+		service.NarrativeInstructionID = *req.NarrativeInstructionID
+	}
+	if req.NarrativeInstructionEN != nil {
+		service.NarrativeInstructionEN = *req.NarrativeInstructionEN
+	}
 	if req.Status != nil {
 		service.Status = *req.Status
 	}
@@ -179,6 +195,10 @@ func (u *serviceUseCase) mapToResponse(service *entity.Service) *model.ServiceRe
 		Name:                     service.Name,
 		Type:                     service.Type,
 		DefaultEstimatedDuration: service.DefaultEstimatedDuration,
+		AudioID:                  service.AudioID,
+		AudioEN:                  service.AudioEN,
+		NarrativeInstructionID:   service.NarrativeInstructionID,
+		NarrativeInstructionEN:   service.NarrativeInstructionEN,
 		Status:                   service.Status,
 		IsPharmacy:               service.IsPharmacy,
 		IsPharmacyReception:      service.IsPharmacyReception,

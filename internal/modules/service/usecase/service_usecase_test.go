@@ -125,6 +125,29 @@ func TestCreateService(t *testing.T) {
 			},
 		},
 		{
+			name:     "Positive_PersistsAudioAndNarrativeFields",
+			category: "positive",
+			req: model.CreateServiceRequest{
+				Code:                   "aud",
+				Name:                   "Audio Service",
+				AudioID:                "audio-1",
+				AudioEN:                "audio-en-1",
+				NarrativeInstructionID: "narr-1",
+				NarrativeInstructionEN: "narr-en-1",
+			},
+			tenantID: "tenant-1",
+			wantErr:  nil,
+			wantRes: func(t *testing.T, res *model.ServiceResponse, repo *stubServiceRepo) {
+				require.NotNil(t, repo.service)
+				assert.Equal(t, "audio-1", repo.service.AudioID)
+				assert.Equal(t, "audio-en-1", repo.service.AudioEN)
+				assert.Equal(t, "narr-1", repo.service.NarrativeInstructionID)
+				assert.Equal(t, "narr-en-1", repo.service.NarrativeInstructionEN)
+				assert.Equal(t, "audio-1", res.AudioID)
+				assert.Equal(t, "narr-en-1", res.NarrativeInstructionEN)
+			},
+		},
+		{
 			name:     "Negative_RequiresTenantContextForPharmacyFlags",
 			category: "negative",
 			req: model.CreateServiceRequest{
@@ -198,10 +221,11 @@ func TestGetService(t *testing.T) {
 			category:  "positive",
 			serviceID: "svc-1",
 			tenantID:  "tenant-1",
-			stubRes:   &entity.Service{ID: "svc-1", TenantID: "tenant-1"},
+			stubRes:   &entity.Service{ID: "svc-1", TenantID: "tenant-1", AudioID: "audio-1", NarrativeInstructionEN: "narr-en-1"},
 			wantErr:   nil,
 			wantRes: func(t *testing.T, res *model.ServiceResponse) {
 				assert.Equal(t, "svc-1", res.ID)
+				assert.Equal(t, "audio-1", res.AudioID)
 			},
 		},
 		{

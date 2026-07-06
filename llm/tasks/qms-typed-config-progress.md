@@ -945,3 +945,26 @@ Design sources:
   - result: passed
 - next step:
   - Commit rules + Branch CRUD UI slices separately when git index is writable.
+
+## 2026-07-06 — Service audio & narrative configuration coverage
+
+- status: completed
+- owner paths:
+  - `internal/modules/service/model/service_model.go`
+  - `internal/modules/service/usecase/service_usecase.go`
+  - `apps/web/src/lib/api/qms.ts`
+  - `apps/web/src/components/dashboard/services/service-dialog.tsx`
+- work done:
+  - Added `AudioID`, `AudioEN`, `NarrativeInstructionID`, and `NarrativeInstructionEN` to `ServiceResponse`, `CreateServiceRequest`, and `UpdateServiceRequest`.
+  - Mapped audio/narrative fields to/from `entity.Service` inside `CreateService` and `UpdateService` usecases.
+  - Synced frontend API client types for `servicesApi`.
+  - Updated `ServiceDialog` in `apps/web` to include fields for audio/narrative instructions.
+- tests added/updated:
+  - `TestCreateService/Positive_PersistsAudioAndNarrativeFields` verifies payload fields map to repository input and response output correctly.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/service/usecase -count=1`
+  - result: passed
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed
+- next step:
+  - Setup Wizard UI (if product desires it to replace the current standalone dashboard dialogs).

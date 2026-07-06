@@ -27,6 +27,10 @@ export interface Service {
 	name: string;
 	type?: string;
 	default_estimated_duration?: number;
+	audio_id?: string;
+	audio_en?: string;
+	narrative_instruction_id?: string;
+	narrative_instruction_en?: string;
 	status: "active" | "inactive";
 	is_pharmacy: boolean;
 	is_pharmacy_reception: boolean;
@@ -193,6 +197,10 @@ export const servicesApi = {
 		name: string;
 		type?: string;
 		default_estimated_duration?: number;
+		audio_id?: string;
+		audio_en?: string;
+		narrative_instruction_id?: string;
+		narrative_instruction_en?: string;
 		is_pharmacy: boolean;
 		is_pharmacy_reception: boolean;
 	}) => api.post<{ data: Service }>("/services", data),
@@ -203,6 +211,10 @@ export const servicesApi = {
 			name?: string;
 			type?: string;
 			default_estimated_duration?: number;
+			audio_id?: string;
+			audio_en?: string;
+			narrative_instruction_id?: string;
+			narrative_instruction_en?: string;
 			status?: "active" | "inactive";
 			is_pharmacy?: boolean;
 			is_pharmacy_reception?: boolean;

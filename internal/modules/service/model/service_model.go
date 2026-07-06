@@ -13,6 +13,10 @@ type ServiceResponse struct {
 	Name                     string `json:"name"`
 	Type                     string `json:"type"`
 	DefaultEstimatedDuration int    `json:"default_estimated_duration"`
+	AudioID                  string `json:"audio_id,omitempty"`
+	AudioEN                  string `json:"audio_en,omitempty"`
+	NarrativeInstructionID   string `json:"narrative_instruction_id,omitempty"`
+	NarrativeInstructionEN   string `json:"narrative_instruction_en,omitempty"`
 	Status                   string `json:"status"`
 	IsPharmacy               bool   `json:"is_pharmacy"`
 	IsPharmacyReception      bool   `json:"is_pharmacy_reception"`
@@ -25,6 +29,10 @@ type CreateServiceRequest struct {
 	Name                     string `json:"name" validate:"required,min=3,max=255,xss"`
 	Type                     string `json:"type,omitempty"`
 	DefaultEstimatedDuration int    `json:"default_estimated_duration,omitempty"`
+	AudioID                  string `json:"audio_id,omitempty"`
+	AudioEN                  string `json:"audio_en,omitempty"`
+	NarrativeInstructionID   string `json:"narrative_instruction_id,omitempty"`
+	NarrativeInstructionEN   string `json:"narrative_instruction_en,omitempty"`
 	IsPharmacy               bool   `json:"is_pharmacy"`
 	IsPharmacyReception      bool   `json:"is_pharmacy_reception"`
 }
@@ -39,6 +47,10 @@ type UpdateServiceRequest struct {
 	Name                     *string `json:"name" validate:"omitempty,min=3,max=255,xss"`
 	Type                     *string `json:"type,omitempty"`
 	DefaultEstimatedDuration *int    `json:"default_estimated_duration,omitempty"`
+	AudioID                  *string `json:"audio_id,omitempty"`
+	AudioEN                  *string `json:"audio_en,omitempty"`
+	NarrativeInstructionID   *string `json:"narrative_instruction_id,omitempty"`
+	NarrativeInstructionEN   *string `json:"narrative_instruction_en,omitempty"`
 	Status                   *string `json:"status" validate:"omitempty,oneof=active inactive"`
 	IsPharmacy               *bool   `json:"is_pharmacy"`
 	IsPharmacyReception      *bool   `json:"is_pharmacy_reception"`
