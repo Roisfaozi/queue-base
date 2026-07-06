@@ -301,6 +301,48 @@ func (s *stubCounterBranchServiceRepo) Delete(_ context.Context, tenantID, branc
 	return nil
 }
 
+func TestCounterDeactivationEdgeCase(t *testing.T) {
+	// ponytail: no cascade — deactivating parent does not auto-deactivate counter
+	repo := &stubCounterRepo{}
+	branchRepo := &stubCounterBranchRepo{
+		branch: &organizationEntity.Branch{ID: "b-1", TenantID: "t-1", Status: organizationEntity.BranchStatusActive},
+	}
+	bsRepo := &stubCounterBranchServiceRepo{isActive: true}
+	uc := NewCounterUseCase(repo, branchRepo, bsRepo, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	req := &model.CreateCounterRequest{
+		BranchID:        "b-1",
+		BranchServiceID: "bs-1",
+		Code:            "C1",
+		Name:            "Counter 1",
+		DisplayName:     "Counter 1",
+	}
+	res, err := uc.CreateCounter(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, entity.CounterStatusActive, res.Status)
+
+	// Now deactivate branch — counter should still be active (no cascade)
+	branchRepo.branch.Status = organizationEntity.BranchStatusInactive
+
+	// Counter still accessible via GetCounter
+	getRes, err := uc.GetCounter(ctx, res.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.CounterStatusActive, getRes.Status, "counter remains active after branch deactivation (no cascade)")
+
+	// New counter creation should be rejected
+	req2 := &model.CreateCounterRequest{
+		BranchID:        "b-1",
+		BranchServiceID: "bs-1",
+		Code:            "C2",
+		Name:            "Counter 2",
+		DisplayName:     "Counter 2",
+	}
+	_, err = uc.CreateCounter(ctx, req2)
+	assert.ErrorIs(t, err, exception.ErrForbidden, "create on inactive branch should fail")
+}
+
 func TestCounterServiceRelationGuard(t *testing.T) {
 	tests := []struct {
 		name            string

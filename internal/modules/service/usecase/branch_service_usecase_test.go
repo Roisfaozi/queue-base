@@ -87,6 +87,39 @@ func (s *stubBranchServiceRepo) Delete(_ context.Context, tenantID, branchID, id
 	return s.err
 }
 
+func TestBranchServiceDeactivationEdgeCase(t *testing.T) {
+	// ponytail: no cascade — deactivating branch does not auto-deactivate branch-service
+	branch := &branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}
+	branchRepo := &stubBranchRepo{branch: branch}
+	serviceRepo := &stubServiceRepo{service: &entity.Service{ID: "s-1", TenantID: "t-1", Status: entity.ServiceStatusActive}}
+	repo := &stubBranchServiceRepo{}
+	audit := &stubBranchServiceAuditLogger{}
+	uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	res, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "s-1", CustomName: "Test"})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.True(t, res.IsActive)
+
+	// Deactivate branch then check BS still exists in list
+	branch.Status = branchEntity.BranchStatusInactive
+	list, err := uc.ListBranchServices(ctx, "b-1")
+	require.NoError(t, err)
+	found := false
+	for _, bs := range list {
+		if bs.ID == res.ID {
+			found = true
+			assert.True(t, bs.IsActive, "branch-service remains active after branch deactivation (no cascade)")
+		}
+	}
+	assert.True(t, found, "branch-service still listed after branch deactivation")
+
+	// New BS creation should be rejected
+	_, err = uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "s-1", CustomName: "Blocked"})
+	assert.ErrorIs(t, err, exception.ErrForbidden, "create on inactive branch should fail")
+}
+
 func TestBranchServiceUseCase_AuditHooks(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 
