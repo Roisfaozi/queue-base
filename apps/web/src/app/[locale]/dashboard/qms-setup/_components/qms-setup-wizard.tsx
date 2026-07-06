@@ -127,6 +127,10 @@ export function QMSSetupWizard() {
 		() => branches.filter((branch) => branch.status === "active"),
 		[branches],
 	);
+	const draftBranches = useMemo(
+		() => branches.filter((branch) => branch.status === "draft"),
+		[branches],
+	);
 	const activeServices = useMemo(
 		() => services.filter((service) => service.status === "active"),
 		[services],
@@ -165,7 +169,18 @@ export function QMSSetupWizard() {
 			case "tenant":
 				return [] as string[];
 			case "branch":
-				return activeBranches.length > 0 ? [] : ["Belum ada branch active."];
+				const br: string[] = [];
+				if (activeBranches.length === 0 && draftBranches.length === 0) {
+					br.push(
+						"Belum ada branch. Buat branch baru dengan isi Address, City, Province, Phone, dan Timezone.",
+					);
+				}
+				if (draftBranches.length > 0) {
+					br.push(
+						"Branch draft butuh dilengkapi: Address, City, Province, Phone, Timezone, lalu update status jadi active.",
+					);
+				}
+				return br;
 			case "service":
 				return activeServices.length > 0 ? [] : ["Belum ada service active."];
 			case "branch_service":
@@ -216,10 +231,12 @@ export function QMSSetupWizard() {
 				<CardHeader>
 					<CardTitle>Progress</CardTitle>
 					<CardDescription>
-						{activeBranches.length} active branches, {activeServices.length}{" "}
-						active services, {activeBranchServices.length} active
-						branch-services, {activeCounters.length} active counters,{" "}
-						{clients.length} QMS clients.
+						{activeBranches.length} active branches
+						{draftBranches.length > 0 ? `, ${draftBranches.length} draft` : ""},{" "}
+						{activeServices.length} active services,{" "}
+						{activeBranchServices.length} active branch-services,{" "}
+						{activeCounters.length} active counters, {clients.length} QMS
+						clients.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
