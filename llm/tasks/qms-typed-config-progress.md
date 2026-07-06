@@ -1094,3 +1094,41 @@ Design sources:
   - No runtime change; doc maintenance only.
 - next step:
   - Full gap register row-by-row update if precise tracking needed per section detail.
+
+## 2026-07-06 — QMS frontend app spec doc + analysis
+
+- status: completed
+- owner paths:
+  - `documentation/QMS_Frontend_App_Specs.md` (created)
+  - `llm/tasks/qms-typed-config-progress.md` (this entry)
+- work done:
+  - Created comprehensive `QMS_Frontend_App_Specs.md` covering:
+    - Caller App and Signage App identity, flow, core responsibilities, proposed stack, state and realtime requirements.
+    - Immediate next steps to move from admin-surfaces to standalone apps.
+  - Audited dashboard WS connectivity state: `isConnected` from `WebSocketContext` available globally but unused except queue page.
+  - Proposed minimal indicator solution via `ConnectionIndicator` component.
+  - Detailed wizard inline embedding tradeoff: extract forms vs keep link-based approach; recommend defer.
+  - Documented logging gaps for signage, qms_client, and operator_assignment usecases.
+  - Audited document freshness: progression doc fresh, coverage doc partially stale, diagrams not rebased.
+- next step:
+  - Implement logging for signage/qms_client/operator_assignment usecases.
+  - Add connection indicator component to dashboard shell layout.
+
+## 2026-07-06 — Split Caller and Signage app specs
+
+- status: completed
+- owner paths:
+  - `documentation/QMS_Caller_App_Spec.md`
+  - `documentation/QMS_Signage_App_Spec.md`
+- work done:
+  - Created dedicated Caller App spec instead of combined frontend spec.
+  - Created dedicated Signage App spec instead of combined frontend spec.
+  - Caller spec covers hybrid auth, operator assignment, queue actions, realtime channel, UI states, security, observability, and target deployment shape.
+  - Signage spec covers machine auth, branding fallback, current-calls, queues, realtime channel, audio/announcement behavior, UI states, kiosk deployment, security, and observability.
+  - Kept both docs explicitly clear that current `apps/web/dashboard/caller` and `apps/web/dashboard/signage` are admin helper surfaces, not final standalone apps.
+- verification:
+  - command: `head -20 documentation/QMS_Caller_App_Spec.md && head -20 documentation/QMS_Signage_App_Spec.md`
+  - result: passed
+  - evidence: both files exist and have dedicated standalone spec headings.
+- next step:
+  - Implement `ConnectionIndicator` for dashboard WS state or logging for signage/qms_client/operator_assignment usecases.
