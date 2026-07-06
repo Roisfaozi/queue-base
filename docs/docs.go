@@ -1667,6 +1667,77 @@ const docTemplate = `{
                 }
             }
         },
+        "/caller/queue-journeys/{journey_id}/action": {
+            "post": {
+                "description": "Perform call/serve/complete/skip/cancel on a queue journey.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "caller"
+                ],
+                "summary": "Caller action on queue journey",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Queue Journey ID",
+                        "name": "journey_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "QMS Client ID",
+                        "name": "X-Client-ID",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "QMS Client API Key",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Action request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_caller_model.CallerActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    }
+                }
+            }
+        },
         "/counters": {
             "get": {
                 "security": [
@@ -5412,14 +5483,45 @@ const docTemplate = `{
                 }
             }
         },
-        "/settings": {
-            "post": {
-                "security": [
+        "/signage/current-calls": {
+            "get": {
+                "description": "Returns active calling queues for the bound signage scope.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "signage"
+                ],
+                "summary": "Get current calls for signage",
+                "parameters": [
                     {
-                        "BearerAuth": []
+                        "type": "string",
+                        "description": "QMS Client ID",
+                        "name": "X-Client-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "QMS Client API Key",
+                        "name": "X-API-Key",
+                        "in": "header",
+                        "required": true
                     }
                 ],
-                "description": "Creates tenant, branch, service, or counter scoped setting override.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
+                        }
+                    }
+                }
+            }
+        },
+        "/signage/me": {
+            "get": {
+                "description": "Returns bound tenant, branch, and profile info for signage client.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5427,42 +5529,34 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "settings"
+                    "signage"
                 ],
-                "summary": "Create setting",
+                "summary": "Get signage client info",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID",
-                        "name": "X-Organization-ID",
+                        "description": "QMS Client ID",
+                        "name": "X-Client-ID",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "Create Setting Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_settings_model.CreateSettingRequest"
-                        }
+                        "type": "string",
+                        "description": "QMS Client API Key",
+                        "name": "X-API-Key",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
                         }
@@ -5476,180 +5570,28 @@ const docTemplate = `{
                 }
             }
         },
-        "/settings/effective": {
+        "/signage/queues": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Resolves core QMS queue behavior from typed queue settings tables.",
+                "description": "Returns active waiting queues for the bound signage scope.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "settings"
+                    "signage"
                 ],
-                "summary": "Resolve effective queue config",
+                "summary": "Get waiting queues for signage",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID",
-                        "name": "X-Organization-ID",
+                        "description": "QMS Client ID",
+                        "name": "X-Client-ID",
                         "in": "header",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Branch ID",
-                        "name": "branch_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Service ID",
-                        "name": "service_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Counter ID",
-                        "name": "counter_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            }
-        },
-        "/settings/resolve": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Resolves setting value using tenant -\u003e branch -\u003e service -\u003e counter inheritance.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "settings"
-                ],
-                "summary": "Resolve effective setting",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Setting key",
-                        "name": "Key",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Branch ID",
-                        "name": "BranchID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Service ID",
-                        "name": "ServiceID",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Counter ID",
-                        "name": "CounterID",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            }
-        },
-        "/settings/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns setting details under active tenant scope.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "settings"
-                ],
-                "summary": "Get setting by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Setting ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Tenant ID",
-                        "name": "X-Organization-ID",
+                        "description": "QMS Client API Key",
+                        "name": "X-API-Key",
                         "in": "header",
                         "required": true
                     }
@@ -5659,141 +5601,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates scoped setting override under active tenant scope.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "settings"
-                ],
-                "summary": "Update setting",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Setting ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Tenant ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Update Setting Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_settings_model.UpdateSettingRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deletes scoped setting override under active tenant scope.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "settings"
-                ],
-                "summary": "Delete setting",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Setting ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Tenant ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
                         }
                     }
                 }
@@ -7438,6 +7245,24 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_Roisfaozi_queue-base_internal_modules_caller_model.CallerActionRequest": {
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "call",
+                        "serve",
+                        "complete",
+                        "skip",
+                        "cancel"
+                    ]
+                }
+            }
+        },
         "github_com_Roisfaozi_queue-base_internal_modules_counter_model.CreateCounterRequest": {
             "type": "object",
             "required": [
@@ -8215,6 +8040,12 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "audio_en": {
+                    "type": "string"
+                },
+                "audio_id": {
+                    "type": "string"
+                },
                 "code": {
                     "type": "string",
                     "maxLength": 50,
@@ -8233,6 +8064,12 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 3
+                },
+                "narrative_instruction_en": {
+                    "type": "string"
+                },
+                "narrative_instruction_id": {
+                    "type": "string"
                 },
                 "type": {
                     "type": "string"
@@ -8242,6 +8079,12 @@ const docTemplate = `{
         "github_com_Roisfaozi_queue-base_internal_modules_service_model.UpdateServiceRequest": {
             "type": "object",
             "properties": {
+                "audio_en": {
+                    "type": "string"
+                },
+                "audio_id": {
+                    "type": "string"
+                },
                 "code": {
                     "type": "string",
                     "maxLength": 50,
@@ -8261,6 +8104,12 @@ const docTemplate = `{
                     "maxLength": 255,
                     "minLength": 3
                 },
+                "narrative_instruction_en": {
+                    "type": "string"
+                },
+                "narrative_instruction_id": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string",
                     "enum": [
@@ -8269,57 +8118,6 @@ const docTemplate = `{
                     ]
                 },
                 "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_Roisfaozi_queue-base_internal_modules_settings_model.CreateSettingRequest": {
-            "type": "object",
-            "required": [
-                "key",
-                "scope_id",
-                "scope_type",
-                "value"
-            ],
-            "properties": {
-                "key": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1
-                },
-                "scope_id": {
-                    "type": "string"
-                },
-                "scope_type": {
-                    "type": "string",
-                    "enum": [
-                        "tenant",
-                        "branch",
-                        "service",
-                        "counter"
-                    ]
-                },
-                "value": {
-                    "type": "string"
-                },
-                "value_type": {
-                    "type": "string",
-                    "enum": [
-                        "string",
-                        "number",
-                        "boolean",
-                        "json"
-                    ]
-                }
-            }
-        },
-        "github_com_Roisfaozi_queue-base_internal_modules_settings_model.UpdateSettingRequest": {
-            "type": "object",
-            "properties": {
-                "is_active": {
-                    "type": "boolean"
-                },
-                "value": {
                     "type": "string"
                 }
             }
