@@ -134,17 +134,17 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 		expectedModel *model.SignageMeResponse
 	}{
 		{
-			name:        "unauthorized when client missing",
+			name:        "Negative_unauthorized when client missing",
 			clientID:    "",
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
-			name:        "not found when client inactive or absent",
+			name:        "Negative_not found when client inactive or absent",
 			clientID:    "missing",
 			expectedErr: exception.ErrNotFound,
 		},
 		{
-			name:     "returns full bound signage profile",
+			name:     "Positive_returns full bound signage profile",
 			clientID: "signage-1",
 			expectedModel: &model.SignageMeResponse{
 				ClientID:           "signage-1",
@@ -164,7 +164,7 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 			},
 		},
 		{
-			name:     "falls back to tenant branding when branch empty",
+			name:     "Edge_falls back to tenant branding when branch empty",
 			clientID: "signage-4",
 			expectedModel: &model.SignageMeResponse{
 				ClientID:    "signage-4",
@@ -207,25 +207,25 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 		expectedRows []model.SignageCurrentCallResponse
 	}{
 		{
-			name:        "unauthorized when client missing",
+			name:        "Negative_unauthorized when client missing",
 			ctx:         newSignageCtx(),
 			clientID:    "",
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
-			name:        "bad request when tenant or branch missing",
+			name:        "Negative_bad request when tenant or branch missing",
 			ctx:         context.Background(),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrBadRequest,
 		},
 		{
-			name:        "forbidden when context crosses client binding",
+			name:        "Vulnerability_forbidden when context crosses client binding",
 			ctx:         newSignageCtxFor("t-1", "b-2"),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrForbidden,
 		},
 		{
-			name:     "filters by branch service and counter binding",
+			name:     "Positive_filters by branch service and counter binding",
 			ctx:      newSignageCtx(),
 			clientID: "signage-1",
 			expectedRows: []model.SignageCurrentCallResponse{
@@ -242,7 +242,7 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 			},
 		},
 		{
-			name:     "filters only by branch service when counter absent",
+			name:     "Edge_filters only by branch service when counter absent",
 			ctx:      newSignageCtx(),
 			clientID: "signage-2",
 			expectedRows: []model.SignageCurrentCallResponse{
@@ -257,7 +257,7 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 			},
 		},
 		{
-			name:     "returns all current calls when no service binding",
+			name:     "Edge_returns all current calls when no service binding",
 			ctx:      newSignageCtx(),
 			clientID: "signage-3",
 			expectedRows: []model.SignageCurrentCallResponse{
@@ -310,25 +310,25 @@ func TestSignageUseCase_GetQueues(t *testing.T) {
 		expectedRows []queueModel.QueueResponse
 	}{
 		{
-			name:        "unauthorized when client missing",
+			name:        "Negative_unauthorized when client missing",
 			ctx:         newSignageCtx(),
 			clientID:    "",
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
-			name:        "bad request when tenant or branch missing",
+			name:        "Negative_bad request when tenant or branch missing",
 			ctx:         context.Background(),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrBadRequest,
 		},
 		{
-			name:        "forbidden when context crosses client binding",
+			name:        "Vulnerability_forbidden when context crosses client binding",
 			ctx:         newSignageCtxFor("t-1", "b-2"),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrForbidden,
 		},
 		{
-			name:     "filters pending queues by branch service",
+			name:     "Positive_filters pending queues by branch service",
 			ctx:      newSignageCtx(),
 			clientID: "signage-1",
 			expectedRows: []queueModel.QueueResponse{
@@ -346,7 +346,7 @@ func TestSignageUseCase_GetQueues(t *testing.T) {
 			},
 		},
 		{
-			name:         "returns empty when no pending queues for service binding",
+			name:         "Edge_returns empty when no pending queues for service binding",
 			ctx:          newSignageCtx(),
 			clientID:     "signage-2",
 			expectedRows: []queueModel.QueueResponse{},
