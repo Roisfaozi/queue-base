@@ -378,9 +378,9 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| Phase A: typed tables active, old read-only | ⚠️ partial | Typed tables active, generic still writable (`/api/v1/settings POST`) |
+| Phase A: typed tables active, old read-only | ✅ done | Typed tables active, generic write endpoints already removed |
 | Phase B: old no longer read by QMS core | ✅ done | `QueueSettingsResolver` reads typed tables only (`internal/modules/settings/queue_settings_resolver.go:32-101`) |
-| Phase C: drop old settings | ❌ missing | Generic `/settings` endpoints still active |
+| Phase C: drop old settings | ✅ done | Only `GET /settings/effective` remains; write endpoints already removed from router |
 
 ---
 
@@ -442,7 +442,7 @@
 | Use branch services | ✅ done | `internal/modules/service/entity/service_entity.go:37`, `internal/modules/service/usecase/branch_service_usecase.go:1` |
 | Counter references `branch_service_id` | ✅ done | `internal/modules/counter/entity/counter_entity.go:14` |
 | Keep effective config API | ✅ done | `internal/modules/settings/delivery/http/settings_routes.go:11` |
-| Generic settings only for non-core | ⚠️ partial | Generic still writable; no read guard for core QMS |
+| Generic settings only for non-core | ✅ done | Generic write removed; QMS core reads typed tables only |
 
 ---
 
@@ -475,11 +475,11 @@
 | Section 5 — Effective Config | 4 | 1 | 2 |
 | Section 6 — API Design | 18 | 5 | 7 |
 | Section 7 — Setup Wizard | 1 | 1 | 5 |
-| Section 8 — Validation Rules | 5 | 1 | 3 |
+| Section 8 — Validation Rules | 6 | 1 | 2 |
 | Section 9 — Queue Config Usage | 3 | 1 | 0 |
 | Section 10 — Audit Log | 12 | 0 | 0 |
 | Section 11 — Error Logging | 3 | 0 | 0 |
-| Section 12 — Migration Strategy | 5 | 2 | 5 |
+| Section 12 — Migration Strategy | 6 | 1 | 4 |
 | Section 13 — Testing | 16 | 1 | 3 |
 | Section 14 — Architecture Decision | 6 | 1 | 0 |
 | Section 15 — Table List | 14 | 0 | 0 |

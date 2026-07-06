@@ -1154,3 +1154,29 @@ Design sources:
   - result: passed
 - next step:
   - Await E2E testing completion from the separate testing slice.
+
+## 2026-07-06 — Branch activation draft + wizard + generic settings Phase C
+
+- status: completed
+- owner paths:
+  - `internal/modules/organization/usecase/branch_usecase.go`
+  - `internal/modules/organization/usecase/branch_usecase_test.go`
+  - `apps/web/src/app/[locale]/dashboard/qms-setup/_components/qms-setup-wizard.tsx`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - **Branch activation**: CreateBranch now sets `Status: BranchStatusDraft` when required fields (address, city, province, phone, timezone) are missing; sets `BranchStatusActive` only when all present. `UpdateBranch` activation guard already existed.
+  - **Wizard draft awareness**: Setup wizard shows draft branch blockers and activation field requirements for incomplete branches.
+  - **Generic settings Phase C confirmed done**: Write endpoints for generic `/api/v1/settings` already removed (only `GET /effective` remains). Coverage doc noted as complete.
+  - **Coverage doc rebased**: Section 8 (Validation Rules) ✅→5/1/3, Section 11 (Error Logging) ✅→3/0/0.
+- tests added/updated:
+  - positive: `TestCreateBranch/Positive_CreateBranchWithFullProfile_SetsActive` — all required fields → StatusActive
+  - positive: `TestCreateBranch/Positive_CreateBranchUsesTenantContext` — asserts StatusDraft
+  - vulnerability: (already existed) cross-tenant branch update rejected
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/organization/... ./internal/modules/counter/... ./internal/modules/service/... -count=1`
+  - result: passed
+  - command: `make lint`
+  - result: 0 issues
+- next step:
+  - Await E2E testing handoff completion
+  - Consider Phase C doc update: confirm generic settings write path removal in coverage doc
