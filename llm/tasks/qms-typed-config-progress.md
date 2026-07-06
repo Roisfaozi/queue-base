@@ -1021,3 +1021,20 @@ Design sources:
   - evidence: `apps/web` compiles after shared-type migration with no local duplicate QMS contract definitions required.
 - next step:
   - If `apps/client` starts consuming QMS admin flows too, reuse these shared contracts there instead of adding new local copies.
+
+## 2026-07-06 — Guided multi-step setup wizard shell
+
+- status: completed
+- owner paths:
+  - `apps/web/src/app/[locale]/dashboard/qms-setup/_components/qms-setup-wizard.tsx`
+- work done:
+  - Upgraded setup wizard dari checklist pasif menjadi guided multi-step shell.
+  - Added current-step focus, previous/next navigation, blocker summary, and per-step requirement text.
+  - Kept existing dashboard pages as source of truth; wizard tetap tidak menduplikasi form branch/service/counter/client.
+  - Default active step now jumps to first incomplete setup slice instead of always starting from tenant.
+- verification:
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed
+  - evidence: wizard stepper compiles with typed current-step logic and shared QMS contracts.
+- next step:
+  - If product wants true inline setup, embed existing forms one by one instead of rebuilding new payload mappers.
