@@ -489,6 +489,10 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 	switch req.Action {
 	case model.QueueActionCall:
 		if queue.Status == entity.QueueStatusCalling {
+			if currentJourney.Status != entity.JourneyStatusCalling {
+				telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+				return nil, exception.ErrBadRequest
+			}
 			allowRecall := true
 			if u.settingsResolver != nil {
 				if resolved, err := u.settingsResolver.Resolve(ctx, "allow_recall", branchID, currentJourney.ServiceID, currentJourney.CounterID); err == nil && resolved != "" {
@@ -502,7 +506,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 			visit.EventType = "recall"
 			break
 		}
-		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusSkipped {
+		if (queue.Status != entity.QueueStatusWaiting || currentJourney.Status != entity.JourneyStatusPending) && (queue.Status != entity.QueueStatusSkipped || currentJourney.Status != entity.JourneyStatusSkipped) {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
@@ -510,7 +514,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusCalling
 		visit.EventType = "call"
 	case model.QueueActionServe:
-		if queue.Status != entity.QueueStatusCalling {
+		if queue.Status != entity.QueueStatusCalling || currentJourney.Status != entity.JourneyStatusCalling {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
@@ -518,7 +522,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusServing
 		visit.EventType = "serve"
 	case model.QueueActionComplete:
-		if queue.Status != entity.QueueStatusServing {
+		if queue.Status != entity.QueueStatusServing || currentJourney.Status != entity.JourneyStatusServing {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
@@ -536,7 +540,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
-		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusCalling {
+		if (queue.Status != entity.QueueStatusWaiting || currentJourney.Status != entity.JourneyStatusPending) && (queue.Status != entity.QueueStatusCalling || currentJourney.Status != entity.JourneyStatusCalling) {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}

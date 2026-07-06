@@ -31,8 +31,10 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 	require.NoError(t, db.Create(&entity.TenantQueueSetting{ID: "ts-1", TenantID: "t-1", QueueResetTime: "04:00", DefaultTicketPrefix: "A"}).Error)
 	val0500 := "05:00"
 	valPrefixC := "C"
+	valPrefixNil := (*string)(nil)
 	autoCallNext := true
 	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", QueueResetTime: &val0500}).Error)
+	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-2", TenantID: "t-1", BranchID: "b-2", TicketPrefix: valPrefixNil}).Error)
 	require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{ID: "bss-1", TenantID: "t-1", BranchID: "b-1", BranchServiceID: "bsvc-1", DefaultEstimatedDuration: &[]int{20}[0], AutoCallNext: &autoCallNext}).Error)
 	require.NoError(t, db.Create(&entity.CounterQueueSetting{ID: "cs-1", TenantID: "t-1", CounterID: "c-1", TicketPrefix: &valPrefixC}).Error)
 
@@ -48,6 +50,7 @@ func TestQueueSettingsResolver_Resolve(t *testing.T) {
 		want      string
 	}{
 		{name: "Positive_InheritsTenantDefault", key: "ticket_prefix", branchID: "b-1", want: "A"},
+		{name: "Edge_NullBranchOverrideInheritsTenantDefault", key: "ticket_prefix", branchID: "b-2", want: "A"},
 		{name: "Positive_ResolvesBranchOverride", key: "queue_reset_time", branchID: "b-1", want: "05:00"},
 		{name: "Positive_ResolvesCounterOverride", key: "ticket_prefix", branchID: "b-1", counterID: "c-1", want: "C"},
 		{name: "Positive_ResolvesBranchServiceOverride", key: "default_estimated_duration", branchID: "b-1", serviceID: "bsvc-1", want: "20"},

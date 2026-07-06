@@ -39,6 +39,7 @@ type stubQueueRepo struct {
 	visits                  []*entity.VisitJourney
 	statsRes                model.QueueStatsResponse
 	nextWaiting             *entity.Queue
+	waitingLeft             int
 }
 
 type stubSettingsResolver struct {
@@ -275,7 +276,7 @@ func (s *stubQueueRepo) CountWaitingQueueLeft(ctx context.Context, tenantID, bra
 	if s.err != nil {
 		return 0, s.err
 	}
-	return 0, nil
+	return s.waitingLeft, nil
 }
 
 func (s *stubQueueRepo) FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
@@ -489,6 +490,21 @@ func TestRegisterQueue(t *testing.T) {
 				assert.Equal(t, "P", repo.lastPrefix)
 			},
 		},
+		{
+			name:     "Positive_EstimateUsesQueueLeftTimesEffectiveDuration",
+			category: "positive",
+			repo:     &stubQueueRepo{waitingLeft: 4},
+			req:      &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"},
+			settings: map[string]string{"default_estimated_duration": "5"},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
+				require.NotNil(t, res.QueueLeft)
+				require.NotNil(t, res.EstimateMinutes)
+				assert.Equal(t, 4, *res.QueueLeft)
+				assert.Equal(t, 20, *res.EstimateMinutes)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -522,6 +538,67 @@ func TestRegisterQueue(t *testing.T) {
 			if tt.wantRes != nil {
 				tt.wantRes(t, repo, resolver, res)
 			}
+		})
+	}
+}
+
+func TestAttachQueueEstimate(t *testing.T) {
+	tests := []struct {
+		name         string
+		category     string
+		repo         *stubQueueRepo
+		settings     map[string]string
+		res          model.QueueResponse
+		wantLeft     int
+		wantEstimate int
+	}{
+		{
+			name:     "Positive_WaitingUsesQueueLeftTimesEffectiveDuration",
+			category: "positive",
+			repo: &stubQueueRepo{
+				j:           &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", Status: entity.JourneyStatusPending},
+				waitingLeft: 4,
+			},
+			settings:     map[string]string{"default_estimated_duration": "5"},
+			res:          model.QueueResponse{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1", QueueDate: "2026-07-07", QueueNo: 5, Status: entity.QueueStatusWaiting},
+			wantLeft:     4,
+			wantEstimate: 20,
+		},
+		{
+			name:         "Edge_ServingReturnsZeroQueueLeftAndEstimate",
+			category:     "edge",
+			repo:         &stubQueueRepo{waitingLeft: 4},
+			settings:     map[string]string{"default_estimated_duration": "5"},
+			res:          model.QueueResponse{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1", QueueDate: "2026-07-07", QueueNo: 5, Status: entity.QueueStatusServing},
+			wantLeft:     0,
+			wantEstimate: 0,
+		},
+		{
+			name:     "Edge_InvalidDurationReturnsZeroEstimate",
+			category: "edge",
+			repo: &stubQueueRepo{
+				j:           &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", Status: entity.JourneyStatusPending},
+				waitingLeft: 4,
+			},
+			settings:     map[string]string{"default_estimated_duration": "bad"},
+			res:          model.QueueResponse{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1", QueueDate: "2026-07-07", QueueNo: 5, Status: entity.QueueStatusWaiting},
+			wantLeft:     4,
+			wantEstimate: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uc := NewQueueUseCase(tt.repo, &stubSettingsResolver{values: tt.settings}, nil).(*queueUseCase)
+			res := tt.res
+
+			err := uc.attachQueueEstimate(context.Background(), &res)
+
+			require.NoError(t, err)
+			require.NotNil(t, res.QueueLeft)
+			require.NotNil(t, res.EstimateMinutes)
+			assert.Equal(t, tt.wantLeft, *res.QueueLeft)
+			assert.Equal(t, tt.wantEstimate, *res.EstimateMinutes)
 		})
 	}
 }
@@ -755,6 +832,20 @@ func TestTransitionQueue(t *testing.T) {
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
+			name:     "Vulnerability_RecallRejectsMismatchedJourneyState",
+			category: "vulnerability",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
+			},
+			queueID:  "q-1",
+			settings: map[string]string{"allow_recall": "true"},
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
 			name:     "Negative_SkipWhenAllowSkipFalse",
 			category: "negative",
 			repo: &stubQueueRepo{
@@ -904,6 +995,19 @@ func TestTransitionQueue(t *testing.T) {
 			repo: &stubQueueRepo{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusSkipped, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusSkipped},
+			},
+			queueID:  "q-1",
+			req:      &model.QueueTransitionRequest{Action: model.QueueActionServe},
+			tenantID: "t-1",
+			branchID: "b-1",
+			wantErr:  exception.ErrBadRequest,
+		},
+		{
+			name:     "Vulnerability_ServeRejectsMismatchedJourneyState",
+			category: "vulnerability",
+			repo: &stubQueueRepo{
+				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
+				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionServe},
