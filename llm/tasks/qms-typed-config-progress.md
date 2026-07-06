@@ -902,3 +902,4 @@ Design sources:
 - verification:
   - command: `pnpm --dir apps/client typecheck`
   - result: passed
+- **Branch Activation Sync**: Backend guard aman. `packages/api-types` dan API client (`apps/web/src/lib/api/qms.ts`) ditambahkan contract model penuh + `branchActivationSchema` untuk persiapan frontend UI Branch CRUD kelak.

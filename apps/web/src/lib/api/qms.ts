@@ -5,6 +5,8 @@ import type {
 	CallerLoginResponse,
 	CallerMeResponse,
 	EffectiveQueueConfigResponse,
+	BranchResponse,
+	BranchUpsertRequest,
 	QMSClientCreateRequest,
 	QMSClientCreateResponse,
 	QMSClientCredentialCreateRequest,
@@ -15,15 +17,8 @@ import type {
 
 import { api } from "./client";
 
-export interface Branch {
-	id: string;
-	tenant_id: string;
-	code: string;
-	name: string;
-	status: "active" | "inactive";
-	created_at: number;
-	updated_at: number;
-}
+export type Branch = BranchResponse;
+export type BranchUpsertPayload = BranchUpsertRequest;
 
 export interface Service {
 	id: string;
@@ -180,12 +175,10 @@ export const signageApi = {
 export const branchesApi = {
 	getAll: () => api.get<{ data: Branch[] }>("/branches"),
 	getById: (id: string) => api.get<{ data: Branch }>(`/branches/${id}`),
-	create: (data: { code: string; name: string }) =>
+	create: (data: BranchUpsertPayload) =>
 		api.post<{ data: Branch }>("/branches", data),
-	update: (
-		id: string,
-		data: { code?: string; name?: string; status?: "active" | "inactive" },
-	) => api.put<{ data: Branch }>(`/branches/${id}`, data),
+	update: (id: string, data: BranchUpsertPayload) =>
+		api.put<{ data: Branch }>(`/branches/${id}`, data),
 	delete: (id: string) => api.delete(`/branches/${id}`),
 };
 

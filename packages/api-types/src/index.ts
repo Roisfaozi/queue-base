@@ -166,6 +166,51 @@ export interface QMSClientCredentialCreateResponse {
 	created_at: number;
 }
 
+export interface BranchResponse {
+	id: string;
+	tenant_id: string;
+	code: string;
+	name: string;
+	address?: string;
+	city?: string;
+	province?: string;
+	postal_code?: string;
+	phone?: string;
+	email?: string;
+	logo_asset_id?: string;
+	running_text?: string;
+	timezone?: string;
+	status: "active" | "inactive";
+	created_at: number;
+	updated_at: number;
+}
+
+export type BranchUpsertRequest = Partial<
+	Pick<
+		BranchResponse,
+		| "code"
+		| "name"
+		| "address"
+		| "city"
+		| "province"
+		| "postal_code"
+		| "phone"
+		| "email"
+		| "logo_asset_id"
+		| "running_text"
+		| "timezone"
+		| "status"
+	>
+>;
+
+export const branchActivationSchema = z.object({
+	address: z.string().trim().min(1),
+	city: z.string().trim().min(1),
+	province: z.string().trim().min(1),
+	phone: z.string().trim().min(1),
+	timezone: z.string().trim().min(1),
+});
+
 export interface CallerContext {
 	tenant_id: string;
 	tenant_name?: string;
