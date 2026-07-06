@@ -30,6 +30,10 @@ type branchUseCase struct {
 	audit AuditLogger
 }
 
+type tenantLogoReader interface {
+	TenantLogoAssetID(ctx context.Context, tenantID string) (string, error)
+}
+
 func NewBranchUseCase(repo repository.BranchRepository, auditUC ...AuditLogger) BranchUseCase {
 	var audit AuditLogger
 	if len(auditUC) > 0 {
@@ -46,7 +50,7 @@ func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranc
 	req.Sanitize()
 	now := time.Now().UnixMilli()
 	status := entity.BranchStatusDraft
-	if req.Address != "" && req.City != "" && req.Province != "" && req.Phone != "" && req.Timezone != "" {
+	if req.Address != "" && req.City != "" && req.Province != "" && req.Phone != "" && req.Timezone != "" && u.hasTenantLogo(ctx, tenantID) {
 		status = entity.BranchStatusActive
 	}
 	branch := &entity.Branch{
@@ -116,7 +120,7 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 		newStatus = *req.Status
 	}
 	if newStatus == entity.BranchStatusActive && branch.Status != entity.BranchStatusActive {
-		if u.missingRequiredFields(branch, req) {
+		if u.missingRequiredFields(ctx, tenantID, branch, req) {
 			return nil, exception.ErrBadRequest
 		}
 	}
@@ -197,7 +201,7 @@ func (u *branchUseCase) mapToResponse(branch *entity.Branch) *model.BranchRespon
 	}
 }
 
-func (u *branchUseCase) missingRequiredFields(branch *entity.Branch, req *model.UpdateBranchRequest) bool {
+func (u *branchUseCase) missingRequiredFields(ctx context.Context, tenantID string, branch *entity.Branch, req *model.UpdateBranchRequest) bool {
 	address := branch.Address
 	city := branch.City
 	province := branch.Province
@@ -218,7 +222,20 @@ func (u *branchUseCase) missingRequiredFields(branch *entity.Branch, req *model.
 	if req.Timezone != nil {
 		timezone = *req.Timezone
 	}
-	return address == "" || city == "" || province == "" || phone == "" || timezone == ""
+	logo := branch.LogoAssetID
+	if req.LogoAssetID != nil {
+		logo = *req.LogoAssetID
+	}
+	return address == "" || city == "" || province == "" || phone == "" || timezone == "" || (logo == "" && !u.hasTenantLogo(ctx, tenantID))
+}
+
+func (u *branchUseCase) hasTenantLogo(ctx context.Context, tenantID string) bool {
+	reader, ok := u.repo.(tenantLogoReader)
+	if !ok {
+		return true
+	}
+	logo, err := reader.TenantLogoAssetID(ctx, tenantID)
+	return err == nil && logo != ""
 }
 
 func (u *branchUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {

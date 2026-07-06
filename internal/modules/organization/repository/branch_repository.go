@@ -56,6 +56,19 @@ func (r *branchRepository) FindAll(ctx context.Context, tenantID string) ([]*ent
 	return branches, nil
 }
 
+func (r *branchRepository) TenantLogoAssetID(ctx context.Context, tenantID string) (string, error) {
+	var row struct {
+		LogoAssetID string
+	}
+	if err := r.getDB(ctx).Table("organizations").
+		Select("logo_asset_id").
+		Where("id = ?", tenantID).
+		Take(&row).Error; err != nil {
+		return "", err
+	}
+	return row.LogoAssetID, nil
+}
+
 func (r *branchRepository) Update(ctx context.Context, branch *entity.Branch) error {
 	res := r.getDB(ctx).
 		Model(&entity.Branch{}).
