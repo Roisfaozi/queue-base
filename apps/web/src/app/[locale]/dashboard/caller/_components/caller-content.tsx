@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { Icon } from "~/components/shared/icon";
+import { useWebSocket } from "~/components/shared/providers/websocket-provider";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -39,6 +40,7 @@ type BranchOption = { id: string; code: string; name: string; status: string };
 
 export function CallerContent() {
 	const { currentOrganization } = useDashboardShell();
+	const { subscribe, unsubscribe } = useWebSocket();
 	const [clientId, setClientId] = useState("");
 	const [apiKey, setApiKey] = useState("");
 	const [username, setUsername] = useState("");
@@ -134,6 +136,25 @@ export function CallerContent() {
 			toast.error(error.message || "Failed to load caller context");
 		}
 	};
+
+	useEffect(() => {
+		if (!me?.context?.tenant_id || !me?.context?.branch_id) return;
+		const channel = `queue:${me.context.tenant_id}:${me.context.branch_id}`;
+		const onMessage = (message: any) => {
+			if (message?.type !== "queue_update") return;
+			void fetchJourneys();
+			void handleRefreshMe();
+		};
+		subscribe(channel, onMessage);
+		return () => unsubscribe(channel, onMessage);
+	}, [
+		fetchJourneys,
+		handleRefreshMe,
+		me?.context?.branch_id,
+		me?.context?.tenant_id,
+		subscribe,
+		unsubscribe,
+	]);
 
 	const handleAction = async () => {
 		if (!journeyId.trim()) return;

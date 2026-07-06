@@ -27,7 +27,7 @@ func (s stubQueueResolver) Resolve(ctx context.Context, key string, branchID str
 }
 
 func (s stubQueueResolver) ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*model.ResolvedQueueSetting, error) {
-	return &model.ResolvedQueueSetting{Key: key, Value: s.values[key], Source: "tenant", Inherited: branchID != "" || serviceID != "" || counterID != ""}, nil
+	return &model.ResolvedQueueSetting{Key: key, Value: s.values[key], Source: "tenant", Inherited: branchID != "" || serviceID != "" || counterID != "", CanOverride: true, CanReset: branchID != "" || serviceID != "" || counterID != ""}, nil
 }
 
 func newSettingsTestValidator(t *testing.T) *validator.Validate {
@@ -49,18 +49,20 @@ func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 	boolPtr := func(v bool) *bool { return &v }
 
 	tests := []struct {
-		name     string
-		query    string
-		tenantID string
-		wantCode int
-		wantAuto *bool
+		name            string
+		query           string
+		tenantID        string
+		wantCode        int
+		wantAuto        *bool
+		wantCanOverride bool
 	}{
 		{
-			name:     "Positive_ResolvesTypedConfig",
-			query:    "?branch_id=550e8400-e29b-41d4-a716-446655440000",
-			tenantID: "tenant-1",
-			wantCode: http.StatusOK,
-			wantAuto: boolPtr(true),
+			name:            "Positive_ResolvesTypedConfig",
+			query:           "?branch_id=550e8400-e29b-41d4-a716-446655440000",
+			tenantID:        "tenant-1",
+			wantCode:        http.StatusOK,
+			wantAuto:        boolPtr(true),
+			wantCanOverride: true,
 		},
 		{
 			name:     "Negative_RejectsMissingTenantContext",
@@ -101,6 +103,10 @@ func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 				}
 				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 				assert.Equal(t, tt.wantAuto, resp.Data.AutoCallNext)
+				assert.Equal(t, tt.wantAuto, resp.Data.Queue.AutoCallNext)
+				assert.Equal(t, tt.wantCanOverride, resp.Data.Queue.QueueResetTime.CanOverride)
+				assert.Equal(t, "tenant-1", resp.Data.Tenant.TenantID)
+				assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", resp.Data.Branch.BranchID)
 			}
 		})
 	}

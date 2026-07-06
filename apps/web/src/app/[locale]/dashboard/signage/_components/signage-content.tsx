@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
+import { useWebSocket } from "~/components/shared/providers/websocket-provider";
 import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
 
 export function SignageContent() {
 	const { currentOrganization } = useDashboardShell();
+	const { subscribe, unsubscribe } = useWebSocket();
 	const [clientId, setClientId] = useState("");
 	const [apiKey, setApiKey] = useState("");
 	const [isLoadingMe, setIsLoadingMe] = useState(false);
@@ -42,7 +44,7 @@ export function SignageContent() {
 
 	const hasHeaders = !!headers.clientId && !!headers.apiKey;
 
-	const handleMe = async () => {
+	const handleMe = useCallback(async () => {
 		setIsLoadingMe(true);
 		try {
 			const response = await signageApi.me(headers);
@@ -54,9 +56,9 @@ export function SignageContent() {
 		} finally {
 			setIsLoadingMe(false);
 		}
-	};
+	}, [headers]);
 
-	const handleCurrentCalls = async () => {
+	const handleCurrentCalls = useCallback(async () => {
 		setIsLoadingCalls(true);
 		try {
 			const response = await signageApi.getCurrentCalls(headers);
@@ -67,9 +69,9 @@ export function SignageContent() {
 		} finally {
 			setIsLoadingCalls(false);
 		}
-	};
+	}, [headers]);
 
-	const handleQueues = async () => {
+	const handleQueues = useCallback(async () => {
 		setIsLoadingQueues(true);
 		try {
 			const response = await signageApi.getQueues(headers);
@@ -80,7 +82,26 @@ export function SignageContent() {
 		} finally {
 			setIsLoadingQueues(false);
 		}
-	};
+	}, [headers]);
+
+	useEffect(() => {
+		if (!me?.tenant_id || !me?.branch_id) return;
+		const channel = `queue:${me.tenant_id}:${me.branch_id}`;
+		const onMessage = (message: any) => {
+			if (message?.type !== "queue_update") return;
+			void handleCurrentCalls();
+			void handleQueues();
+		};
+		subscribe(channel, onMessage);
+		return () => unsubscribe(channel, onMessage);
+	}, [
+		me?.tenant_id,
+		me?.branch_id,
+		handleCurrentCalls,
+		handleQueues,
+		subscribe,
+		unsubscribe,
+	]);
 
 	if (!currentOrganization) return null;
 
