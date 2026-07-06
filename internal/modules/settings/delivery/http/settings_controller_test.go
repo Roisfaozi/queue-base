@@ -13,9 +13,11 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 type stubQueueResolver struct {
@@ -44,6 +46,20 @@ func newSettingsTestValidator(t *testing.T) *validator.Validate {
 	return v
 }
 
+func newSettingsControllerTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.Exec(`
+		CREATE TABLE organizations (id TEXT PRIMARY KEY, logo_asset_id TEXT);
+		CREATE TABLE branches (id TEXT PRIMARY KEY, tenant_id TEXT, logo_asset_id TEXT);
+		INSERT INTO organizations (id, logo_asset_id) VALUES ('tenant-1', 'tenant-logo');
+		INSERT INTO branches (id, tenant_id, logo_asset_id) VALUES ('550e8400-e29b-41d4-a716-446655440000', 'tenant-1', 'branch-logo');
+		INSERT INTO branches (id, tenant_id, logo_asset_id) VALUES ('550e8400-e29b-41d4-a716-446655440001', 'tenant-1', '');
+	`).Error)
+	return db
+}
+
 func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	boolPtr := func(v bool) *bool { return &v }
@@ -55,6 +71,7 @@ func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 		wantCode        int
 		wantAuto        *bool
 		wantCanOverride bool
+		wantLogo        string
 	}{
 		{
 			name:            "Positive_ResolvesTypedConfig",
@@ -63,6 +80,16 @@ func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 			wantCode:        http.StatusOK,
 			wantAuto:        boolPtr(true),
 			wantCanOverride: true,
+			wantLogo:        "branch-logo",
+		},
+		{
+			name:            "Edge_FallsBackToTenantLogoWhenBranchLogoEmpty",
+			query:           "?branch_id=550e8400-e29b-41d4-a716-446655440001",
+			tenantID:        "tenant-1",
+			wantCode:        http.StatusOK,
+			wantAuto:        boolPtr(true),
+			wantCanOverride: true,
+			wantLogo:        "tenant-logo",
 		},
 		{
 			name:     "Negative_RejectsMissingTenantContext",
@@ -80,7 +107,7 @@ func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 				"numbering_strategy":         "daily_branch_sequence",
 				"default_estimated_duration": "5",
 				"auto_call_next":             "true",
-			}}, nil)
+			}}, nil, newSettingsControllerTestDB(t))
 
 			router := gin.New()
 			router.GET("/settings/effective", func(c *gin.Context) {
@@ -106,7 +133,8 @@ func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 				assert.Equal(t, tt.wantAuto, resp.Data.Queue.AutoCallNext)
 				assert.Equal(t, tt.wantCanOverride, resp.Data.Queue.QueueResetTime.CanOverride)
 				assert.Equal(t, "tenant-1", resp.Data.Tenant.TenantID)
-				assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", resp.Data.Branch.BranchID)
+				assert.NotEmpty(t, resp.Data.Branch.BranchID)
+				assert.Equal(t, tt.wantLogo, resp.Data.Branch.EffectiveLogoAssetID)
 			}
 		})
 	}

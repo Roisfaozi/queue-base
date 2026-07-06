@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 type QueueSettingResolver interface {
@@ -22,6 +23,7 @@ type SettingsController struct {
 	queueResolver QueueSettingResolver
 	validate      *validator.Validate
 	log           *logrus.Logger
+	db            *gorm.DB
 }
 
 func (h *SettingsController) EffectiveQueueConfig(c *gin.Context) {
@@ -62,6 +64,7 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 	}
 	defaultEstimatedDuration, _ := h.queueResolver.Resolve(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
 	autoCallNext, _ := h.queueResolver.Resolve(ctx, "auto_call_next", req.BranchID, req.ServiceID, req.CounterID)
+	effectiveLogoAssetID := h.resolveEffectiveLogoAssetID(ctx, tenantID, req.BranchID)
 	queueResetTimeResolved, _ := h.queueResolver.ResolveDetailed(ctx, "queue_reset_time", req.BranchID, req.ServiceID, req.CounterID)
 	ticketPrefixResolved, _ := h.queueResolver.ResolveDetailed(ctx, "ticket_prefix", req.BranchID, req.ServiceID, req.CounterID)
 	numberingStrategyResolved, _ := h.queueResolver.ResolveDetailed(ctx, "numbering_strategy", req.BranchID, req.ServiceID, req.CounterID)
@@ -90,7 +93,8 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 			TenantID: tenantID,
 		},
 		Branch: model.EffectiveConfigBranch{
-			BranchID: req.BranchID,
+			BranchID:             req.BranchID,
+			EffectiveLogoAssetID: effectiveLogoAssetID,
 		},
 		Queue: model.EffectiveConfigQueue{
 			QueueResetTime:           safeResolved(queueResetTimeResolved),
@@ -101,6 +105,27 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 		},
 	}
 	return res, nil
+}
+
+func (h *SettingsController) resolveEffectiveLogoAssetID(ctx context.Context, tenantID, branchID string) string {
+	if h.db == nil || tenantID == "" || branchID == "" {
+		return ""
+	}
+	var row struct {
+		BranchLogo string
+		TenantLogo string
+	}
+	if err := h.db.WithContext(ctx).Table("branches").
+		Select("branches.logo_asset_id AS branch_logo, organizations.logo_asset_id AS tenant_logo").
+		Joins("JOIN organizations ON organizations.id = branches.tenant_id").
+		Where("branches.id = ? AND branches.tenant_id = ?", branchID, tenantID).
+		Take(&row).Error; err != nil {
+		return ""
+	}
+	if row.BranchLogo != "" {
+		return row.BranchLogo
+	}
+	return row.TenantLogo
 }
 
 func safeResolved(r *model.ResolvedQueueSetting) model.ResolvedQueueSetting {
@@ -136,6 +161,10 @@ func parseBoolPtr(value string) *bool {
 	return nil
 }
 
-func NewSettingsController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger) *SettingsController {
-	return &SettingsController{queueResolver: resolver, validate: validate, log: log}
+func NewSettingsController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger, db ...*gorm.DB) *SettingsController {
+	var gormDB *gorm.DB
+	if len(db) > 0 {
+		gormDB = db[0]
+	}
+	return &SettingsController{queueResolver: resolver, validate: validate, log: log, db: gormDB}
 }

@@ -14,6 +14,6 @@ type SettingsModule struct {
 
 func NewSettingsModule(db *gorm.DB, validate *validator.Validate, log *logrus.Logger) *SettingsModule {
 	resolver := NewQueueSettingsResolver(db)
-	ctrl := settingsHttp.NewSettingsController(validate, resolver, log)
+	ctrl := settingsHttp.NewSettingsController(validate, resolver, log, db)
 	return &SettingsModule{SettingsController: ctrl, QueueSettingsResolver: resolver}
 }
