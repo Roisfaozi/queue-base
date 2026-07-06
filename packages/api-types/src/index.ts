@@ -180,7 +180,7 @@ export interface BranchResponse {
 	logo_asset_id?: string;
 	running_text?: string;
 	timezone?: string;
-	status: "active" | "inactive";
+	status: "draft" | "active" | "inactive";
 	created_at: number;
 	updated_at: number;
 }

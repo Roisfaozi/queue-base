@@ -925,3 +925,23 @@ Design sources:
   - result: passed
 - next step:
   - Branch CRUD UI for `apps/web` to finally provide a place to activate branches properly.
+
+## 2026-07-06 — Apps/web Branch CRUD UI
+
+- status: completed
+- owner paths:
+  - `apps/web/src/app/[locale]/dashboard/branches/page.tsx`
+  - `apps/web/src/app/[locale]/dashboard/branches/_components/branches-content.tsx`
+  - `apps/web/src/components/layout/sidebar.tsx`
+  - `packages/api-types/src/index.ts`
+- work done:
+  - Added Branches dashboard page with list, create, update, and delete actions.
+  - Reused existing `branchesApi` and shared `branchActivationSchema`.
+  - Added frontend validation: activating branch requires address, city, province, phone, and timezone.
+  - Added `/dashboard/branches` sidebar entry.
+  - Extended shared branch status type to include `draft`.
+- verification:
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed
+- next step:
+  - Commit rules + Branch CRUD UI slices separately when git index is writable.

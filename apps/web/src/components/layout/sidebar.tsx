@@ -112,6 +112,11 @@ const navItems: NavEntry[] = [
 		href: "/dashboard/qms-clients",
 		iconName: "KeyRound",
 	},
+	{
+		title: "Branches",
+		href: "/dashboard/branches",
+		iconName: "GitBranch",
+	},
 	{ type: "separator" },
 	{
 		title: "Settings",
