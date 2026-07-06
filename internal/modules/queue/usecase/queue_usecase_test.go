@@ -1099,6 +1099,38 @@ func TestTransitionQueue(t *testing.T) {
 	}
 }
 
+func TestQueueJourneyLifecycle(t *testing.T) {
+	repo := &stubQueueRepo{
+		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
+		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", Status: entity.JourneyStatusPending},
+	}
+	uc := NewQueueUseCase(repo, &stubSettingsResolver{values: map[string]string{"allow_recall": "true", "allow_skip": "true"}}, nil)
+	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+	ctx = database.SetBranchContext(ctx, "b-1")
+
+	steps := []struct {
+		name       string
+		action     string
+		wantStatus string
+		wantEvent  string
+	}{
+		{name: "call", action: model.QueueActionCall, wantStatus: entity.QueueStatusCalling, wantEvent: "call"},
+		{name: "recall", action: model.QueueActionCall, wantStatus: entity.QueueStatusCalling, wantEvent: "recall"},
+		{name: "serve", action: model.QueueActionServe, wantStatus: entity.QueueStatusServing, wantEvent: "serve"},
+		{name: "complete", action: model.QueueActionComplete, wantStatus: entity.QueueStatusCompleted, wantEvent: "complete"},
+	}
+
+	for _, step := range steps {
+		t.Run(step.name, func(t *testing.T) {
+			res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: step.action})
+
+			require.NoError(t, err)
+			assert.Equal(t, step.wantStatus, res.Status)
+			assert.Equal(t, step.wantEvent, repo.visit.EventType)
+		})
+	}
+}
+
 // =============================================================================
 // TestListQueues
 // =============================================================================
