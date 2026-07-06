@@ -50,9 +50,9 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| `GET /api/v1/tenant/profile` | ❌ missing | No dedicated endpoint. Org data accessible via `GET /api/v1/organizations/:id` |
-| `PATCH /api/v1/tenant/profile` | ❌ missing | No dedicated endpoint. Update via `PUT /api/v1/organizations/:id` |
-| Request body fields (`name`, `legal_name`, `address`, etc.) | ⚠️ partial | Entity fields exist in `internal/modules/organization/entity/organization_entity.go:15-26` but no typed profile endpoint |
+| `GET /api/v1/tenant/profile` | ✅ done | Dedicated alias wired through tenant context in `internal/modules/organization/delivery/http/organization_routes.go` |
+| `PATCH /api/v1/tenant/profile` | ✅ done | Dedicated alias wired through tenant context in `internal/modules/organization/delivery/http/organization_routes.go` |
+| Request body fields (`name`, `legal_name`, `address`, etc.) | ✅ done | Reuses organization profile model and activation guard in `internal/modules/organization/delivery/http/organization_controller.go` |
 
 ### 6.2 Tenant Queue Settings
 
@@ -65,8 +65,8 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| `GET /api/v1/branches/{branch_id}/profile` | ❌ missing | Branch CRUD exists at `/api/v1/branches/:id` via `internal/modules/organization/delivery/http/branch_routes.go` but no typed profile endpoint |
-| `PATCH /api/v1/branches/{branch_id}/profile` | ❌ missing | Same — uses generic branch update |
+| `GET /api/v1/branches/{branch_id}/profile` | ✅ done | Profile alias added in `internal/modules/organization/delivery/http/branch_routes.go` |
+| `PATCH /api/v1/branches/{branch_id}/profile` | ✅ done | Profile alias added in `internal/modules/organization/delivery/http/branch_routes.go` |
 | Branch CRUD UI | ✅ done | `apps/web/src/app/[locale]/dashboard/branches/page.tsx`, `apps/web/src/app/[locale]/dashboard/branches/_components/branches-content.tsx` |
 | Branch activation frontend validation | ✅ done | Branches page uses shared branch activation contract before sending active status updates |
 
@@ -95,8 +95,8 @@
 |-----------|--------|----------|
 | `GET /api/v1/branches/{branch_id}/services` | ✅ done | `internal/modules/service/delivery/http/service_routes.go:24` |
 | `POST /api/v1/branches/{branch_id}/services` | ✅ done | `internal/modules/service/delivery/http/service_routes.go:23` |
-| `POST .../services/{service_id}/enable` | ⚠️ partial | Uses generic POST instead of dedicated enable/disable verbs |
-| `POST .../services/{service_id}/disable` | ❌ missing | No disable verb; uses `is_active` field |
+| `POST .../services/{service_id}/enable` | ✅ done | Dedicated verb added in `internal/modules/service/delivery/http/service_routes.go` |
+| `POST .../services/{service_id}/disable` | ✅ done | Dedicated verb added in `internal/modules/service/delivery/http/service_routes.go` |
 | `PATCH .../services/{service_id}` | ✅ done | `internal/modules/service/delivery/http/service_routes.go:25` as PUT |
 
 ### 6.7 Service Queue Settings
@@ -111,11 +111,11 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| `POST /api/v1/branches/{branch_id}/counters` | ⚠️ partial | Doc wants nested under `/branches/`, actual is `POST /api/v1/counters` (`internal/modules/counter/delivery/http/counter_routes.go:9`) |
-| `GET /api/v1/branches/{branch_id}/counters` | ⚠️ partial | Same — actual is `GET /api/v1/counters` |
-| `GET /api/v1/branches/{branch_id}/counters/{counter_id}` | ⚠️ partial | Actual `GET /api/v1/counters/:id` |
-| `PATCH /api/v1/branches/{branch_id}/counters/{counter_id}` | ⚠️ partial | Actual `PUT /api/v1/counters/:id` |
-| `DELETE /api/v1/branches/{branch_id}/counters/{counter_id}` | ⚠️ partial | Actual `DELETE /api/v1/counters/:id` |
+| `POST /api/v1/branches/{branch_id}/counters` | ✅ done | Nested aliases added in `internal/modules/counter/delivery/http/counter_routes.go` |
+| `GET /api/v1/branches/{branch_id}/counters` | ✅ done | Nested aliases added in `internal/modules/counter/delivery/http/counter_routes.go` |
+| `GET /api/v1/branches/{branch_id}/counters/{counter_id}` | ✅ done | Nested branch check added in `internal/modules/counter/delivery/http/counter_controller.go` |
+| `PATCH /api/v1/branches/{branch_id}/counters/{counter_id}` | ✅ done | Nested branch check added in `internal/modules/counter/delivery/http/counter_controller.go` |
+| `DELETE /api/v1/branches/{branch_id}/counters/{counter_id}` | ✅ done | Nested branch check added in `internal/modules/counter/delivery/http/counter_controller.go` |
 | Request body includes `branch_service_id` | ✅ done | `internal/modules/counter/model/counter_model.go:13` |
 
 ### 6.9 Counter Queue Settings
@@ -128,9 +128,9 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| `GET /api/v1/branches/{branch_id}/effective-config` | ⚠️ partial | Actual endpoint is `GET /api/v1/settings/effective` with query params, not branch-prefixed path |
-| `GET .../services/{service_id}/effective-config` | ⚠️ partial | Same — uses query params: `?branch_id=&service_id=` |
-| `GET .../counters/{counter_id}/effective-config` | ⚠️ partial | Same — uses `?branch_id=&service_id=&counter_id=` |
+| `GET /api/v1/branches/{branch_id}/effective-config` | ✅ done | Branch-prefixed alias added in `internal/modules/settings/delivery/http/settings_routes.go` |
+| `GET .../services/{service_id}/effective-config` | ✅ done | Service-prefixed alias added in `internal/modules/settings/delivery/http/settings_routes.go` |
+| `GET .../counters/{counter_id}/effective-config` | ✅ done | Counter-prefixed alias added in `internal/modules/settings/delivery/http/settings_routes.go` |
 
 ---
 
@@ -231,8 +231,8 @@
 |-----------|--------|----------|
 | Controller logging (`logError`) | ✅ done | `internal/modules/service/delivery/http/service_controller.go:158`, `internal/modules/service/delivery/http/branch_service_controller.go:80`, `internal/modules/counter/delivery/http/counter_controller.go:74`, `internal/modules/settings/delivery/http/settings_controller.go:78` |
 | Usecase logging | ✅ done | Usecases use `audit.LogActivity` and return errors |
-| Sensitive data rule documented | ⚠️ partial | Documented in design doc and `AGENTS.md` but no centralized filter in logging middleware |
-| Required log context | ⚠️ partial | Standard logrus context propagation present but no explicit audit/log correlation ID |
+| Sensitive data rule documented | ✅ done | Central redaction hook added in `internal/config/logrus.go` |
+| Required log context | ✅ done | Request/user context hook already emits `request_id`; redaction hook now protects sensitive fields centrally |
 
 ---
 

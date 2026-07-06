@@ -1394,3 +1394,53 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Run broader lint/build/test and commit backend contract, type sync, and docs separately.
+
+## 2026-07-07 — Design Route Parity and Logging Hardening Slice
+
+- status: completed
+- owner paths:
+  - `internal/modules/organization/delivery/http/organization_controller.go`
+  - `internal/modules/organization/delivery/http/organization_routes.go`
+  - `internal/modules/organization/delivery/http/branch_routes.go`
+  - `internal/modules/counter/delivery/http/counter_controller.go`
+  - `internal/modules/counter/delivery/http/counter_routes.go`
+  - `internal/modules/service/delivery/http/service_controller.go`
+  - `internal/modules/service/delivery/http/service_routes.go`
+  - `internal/modules/settings/delivery/http/settings_controller.go`
+  - `internal/modules/settings/delivery/http/settings_routes.go`
+  - `internal/config/logrus.go`
+  - `internal/config/logrus_test.go`
+  - `llm/research/typed-config-design-coverage.md`
+  - `llm/tasks/qms-typed-config-progress.md`
+- design source:
+  - `documentation/task-overview.md`
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Added dedicated tenant profile aliases: `GET/PATCH /api/v1/tenant/profile`.
+  - Added dedicated branch profile aliases: `GET/PATCH /api/v1/branches/{branch_id}/profile`.
+  - Added nested counter aliases under `/api/v1/branches/{branch_id}/counters` with branch checks for item routes.
+  - Added branch/service/counter effective-config aliases while keeping `GET /api/v1/settings/effective` backward compatible.
+  - Added service enable/disable verbs: `POST /api/v1/services/{service_id}/enable` and `/disable`.
+  - Added centralized logrus redaction hook for sensitive log fields.
+- tests added/updated:
+  - positive: service enable/disable controller tests.
+  - negative: existing tenant-context and validation tests remain active.
+  - edge: effective-config alias tests include branch/service/counter path variants.
+  - vulnerability/security: nested counter item routes verify branch ownership before update/delete; log redaction test covers sensitive field filtering.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./internal/config ./internal/modules/organization/delivery/http ./internal/modules/counter/delivery/http ./internal/modules/service/delivery/http ./internal/modules/settings/delivery/http -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make lint`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make build`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache make test`
+  - result: passed
+- errors and fixes:
+  - error: design coverage showed route-style gaps although generic CRUD worked.
+  - root cause: runtime exposed practical endpoints but not design-compatible aliases.
+  - fix: added alias handlers/routes that reuse existing usecases instead of duplicating business logic.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Commit route parity, logging, and docs separately.
