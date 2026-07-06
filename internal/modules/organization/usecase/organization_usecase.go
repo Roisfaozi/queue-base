@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	auditUsecase "github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model/converter"
@@ -31,6 +33,7 @@ type organizationUseCase struct {
 	MemberRepo repository.OrganizationMemberRepository
 	OrgReader  IOrganizationReader
 	Enforcer   permissionUseCase.IEnforcer
+	audit      auditUsecase.AuditUseCase
 }
 
 // NewOrganizationUseCase creates a new OrganizationUseCase instance
@@ -41,7 +44,12 @@ func NewOrganizationUseCase(
 	memberRepo repository.OrganizationMemberRepository,
 	orgReader IOrganizationReader,
 	enforcer permissionUseCase.IEnforcer,
+	auditUC ...auditUsecase.AuditUseCase,
 ) OrganizationUseCase {
+	var a auditUsecase.AuditUseCase
+	if len(auditUC) > 0 {
+		a = auditUC[0]
+	}
 	return &organizationUseCase{
 		Log:        log,
 		TM:         tm,
@@ -49,6 +57,7 @@ func NewOrganizationUseCase(
 		MemberRepo: memberRepo,
 		OrgReader:  orgReader,
 		Enforcer:   enforcer,
+		audit:      a,
 	}
 }
 
@@ -76,13 +85,26 @@ func (uc *organizationUseCase) CreateOrganization(ctx context.Context, userID st
 		}
 
 		// Create organization
+		statusActive := request.Address != "" && request.City != "" && request.Province != "" && request.Phone != "" && request.Timezone != ""
+		orgStatus := entity.OrgStatusDraft
+		if statusActive {
+			orgStatus = entity.OrgStatusActive
+		}
 		org := &entity.Organization{
-			ID:      newID.String(),
-			Code:    request.Slug,
-			Name:    request.Name,
-			Slug:    request.Slug,
-			OwnerID: userID,
-			Status:  entity.OrgStatusActive,
+			ID:          newID.String(),
+			Code:        request.Slug,
+			Name:        request.Name,
+			LegalName:   request.LegalName,
+			Slug:        request.Slug,
+			OwnerID:     userID,
+			Address:     request.Address,
+			City:        request.City,
+			Province:    request.Province,
+			Phone:       request.Phone,
+			Email:       request.Email,
+			Timezone:    request.Timezone,
+			LogoAssetID: request.LogoAssetID,
+			Status:      orgStatus,
 		}
 
 		// Atomic create (org + owner member)
@@ -108,6 +130,9 @@ func (uc *organizationUseCase) CreateOrganization(ctx context.Context, userID st
 		response = converter.OrganizationToResponse(org)
 		return nil
 	})
+	if err == nil && response != nil {
+		uc.tryAudit(ctx, "ORGANIZATION_CREATE", response.ID, map[string]string{"name": response.Name, "status": response.Status})
+	}
 	if err == nil && uc.Enforcer != nil {
 		if loadErr := uc.Enforcer.LoadPolicy(); loadErr != nil {
 			uc.Log.WithContext(ctx).Errorf("Failed to reload Casbin policy after organization creation: %v", loadErr)
@@ -180,19 +205,46 @@ func (uc *organizationUseCase) UpdateOrganization(ctx context.Context, id string
 		if err != nil {
 			return err
 		}
-		if request.Status == entity.OrgStatusActive && uc.missingActivationFields(org) {
-			return exception.ErrBadRequest
-		}
 
-		// Update fields
+		// merge request fields
 		if request.Name != "" {
 			org.Name = request.Name
 		}
-		if request.Settings != nil {
-			org.Settings = request.Settings
+		if request.LegalName != "" {
+			org.LegalName = request.LegalName
+		}
+		if request.Address != "" {
+			org.Address = request.Address
+		}
+		if request.City != "" {
+			org.City = request.City
+		}
+		if request.Province != "" {
+			org.Province = request.Province
+		}
+		if request.Phone != "" {
+			org.Phone = request.Phone
+		}
+		if request.Email != "" {
+			org.Email = request.Email
+		}
+		if request.Timezone != "" {
+			org.Timezone = request.Timezone
+		}
+		if request.LogoAssetID != "" {
+			org.LogoAssetID = request.LogoAssetID
 		}
 		if request.Status != "" {
 			org.Status = request.Status
+		}
+
+		// guard: active requires profile fields
+		if org.Status == entity.OrgStatusActive && uc.missingActivationFields(org) && request.Status == entity.OrgStatusActive {
+			return exception.ErrBadRequest
+		}
+
+		if request.Settings != nil {
+			org.Settings = request.Settings
 		}
 
 		if err := uc.OrgRepo.Update(txCtx, org); err != nil {
@@ -203,12 +255,32 @@ func (uc *organizationUseCase) UpdateOrganization(ctx context.Context, id string
 		response = converter.OrganizationToResponse(org)
 		return nil
 	})
+	if err == nil && response != nil {
+		uc.tryAudit(ctx, "ORGANIZATION_UPDATE", response.ID, map[string]string{"status": response.Status})
+	}
 
 	return response, err
 }
 
 func (uc *organizationUseCase) missingActivationFields(org *entity.Organization) bool {
 	return org.Address == "" || org.City == "" || org.Province == "" || org.Phone == "" || org.Timezone == ""
+}
+
+func (uc *organizationUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
+	if uc.audit == nil {
+		return
+	}
+	userID, _ := ctx.Value("user_id").(string)
+	if userID == "" {
+		userID = "system"
+	}
+	_ = uc.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		UserID:    userID,
+		Action:    action,
+		Entity:    "organization",
+		EntityID:  entityID,
+		NewValues: values,
+	})
 }
 
 func (uc *organizationUseCase) authorizeOrganizationManagement(ctx context.Context, orgID string) (*entity.Organization, error) {

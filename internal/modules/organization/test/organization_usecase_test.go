@@ -7,12 +7,14 @@ import (
 	"testing"
 
 	mocking "github.com/Roisfaozi/queue-base/internal/mocking"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
 	permissionMocks "github.com/Roisfaozi/queue-base/internal/modules/permission/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -24,6 +26,27 @@ type organizationTestDeps struct {
 	OrgReader  *mocks.MockIOrganizationReader
 	TM         *mocking.MockWithTransactionManager
 	Enforcer   *permissionMocks.MockIEnforcer
+}
+
+type stubAuditUsecase struct {
+	requests []auditModel.CreateAuditLogRequest
+}
+
+func (s *stubAuditUsecase) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.requests = append(s.requests, req)
+	return nil
+}
+
+func (s *stubAuditUsecase) GetLogsDynamic(ctx context.Context, filter *querybuilder.DynamicFilter) ([]auditModel.AuditLogResponse, int64, error) {
+	return nil, 0, nil
+}
+
+func (s *stubAuditUsecase) ExportLogs(ctx context.Context, fromDate, toDate string, process func([]auditModel.AuditLogResponse) error) error {
+	return nil
+}
+
+func (s *stubAuditUsecase) ExportLogsAsync(ctx context.Context, userID, orgID, fromDate, toDate, format string) error {
+	return nil
 }
 
 func setupOrganizationTest() (*organizationTestDeps, usecase.OrganizationUseCase) {
@@ -44,7 +67,7 @@ func setupOrganizationTest() (*organizationTestDeps, usecase.OrganizationUseCase
 	mockEnforcer.On("LoadPolicy").Maybe().Return(nil)
 	deps.OrgReader.On("InvalidateOrganizationCache", mock.Anything, mock.Anything).Maybe().Return(nil)
 
-	uc := usecase.NewOrganizationUseCase(log, deps.TM, deps.OrgRepo, deps.MemberRepo, deps.OrgReader, deps.Enforcer)
+	uc := usecase.NewOrganizationUseCase(log, deps.TM, deps.OrgRepo, deps.MemberRepo, deps.OrgReader, deps.Enforcer, &stubAuditUsecase{})
 
 	return deps, uc
 }
@@ -71,7 +94,7 @@ func TestOrganizationUseCase(t *testing.T) {
 
 				deps.OrgRepo.On("SlugExists", ctx, req.Slug).Return(false, nil)
 				deps.OrgRepo.On("Create", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
-					return org.Name == req.Name && org.Slug == req.Slug && org.OwnerID == userID
+					return org.Name == req.Name && org.Slug == req.Slug && org.OwnerID == userID && org.Status == entity.OrgStatusDraft
 				}), usecase.DefaultOwnerRoleID).Return(nil)
 				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{
@@ -100,6 +123,44 @@ func TestOrganizationUseCase(t *testing.T) {
 				assert.Equal(t, req.Name, res.Name)
 				deps.OrgRepo.AssertExpectations(t)
 				deps.Enforcer.AssertExpectations(t)
+			},
+		},
+		{
+			name:     "Positive_CreateOrganization_ActiveWhenProfileComplete",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := context.Background()
+				userID := "user-123"
+				req := &model.CreateOrganizationRequest{
+					Name:     "Acme Corp",
+					Slug:     "acme-corp",
+					Address:  "Jl. Test",
+					City:     "Jakarta",
+					Province: "DKI Jakarta",
+					Phone:    "021",
+					Timezone: "Asia/Jakarta",
+				}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(nil)
+
+				deps.OrgRepo.On("SlugExists", ctx, req.Slug).Return(false, nil)
+				deps.OrgRepo.On("Create", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
+					return org.Status == entity.OrgStatusActive && org.Address == req.Address && org.City == req.City
+				}), usecase.DefaultOwnerRoleID).Return(nil)
+				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
+				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{}, nil)
+				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:user", "global"}).Return([][]string{}, nil)
+				deps.Enforcer.On("AddGroupingPolicy", mock.Anything).Return(true, nil)
+
+				res, err := uc.CreateOrganization(ctx, userID, req)
+
+				assert.NoError(t, err)
+				assert.NotNil(t, res)
+				assert.Equal(t, entity.OrgStatusActive, res.Status)
 			},
 		},
 		{
@@ -330,6 +391,38 @@ func TestOrganizationUseCase(t *testing.T) {
 				res, err := uc.UpdateOrganization(ctx, orgID, req)
 				assert.NoError(t, err)
 				assert.Equal(t, "New Name", res.Name)
+			},
+		},
+		{
+			name:     "Positive_UpdateOrganization_ActivateWithFieldsInSameRequest",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{
+					Status:   entity.OrgStatusActive,
+					Address:  "Jl. Test",
+					City:     "Jakarta",
+					Province: "DKI Jakarta",
+					Phone:    "021",
+					Timezone: "Asia/Jakarta",
+				}
+				existingOrg := &entity.Organization{ID: orgID, OwnerID: "owner-1", Status: entity.OrgStatusDraft}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(nil)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+				deps.OrgRepo.On("Update", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
+					return org.Status == entity.OrgStatusActive && org.Address == req.Address && org.Timezone == req.Timezone
+				})).Return(nil)
+
+				res, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.NoError(t, err)
+				assert.Equal(t, entity.OrgStatusActive, res.Status)
 			},
 		},
 		{

@@ -220,7 +220,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	projectModule := project.NewProjectModule(dbConnection, validate)
 	settingsModule := settings.NewSettingsModule(dbConnection, validate, logger)
 
-	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL)
+	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL, auditModule.AuditUseCase)
 	branchModule := organization.NewBranchModule(dbConnection, validate, logger)
 	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo, logger, auditModule.AuditUseCase)
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
