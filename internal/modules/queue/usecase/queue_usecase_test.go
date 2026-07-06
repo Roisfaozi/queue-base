@@ -271,6 +271,13 @@ func (s *stubQueueRepo) GetQueueStats(ctx context.Context, tenantID, branchID, q
 	return s.statsRes, nil
 }
 
+func (s *stubQueueRepo) CountWaitingQueueLeft(ctx context.Context, tenantID, branchID, queueDate, serviceID string, queueNo int) (int, error) {
+	if s.err != nil {
+		return 0, s.err
+	}
+	return 0, nil
+}
+
 func (s *stubQueueRepo) FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
 	if s.FindQueueByTenantIDFunc != nil {
 		return s.FindQueueByTenantIDFunc(ctx, tenantID, queueID)

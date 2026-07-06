@@ -28,6 +28,7 @@ type QueueRepository interface {
 	UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	FindVisitJourneysByQueueID(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error)
 	GetQueueStats(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error)
+	CountWaitingQueueLeft(ctx context.Context, tenantID, branchID, queueDate, serviceID string, queueNo int) (int, error)
 }
 
 type queueRepository struct {
@@ -363,4 +364,13 @@ func (r *queueRepository) GetQueueStats(ctx context.Context, tenantID, branchID,
 	}
 
 	return stats, nil
+}
+
+func (r *queueRepository) CountWaitingQueueLeft(ctx context.Context, tenantID, branchID, queueDate, serviceID string, queueNo int) (int, error) {
+	var count int64
+	err := r.getDB(ctx).Model(&entity.QueueJourney{}).
+		Joins("JOIN queues ON queues.id = queue_journeys.queue_id").
+		Where("queues.tenant_id = ? AND queues.branch_id = ? AND queues.queue_date = ? AND queue_journeys.service_id = ? AND queue_journeys.status = ? AND queues.queue_no < ?", tenantID, branchID, queueDate, serviceID, entity.JourneyStatusPending, queueNo).
+		Count(&count).Error
+	return int(count), err
 }

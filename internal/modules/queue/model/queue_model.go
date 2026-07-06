@@ -15,6 +15,8 @@ type QueueResponse struct {
 	PatientName      string `json:"patient_name,omitempty"`
 	Status           string `json:"status"`
 	CurrentJourneyID string `json:"current_journey_id,omitempty"`
+	QueueLeft        *int   `json:"queue_left,omitempty"`
+	EstimateMinutes  *int   `json:"estimate_time_minutes,omitempty"`
 	CreatedAt        int64  `json:"created_at"`
 	UpdatedAt        int64  `json:"updated_at"`
 }

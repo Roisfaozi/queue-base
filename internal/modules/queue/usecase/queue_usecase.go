@@ -212,6 +212,9 @@ func (u *queueUseCase) GetQueueByID(ctx context.Context, queueID string) (*model
 		return nil, exception.ErrNotFound
 	}
 	res := mapQueueResponse(queue)
+	if err := u.attachQueueEstimate(ctx, &res); err != nil {
+		return nil, err
+	}
 	return &res, nil
 }
 
@@ -298,9 +301,51 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	u.tryAudit(ctx, "QUEUE_REGISTER", q.ID, map[string]string{"branch_id": branchID, "ticket_no": q.TicketNo})
 	telemetry.QueueOperationsTotal.WithLabelValues("register", "success").Inc()
 	res := mapQueueResponse(q)
+	if err := u.attachQueueEstimate(ctx, &res); err != nil {
+		telemetry.QueueOperationsTotal.WithLabelValues("register", "failed").Inc()
+		return nil, err
+	}
 	u.tryEmitEvent("queue_registered", res)
 	u.emitWSEvent(ctx, "QUEUE_REGISTER", q.BranchID, res)
 	return &res, nil
+}
+
+func (u *queueUseCase) attachQueueEstimate(ctx context.Context, res *model.QueueResponse) error {
+	if res == nil || u.settingsResolver == nil || u.repo == nil || res.TenantID == "" || res.BranchID == "" || res.QueueDate == "" || res.QueueNo == 0 {
+		return nil
+	}
+	if res.Status != entity.QueueStatusWaiting {
+		zero := 0
+		res.QueueLeft = &zero
+		res.EstimateMinutes = &zero
+		return nil
+	}
+	journey, err := u.repo.FindCurrentJourney(ctx, res.TenantID, res.BranchID, res.ID, res.CurrentJourneyID)
+	if err != nil {
+		return err
+	}
+	left, err := u.repo.CountWaitingQueueLeft(ctx, res.TenantID, res.BranchID, res.QueueDate, journey.ServiceID, res.QueueNo)
+	if err != nil {
+		return err
+	}
+	zero := 0
+	if left < 0 {
+		left = 0
+	}
+	res.QueueLeft = &left
+	durationStr, err := u.settingsResolver.Resolve(ctx, "default_estimated_duration", res.BranchID, journey.ServiceID, "")
+	if err != nil || durationStr == "" {
+		res.EstimateMinutes = &zero
+		return nil
+	}
+	duration, err := strconv.Atoi(durationStr)
+	if err != nil || duration < 0 {
+		res.EstimateMinutes = &zero
+		return nil
+	}
+	estimate := left * duration
+	res.EstimateMinutes = &estimate
+	return nil
 }
 
 func resolveTicketPrefix(ctx context.Context, resolver SettingsResolver, branchID, serviceID string) string {
