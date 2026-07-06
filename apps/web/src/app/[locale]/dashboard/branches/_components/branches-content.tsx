@@ -8,6 +8,7 @@ import { z } from "zod";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -242,9 +243,23 @@ export function BranchesContent() {
 									className="flex items-center justify-between rounded-lg border p-3"
 								>
 									<div>
-										<p className="font-medium">
-											{branch.code} — {branch.name}
-										</p>
+										<div className="flex items-center gap-2">
+											<p className="font-medium">
+												{branch.code} — {branch.name}
+											</p>
+											<Badge
+												variant={
+													branch.status === "active" ? "default" : "secondary"
+												}
+												className={
+													branch.status === "active"
+														? "bg-emerald-500 hover:bg-emerald-600"
+														: ""
+												}
+											>
+												{branch.status}
+											</Badge>
+										</div>
 										<p className="text-muted-foreground text-sm">
 											{branch.city || "—"}, {branch.province || "—"} ·{" "}
 											{branch.timezone || "—"}
