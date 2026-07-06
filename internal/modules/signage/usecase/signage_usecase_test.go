@@ -125,7 +125,7 @@ func newSignageCtxFor(tenantID, branchID string) context.Context {
 func TestSignageUseCase_GetMe(t *testing.T) {
 	db := newSignageTestDB(t)
 	seedSignageTestData(t, db)
-	uc := NewSignageUseCase(db, nil)
+	uc := NewSignageUseCase(db, nil, nil)
 
 	tests := []struct {
 		name          string
@@ -197,7 +197,7 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 	db := newSignageTestDB(t)
 	seedSignageTestData(t, db)
-	uc := NewSignageUseCase(db, nil)
+	uc := NewSignageUseCase(db, nil, nil)
 
 	tests := []struct {
 		name         string
@@ -300,7 +300,7 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 func TestSignageUseCase_GetQueues(t *testing.T) {
 	db := newSignageTestDB(t)
 	seedSignageTestData(t, db)
-	uc := NewSignageUseCase(db, nil)
+	uc := NewSignageUseCase(db, nil, nil)
 
 	tests := []struct {
 		name         string

@@ -14,7 +14,7 @@ type SignageModule struct {
 }
 
 func NewSignageModule(db *gorm.DB, qu queueUsecase.QueueUseCase, validate *validator.Validate, log *logrus.Logger) *SignageModule {
-	uc := signageUsecase.NewSignageUseCase(db, qu)
+	uc := signageUsecase.NewSignageUseCase(db, qu, log)
 	ctrl := signageHttp.NewSignageController(uc, validate, log)
 	return &SignageModule{SignageController: ctrl}
 }

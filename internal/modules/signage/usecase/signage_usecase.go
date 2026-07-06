@@ -7,8 +7,10 @@ import (
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
 	queueUsecase "github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
 	"github.com/Roisfaozi/queue-base/internal/modules/signage/model"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -21,13 +23,39 @@ type SignageUseCase interface {
 type signageUseCase struct {
 	db      *gorm.DB
 	queueUC queueUsecase.QueueUseCase
+	log     *logrus.Logger
 }
 
-func NewSignageUseCase(db *gorm.DB, qu queueUsecase.QueueUseCase) SignageUseCase {
-	return &signageUseCase{db: db, queueUC: qu}
+func NewSignageUseCase(db *gorm.DB, qu queueUsecase.QueueUseCase, log *logrus.Logger) SignageUseCase {
+	return &signageUseCase{db: db, queueUC: qu, log: log}
+}
+
+func (u *signageUseCase) logEntry(ctx context.Context, action string, fields logrus.Fields) *logrus.Entry {
+	if u.log == nil {
+		return nil
+	}
+	f := logrus.Fields{"module": "signage", "action": action}
+	for k, v := range fields {
+		f[k] = v
+	}
+	if tenantID := database.GetTenantID(ctx); tenantID != "" {
+		f["tenant_id"] = tenantID
+	}
+	if branchID := database.GetBranchID(ctx); branchID != "" {
+		f["branch_id"] = branchID
+	}
+	if userID, ok := authcontext.UserIDFromContext(ctx); ok && userID != "" {
+		f["user_id"] = userID
+	}
+	return u.log.WithFields(f)
 }
 
 func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.SignageMeResponse, error) {
+	entry := u.logEntry(ctx, "GetMe", logrus.Fields{"qms_client_id": clientID})
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	if clientID == "" {
 		return nil, exception.ErrUnauthorized
 	}
@@ -45,6 +73,9 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 		Select("id, tenant_id, branch_id, branch_service_id, counter_id, client_type, name").
 		Where("id = ? AND is_active = ?", clientID, true).
 		First(&cr).Error; err != nil {
+		if entry != nil {
+			entry.Error("client not found")
+		}
 		return nil, exception.ErrNotFound
 	}
 
@@ -124,10 +155,18 @@ func (u *signageUseCase) GetMe(ctx context.Context, clientID string) (*model.Sig
 		}
 	}
 
+	if entry != nil {
+		entry.WithField("branch_id", cr.BranchID).Info("ok")
+	}
 	return res, nil
 }
 
 func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) ([]model.SignageCurrentCallResponse, error) {
+	entry := u.logEntry(ctx, "GetCurrentCalls", logrus.Fields{"qms_client_id": clientID})
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	if clientID == "" {
 		return nil, exception.ErrUnauthorized
 	}
@@ -142,6 +181,9 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 		Select("tenant_id, branch_id, branch_service_id, counter_id").
 		Where("id = ? AND is_active = ?", clientID, true).
 		First(&cs).Error; err != nil {
+		if entry != nil {
+			entry.Error("client not found")
+		}
 		return nil, exception.ErrNotFound
 	}
 
@@ -151,6 +193,9 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 		return nil, exception.ErrBadRequest
 	}
 	if cs.TenantID != tenantID || cs.BranchID != branchID {
+		if entry != nil {
+			entry.Warn("tenant/branch mismatch")
+		}
 		return nil, exception.ErrForbidden
 	}
 
@@ -188,7 +233,14 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 	}
 
 	if err := query.Find(&rows).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("query failed")
+		}
 		return nil, fmt.Errorf("query current calls: %w", err)
+	}
+
+	if entry != nil {
+		entry.WithField("count", len(rows)).Info("ok")
 	}
 
 	res := make([]model.SignageCurrentCallResponse, 0, len(rows))
@@ -215,6 +267,11 @@ func (u *signageUseCase) GetCurrentCalls(ctx context.Context, clientID string) (
 }
 
 func (u *signageUseCase) GetQueues(ctx context.Context, clientID string) ([]queueModel.QueueResponse, error) {
+	entry := u.logEntry(ctx, "GetQueues", logrus.Fields{"qms_client_id": clientID})
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	if clientID == "" {
 		return nil, exception.ErrUnauthorized
 	}
@@ -228,6 +285,9 @@ func (u *signageUseCase) GetQueues(ctx context.Context, clientID string) ([]queu
 		Select("tenant_id, branch_id, branch_service_id").
 		Where("id = ? AND is_active = ?", clientID, true).
 		First(&cs).Error; err != nil {
+		if entry != nil {
+			entry.Error("client not found")
+		}
 		return nil, exception.ErrNotFound
 	}
 
@@ -237,6 +297,9 @@ func (u *signageUseCase) GetQueues(ctx context.Context, clientID string) ([]queu
 		return nil, exception.ErrBadRequest
 	}
 	if cs.TenantID != tenantID || cs.BranchID != branchID {
+		if entry != nil {
+			entry.Warn("tenant/branch mismatch")
+		}
 		return nil, exception.ErrForbidden
 	}
 
@@ -270,7 +333,14 @@ func (u *signageUseCase) GetQueues(ctx context.Context, clientID string) ([]queu
 	}
 
 	if err := query.Find(&rows).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("query failed")
+		}
 		return nil, fmt.Errorf("query waiting queues: %w", err)
+	}
+
+	if entry != nil {
+		entry.WithField("count", len(rows)).Info("ok")
 	}
 
 	res := make([]queueModel.QueueResponse, 0, len(rows))
