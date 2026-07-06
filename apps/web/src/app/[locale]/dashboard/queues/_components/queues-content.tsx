@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useWebSocket } from "~/components/shared/providers/websocket-provider";
 import { toast } from "sonner";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import {
@@ -187,6 +188,31 @@ export function QueuesContent() {
 	useEffect(() => {
 		fetchViewData();
 	}, [fetchViewData]);
+
+	const eventHandlerRef = useRef<() => void>(() => {});
+	eventHandlerRef.current = () => {
+		fetchViewData();
+		fetchStats();
+	};
+
+	const { subscribe, unsubscribe, isConnected } = useWebSocket();
+	useEffect(() => {
+		if (!currentOrganization || !selectedBranchId || !isConnected) return;
+		const channel = `queue:${currentOrganization.id}:${selectedBranchId}`;
+		const handler = (msg: any) => {
+			if (msg?.type === "queue_update") {
+				eventHandlerRef.current();
+			}
+		};
+		subscribe(channel, handler);
+		return () => unsubscribe(channel, handler);
+	}, [
+		currentOrganization,
+		selectedBranchId,
+		subscribe,
+		unsubscribe,
+		isConnected,
+	]);
 
 	useEffect(() => {
 		if (selectedCounterId === "all") return;
