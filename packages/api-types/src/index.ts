@@ -386,6 +386,13 @@ export interface EffectiveQueueConfigResponse {
 	branch_id?: string;
 	service_id?: string;
 	counter_id?: string;
+	tenant?: {
+		tenant_id: string;
+	};
+	branch?: {
+		branch_id?: string;
+		effective_logo_asset_id?: string;
+	};
 	queue_reset_time: string;
 	queue_reset_time_source?: string;
 	queue_reset_time_inherited?: boolean;
