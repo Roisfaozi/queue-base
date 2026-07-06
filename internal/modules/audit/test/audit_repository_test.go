@@ -33,7 +33,7 @@ func TestAuditRepository_Create(t *testing.T) {
 		run      func(t *testing.T, repo auditUseCase.AuditRepository, db *gorm.DB)
 	}{
 		{
-			name:     "Success - Create Full Audit Log",
+			name:     "Positive_Success_CreateFullAuditLog",
 			category: "unit",
 			run: func(t *testing.T, repo auditUseCase.AuditRepository, db *gorm.DB) {
 				ctx := context.Background()
@@ -66,7 +66,7 @@ func TestAuditRepository_Create(t *testing.T) {
 			},
 		},
 		{
-			name:     "Success - Create Partial Log (No JSON values)",
+			name:     "Positive_Success_CreatePartialLog",
 			category: "unit",
 			run: func(t *testing.T, repo auditUseCase.AuditRepository, db *gorm.DB) {
 				ctx := context.Background()
@@ -87,7 +87,7 @@ func TestAuditRepository_Create(t *testing.T) {
 			},
 		},
 		{
-			name:     "Edge - JSON Injection Safety",
+			name:     "Edge_JSONInjectionSafety",
 			category: "edge",
 			run: func(t *testing.T, repo auditUseCase.AuditRepository, db *gorm.DB) {
 				ctx := context.Background()
@@ -110,7 +110,7 @@ func TestAuditRepository_Create(t *testing.T) {
 			},
 		},
 		{
-			name:     "Edge - Very Long UserAgent",
+			name:     "Edge_VeryLongUserAgent",
 			category: "edge",
 			run: func(t *testing.T, repo auditUseCase.AuditRepository, db *gorm.DB) {
 				ctx := context.Background()
