@@ -1,18 +1,28 @@
 import type {
+	BranchService,
 	CallerActionRequest,
 	CallerActionResponse,
 	CallerLoginRequest,
 	CallerLoginResponse,
 	CallerMeResponse,
+	Counter,
 	EffectiveQueueConfigResponse,
 	BranchResponse,
 	BranchUpsertRequest,
+	QMSClientResponse,
+	QMSClientUpdateRequest,
+	Queue,
+	QueueJourney,
 	QMSClientCreateRequest,
 	QMSClientCreateResponse,
 	QMSClientCredentialCreateRequest,
 	QMSClientCredentialCreateResponse,
+	QueueStatsResponse,
+	ScannerCheckInResponse,
+	Service,
 	SignageCurrentCallResponse,
 	SignageMeResponse,
+	VisitJourney,
 } from "@casbin/api-types";
 
 import { api } from "./client";
@@ -20,108 +30,33 @@ import { api } from "./client";
 export type Branch = BranchResponse;
 export type BranchUpsertPayload = BranchUpsertRequest;
 
-export interface Service {
-	id: string;
-	tenant_id: string;
-	code: string;
-	name: string;
-	type?: string;
-	default_estimated_duration?: number;
-	audio_id?: string;
-	audio_en?: string;
-	narrative_instruction_id?: string;
-	narrative_instruction_en?: string;
-	status: "active" | "inactive";
-	is_pharmacy: boolean;
-	is_pharmacy_reception: boolean;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface Counter {
-	id: string;
-	tenant_id: string;
-	branch_id: string;
-	branch_service_id?: string;
-	code: string;
-	name: string;
-	display_name?: string;
-	status: "active" | "inactive";
-	created_at: number;
-	updated_at: number;
-}
-
-export interface BranchService {
-	id: string;
-	tenant_id: string;
-	branch_id: string;
-	service_id: string;
-	custom_name?: string;
-	is_active: boolean;
-	sort_order: number;
-	created_at: number;
-	updated_at: number;
-}
-
 export type EffectiveQueueConfig = EffectiveQueueConfigResponse;
 export type {
 	CallerActionResponse,
 	CallerMeResponse,
+	Counter,
+	BranchService,
+	QMSClientResponse,
+	QMSClientUpdateRequest,
+	Queue,
+	QueueJourney,
+	QueueStatsResponse,
+	ScannerCheckInResponse,
+	Service,
 	SignageCurrentCallResponse,
 	SignageMeResponse,
+	VisitJourney,
 };
 
-export interface Queue {
-	id: string;
-	tenant_id: string;
-	branch_id: string;
-	queue_date: string;
-	ticket_no: string;
-	queue_no: number;
-	patient_id?: string;
-	patient_name?: string;
-	status: string;
-	current_journey_id?: string;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface QueueJourney {
-	id: string;
-	queue_id: string;
-	service_id: string;
-	counter_id?: string;
-	seq_no: number;
-	status: string;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface VisitJourney {
-	id: string;
-	queue_id: string;
-	tenant_id: string;
-	event_type: string;
-	payload?: string;
-	created_at: number;
-}
-
-export interface QueueStatsResponse {
-	total_queues_today: number;
-	total_active_journeys: number;
-	total_completed_visits: number;
-	waiting_by_service: Record<string, number>;
-}
-
-export interface ScannerCheckInResponse {
-	action: "register" | "forward";
-	queue: Queue;
-}
-
 export const qmsClientsApi = {
-	getAll: () => api.get<{ data: QMSClientCreateResponse[] }>("/qms-clients"),
+	getAll: () => api.get<{ data: QMSClientResponse[] }>("/qms-clients"),
+	getById: (id: string) =>
+		api.get<{ data: QMSClientResponse }>(`/qms-clients/${id}`),
 	create: (data: QMSClientCreateRequest) =>
 		api.post<{ data: QMSClientCreateResponse }>("/qms-clients", data),
+	update: (id: string, data: QMSClientUpdateRequest) =>
+		api.patch<{ data: QMSClientResponse }>(`/qms-clients/${id}`, data),
+	deactivate: (id: string) => api.delete(`/qms-clients/${id}`),
 	createCredential: (data: QMSClientCredentialCreateRequest) =>
 		api.post<{ data: QMSClientCredentialCreateResponse }>(
 			"/qms-clients/credentials",

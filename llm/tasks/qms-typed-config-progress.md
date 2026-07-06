@@ -1002,3 +1002,22 @@ Design sources:
   - result: passed
 - next step:
   - If needed, convert wizard shell into true multi-step form flow using these same modules.
+
+## 2026-07-06 — Frontend contract sync for shared QMS types
+
+- status: completed
+- owner paths:
+  - `packages/api-types/src/index.ts`
+  - `apps/web/src/lib/api/qms.ts`
+- work done:
+  - Promoted remaining `apps/web`-local QMS contracts into `@casbin/api-types`: `Service`, `Counter`, `BranchService`, `Queue`, `QueueJourney`, `VisitJourney`, `QueueStatsResponse`, and `ScannerCheckInResponse`.
+  - Added shared QMS client admin contracts for frontend CRUD sync: `QMSClientResponse` and `QMSClientUpdateRequest`.
+  - Expanded shared `QMSClientCreateResponse` with `branch_service_id` and `counter_id` so create/list/update payloads stop diverging.
+  - Simplified `apps/web/src/lib/api/qms.ts` into consumer-only aliases/imports instead of maintaining duplicate local interfaces.
+  - Added missing frontend client methods for `qmsClientsApi.getById`, `update`, and `deactivate` so admin CRUD contract is fully represented in web client.
+- verification:
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed
+  - evidence: `apps/web` compiles after shared-type migration with no local duplicate QMS contract definitions required.
+- next step:
+  - If `apps/client` starts consuming QMS admin flows too, reuse these shared contracts there instead of adding new local copies.

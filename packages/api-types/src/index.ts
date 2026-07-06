@@ -150,8 +150,19 @@ export interface QMSClientCreateResponse {
 	branch_id: string;
 	client_type: "caller" | "signage" | "scanner" | "kiosk";
 	name: string;
+	branch_service_id?: string;
+	counter_id?: string;
 	is_active: boolean;
 	created_at: number;
+}
+
+export interface QMSClientResponse extends QMSClientCreateResponse {}
+
+export interface QMSClientUpdateRequest {
+	name?: string;
+	branch_service_id?: string;
+	counter_id?: string;
+	is_active?: boolean;
 }
 
 export interface QMSClientCredentialCreateRequest {
@@ -183,6 +194,96 @@ export interface BranchResponse {
 	status: "draft" | "active" | "inactive";
 	created_at: number;
 	updated_at: number;
+}
+
+export interface Service {
+	id: string;
+	tenant_id: string;
+	code: string;
+	name: string;
+	type?: string;
+	default_estimated_duration?: number;
+	audio_id?: string;
+	audio_en?: string;
+	narrative_instruction_id?: string;
+	narrative_instruction_en?: string;
+	status: "active" | "inactive";
+	is_pharmacy: boolean;
+	is_pharmacy_reception: boolean;
+	created_at: number;
+	updated_at: number;
+}
+
+export interface Counter {
+	id: string;
+	tenant_id: string;
+	branch_id: string;
+	branch_service_id?: string;
+	code: string;
+	name: string;
+	display_name?: string;
+	status: "active" | "inactive";
+	created_at: number;
+	updated_at: number;
+}
+
+export interface BranchService {
+	id: string;
+	tenant_id: string;
+	branch_id: string;
+	service_id: string;
+	custom_name?: string;
+	is_active: boolean;
+	sort_order: number;
+	created_at: number;
+	updated_at: number;
+}
+
+export interface Queue {
+	id: string;
+	tenant_id: string;
+	branch_id: string;
+	queue_date: string;
+	ticket_no: string;
+	queue_no: number;
+	patient_id?: string;
+	patient_name?: string;
+	status: string;
+	current_journey_id?: string;
+	created_at: number;
+	updated_at: number;
+}
+
+export interface QueueJourney {
+	id: string;
+	queue_id: string;
+	service_id: string;
+	counter_id?: string;
+	seq_no: number;
+	status: string;
+	created_at: number;
+	updated_at: number;
+}
+
+export interface VisitJourney {
+	id: string;
+	queue_id: string;
+	tenant_id: string;
+	event_type: string;
+	payload?: string;
+	created_at: number;
+}
+
+export interface QueueStatsResponse {
+	total_queues_today: number;
+	total_active_journeys: number;
+	total_completed_visits: number;
+	waiting_by_service: Record<string, number>;
+}
+
+export interface ScannerCheckInResponse {
+	action: "register" | "forward";
+	queue: Queue;
 }
 
 export type BranchUpsertRequest = Partial<
