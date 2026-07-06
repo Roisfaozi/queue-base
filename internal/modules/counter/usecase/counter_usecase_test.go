@@ -112,7 +112,6 @@ func (s *stubCounterBranchRepo) Delete(_ context.Context, tenantID, branchID str
 func TestCreateCounter(t *testing.T) {
 	tests := []struct {
 		name     string
-		category string
 		req      model.CreateCounterRequest
 		stubRepo struct {
 			counter *entity.Counter
@@ -127,9 +126,8 @@ func TestCreateCounter(t *testing.T) {
 		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo)
 	}{
 		{
-			name:     "Positive_CreatesCounterWithSanitization",
-			category: "positive",
-			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: " a1 ", Name: " Front Desk "},
+			name: "Positive_CreatesCounterWithSanitization",
+			req:  model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: " a1 ", Name: " Front Desk "},
 			stubBranchRepo: struct {
 				branch *organizationEntity.Branch
 				err    error
@@ -150,15 +148,13 @@ func TestCreateCounter(t *testing.T) {
 		},
 		{
 			name:     "Negative_RequiresTenant",
-			category: "negative",
 			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
 			tenantID: "",
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
-			name:     "Vulnerability_RejectsCrossTenantBranch",
-			category: "vulnerability",
-			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
+			name: "Vulnerability_RejectsCrossTenantBranch",
+			req:  model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
 			stubBranchRepo: struct {
 				branch *organizationEntity.Branch
 				err    error
@@ -188,7 +184,7 @@ func TestCreateCounter(t *testing.T) {
 				branch: branch,
 				err:    tt.stubBranchRepo.err,
 			}
-			uc := NewCounterUseCase(repo, branchRepo, &stubCounterBranchServiceRepo{})
+			uc := NewCounterUseCase(repo, branchRepo, &stubCounterBranchServiceRepo{isActive: true})
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -218,7 +214,6 @@ func TestUpdateCounter(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		category  string
 		counterID string
 		req       model.UpdateCounterRequest
 		stubRepo  struct {
@@ -231,7 +226,6 @@ func TestUpdateCounter(t *testing.T) {
 	}{
 		{
 			name:      "Positive_SanitizesFieldsOnUpdate",
-			category:  "positive",
 			counterID: "counter-1",
 			req:       model.UpdateCounterRequest{Code: &code, Name: &name},
 			stubRepo: struct {
@@ -256,7 +250,7 @@ func TestUpdateCounter(t *testing.T) {
 				counter: tt.stubRepo.counter,
 				err:     tt.stubRepo.err,
 			}
-			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{})
+			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{isActive: true})
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -281,7 +275,8 @@ func TestUpdateCounter(t *testing.T) {
 }
 
 type stubCounterBranchServiceRepo struct {
-	err error
+	err      error
+	isActive bool
 }
 
 func (s *stubCounterBranchServiceRepo) Create(_ context.Context, bs *serviceEntity.BranchService) error {
@@ -291,7 +286,7 @@ func (s *stubCounterBranchServiceRepo) FindByID(_ context.Context, tenantID, bra
 	if s.err != nil {
 		return nil, s.err
 	}
-	return &serviceEntity.BranchService{ID: id, TenantID: tenantID, BranchID: branchID, IsActive: true}, nil
+	return &serviceEntity.BranchService{ID: id, TenantID: tenantID, BranchID: branchID, IsActive: s.isActive}, nil
 }
 func (s *stubCounterBranchServiceRepo) FindByService(_ context.Context, tenantID, branchID, serviceID string) (*serviceEntity.BranchService, error) {
 	return nil, nil
@@ -306,22 +301,83 @@ func (s *stubCounterBranchServiceRepo) Delete(_ context.Context, tenantID, branc
 	return nil
 }
 
+func TestCounterServiceRelationGuard(t *testing.T) {
+	tests := []struct {
+		name            string
+		req             model.CreateCounterRequest
+		stubBranchRepo  *stubCounterBranchRepo
+		stubServiceRepo *stubCounterBranchServiceRepo
+		wantError       error
+	}{
+		{
+			name: "Vulnerability_RejectsInvalidBranchServiceRelation",
+			req: model.CreateCounterRequest{
+				BranchID:        "branch-1",
+				BranchServiceID: "service-unknown",
+				Code:            "A1",
+			},
+			stubBranchRepo: &stubCounterBranchRepo{
+				branch: &organizationEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive},
+			},
+			stubServiceRepo: &stubCounterBranchServiceRepo{err: exception.ErrNotFound},
+			wantError:       exception.ErrForbidden,
+		},
+		{
+			name: "Vulnerability_RejectsInactiveBranchServiceRelation",
+			req: model.CreateCounterRequest{
+				BranchID:        "branch-1",
+				BranchServiceID: "service-inactive",
+				Code:            "A1",
+			},
+			stubBranchRepo: &stubCounterBranchRepo{
+				branch: &organizationEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive},
+			},
+			stubServiceRepo: &stubCounterBranchServiceRepo{
+				err: nil,
+			},
+			wantError: exception.ErrForbidden,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubCounterRepo{}
+			uc := NewCounterUseCase(repo, tt.stubBranchRepo, tt.stubServiceRepo)
+
+			ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+
+			// Intercept stubServiceRepo to return inactive if needed
+			if tt.name == "Vulnerability_RejectsInactiveBranchServiceRelation" {
+				tt.stubServiceRepo.isActive = false
+			} else if tt.stubServiceRepo != nil && tt.stubServiceRepo.err == nil {
+				tt.stubServiceRepo.isActive = true
+			}
+
+			_, err := uc.CreateCounter(ctx, &tt.req)
+			assert.ErrorIs(t, err, tt.wantError)
+		})
+	}
+}
+
 func TestCounterAuditHooks(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	audit := &stubCounterAuditLogger{}
-	repo := &stubCounterRepo{counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Status: entity.CounterStatusActive}}
-	uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{}, audit)
 
-	_, err := uc.CreateCounter(ctx, &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Counter A"})
-	require.NoError(t, err)
-	_, err = uc.UpdateCounter(ctx, "counter-1", &model.UpdateCounterRequest{})
-	require.NoError(t, err)
-	err = uc.DeleteCounter(ctx, "counter-1")
-	require.NoError(t, err)
+	t.Run("Positive_LogsAuditActivitiesForCreateUpdateDelete", func(t *testing.T) {
+		audit := &stubCounterAuditLogger{}
+		repo := &stubCounterRepo{counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Status: entity.CounterStatusActive}}
+		uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{isActive: true}, audit)
 
-	require.Len(t, audit.entries, 3)
-	assert.Equal(t, "COUNTER_CREATE", audit.entries[0].Action)
-	assert.Equal(t, "COUNTER_UPDATE", audit.entries[1].Action)
-	assert.Equal(t, "COUNTER_DELETE", audit.entries[2].Action)
-	assert.Equal(t, "counter", audit.entries[0].Entity)
+		_, err := uc.CreateCounter(ctx, &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Counter A"})
+		require.NoError(t, err)
+		_, err = uc.UpdateCounter(ctx, "counter-1", &model.UpdateCounterRequest{})
+		require.NoError(t, err)
+		err = uc.DeleteCounter(ctx, "counter-1")
+		require.NoError(t, err)
+
+		require.Len(t, audit.entries, 3)
+		assert.Equal(t, "COUNTER_CREATE", audit.entries[0].Action)
+		assert.Equal(t, "COUNTER_UPDATE", audit.entries[1].Action)
+		assert.Equal(t, "COUNTER_DELETE", audit.entries[2].Action)
+		assert.Equal(t, "counter", audit.entries[0].Entity)
+	})
 }
