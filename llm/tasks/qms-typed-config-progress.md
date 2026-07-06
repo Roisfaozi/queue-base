@@ -888,3 +888,17 @@ Design sources:
   - result: passed
 - next step:
   - Frontend can subscribe to `/api/v1/events` and refresh caller/signage state on these event names.
+
+## 2026-07-06 — Frontend realtime SSE consumer sync
+
+- status: completed
+- owner paths:
+  - `apps/client/app/lib/realtime/event-client.ts`
+  - `apps/client/app/hooks/use-realtime.ts`
+- work done:
+  - Fixed client SSE parser: backend was emitting named events (e.g. `event: queue_registered`) while client only listened to generic `onmessage`.
+  - Added named event listeners `queue_registered`, `queue_forwarded`, `queue_transitioned` to `EventClient`.
+  - Subscribed to queue realtime events in `useRealtimeInit` and piped them to the `ActivityStore` to display live QMS activity in the frontend UI.
+- verification:
+  - command: `pnpm --dir apps/client typecheck`
+  - result: passed
