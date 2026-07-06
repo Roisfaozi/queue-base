@@ -90,8 +90,8 @@ func TestBranchServiceUseCase_AuditHooks(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 
 	audit := &stubBranchServiceAuditLogger{}
-	branchRepo := &stubBranchRepo{branch: &branchEntity.Branch{ID: "branch-1", TenantID: "tenant-1"}}
-	serviceRepo := &stubServiceRepo{service: &entity.Service{ID: "svc-1", TenantID: "tenant-1"}}
+	branchRepo := &stubBranchRepo{branch: &branchEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive}}
+	serviceRepo := &stubServiceRepo{service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive}}
 	repo := &stubBranchServiceRepo{
 		branchService: &entity.BranchService{ID: "bs-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-1", IsActive: true},
 	}

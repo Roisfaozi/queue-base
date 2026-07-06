@@ -903,3 +903,25 @@ Design sources:
   - command: `pnpm --dir apps/client typecheck`
   - result: passed
 - **Branch Activation Sync**: Backend guard aman. `packages/api-types` dan API client (`apps/web/src/lib/api/qms.ts`) ditambahkan contract model penuh + `branchActivationSchema` untuk persiapan frontend UI Branch CRUD kelak.
+
+- 2026-07-06: Rebases coverage doc status after caller/signage/qms-client/operator-assignment/realtime/activation slices; remaining gaps are now mainly wizard, E2E, and audio/narrative completeness.
+
+## 2026-07-06 — Rules audit: service/branch/counter active status symmetry
+
+- status: completed
+- owner paths:
+  - `internal/modules/scanner/usecase/relation_validator.go`
+  - `internal/modules/service/usecase/branch_service_usecase.go`
+  - `internal/modules/counter/usecase/counter_usecase.go`
+- work done:
+  - Added strict `active` status check to `relation_validator`. Queues, forwarding, and caller actions will now reject inactive branches, inactive services, inactive branch-services, or inactive counters.
+  - Added `active` status guard on `CreateBranchService`. Cannot enable an inactive service or create inside an inactive branch.
+  - Added `active` status guard on `CreateCounter` and `UpdateCounter`. Cannot map a counter to an inactive branch.
+- tests added/updated:
+  - Added negative test cases in `relation_validator_test.go` for inactive branches and services.
+  - Updated stub defaults to return `StatusActive` to keep older positive flows intact.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/scanner/usecase ./internal/modules/service/usecase ./internal/modules/counter/usecase -count=1`
+  - result: passed
+- next step:
+  - Branch CRUD UI for `apps/web` to finally provide a place to activate branches properly.

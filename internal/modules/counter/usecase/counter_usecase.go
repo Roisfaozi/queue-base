@@ -8,6 +8,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	serviceRepository "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
 	"github.com/Roisfaozi/queue-base/pkg/authcontext"
@@ -54,7 +55,11 @@ func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCou
 	if u.branchRepo == nil {
 		return nil, exception.ErrForbidden
 	}
-	if _, err := u.branchRepo.FindByID(ctx, tenantID, req.BranchID); err != nil {
+	branch, err := u.branchRepo.FindByID(ctx, tenantID, req.BranchID)
+	if err != nil {
+		return nil, exception.ErrForbidden
+	}
+	if branch.Status != branchEntity.BranchStatusActive {
 		return nil, exception.ErrForbidden
 	}
 	if err := u.validateBranchService(ctx, tenantID, req.BranchID, req.BranchServiceID); err != nil {

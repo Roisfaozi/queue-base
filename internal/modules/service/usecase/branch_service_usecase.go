@@ -5,6 +5,7 @@ import (
 	"time"
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
@@ -159,10 +160,18 @@ func (u *branchServiceUseCase) EnsureActiveBranchService(ctx context.Context, te
 }
 
 func (u *branchServiceUseCase) validateTenantBranchService(ctx context.Context, tenantID, branchID, serviceID string) error {
-	if _, err := u.branchRepo.FindByID(ctx, tenantID, branchID); err != nil {
+	branch, err := u.branchRepo.FindByID(ctx, tenantID, branchID)
+	if err != nil {
 		return exception.ErrForbidden
 	}
-	if _, err := u.serviceRepo.FindByID(ctx, tenantID, serviceID); err != nil {
+	if branch.Status != branchEntity.BranchStatusActive {
+		return exception.ErrForbidden
+	}
+	service, err := u.serviceRepo.FindByID(ctx, tenantID, serviceID)
+	if err != nil {
+		return exception.ErrForbidden
+	}
+	if service.Status != entity.ServiceStatusActive {
 		return exception.ErrForbidden
 	}
 	return nil

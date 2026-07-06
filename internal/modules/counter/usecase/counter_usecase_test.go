@@ -134,7 +134,7 @@ func TestCreateCounter(t *testing.T) {
 				branch *organizationEntity.Branch
 				err    error
 			}{
-				branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1"},
+				branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive},
 				err:    nil,
 			},
 			tenantID: "tenant-1",
@@ -180,8 +180,12 @@ func TestCreateCounter(t *testing.T) {
 				counter: tt.stubRepo.counter,
 				err:     tt.stubRepo.err,
 			}
+			branch := tt.stubBranchRepo.branch
+			if branch == nil && tt.stubBranchRepo.err == nil {
+				branch = &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}
+			}
 			branchRepo := &stubCounterBranchRepo{
-				branch: tt.stubBranchRepo.branch,
+				branch: branch,
 				err:    tt.stubBranchRepo.err,
 			}
 			uc := NewCounterUseCase(repo, branchRepo, &stubCounterBranchServiceRepo{})
@@ -252,7 +256,7 @@ func TestUpdateCounter(t *testing.T) {
 				counter: tt.stubRepo.counter,
 				err:     tt.stubRepo.err,
 			}
-			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{}, &stubCounterBranchServiceRepo{})
+			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{})
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -306,7 +310,7 @@ func TestCounterAuditHooks(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 	audit := &stubCounterAuditLogger{}
 	repo := &stubCounterRepo{counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Status: entity.CounterStatusActive}}
-	uc := NewCounterUseCase(repo, &stubCounterBranchRepo{}, &stubCounterBranchServiceRepo{}, audit)
+	uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{}, audit)
 
 	_, err := uc.CreateCounter(ctx, &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Counter A"})
 	require.NoError(t, err)

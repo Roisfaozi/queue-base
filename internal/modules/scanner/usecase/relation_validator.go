@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	counterRepository "github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	serviceRepository "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
 	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
@@ -28,17 +31,28 @@ func NewRelationValidator(branchRepo branchRepository.BranchRepository, serviceR
 }
 
 func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
-	if _, err := v.branchRepo.FindByID(ctx, tenantID, branchID); err != nil {
+	branch, err := v.branchRepo.FindByID(ctx, tenantID, branchID)
+	if err != nil {
 		return fmt.Errorf("branchRepo.FindByID failed (%v): %w", err, exception.ErrForbidden)
+	}
+	if branch.Status != branchEntity.BranchStatusActive {
+		return fmt.Errorf("branch inactive: %w", exception.ErrForbidden)
 	}
 	if serviceID != "" {
 		service, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID)
 		if err != nil {
 			return fmt.Errorf("serviceRepo.FindByID failed (%v): %w", err, exception.ErrForbidden)
 		}
+		if service.Status != serviceEntity.ServiceStatusActive {
+			return fmt.Errorf("service inactive: %w", exception.ErrForbidden)
+		}
 		if v.branchServiceRepo != nil {
-			if _, err := v.branchServiceRepo.FindByService(ctx, tenantID, branchID, serviceID); err != nil {
+			branchService, err := v.branchServiceRepo.FindByService(ctx, tenantID, branchID, serviceID)
+			if err != nil {
 				return fmt.Errorf("branchServiceRepo.FindByService failed (%v): %w", err, exception.ErrForbidden)
+			}
+			if !branchService.IsActive {
+				return fmt.Errorf("branch service inactive: %w", exception.ErrForbidden)
 			}
 		} else {
 			return fmt.Errorf("branchServiceRepo missing: %w", exception.ErrForbidden)
@@ -67,6 +81,9 @@ func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, se
 		}
 		if counter.BranchID != branchID {
 			return fmt.Errorf("counter branch mismatch: %w", exception.ErrForbidden)
+		}
+		if counter.Status != counterEntity.CounterStatusActive {
+			return fmt.Errorf("counter inactive: %w", exception.ErrForbidden)
 		}
 	}
 	return nil

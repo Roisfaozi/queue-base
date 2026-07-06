@@ -574,7 +574,7 @@ This section expands the raw `partial/missing` markers into concrete implementat
   - audio and narrative
   - `auto_call_next`
 
-### Gap D — Tenant/Branch Activation Rules Missing
+### Gap D — Tenant/Branch Activation Rules Missing [RESOLVED]
 
 **Design target**
 
@@ -582,25 +582,24 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- Status enums exist, but no activation guard enforcing profile completeness.
+- Backend guards now enforce profile completeness on update.
+- Frontend shared validation added via `@casbin/api-types`.
 
 **Evidence**
 
-- Tenant entity fields: `internal/modules/organization/entity/organization_entity.go:13`
-- Branch entity fields: `internal/modules/organization/entity/branch_entity.go:9`
-- Branch usecase lacks activation validation: `internal/modules/organization/usecase/branch_usecase.go:27`
+- Tenant activation guard: `internal/modules/organization/usecase/organization_usecase.go`
+- Branch activation guard: `internal/modules/organization/usecase/branch_usecase.go:103`
+- Test: `TestUpdateBranch/Positive_ActivateWithRequiredFieldsInRequest` in `branch_usecase_test.go`.
 
 **Gap impact**
 
-- Incomplete tenants/branches can be marked active.
-- Caller/signage/dashboard flows can operate on operationally invalid branch data.
+- (Resolved) Incomplete tenants/branches cannot be marked active on backend.
 
 **Needed change**
 
-- Add pre-activation validation in tenant and branch usecases.
-- Add audit and tests for failed and successful activation.
+- Monitor if `apps/web` needs a dedicated branch form component, as it does not currently exist.
 
-### Gap E — Branch Logo Fallback Missing
+### Gap E — Branch Logo Fallback Missing [RESOLVED]
 
 **Design target**
 
@@ -608,24 +607,21 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- Fields exist, but no effective fallback logic exposed in API.
+- Signage `GetMe` now correctly implements tenant logo fallback when branch logo is null.
 
 **Evidence**
 
-- Branch fields: `internal/modules/organization/entity/branch_entity.go:19`
-- Tenant fields: `internal/modules/organization/entity/organization_entity.go:24`
-- No effective-logo response in settings/controller path.
+- `internal/modules/signage/usecase/signage_usecase.go:80`
 
 **Gap impact**
 
-- Signage and dashboard cannot render guaranteed logo source from one contract.
+- (Resolved) Signage feed has logo.
 
 **Needed change**
 
-- Add effective-logo computation and response fields.
-- Add tests for branch-logo-present and branch-logo-null fallback cases.
+- None.
 
-### Gap F — Caller Domain Missing
+### Gap F — Caller Domain Missing [RESOLVED]
 
 **Design target**
 
@@ -635,26 +631,24 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- Old scanner/client API-key patterns exist.
-- No `qms_clients` domain.
-- No caller action endpoint.
-- No operator assignment domain.
+- Caller domain is fully implemented and tested.
+- Admin endpoints for QMS clients and operator assignments added (Jalur C).
 
 **Evidence**
 
-- New MVP headings: `documentation/New Design Document — QMS MVP Operatio.md:1771`, `documentation/New Design Document — QMS MVP Operatio.md:1824`, `documentation/New Design Document — QMS MVP Operatio.md:1889`, `documentation/New Design Document — QMS MVP Operatio.md:2002`
-- Current router has no `/caller/*` namespace: `internal/router/router.go:223`
+- `internal/modules/caller/delivery/http/caller_routes.go:15`
+- `internal/modules/qms_client/delivery/http/qms_client_routes.go:9`
+- `internal/modules/operator_assignment/delivery/http/operator_assignment_routes.go:9`
 
 **Gap impact**
 
-- MVP caller flow is not implemented.
-- Current scanner/API-key flow is not enough to satisfy bound caller operational UX.
+- (Resolved) MVP caller flow is fully supported on backend.
 
 **Needed change**
 
-- Add new backend domains and endpoints for caller login, bound context, queue list, and action dispatch.
+- None.
 
-### Gap G — Signage Domain Missing
+### Gap G — Signage Domain Missing [RESOLVED]
 
 **Design target**
 
@@ -663,22 +657,21 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- No `signage/me` or `signage/current-calls` endpoints.
+- Signage feed is fully implemented and tested.
 
 **Evidence**
 
-- Design API: `documentation/New Design Document — QMS MVP Operatio.md:2093`
-- No signage module/route in current backend router.
+- `internal/modules/signage/delivery/http/signage_routes.go:9`
 
 **Gap impact**
 
-- MVP signage flow not implemented.
+- (Resolved) Signage flow supported.
 
 **Needed change**
 
-- Add signage auth and feed endpoints plus view contract.
+- None.
 
-### Gap H — Queue Journey State Machine Partial vs MVP
+### Gap H — Queue Journey State Machine Partial vs MVP [PARTIAL]
 
 **Design target**
 
@@ -689,22 +682,26 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- Queue transitions exist, but latest MVP-specific caller semantics and recall semantics are not fully proven against new caller API.
+- Queue transitions exist.
+- Caller single-action endpoint now fronts queue transitions.
+- Repeated call/recall semantics and typed journey flow are substantially covered in backend paths, but not yet fully closed by final E2E proof.
 
 **Evidence**
 
-- Current queue usecase: `internal/modules/queue/usecase/queue_usecase.go`
-- Existing tests centered on queue and scanner, not caller state machine contract.
+- Queue runtime: `internal/modules/queue/usecase/queue_usecase.go`
+- Caller runtime: `internal/modules/caller/usecase/caller_usecase.go`
+- Caller tests: `internal/modules/caller/usecase/caller_usecase_test.go`
 
 **Gap impact**
 
-- Core queue foundation exists, but MVP user-facing action semantics remain only partially aligned.
+- Backend mostly aligned.
+- Remaining risk is proof depth, not missing main runtime path.
 
 **Needed change**
 
-- Rework and expand tests around typed state machine and caller single-action endpoint.
+- Add final integration/E2E proof for caller action lifecycle when Docker slice resumes.
 
-### Gap I — Estimate, Audio, Narrative, and Recall Coverage Missing
+### Gap I — Estimate, Audio, Narrative, and Recall Coverage Missing [PARTIAL]
 
 **Design target**
 
@@ -712,25 +709,27 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- Duration partially exists.
-- Audio/narrative fallback not implemented in effective resolver.
-- `allow_recall` runtime guard exists, but response metadata is still partial.
+- Duration exists in runtime.
+- Signage now exposes `audio_id` and `audio_en` on service/current-call payloads.
+- `auto_call_next` is present in typed config path.
+- Narrative fields and full effective-config narrative/audio projection remain incomplete.
 
 **Evidence**
 
-- Service entity has duration field: `internal/modules/service/entity/service_entity.go:23`
-- No audio/narrative fields in effective resolver path.
-- `auto_call_next` now exists in typed entities and effective config path.
+- `internal/modules/signage/model/signage_model.go`
+- `internal/modules/signage/usecase/signage_usecase.go`
+- `internal/modules/settings/queue_settings_resolver.go`
 
 **Gap impact**
 
-- Caller/signage/dashboard cannot reflect full operational behavior promised by MVP design.
+- Signage is mostly covered.
+- Effective config/dashboard contract still not fully covers narrative/audio/fallback story.
 
 **Needed change**
 
-- Expand schema and resolver, then add unit/integration/e2e tests.
+- Finish service audio/narrative migration + resolver exposure if product still needs it in dashboard/effective-config contract.
 
-### Gap J — Migration Strategy Incomplete For MVP
+### Gap J — Migration Strategy Incomplete For MVP [MOSTLY RESOLVED]
 
 **Design target**
 
@@ -743,23 +742,25 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- Typed table migration only covers earlier typed-config subset.
-- No migration for `branch_service_queue_settings`, `qms_clients`, `qms_client_credentials`, `operator_counter_assignments`.
+- Main migration wave already added for typed config alignment and QMS client binding.
+- Remaining concern is cleanup consistency and any still-missing service audio/narrative columns.
 
 **Evidence**
 
-- Current migration file: `db/migrations/000032_align_qms_typed_configuration.up.sql:1`
-- Missing new MVP tables in `db/migrations/`
+- `db/migrations/000032_align_qms_typed_configuration.up.sql`
+- `db/migrations/000033_qms_mvp_alignment.up.sql`
+- `db/migrations/000034_qms_client_binding.up.sql`
 
 **Gap impact**
 
-- Latest MVP cannot be reached incrementally from current schema set.
+- Core MVP schema is reachable now.
+- Remaining migration work is additive cleanup, not blocker for core flow.
 
 **Needed change**
 
-- Create new migration wave aligned to sections 13, 28, 29, 30, and 41 of MVP doc.
+- Audit if service audio/narrative columns still need dedicated follow-up migration.
 
-### Gap K — Coverage Matrix Outdated vs MVP
+### Gap K — Coverage Matrix Outdated vs MVP [RESOLVED IN PART, DOC NEEDS CONTINUED MAINTENANCE]
 
 **Design target**
 
@@ -767,8 +768,9 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Current runtime**
 
-- Coverage doc still centered on older typed-config sections 4–15.
-- Test suites do not yet cover new MVP sections 28–42.
+- Coverage doc has been partially rebased, but drift can reappear after each feature slice.
+- Unit/usecase coverage now exists for caller, signage, QMS client credential auth, operator assignment, typed config, and queue transitions.
+- Integration/E2E remains deferred.
 
 **Evidence**
 
@@ -777,14 +779,9 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Gap impact**
 
-- Team can incorrectly assume coverage is adequate while major MVP domains are still untested.
+- Team can incorrectly assume Docker-backed integration/E2E is done when only narrow backend/frontend checks have passed.
 
 **Needed change**
 
-- Expand this audit and downstream playbooks to cover:
-  - qms client credential auth
-  - operator assignment
-  - caller single action endpoint
-  - signage feed
-  - estimate time math
-  - typed timestamp behavior
+- Keep this audit updated after each slice.
+- Resume Docker-backed integration/E2E when environment scope allows it.
