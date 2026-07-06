@@ -1361,3 +1361,36 @@ Design sources:
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
   - Implement or explicitly defer effective logo in effective-config response and typed settings write audit.
+
+## 2026-07-07 — Effective Config Logo Fallback Slice
+
+- status: completed
+- owner paths:
+  - `internal/modules/settings/delivery/http/settings_controller.go`
+  - `internal/modules/settings/delivery/http/settings_controller_test.go`
+  - `internal/modules/settings/module.go`
+  - `packages/api-types/src/index.ts`
+  - `llm/research/typed-config-design-coverage.md`
+  - `llm/tasks/qms-typed-config-progress.md`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Populated existing `branch.effective_logo_asset_id` response field in effective config.
+  - Resolution order is branch logo first, tenant logo fallback second.
+  - Synced shared API type with nested `tenant` and `branch` response objects.
+- tests added/updated:
+  - positive: branch logo returned when present.
+  - negative: existing missing-tenant test remains covered.
+  - edge: tenant logo returned when branch logo is empty.
+  - vulnerability/security: lookup is constrained by both branch ID and tenant ID.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./internal/modules/settings/delivery/http -run TestSettingsController_EffectiveQueueConfig -count=1`
+  - result: passed
+- errors and fixes:
+  - error: coverage doc still treated effective logo as unimplemented even though response struct already had a placeholder field.
+  - root cause: controller had no data lookup for branch/tenant logo fallback.
+  - fix: added minimal DB lookup in settings controller and kept resolver contract unchanged.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - Run broader lint/build/test and commit backend contract, type sync, and docs separately.

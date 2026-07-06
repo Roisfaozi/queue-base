@@ -40,7 +40,7 @@
 | tenant.branch.queue nested shape | ✅ done | Refactored in settings controller response while maintaining flat compat keys |
 | source metadata (`source`, `is_overridden`) | ✅ done | `internal/modules/settings/model/settings_model.go:82-90` (`Source`, `Inherited` fields) |
 | `can_override` / `can_reset` fields | ✅ done | Added to settings model via `ResolvedQueueSetting` |
-| `effective_logo_asset_id` in response | ⚠️ partial | Still absent, requires branch entity repo injection to settings |
+| `effective_logo_asset_id` in response | ✅ done | `GET /api/v1/settings/effective` now returns branch-level `effective_logo_asset_id` with branch→tenant fallback |
 
 ---
 
@@ -163,7 +163,7 @@
 |-----------|--------|----------|
 | cannot activate without address/city/province/phone/running_text/timezone | ✅ done | Branch create guard added in `branch_usecase.go` |
 | can activate without logo if tenant logo exists | ❌ missing | No logo fallback logic |
-| effective logo fallback (branch→tenant) | ❌ missing | Not implemented in any endpoint |
+| effective logo fallback (branch→tenant) | ✅ done | Effective config response resolves branch logo first and falls back to tenant logo |
 
 ### 8.3 Branch Service Validation
 
@@ -406,7 +406,7 @@
 |-----------|--------|----------|
 | activation rules (address/city/province/phone/running_text) | ✅ done | Guard tests cover activation requirement |
 | can activate without logo if tenant logo exists | ❌ missing | Logo fallback logic not yet implemented |
-| effective logo fallback | ❌ missing | No effective logo API |
+| effective logo fallback | ✅ done | Controller test covers branch logo and tenant fallback cases |
 | running_text update audit | ✅ done | `Positive_RunningTextUpdateWritesAudit` covers branch update audit side effect |
 | queue settings update audit | ❌ missing | No verified typed settings audit test found in current repo layout |
 
