@@ -1132,3 +1132,25 @@ Design sources:
   - evidence: both files exist and have dedicated standalone spec headings.
 - next step:
   - Implement `ConnectionIndicator` for dashboard WS state or logging for signage/qms_client/operator_assignment usecases.
+
+## 2026-07-06 — Dashboard WS Connection Indicator & Backend Logging
+
+- status: completed
+- owner paths:
+  - `apps/web/src/components/layout/dashboard/connection-indicator.tsx`
+  - `apps/web/src/components/layout/dashboard/header.tsx`
+  - `internal/modules/signage/usecase/signage_usecase.go`
+  - `internal/modules/qms_client/usecase/qms_client_admin_usecase.go`
+  - `internal/modules/operator_assignment/usecase/operator_assignment_usecase.go`
+- work done:
+  - Added `ConnectionIndicator` component to dashboard header to expose `WebSocketProvider` connectivity state.
+  - Implemented Section 39 structured logging requirements for `signage`, `qms_client`, and `operator_assignment` usecases.
+  - Injected `logrus.Logger` into the 3 usecase constructors via module DI.
+  - Updated test files to pass nil logger during testing to satisfy signature changes.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/signage/... ./internal/modules/qms_client/... ./internal/modules/operator_assignment/... -count=1`
+  - result: passed
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed
+- next step:
+  - Await E2E testing completion from the separate testing slice.

@@ -118,3 +118,13 @@
 - problem: caller/signage state needed live updates, but adding a new queue-specific realtime system would duplicate infrastructure.
 - fix: reuse existing `pkg/sse.Manager` via a tiny `EventBroadcaster` interface on queue usecase.
 - lesson: for QMS queue transitions, emit mutate-only SSE events from usecase after successful repository mutation; let frontend refresh state from existing read endpoints.
+
+## 2026-07-06 — QMS logging belongs in usecase, not controller only
+
+- problem: QMS admin and signage controllers already had logger injection, but usecases had no structured logs, so business-path failures were invisible beyond HTTP layer.
+- root cause: module constructors passed `logrus.Logger` only to controllers and skipped usecase injection.
+- fix: inject logger into usecase constructors and log start/error/success at business methods with tenant/client/resource context.
+- affected paths:
+  - `internal/modules/signage/usecase/signage_usecase.go`
+  - `internal/modules/qms_client/usecase/qms_client_admin_usecase.go`
+  - `internal/modules/operator_assignment/usecase/operator_assignment_usecase.go`
