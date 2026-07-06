@@ -9,6 +9,7 @@ import (
 	authModel "github.com/Roisfaozi/queue-base/internal/modules/auth/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/caller/model"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	queueUseCasePkg "github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -28,6 +29,8 @@ type stubQueueUC struct {
 	queueID string
 	action  string
 }
+
+func (s *stubQueueUC) SetEventBroadcaster(events queueUseCasePkg.EventBroadcaster) {}
 
 func (s *stubQueueUC) RegisterQueue(ctx context.Context, req *queueModel.RegisterQueueRequest) (*queueModel.QueueResponse, error) {
 	return nil, nil

@@ -864,3 +864,27 @@ Design sources:
   - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
   - result: passed
 - next-step: sync left docs or start Docker E2E.
+
+## 2026-07-06 — QMS queue realtime SSE events
+
+- status: completed
+- owner paths:
+  - `internal/modules/queue/usecase/queue_usecase.go`
+  - `internal/modules/queue/usecase/queue_usecase_test.go`
+  - `internal/config/app.go`
+- work done:
+  - Reused existing `pkg/sse.Manager` instead of adding a new realtime system.
+  - Injected existing SSE manager into queue usecase through `SetEventBroadcaster`.
+  - Emitted mutate-only queue events for register, forward, transition, and auto-call-next.
+  - Event names: `queue_registered`, `queue_forwarded`, `queue_transitioned`.
+- tests added/updated:
+  - positive: register emits queue_registered.
+  - positive: forward emits queue_forwarded.
+  - positive: transition emits queue_transitioned.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/queue/usecase ./internal/modules/qms_client/usecase ./internal/modules/operator_assignment/usecase -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go build ./cmd/api/main.go`
+  - result: passed
+- next step:
+  - Frontend can subscribe to `/api/v1/events` and refresh caller/signage state on these event names.

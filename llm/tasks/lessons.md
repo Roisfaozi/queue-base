@@ -112,3 +112,9 @@
 - operator assignment had only entity + caller-side enforcement; backend UI needed real admin API to avoid manual DB seeding.
 - qms client admin CRUD is enough as soft-deactivate + list/update; hard delete is unnecessary for MVP.
 - when adding a new admin surface, keep audit on mutate-only paths and avoid introducing repository layers if direct GORM in usecase already matches repo style.
+
+## 2026-07-06 — Reuse SSE for QMS queue realtime
+
+- problem: caller/signage state needed live updates, but adding a new queue-specific realtime system would duplicate infrastructure.
+- fix: reuse existing `pkg/sse.Manager` via a tiny `EventBroadcaster` interface on queue usecase.
+- lesson: for QMS queue transitions, emit mutate-only SSE events from usecase after successful repository mutation; let frontend refresh state from existing read endpoints.

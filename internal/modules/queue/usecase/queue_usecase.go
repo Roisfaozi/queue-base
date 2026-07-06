@@ -31,7 +31,12 @@ type AuditLogger interface {
 	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
 }
 
+type EventBroadcaster interface {
+	Broadcast(eventName string, data interface{})
+}
+
 type QueueUseCase interface {
+	SetEventBroadcaster(events EventBroadcaster)
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
 	ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error)
 	GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error)
@@ -48,6 +53,7 @@ type queueUseCase struct {
 	settingsResolver SettingsResolver
 	validator        RelationValidator
 	audit            AuditLogger
+	events           EventBroadcaster
 }
 
 func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver, validator RelationValidator, audit ...AuditLogger) QueueUseCase {
@@ -56,6 +62,10 @@ func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsR
 		auditLogger = audit[0]
 	}
 	return &queueUseCase{repo: repo, settingsResolver: settingsResolver, validator: validator, audit: auditLogger}
+}
+
+func (u *queueUseCase) SetEventBroadcaster(events EventBroadcaster) {
+	u.events = events
 }
 
 func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
@@ -276,6 +286,7 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	u.tryAudit(ctx, "QUEUE_REGISTER", q.ID, map[string]string{"branch_id": branchID, "ticket_no": q.TicketNo})
 	telemetry.QueueOperationsTotal.WithLabelValues("register", "success").Inc()
 	res := mapQueueResponse(q)
+	u.tryEmitEvent("queue_registered", res)
 	return &res, nil
 }
 
@@ -386,6 +397,7 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 	u.tryAudit(ctx, "QUEUE_FORWARD", queue.ID, map[string]string{"branch_id": branchID, "from_journey_id": currentJourney.ID, "to_service_id": req.DestinationServiceID})
 	telemetry.QueueOperationsTotal.WithLabelValues("forward", "success").Inc()
 	res := mapQueueResponse(queue)
+	u.tryEmitEvent("queue_forwarded", res)
 	return &res, nil
 }
 
@@ -509,6 +521,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 	u.tryAudit(ctx, "QUEUE_"+strings.ToUpper(req.Action), queue.ID, map[string]string{"branch_id": branchID, "journey_id": currentJourney.ID, "status": queue.Status})
 	telemetry.QueueOperationsTotal.WithLabelValues("transition", "success").Inc()
 	res := mapQueueResponse(queue)
+	u.tryEmitEvent("queue_transitioned", res)
 	return &res, nil
 }
 
@@ -537,6 +550,7 @@ func (u *queueUseCase) autoCallNext(ctx context.Context, tenantID, branchID, que
 		return
 	}
 	u.tryAudit(ctx, "QUEUE_AUTO_CALL", nextQueue.ID, map[string]string{"branch_id": branchID, "journey_id": nextJourney.ID, "status": nextQueue.Status})
+	u.tryEmitEvent("queue_transitioned", mapQueueResponse(nextQueue))
 }
 
 func (u *queueUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
@@ -555,6 +569,13 @@ func (u *queueUseCase) tryAudit(ctx context.Context, action, entityID string, va
 		EntityID:       entityID,
 		NewValues:      values,
 	})
+}
+
+func (u *queueUseCase) tryEmitEvent(name string, payload interface{}) {
+	if u.events == nil {
+		return
+	}
+	u.events.Broadcast(name, payload)
 }
 
 func mapQueueResponse(queue *entity.Queue) model.QueueResponse {

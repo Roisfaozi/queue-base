@@ -63,6 +63,14 @@ type stubAuditLogger struct {
 	err     error
 }
 
+type stubBroadcaster struct {
+	events []string
+}
+
+func (s *stubBroadcaster) Broadcast(name string, data interface{}) {
+	s.events = append(s.events, name)
+}
+
 func (s *stubAuditLogger) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
 	s.entries = append(s.entries, req)
 	return s.err
@@ -76,7 +84,9 @@ func TestQueueAuditLogging(t *testing.T) {
 	t.Run("Register_EmitsAuditAndSurvivesAuditFailure", func(t *testing.T) {
 		repo := &stubQueueRepo{}
 		audit := &stubAuditLogger{err: assert.AnError}
+		broadcast := &stubBroadcaster{}
 		uc := NewQueueUseCase(repo, &stubSettingsResolver{}, nil, audit)
+		uc.SetEventBroadcaster(broadcast)
 
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
 		ctx = database.SetBranchContext(ctx, "b-1")
@@ -86,6 +96,8 @@ func TestQueueAuditLogging(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, audit.entries, 1)
+		require.Len(t, broadcast.events, 1)
+		assert.Equal(t, "queue_registered", broadcast.events[0])
 		values, ok := audit.entries[0].NewValues.(map[string]string)
 		require.True(t, ok)
 		assert.Equal(t, "QUEUE_REGISTER", audit.entries[0].Action)
@@ -102,7 +114,9 @@ func TestQueueAuditLogging(t *testing.T) {
 			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 		}
 		audit := &stubAuditLogger{}
+		broadcast := &stubBroadcaster{}
 		uc := NewQueueUseCase(repo, nil, &stubRelationValidator{}, audit)
+		uc.SetEventBroadcaster(broadcast)
 
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
 		ctx = database.SetBranchContext(ctx, "b-1")
@@ -111,6 +125,8 @@ func TestQueueAuditLogging(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, audit.entries, 1)
+		require.Len(t, broadcast.events, 1)
+		assert.Equal(t, "queue_forwarded", broadcast.events[0])
 		values, ok := audit.entries[0].NewValues.(map[string]string)
 		require.True(t, ok)
 		assert.Equal(t, "QUEUE_FORWARD", audit.entries[0].Action)
@@ -126,7 +142,9 @@ func TestQueueAuditLogging(t *testing.T) {
 			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 		}
 		audit := &stubAuditLogger{}
+		broadcast := &stubBroadcaster{}
 		uc := NewQueueUseCase(repo, nil, nil, audit)
+		uc.SetEventBroadcaster(broadcast)
 
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
 		ctx = database.SetBranchContext(ctx, "b-1")
@@ -135,6 +153,8 @@ func TestQueueAuditLogging(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, audit.entries, 1)
+		require.Len(t, broadcast.events, 1)
+		assert.Equal(t, "queue_transitioned", broadcast.events[0])
 		values, ok := audit.entries[0].NewValues.(map[string]string)
 		require.True(t, ok)
 		assert.Equal(t, "QUEUE_CALL", audit.entries[0].Action)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	queueUseCasePkg "github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,8 @@ type stubQueueControllerUseCase struct {
 	statsRes                 *model.QueueStatsResponse
 	statsCalled              bool
 }
+
+func (s *stubQueueControllerUseCase) SetEventBroadcaster(events queueUseCasePkg.EventBroadcaster) {}
 
 func (s *stubQueueControllerUseCase) ResolveQueueBranchID(ctx context.Context, queueID string) (string, error) {
 	if s.ResolveQueueBranchIDFunc != nil {
