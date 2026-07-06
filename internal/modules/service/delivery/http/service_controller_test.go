@@ -297,4 +297,33 @@ func TestServiceController(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("Positive_EnableDisable", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			methodPath string
+			wantStatus string
+		}{
+			{name: "Positive_EnableSetsActive", methodPath: "/services/svc-1/enable", wantStatus: "active"},
+			{name: "Positive_DisableSetsInactive", methodPath: "/services/svc-1/disable", wantStatus: "inactive"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := &stubServiceControllerUseCase{updateRes: &model.ServiceResponse{ID: "svc-1", Status: tt.wantStatus}}
+				controller := NewServiceController(uc, newTestValidator(t), nil)
+				router := gin.New()
+				router.POST("/services/:id/enable", controller.Enable)
+				router.POST("/services/:id/disable", controller.Disable)
+
+				req, _ := http.NewRequest("POST", tt.methodPath, nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				require.NotNil(t, uc.updateReq)
+				require.NotNil(t, uc.updateReq.Status)
+				assert.Equal(t, tt.wantStatus, *uc.updateReq.Status)
+			})
+		}
+	})
 }

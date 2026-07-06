@@ -12,6 +12,8 @@ func RegisterServiceRoutes(router *gin.RouterGroup, controller *ServiceControlle
 		serviceGroup.GET("", apiKeyMiddleware.RequireScopes("service:view", "service:manage"), controller.GetAll)
 		serviceGroup.GET("/:id", apiKeyMiddleware.RequireScopes("service:view", "service:manage"), controller.GetByID)
 		serviceGroup.PUT("/:id", apiKeyMiddleware.RequireScopes("service:manage"), controller.Update)
+		serviceGroup.POST("/:id/enable", apiKeyMiddleware.RequireScopes("service:manage"), controller.Enable)
+		serviceGroup.POST("/:id/disable", apiKeyMiddleware.RequireScopes("service:manage"), controller.Disable)
 		serviceGroup.DELETE("/:id", apiKeyMiddleware.RequireScopes("service:manage"), controller.Delete)
 	}
 

@@ -141,6 +141,25 @@ func (h *ServiceController) Update(c *gin.Context) {
 	response.Success(c, res)
 }
 
+func (h *ServiceController) Enable(c *gin.Context) {
+	h.setStatus(c, "active")
+}
+
+func (h *ServiceController) Disable(c *gin.Context) {
+	h.setStatus(c, "inactive")
+}
+
+func (h *ServiceController) setStatus(c *gin.Context, status string) {
+	req := model.UpdateServiceRequest{Status: &status}
+	res, err := h.useCase.UpdateService(c.Request.Context(), c.Param("id"), &req)
+	if err != nil {
+		h.logError(err, "failed to update service status")
+		response.HandleError(c, err, "failed to update service status")
+		return
+	}
+	response.Success(c, res)
+}
+
 // Delete godoc
 // @Summary      Delete service
 // @Description  Deletes service under active tenant scope.
