@@ -2,6 +2,17 @@
 
 This document defines the future standalone **Signage Application** for QMS. The current `apps/web/dashboard/signage` page is only an administrative helper surface. The real Signage app is a public-facing display shown to customers.
 
+## 0. Runtime Alignment
+
+Live backend endpoints already exist for the signage data path:
+- `GET /api/v1/signage/me`
+- `GET /api/v1/signage/current-calls`
+- `GET /api/v1/signage/queues`
+- machine-only auth via `X-Client-ID` + `X-API-Key`
+- running_text and logo fallback logic in `signage_usecase.go`
+
+This spec stays as target-state for the dedicated signage app, not as proof the standalone UI lives in `apps/web` yet.
+
 ## 1. Purpose
 
 The Signage Application is used to display queue information in waiting areas.

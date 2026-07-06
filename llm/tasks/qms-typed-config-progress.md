@@ -1180,3 +1180,37 @@ Design sources:
 - next step:
   - Await E2E testing handoff completion
   - Consider Phase C doc update: confirm generic settings write path removal in coverage doc
+
+## 2026-07-06 — Documentation rebase after logging and branch draft slices
+
+- status: completed
+- owner paths:
+  - `llm/tasks/qms-typed-config-progress.md`
+  - `llm/research/typed-config-design-coverage.md`
+  - `llm/tasks/lessons.md`
+  - `documentation/QMS_Caller_App_Spec.md`
+  - `documentation/QMS_Signage_App_Spec.md`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/plans/roadmap/qms-typed-configuration-alignment.md`
+- work done:
+  - Rebases progress and coverage docs against live runtime after logging slice, dashboard WS indicator, branch draft activation behavior, and setup wizard blocker messaging.
+  - Confirms QMS standalone app specs for Caller and Signage are present and remain target-state docs, not claims of finished implementation.
+  - Re-states current project phase as rules hardening plus contract sync, not schema-foundation.
+- tests added/updated:
+  - positive: documentation only; no runtime test added in this slice.
+  - negative: documentation only; no runtime test added in this slice.
+  - edge: documentation only; no runtime test added in this slice.
+  - vulnerability/security: documentation only; no runtime test added in this slice.
+- verification:
+  - command: `git log --oneline -n 12 && git status --short && rg -n "ConnectionIndicator|BranchStatusDraft|structured logging|machine-only auth|hybrid auth" documentation llm apps/web internal | head -80`
+  - result: passed
+  - evidence: recent commits and live code confirm docs now reflect current slices instead of stale pre-logging/pre-branch-draft state.
+- errors and fixes:
+  - error: coverage/progress docs lagged behind runtime changes from July 6 slices.
+  - root cause: feature slices landed faster than handoff docs were rebased.
+  - fix: rebase docs to match latest committed runtime truth and keep target-state gaps explicit.
+  - lesson recorded in: `llm/tasks/lessons.md`
+- next step:
+  - update remaining design coverage sections that still show stale ❌ for branch rules already implemented.
+  - keep docs in sync per slice, not batched too late.

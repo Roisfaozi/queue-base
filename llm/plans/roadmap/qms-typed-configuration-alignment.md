@@ -2,7 +2,25 @@
 
 > **Design**: `documentation/New Design Document — QMS MVP Operatio.md`
 > **Audit**: `llm/research/typed-config-design-coverage.md`
-> **Rebased**: 2026-07-02 (replaces older generic-settings drafts)
+> **Rebased**: 2026-07-06 (runtime status after caller action, signage feed, admin API, logging, branch draft guard, setup wizard blocker, and dashboard WS indicator)
+
+## Current Status Snapshot — 2026-07-06
+
+| Phase | Status | Runtime Truth |
+|---|---|---|
+| Phase 1 — schema/entities | ✅ done | typed tables/entities exist for branch-service settings, QMS clients, credentials, and operator assignments |
+| Phase 2A — branch-service + counter relation | ✅ done | branch-service relation and deactivation edge tests exist |
+| Phase 2B — typed config resolver | ✅ done | resolver uses typed settings; generic QMS write fallback removed |
+| Phase 2C — caller/signage/client-binding | ✅ done | machine credential auth plus caller/signage route binding implemented |
+| Phase 2D — audit/logging | ⚠️ partial | structured logging exists for signage, QMS client admin, and operator assignment; audit remains write-path only |
+| Phase 3 — queue hardening | ⚠️ partial | caller action and tenant/client bindings exist; full E2E lifecycle deferred |
+| Phase 4A — caller endpoint | ✅ done | `POST /api/v1/caller/queue-journeys/{journey_id}/action` exists |
+| Phase 4B — signage endpoint | ✅ done | `/signage/me`, `/signage/current-calls`, `/signage/queues` exist |
+| Phase 5 — frontend contract sync | ⚠️ partial | dashboard helper pages and WS indicator exist; standalone caller/signage apps are spec-only |
+| Phase 6 — activation rules | ⚠️ partial | branch draft guard exists; tenant activation and logo fallback remain gaps |
+| Phase 7 — tests | ⚠️ partial | unit coverage improved; integration/E2E lifecycle delegated/deferred |
+
+Next cheapest work: close remaining rules gaps before building new UI or realtime consumers.
 
 ## Dependencies Map
 

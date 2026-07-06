@@ -59,7 +59,7 @@
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
 | `GET /api/v1/tenant/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
-| `PATCH /api/v1/tenant/queue-settings` | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
+| `PATCH /api/v1/tenant/queue-settings` | ✅ done | Generic settings fallback removed; endpoints deleted. |
 
 ### 6.3 Branch Profile
 
@@ -73,7 +73,7 @@
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
 | `GET /api/v1/branches/{branch_id}/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
-| `PATCH /api/v1/branches/{branch_id}/queue-settings` | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
+| `PATCH /api/v1/branches/{branch_id}/queue-settings` | ✅ done | Generic settings fallback removed; endpoints deleted. |
 | `DELETE .../queue-settings/{field}` | ❌ missing | No reset-to-inherit API |
 
 ### 6.5 Service
@@ -102,7 +102,7 @@
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
 | `GET /api/v1/services/{service_id}/queue-settings` | ⚠️ deferred | Skipped for MVP. Read effective queue config through `GET /api/v1/settings/effective`. |
-| `PATCH /api/v1/services/{service_id}/queue-settings` | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
+| `PATCH /api/v1/services/{service_id}/queue-settings` | ✅ done | Generic settings fallback removed; endpoints deleted. |
 | `DELETE .../queue-settings/{field}` | ❌ missing | No reset-to-inherit API |
 
 ### 6.8 Counter
@@ -120,7 +120,7 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| Dedicated typed endpoints | ⚠️ deferred | Skipped for MVP; no generic settings fallback remains. |
+| Dedicated typed endpoints | ✅ done | Generic settings fallback removed; endpoints deleted. |
 
 ### 6.10 Effective Config
 
@@ -138,7 +138,7 @@
 |-----------|--------|----------|
 | Step 1 — Tenant Profile wizard | ❌ missing | No wizard at all; profile editing via generic org CRUD |
 | Step 2 — Tenant Queue Default | ❌ missing | No wizard; manual settings CRUD |
-| Step 3 — Branch Profile | ❌ missing | No wizard; branch CRUD exists via admin forms |
+| Step 3 — Branch Profile | ⚠️ partial | Setup wizard handles branch draft status block, but actual CRUD uses admin forms |
 | Step 4 — Branch Queue Override | ❌ missing | No wizard; queue-settings UI exists but standalone |
 | Step 5 — Service Setup | ❌ missing | No wizard; service dialog exists standalone (`apps/web/src/components/dashboard/services/service-dialog.tsx:1`) |
 | Step 6 — Enable Service for Branch | ❌ missing | No wizard; branch-service CRUD via admin forms |
@@ -159,7 +159,7 @@
 
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
-| cannot activate without address/city/province/phone/running_text/timezone | ❌ missing | Branch entity has fields but no activation guard (`internal/modules/organization/usecase/branch_usecase.go:32-65`) |
+| cannot activate without address/city/province/phone/running_text/timezone | ✅ done | Branch create guard added in `branch_usecase.go` |
 | can activate without logo if tenant logo exists | ❌ missing | No logo fallback logic |
 | effective logo fallback (branch→tenant) | ❌ missing | Not implemented in any endpoint |
 

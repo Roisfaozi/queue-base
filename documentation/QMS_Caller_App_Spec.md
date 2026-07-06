@@ -2,6 +2,16 @@
 
 This document defines the future standalone **Caller Application** for QMS. The current `apps/web/dashboard/caller` page is only an administrative helper surface. The real Caller app is a dedicated operational surface used by staff at counters.
 
+## 0. Runtime Alignment
+
+Live backend work already exists for the caller flow:
+- `POST /api/v1/caller/login`
+- `POST /api/v1/caller/queue-journeys/{journey_id}/action`
+- hybrid machine + operator auth
+- operator assignment enforcement on `operator_counter_assignments`
+
+This spec stays as target-state for the dedicated caller app shell, not as proof the standalone UI exists yet.
+
 ## 1. Purpose
 
 The Caller Application is used by front-desk operators or service counters to:

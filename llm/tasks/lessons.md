@@ -128,3 +128,14 @@
   - `internal/modules/signage/usecase/signage_usecase.go`
   - `internal/modules/qms_client/usecase/qms_client_admin_usecase.go`
   - `internal/modules/operator_assignment/usecase/operator_assignment_usecase.go`
+
+## 2026-07-06 — Rebase QMS docs immediately after runtime slices
+
+- problem:
+  - QMS progress and coverage docs drifted after logging, branch draft guard, and wizard blocker slices.
+- root cause:
+  - runtime slices were committed before handoff docs were rebased.
+- lesson:
+  - for QMS rebuild work, update `llm/tasks/qms-typed-config-progress.md` and `llm/research/typed-config-design-coverage.md` in same slice or immediately after, otherwise later audits will over-report missing gaps.
+- action:
+  - treat doc rebase as mandatory close-out step for each QMS runtime slice.
