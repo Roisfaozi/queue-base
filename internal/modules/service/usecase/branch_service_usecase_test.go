@@ -90,98 +90,106 @@ func (s *stubBranchServiceRepo) Delete(_ context.Context, tenantID, branchID, id
 func TestBranchServiceUseCase_AuditHooks(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 
-	audit := &stubBranchServiceAuditLogger{}
-	branchRepo := &stubBranchRepo{branch: &branchEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive}}
-	serviceRepo := &stubServiceRepo{service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive}}
-	repo := &stubBranchServiceRepo{
-		branchService: &entity.BranchService{ID: "bs-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-1", IsActive: true},
-	}
+	t.Run("Positive_LogsAuditActivitiesForCreateUpdateDelete", func(t *testing.T) {
+		audit := &stubBranchServiceAuditLogger{}
+		branchRepo := &stubBranchRepo{branch: &branchEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive}}
+		serviceRepo := &stubServiceRepo{service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive}}
+		repo := &stubBranchServiceRepo{
+			branchService: &entity.BranchService{ID: "bs-1", TenantID: "tenant-1", BranchID: "branch-1", ServiceID: "svc-1", IsActive: true},
+		}
 
-	uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
+		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
 
-	// Action 1: Create
-	reqCreate := &model.CreateBranchServiceRequest{ServiceID: "svc-1"}
-	created, err := uc.CreateBranchService(ctx, "branch-1", reqCreate)
-	require.NoError(t, err)
+		// Action 1: Create
+		reqCreate := &model.CreateBranchServiceRequest{ServiceID: "svc-1"}
+		created, err := uc.CreateBranchService(ctx, "branch-1", reqCreate)
+		require.NoError(t, err)
 
-	// Action 2: Update
-	reqUpdate := &model.UpdateBranchServiceRequest{SortOrder: new(int)}
-	_, err = uc.UpdateBranchService(ctx, "branch-1", created.ID, reqUpdate)
-	require.NoError(t, err)
+		// Action 2: Update
+		reqUpdate := &model.UpdateBranchServiceRequest{SortOrder: new(int)}
+		_, err = uc.UpdateBranchService(ctx, "branch-1", created.ID, reqUpdate)
+		require.NoError(t, err)
 
-	// Action 3: Delete
-	err = uc.DeleteBranchService(ctx, "branch-1", created.ID)
-	require.NoError(t, err)
+		// Action 3: Delete
+		err = uc.DeleteBranchService(ctx, "branch-1", created.ID)
+		require.NoError(t, err)
 
-	// Validate Audit
-	require.Len(t, audit.entries, 3)
-	assert.Equal(t, "BRANCH_SERVICE_CREATE", audit.entries[0].Action)
-	assert.Equal(t, "BRANCH_SERVICE_UPDATE", audit.entries[1].Action)
-	assert.Equal(t, "BRANCH_SERVICE_DELETE", audit.entries[2].Action)
-	assert.Equal(t, "branch_service", audit.entries[0].Entity)
+		// Validate Audit
+		require.Len(t, audit.entries, 3)
+		assert.Equal(t, "BRANCH_SERVICE_CREATE", audit.entries[0].Action)
+		assert.Equal(t, "BRANCH_SERVICE_UPDATE", audit.entries[1].Action)
+		assert.Equal(t, "BRANCH_SERVICE_DELETE", audit.entries[2].Action)
+		assert.Equal(t, "branch_service", audit.entries[0].Entity)
+	})
 }
 
 func TestBranchServiceUseCase_RelationGuard(t *testing.T) {
-	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-	t.Run("Positive_CreateBranchService", func(t *testing.T) {
-		audit := &stubBranchServiceAuditLogger{}
-		branchRepo := &stubBranchRepo{
-			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive},
-		}
-		serviceRepo := &stubServiceRepo{
-			service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive},
-		}
-		repo := &stubBranchServiceRepo{}
-		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
-		res, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
-		require.NoError(t, err)
-		require.NotNil(t, res)
-		assert.Equal(t, "b-1", res.BranchID)
-		assert.Equal(t, "svc-1", res.ServiceID)
-		assert.True(t, res.IsActive)
-	})
+	tests := []struct {
+		name        string
+		branchRepo  *stubBranchRepo
+		serviceRepo *stubServiceRepo
+		wantError   error
+	}{
+		{
+			name: "Positive_CreateBranchService",
+			branchRepo: &stubBranchRepo{
+				branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive},
+			},
+			serviceRepo: &stubServiceRepo{
+				service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive},
+			},
+			wantError: nil,
+		},
+		{
+			name: "Negative_CreateBranchServiceForInactiveBranch",
+			branchRepo: &stubBranchRepo{
+				branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusInactive},
+			},
+			serviceRepo: &stubServiceRepo{
+				service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive},
+			},
+			wantError: exception.ErrForbidden,
+		},
+		{
+			name: "Negative_CreateBranchServiceWithInactiveService",
+			branchRepo: &stubBranchRepo{
+				branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive},
+			},
+			serviceRepo: &stubServiceRepo{
+				service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusInactive},
+			},
+			wantError: exception.ErrForbidden,
+		},
+		{
+			name: "Vulnerability_CrossTenantCreateRejected",
+			branchRepo: &stubBranchRepo{
+				branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-2", Status: branchEntity.BranchStatusActive},
+			},
+			serviceRepo: &stubServiceRepo{
+				service: &entity.Service{ID: "svc-1", TenantID: "tenant-2", Status: entity.ServiceStatusActive},
+			},
+			wantError: exception.ErrForbidden,
+		},
+	}
 
-	t.Run("Negative_CreateBranchServiceForInactiveBranch", func(t *testing.T) {
-		audit := &stubBranchServiceAuditLogger{}
-		branchRepo := &stubBranchRepo{
-			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusInactive},
-		}
-		serviceRepo := &stubServiceRepo{
-			service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusActive},
-		}
-		repo := &stubBranchServiceRepo{}
-		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
-		_, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
-		require.ErrorIs(t, err, exception.ErrForbidden)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
+			audit := &stubBranchServiceAuditLogger{}
+			repo := &stubBranchServiceRepo{}
+			uc := NewBranchServiceUseCase(repo, tt.serviceRepo, tt.branchRepo, audit)
 
-	t.Run("Negative_CreateBranchServiceWithInactiveService", func(t *testing.T) {
-		audit := &stubBranchServiceAuditLogger{}
-		branchRepo := &stubBranchRepo{
-			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Status: branchEntity.BranchStatusActive},
-		}
-		serviceRepo := &stubServiceRepo{
-			service: &entity.Service{ID: "svc-1", TenantID: "tenant-1", Status: entity.ServiceStatusInactive},
-		}
-		repo := &stubBranchServiceRepo{}
-		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
-		_, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
-		require.ErrorIs(t, err, exception.ErrForbidden)
-	})
+			res, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
 
-	t.Run("Vulnerability_CrossTenantCreateRejected", func(t *testing.T) {
-		audit := &stubBranchServiceAuditLogger{}
-		// branch belongs to tenant-2 but we call with tenant-1 context
-		// stubBranchRepo.FindByID returns ErrNotFound for mismatched tenant
-		branchRepo := &stubBranchRepo{
-			branch: &branchEntity.Branch{ID: "b-1", TenantID: "tenant-2", Status: branchEntity.BranchStatusActive},
-		}
-		serviceRepo := &stubServiceRepo{
-			service: &entity.Service{ID: "svc-1", TenantID: "tenant-2", Status: entity.ServiceStatusActive},
-		}
-		repo := &stubBranchServiceRepo{}
-		uc := NewBranchServiceUseCase(repo, serviceRepo, branchRepo, audit)
-		_, err := uc.CreateBranchService(ctx, "b-1", &model.CreateBranchServiceRequest{ServiceID: "svc-1"})
-		require.ErrorIs(t, err, exception.ErrForbidden)
-	})
+			if tt.wantError != nil {
+				require.ErrorIs(t, err, tt.wantError)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				assert.Equal(t, "b-1", res.BranchID)
+				assert.Equal(t, "svc-1", res.ServiceID)
+				assert.True(t, res.IsActive)
+			}
+		})
+	}
 }
