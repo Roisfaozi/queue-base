@@ -102,7 +102,7 @@ func TestUserUseCase_Create_Success(t *testing.T) {
 func TestUserUseCase_Create_Conflict(t *testing.T) {
 	deps, uc := setupUserTest()
 
-	t.Run("Username Exists", func(t *testing.T) {
+	t.Run("Positive_UsernameExists", func(t *testing.T) {
 		req := &model.RegisterUserRequest{
 			Username: "existing", Email: "new@example.com", Password: "password123", Name: "Test",
 		}
@@ -113,7 +113,7 @@ func TestUserUseCase_Create_Conflict(t *testing.T) {
 		assert.ErrorIs(t, err, exception.ErrConflict)
 	})
 
-	t.Run("Email Exists", func(t *testing.T) {
+	t.Run("Positive_EmailExists", func(t *testing.T) {
 		req := &model.RegisterUserRequest{
 			Username: "newuser", Email: "existing@example.com", Password: "password123", Name: "Test",
 		}
@@ -198,7 +198,7 @@ func TestUserUseCase_Create_EnforcerError(t *testing.T) {
 }
 
 func TestUserUseCase_GetUserByID(t *testing.T) {
-	t.Run("Success - User Found", func(t *testing.T) {
+	t.Run("Positive_Success_UserFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		expectedUser := &entity.User{ID: "test123", Name: "Test User"}
 
@@ -213,7 +213,7 @@ func TestUserUseCase_GetUserByID(t *testing.T) {
 		deps.Repo.AssertExpectations(t)
 	})
 
-	t.Run("Error - User Not Found", func(t *testing.T) {
+	t.Run("Negative_Error_UserNotFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		deps.Repo.On("FindByID", mock.Anything, "nonexistent").Return(nil, errors.New("user not found"))
 
@@ -225,7 +225,7 @@ func TestUserUseCase_GetUserByID(t *testing.T) {
 		deps.Repo.AssertExpectations(t)
 	})
 
-	t.Run("Error - SQL Injection Attempt", func(t *testing.T) {
+	t.Run("Vulnerability_Error_SQLInjectionAttempt", func(t *testing.T) {
 		_, uc := setupUserTest()
 		sqlInjectionID := "1'; DROP TABLE users;--"
 
@@ -236,7 +236,7 @@ func TestUserUseCase_GetUserByID(t *testing.T) {
 		assert.Equal(t, exception.ErrBadRequest, err)
 	})
 
-	t.Run("Error - Database Error", func(t *testing.T) {
+	t.Run("Negative_Error_DatabaseError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		dbError := errors.New("database connection failed")
 
@@ -252,7 +252,7 @@ func TestUserUseCase_GetUserByID(t *testing.T) {
 }
 
 func TestUserUseCase_GetAllUsers(t *testing.T) {
-	t.Run("Success - With Users", func(t *testing.T) {
+	t.Run("Positive_Success_WithUsers", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		mockUsers := []*entity.User{
 			{ID: "user1", Name: "User One"},
@@ -273,7 +273,7 @@ func TestUserUseCase_GetAllUsers(t *testing.T) {
 		deps.Repo.AssertExpectations(t)
 	})
 
-	t.Run("Success - Empty Result", func(t *testing.T) {
+	t.Run("Edge_Success_EmptyResult", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		req := &model.GetUserListRequest{Page: 1, Limit: 10}
 		deps.Repo.On("FindAll", mock.Anything, req).Return([]*entity.User{}, int64(0), nil)
@@ -287,7 +287,7 @@ func TestUserUseCase_GetAllUsers(t *testing.T) {
 		deps.Repo.AssertExpectations(t)
 	})
 
-	t.Run("Error - Database Error", func(t *testing.T) {
+	t.Run("Negative_Error_DatabaseError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		dbError := errors.New("database connection failed")
 		req := &model.GetUserListRequest{Page: 1, Limit: 10}
@@ -305,7 +305,7 @@ func TestUserUseCase_GetAllUsers(t *testing.T) {
 }
 
 func TestUserUseCase_Current(t *testing.T) {
-	t.Run("Success - User Found", func(t *testing.T) {
+	t.Run("Positive_Success_UserFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		expectedUser := &entity.User{ID: "current-user", Name: "Current User"}
 		testReq := &model.GetUserRequest{ID: "current-user"}
@@ -320,7 +320,7 @@ func TestUserUseCase_Current(t *testing.T) {
 		deps.Repo.AssertExpectations(t)
 	})
 
-	t.Run("Error - User Not Found", func(t *testing.T) {
+	t.Run("Negative_Error_UserNotFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		testReq := &model.GetUserRequest{ID: "nonexistent"}
 
@@ -335,7 +335,7 @@ func TestUserUseCase_Current(t *testing.T) {
 }
 
 func TestUserUseCase_Update(t *testing.T) {
-	t.Run("Success - User Updated", func(t *testing.T) {
+	t.Run("Positive_Success_UserUpdated", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		request := &model.UpdateUserRequest{
 			ID: "user123", Name: "Updated User",
@@ -366,7 +366,7 @@ func TestUserUseCase_Update(t *testing.T) {
 		deps.AuditUC.AssertExpectations(t)
 	})
 
-	t.Run("Success - Update Username", func(t *testing.T) {
+	t.Run("Positive_Success_UpdateUsername", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		request := &model.UpdateUserRequest{
 			ID: "user123", Username: "newuser",
@@ -385,7 +385,7 @@ func TestUserUseCase_Update(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Error - Username Conflict", func(t *testing.T) {
+	t.Run("Negative_Error_UsernameConflict", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		request := &model.UpdateUserRequest{
 			ID: "user123", Username: "exists",
@@ -399,7 +399,7 @@ func TestUserUseCase_Update(t *testing.T) {
 		assert.ErrorIs(t, err, exception.ErrConflict)
 	})
 
-	t.Run("Update Password - Success", func(t *testing.T) {
+	t.Run("Positive_UpdatePassword_Success", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		request := &model.UpdateUserRequest{
 			ID: "user123", Password: "newpassword123",
@@ -418,7 +418,7 @@ func TestUserUseCase_Update(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Update - Conflict", func(t *testing.T) {
+	t.Run("Negative_Update_Conflict", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		request := &model.UpdateUserRequest{
 			ID: "user123", Username: "exists",
@@ -434,7 +434,7 @@ func TestUserUseCase_Update(t *testing.T) {
 		assert.ErrorIs(t, err, exception.ErrConflict)
 	})
 
-	t.Run("Error - User Not Found", func(t *testing.T) {
+	t.Run("Negative_Error_UserNotFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		updateReq := &model.UpdateUserRequest{
 			ID:   "nonexistent",
@@ -451,7 +451,7 @@ func TestUserUseCase_Update(t *testing.T) {
 		deps.AuditUC.AssertNotCalled(t, "LogActivity", mock.Anything, mock.Anything)
 	})
 
-	t.Run("Error - Update Fails", func(t *testing.T) {
+	t.Run("Negative_Error_UpdateFails", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		request := &model.UpdateUserRequest{ID: "user123", Name: "Updated"}
 		existingUser := &entity.User{ID: "user123"}
@@ -467,7 +467,7 @@ func TestUserUseCase_Update(t *testing.T) {
 		assert.ErrorIs(t, err, exception.ErrInternalServer)
 	})
 
-	t.Run("Audit Log Error", func(t *testing.T) {
+	t.Run("Negative_AuditLogError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		request := &model.UpdateUserRequest{ID: "user123", Name: "Updated"}
 		existingUser := &entity.User{ID: "user123"}
@@ -489,7 +489,7 @@ func TestUserUseCase_DeleteUser(t *testing.T) {
 	cleanID := "019b9150-304e-79d0-aa16-4a2b44347a08"
 	deleteReq := &model.DeleteUserRequest{ID: cleanID}
 
-	t.Run("Success - User Deleted", func(t *testing.T) {
+	t.Run("Positive_Success_UserDeleted", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		deps.Repo.On("FindByID", mock.Anything, deleteReq.ID).Return(&entity.User{ID: deleteReq.ID, Username: "deletedUser"}, nil)
 
@@ -514,7 +514,7 @@ func TestUserUseCase_DeleteUser(t *testing.T) {
 		deps.AuditUC.AssertExpectations(t)
 	})
 
-	t.Run("Error - User Not Found", func(t *testing.T) {
+	t.Run("Negative_Error_UserNotFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		deps.Repo.On("FindByID", mock.Anything, deleteReq.ID).Return(nil, errors.New("user not found"))
 
@@ -526,7 +526,7 @@ func TestUserUseCase_DeleteUser(t *testing.T) {
 		deps.AuditUC.AssertNotCalled(t, "LogActivity", mock.Anything, mock.Anything)
 	})
 
-	t.Run("Error - SQL Injection Attempt", func(t *testing.T) {
+	t.Run("Vulnerability_Error_SQLInjectionAttempt", func(t *testing.T) {
 		_, uc := setupUserTest()
 		sqlInjectionID := "1'; DROP TABLE users;--"
 		deleteReqSqli := &model.DeleteUserRequest{ID: sqlInjectionID}
@@ -537,7 +537,7 @@ func TestUserUseCase_DeleteUser(t *testing.T) {
 		assert.Equal(t, exception.ErrBadRequest, err)
 	})
 
-	t.Run("Error - Database Error During Delete", func(t *testing.T) {
+	t.Run("Negative_Error_DatabaseErrorDuringDelete", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		dbError := errors.New("internal server error")
 
@@ -558,7 +558,7 @@ func TestUserUseCase_DeleteUser(t *testing.T) {
 		deps.AuditUC.AssertNotCalled(t, "LogActivity", mock.Anything, mock.Anything)
 	})
 
-	t.Run("Error - Audit Log Fails (Compensation Triggered)", func(t *testing.T) {
+	t.Run("Edge_Error_AuditLogFails_CompensationTriggered", func(t *testing.T) {
 		deps, uc := setupUserTest()
 
 		deps.Repo.On("FindByID", mock.Anything, deleteReq.ID).Return(&entity.User{ID: deleteReq.ID, Username: "deletedUser"}, nil)
@@ -588,7 +588,7 @@ func TestUserUseCase_DeleteUser(t *testing.T) {
 		deps.Enforcer.AssertExpectations(t)
 	})
 
-	t.Run("Error - Audit Log Fails & Compensation Fails", func(t *testing.T) {
+	t.Run("Edge_Error_AuditLogFails_CompensationFails", func(t *testing.T) {
 		deps, uc := setupUserTest()
 
 		deps.Repo.On("FindByID", mock.Anything, deleteReq.ID).Return(&entity.User{ID: deleteReq.ID, Username: "deletedUser"}, nil)
@@ -622,7 +622,7 @@ func TestUserUseCase_DeleteUser(t *testing.T) {
 }
 
 func TestUserUseCase_GetAllUsersDynamic(t *testing.T) {
-	t.Run("Success - With Dynamic Filter", func(t *testing.T) {
+	t.Run("Positive_Success_WithDynamicFilter", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		mockUsers := []*entity.User{
 			{ID: "user1", Name: "Dynamic User 1"},
@@ -648,14 +648,14 @@ func TestUserUseCase_GetAllUsersDynamic(t *testing.T) {
 		deps.Repo.AssertExpectations(t)
 	})
 
-	t.Run("Error - Database Error", func(t *testing.T) {
+	t.Run("Negative_Error_DatabaseError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		dbError := errors.New("database error")
 		expectedError := exception.ErrInternalServer
 
 		filter := &querybuilder.DynamicFilter{
 			Filter: map[string]querybuilder.Filter{
-				"Name": {Type: "contains", From: "Error"},
+				"Name": {Type: "contains", From: "Negative_Error"},
 			},
 		}
 
@@ -672,7 +672,7 @@ func TestUserUseCase_GetAllUsersDynamic(t *testing.T) {
 }
 
 func TestUserUseCase_UpdateStatus(t *testing.T) {
-	t.Run("Success - Active", func(t *testing.T) {
+	t.Run("Positive_Success_Active", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user123"
 		status := entity.UserStatusActive
@@ -692,7 +692,7 @@ func TestUserUseCase_UpdateStatus(t *testing.T) {
 		deps.AuditUC.AssertExpectations(t)
 	})
 
-	t.Run("Success - Banned (Revoke Sessions)", func(t *testing.T) {
+	t.Run("Positive_Success_Banned_RevokeSessions", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user123"
 		status := entity.UserStatusBanned
@@ -714,7 +714,7 @@ func TestUserUseCase_UpdateStatus(t *testing.T) {
 		deps.AuditUC.AssertExpectations(t)
 	})
 
-	t.Run("Revoke Sessions Error", func(t *testing.T) {
+	t.Run("Negative_RevokeSessionsError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user123"
 		status := entity.UserStatusBanned
@@ -731,13 +731,13 @@ func TestUserUseCase_UpdateStatus(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("Error - Invalid Status", func(t *testing.T) {
+	t.Run("Negative_Error_InvalidStatus", func(t *testing.T) {
 		_, uc := setupUserTest()
 		err := uc.UpdateStatus(context.Background(), "user123", "invalid_status")
 		assert.Equal(t, exception.ErrValidationError, err)
 	})
 
-	t.Run("Error - User Not Found", func(t *testing.T) {
+	t.Run("Negative_Error_UserNotFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		deps.Repo.On("FindByID", mock.Anything, "unknown").Return(nil, errors.New("user not found"))
 
@@ -745,7 +745,7 @@ func TestUserUseCase_UpdateStatus(t *testing.T) {
 		assert.Equal(t, exception.ErrNotFound, err)
 	})
 
-	t.Run("Audit Log Error", func(t *testing.T) {
+	t.Run("Negative_AuditLogError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user123"
 		status := entity.UserStatusActive
@@ -789,7 +789,7 @@ func TestUserUseCase_UpdateAvatar(t *testing.T) {
 		deps.Storage.AssertExpectations(t)
 	})
 
-	t.Run("Error - User Not Found", func(t *testing.T) {
+	t.Run("Negative_Error_UserNotFound", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		deps.Repo.On("FindByID", mock.Anything, "unknown").Return(nil, errors.New("user not found"))
 
@@ -797,7 +797,7 @@ func TestUserUseCase_UpdateAvatar(t *testing.T) {
 		assert.Equal(t, exception.ErrNotFound, err)
 	})
 
-	t.Run("Error - Upload Failed", func(t *testing.T) {
+	t.Run("Negative_Error_UploadFailed", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user123"
 		user := &entity.User{ID: userID}
@@ -809,7 +809,7 @@ func TestUserUseCase_UpdateAvatar(t *testing.T) {
 		assert.Equal(t, exception.ErrInternalServer, err)
 	})
 
-	t.Run("Error - DB Update Failed", func(t *testing.T) {
+	t.Run("Negative_Error_DBUpdateFailed", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user123"
 		user := &entity.User{ID: userID}
@@ -833,7 +833,7 @@ func TestUserUseCase_HardDeleteSoftDeletedUsers(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Error", func(t *testing.T) {
+	t.Run("Negative_Error", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		deps.Repo.On("HardDeleteSoftDeletedUsers", mock.Anything, mock.Anything).Return(errors.New("db error"))
 
@@ -1710,7 +1710,7 @@ func TestUserUseCase_Update_Security_UsernameSanitization(t *testing.T) {
 func TestUserUseCase_UpdateStatus_Atomicity(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("Status updated, but Audit log fails -> Should return error", func(t *testing.T) {
+	t.Run("Edge_StatusUpdated_AuditLogFails_ShouldReturnError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user-1"
 		status := entity.UserStatusBanned
@@ -1730,7 +1730,7 @@ func TestUserUseCase_UpdateStatus_Atomicity(t *testing.T) {
 		assert.Equal(t, exception.ErrInternalServer, err)
 	})
 
-	t.Run("Status updated, but Revoke sessions fails -> Should return error", func(t *testing.T) {
+	t.Run("Edge_StatusUpdated_RevokeSessionsFails_ShouldReturnError", func(t *testing.T) {
 		deps, uc := setupUserTest()
 		userID := "user-2"
 		status := entity.UserStatusBanned
