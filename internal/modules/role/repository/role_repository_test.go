@@ -68,7 +68,7 @@ func TestRoleRepository_FindAllDynamic(t *testing.T) {
 			expectedNames: []string{"Admin", "Editor"},
 		},
 		{
-			name: "Sort Descending",
+			name: "Positive_SortDescending",
 			filter: &querybuilder.DynamicFilter{
 				Sort: &[]querybuilder.SortModel{{ColId: "Name", Sort: "desc"}},
 			},

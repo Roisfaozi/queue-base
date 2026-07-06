@@ -54,7 +54,7 @@ func TestRoleUseCase_Guardian_FindErrors(t *testing.T) {
 		wantNil   bool
 	}{
 		{
-			name: "Create FindByName Error",
+			name: "Negative_CreateFindByNameError",
 			setupMock: func(deps *guardianRoleTestDeps) {
 				deps.TM.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
 					Run(func(args mock.Arguments) {
@@ -69,7 +69,7 @@ func TestRoleUseCase_Guardian_FindErrors(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name: "Delete FindByID Error",
+			name: "Negative_DeleteFindByIDError",
 			setupMock: func(deps *guardianRoleTestDeps) {
 				deps.TM.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
 					Run(func(args mock.Arguments) {
@@ -84,7 +84,7 @@ func TestRoleUseCase_Guardian_FindErrors(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name: "Update FindByID Error",
+			name: "Negative_UpdateFindByIDError",
 			setupMock: func(deps *guardianRoleTestDeps) {
 				deps.TM.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
 					Return(func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
@@ -129,7 +129,7 @@ func TestRoleUseCase_Guardian_CleanupAndConflict(t *testing.T) {
 		wantNil   bool
 	}{
 		{
-			name: "Delete cleanup policy error",
+			name: "Negative_DeleteCleanupPolicyError",
 			setupMock: func(deps *guardianRoleTestDeps) {
 				roleID := "role-test-id"
 				role := &entity.Role{ID: roleID, Name: "test_role"}
@@ -145,7 +145,7 @@ func TestRoleUseCase_Guardian_CleanupAndConflict(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name: "Create find by name success means conflict",
+			name: "Negative_CreateFindByNameSuccessMeansConflict",
 			setupMock: func(deps *guardianRoleTestDeps) {
 				deps.TM.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).Return(func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
 				deps.Repo.On("FindByName", mock.Anything, "success_role").Return(&entity.Role{ID: "existing-id", Name: "success_role"}, nil)
@@ -183,17 +183,17 @@ func TestRoleUseCase_Guardian_TMError(t *testing.T) {
 		run     func(usecase.RoleUseCase) (interface{}, error)
 		wantNil bool
 	}{
-		{name: "Create TM Error", run: func(uc usecase.RoleUseCase) (interface{}, error) {
+		{name: "Negative_CreateTMError", run: func(uc usecase.RoleUseCase) (interface{}, error) {
 			return uc.Create(context.Background(), &model.CreateRoleRequest{Name: "tm_error_role", Description: "Test TM Error"})
 		}, wantNil: true},
-		{name: "Update TM Error", run: func(uc usecase.RoleUseCase) (interface{}, error) {
+		{name: "Negative_UpdateTMError", run: func(uc usecase.RoleUseCase) (interface{}, error) {
 			return uc.Update(context.Background(), "id123", &model.UpdateRoleRequest{Description: "Test TM Error"})
 		}, wantNil: true},
-		{name: "GetAll TM Error", run: func(uc usecase.RoleUseCase) (interface{}, error) { return uc.GetAll(context.Background()) }, wantNil: true},
-		{name: "GetAllRolesDynamic TM Error", run: func(uc usecase.RoleUseCase) (interface{}, error) {
+		{name: "Negative_GetAllTMError", run: func(uc usecase.RoleUseCase) (interface{}, error) { return uc.GetAll(context.Background()) }, wantNil: true},
+		{name: "Negative_GetAllRolesDynamicTMError", run: func(uc usecase.RoleUseCase) (interface{}, error) {
 			return uc.GetAllRolesDynamic(context.Background(), nil)
 		}, wantNil: true},
-		{name: "Delete TM Error", run: func(uc usecase.RoleUseCase) (interface{}, error) {
+		{name: "Negative_DeleteTMError", run: func(uc usecase.RoleUseCase) (interface{}, error) {
 			return nil, uc.Delete(context.Background(), "id123")
 		}, wantNil: true},
 	}

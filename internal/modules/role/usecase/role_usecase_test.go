@@ -265,7 +265,7 @@ func TestRoleUseCase_Delete(t *testing.T) {
 
 				deps.Repo.On("FindByID", ctx, id).Return(role, nil)
 				deps.Repo.On("Delete", ctx, id).Return(nil)
-				deps.PermissionUC.On("DeleteRole", ctx, role.Name).Return(nil)
+				deps.PermissionUC.On("Positive_DeleteRole", ctx, role.Name).Return(nil)
 
 				err := uc.Delete(ctx, id)
 				assert.NoError(t, err)
@@ -341,7 +341,7 @@ func TestRoleUseCase_Delete(t *testing.T) {
 
 				deps.Repo.On("FindByID", ctx, id).Return(role, nil)
 				deps.Repo.On("Delete", ctx, id).Return(nil)
-				deps.PermissionUC.On("DeleteRole", ctx, role.Name).Return(errors.New("perm error"))
+				deps.PermissionUC.On("Positive_DeleteRole", ctx, role.Name).Return(errors.New("perm error"))
 
 				err := uc.Delete(ctx, id)
 				assert.ErrorIs(t, err, exception.ErrInternalServer)
