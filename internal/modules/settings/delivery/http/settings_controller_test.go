@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
@@ -22,6 +23,15 @@ import (
 
 type stubQueueResolver struct {
 	values map[string]string
+}
+
+type stubSettingsAudit struct {
+	requests []auditModel.CreateAuditLogRequest
+}
+
+func (s *stubSettingsAudit) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.requests = append(s.requests, req)
+	return nil
 }
 
 func (s stubQueueResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
@@ -53,9 +63,15 @@ func newSettingsControllerTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, db.Exec(`
 		CREATE TABLE organizations (id TEXT PRIMARY KEY, logo_asset_id TEXT);
 		CREATE TABLE branches (id TEXT PRIMARY KEY, tenant_id TEXT, logo_asset_id TEXT);
+		CREATE TABLE branch_queue_settings (id TEXT PRIMARY KEY, tenant_id TEXT, branch_id TEXT, ticket_prefix TEXT, queue_reset_time TEXT, default_estimated_duration INTEGER, auto_call_next BOOLEAN);
+		CREATE TABLE branch_service_queue_settings (id TEXT PRIMARY KEY, tenant_id TEXT, branch_id TEXT, branch_service_id TEXT, default_estimated_duration INTEGER, auto_call_next BOOLEAN);
+		CREATE TABLE counter_queue_settings (id TEXT PRIMARY KEY, tenant_id TEXT, counter_id TEXT, ticket_prefix TEXT, queue_reset_time TEXT, default_estimated_duration INTEGER, auto_call_next BOOLEAN);
 		INSERT INTO organizations (id, logo_asset_id) VALUES ('tenant-1', 'tenant-logo');
 		INSERT INTO branches (id, tenant_id, logo_asset_id) VALUES ('550e8400-e29b-41d4-a716-446655440000', 'tenant-1', 'branch-logo');
 		INSERT INTO branches (id, tenant_id, logo_asset_id) VALUES ('550e8400-e29b-41d4-a716-446655440001', 'tenant-1', '');
+		INSERT INTO branch_queue_settings (id, tenant_id, branch_id, ticket_prefix) VALUES ('bqs-1', 'tenant-1', '550e8400-e29b-41d4-a716-446655440000', 'B');
+		INSERT INTO branch_service_queue_settings (id, tenant_id, branch_id, branch_service_id, default_estimated_duration) VALUES ('bsqs-1', 'tenant-1', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440002', 9);
+		INSERT INTO counter_queue_settings (id, tenant_id, counter_id, ticket_prefix) VALUES ('cqs-1', 'tenant-1', '550e8400-e29b-41d4-a716-446655440003', 'C');
 	`).Error)
 	return db
 }
@@ -176,4 +192,66 @@ func TestSettingsController_EffectiveConfigAliasPaths(t *testing.T) {
 			assert.Contains(t, w.Body.String(), `"effective_logo_asset_id":"branch-logo"`)
 		})
 	}
+}
+
+func TestSettingsController_ResetQueueSetting(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newSettingsControllerTestDB(t)
+	audit := &stubSettingsAudit{}
+	controller := NewSettingsController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, db, audit)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.DELETE("/branches/:branch_id/queue-settings/:field", controller.ResetBranchQueueSetting)
+	router.DELETE("/branches/:branch_id/services/:branch_service_id/queue-settings/:field", controller.ResetBranchServiceQueueSetting)
+	router.DELETE("/branches/:branch_id/counters/:counter_id/queue-settings/:field", controller.ResetCounterQueueSetting)
+
+	tests := []struct {
+		name      string
+		path      string
+		table     string
+		column    string
+		where     string
+		whereArgs []any
+	}{
+		{name: "Positive_ResetBranchTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/queue-settings/ticket_prefix", table: "branch_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND branch_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440000"}},
+		{name: "Positive_ResetBranchServiceDuration", path: "/branches/550e8400-e29b-41d4-a716-446655440000/services/550e8400-e29b-41d4-a716-446655440002/queue-settings/default_estimated_duration", table: "branch_service_queue_settings", column: "default_estimated_duration", where: "tenant_id = ? AND branch_service_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440002"}},
+		{name: "Positive_ResetCounterTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/counters/550e8400-e29b-41d4-a716-446655440003/queue-settings/ticket_prefix", table: "counter_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND counter_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440003"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodDelete, tt.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusNoContent, w.Code)
+			var value *string
+			require.NoError(t, db.Table(tt.table).Select(tt.column).Where(tt.where, tt.whereArgs...).Scan(&value).Error)
+			assert.Nil(t, value)
+		})
+	}
+	require.Len(t, audit.requests, len(tests))
+	assert.Equal(t, "SETTING_RESET", audit.requests[0].Action)
+}
+
+func TestSettingsController_ResetQueueSetting_InvalidField(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	controller := NewSettingsController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, newSettingsControllerTestDB(t))
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.DELETE("/branches/:branch_id/queue-settings/:field", controller.ResetBranchQueueSetting)
+
+	req, _ := http.NewRequest(http.MethodDelete, "/branches/550e8400-e29b-41d4-a716-446655440000/queue-settings/not_allowed", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

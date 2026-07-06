@@ -3,7 +3,9 @@ package http
 import (
 	"context"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/pkg/response"
@@ -19,11 +21,16 @@ type QueueSettingResolver interface {
 	ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*model.ResolvedQueueSetting, error)
 }
 
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
+}
+
 type SettingsController struct {
 	queueResolver QueueSettingResolver
 	validate      *validator.Validate
 	log           *logrus.Logger
 	db            *gorm.DB
+	audit         AuditLogger
 }
 
 func (h *SettingsController) EffectiveQueueConfig(c *gin.Context) {
@@ -47,6 +54,45 @@ func (h *SettingsController) EffectiveQueueConfig(c *gin.Context) {
 		return
 	}
 	response.Success(c, res)
+}
+
+func (h *SettingsController) ResetBranchQueueSetting(c *gin.Context) {
+	h.resetQueueSetting(c, "branch_queue_settings", "branch_id", branchParam(c), c.Param("field"))
+}
+
+func (h *SettingsController) ResetBranchServiceQueueSetting(c *gin.Context) {
+	h.resetQueueSetting(c, "branch_service_queue_settings", "branch_service_id", c.Param("branch_service_id"), c.Param("field"))
+}
+
+func (h *SettingsController) ResetCounterQueueSetting(c *gin.Context) {
+	h.resetQueueSetting(c, "counter_queue_settings", "counter_id", c.Param("counter_id"), c.Param("field"))
+}
+
+func (h *SettingsController) resetQueueSetting(c *gin.Context, table, idColumn, id, field string) {
+	if h.db == nil || id == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid reset request")
+		return
+	}
+	tenantID := database.GetTenantID(c.Request.Context())
+	if tenantID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	column, ok := resettableQueueSettingColumn(table, field)
+	if !ok {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid queue setting field")
+		return
+	}
+	query := h.db.WithContext(c.Request.Context()).Table(table).Where("tenant_id = ? AND "+idColumn+" = ?", tenantID, id)
+	if table == "branch_service_queue_settings" {
+		query = query.Where("branch_id = ?", branchParam(c))
+	}
+	if err := query.UpdateColumn(column, nil).Error; err != nil {
+		response.HandleError(c, err, "failed to reset queue setting")
+		return
+	}
+	h.tryAudit(c.Request.Context(), "SETTING_RESET", table+":"+id+":"+field, map[string]string{"table": table, "field": field})
+	c.Status(204)
 }
 
 func (h *SettingsController) EffectiveBranchConfig(c *gin.Context) {
@@ -144,6 +190,43 @@ func (h *SettingsController) resolveEffectiveQueueConfig(ctx context.Context, te
 	return res, nil
 }
 
+func resettableQueueSettingColumn(table, field string) (string, bool) {
+	common := map[string]string{
+		"queue_reset_time":           "queue_reset_time",
+		"ticket_prefix":              "ticket_prefix",
+		"default_estimated_duration": "default_estimated_duration",
+		"allow_forward":              "allow_forward",
+		"allow_skip":                 "allow_skip",
+		"allow_recall":               "allow_recall",
+		"allow_cancel":               "allow_cancel",
+		"auto_call_next":             "auto_call_next",
+		"numbering_strategy":         "numbering_strategy",
+		"require_counter":            "require_counter",
+		"allow_forward_from":         "allow_forward_from",
+		"allow_forward_to":           "allow_forward_to",
+	}
+	column, ok := common[field]
+	if !ok {
+		return "", false
+	}
+	if table == "branch_service_queue_settings" {
+		_, ok = map[string]struct{}{"default_estimated_duration": {}, "allow_skip": {}, "allow_recall": {}, "allow_cancel": {}, "auto_call_next": {}, "require_counter": {}, "allow_forward_from": {}, "allow_forward_to": {}}[field]
+		return column, ok
+	}
+	return column, true
+}
+
+func (h *SettingsController) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
+	if h.audit == nil {
+		return
+	}
+	userID, _ := authcontext.UserIDFromContext(ctx)
+	if userID == "" {
+		userID = "system"
+	}
+	_ = h.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{UserID: userID, Action: action, Entity: "queue_setting", EntityID: entityID, NewValues: values})
+}
+
 func (h *SettingsController) resolveEffectiveLogoAssetID(ctx context.Context, tenantID, branchID string) string {
 	if h.db == nil || tenantID == "" || branchID == "" {
 		return ""
@@ -198,10 +281,14 @@ func parseBoolPtr(value string) *bool {
 	return nil
 }
 
-func NewSettingsController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger, db ...*gorm.DB) *SettingsController {
+func NewSettingsController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger, db *gorm.DB, audit ...AuditLogger) *SettingsController {
 	var gormDB *gorm.DB
-	if len(db) > 0 {
-		gormDB = db[0]
+	if db != nil {
+		gormDB = db
 	}
-	return &SettingsController{queueResolver: resolver, validate: validate, log: log, db: gormDB}
+	var auditLogger AuditLogger
+	if len(audit) > 0 {
+		auditLogger = audit[0]
+	}
+	return &SettingsController{queueResolver: resolver, validate: validate, log: log, db: gormDB, audit: auditLogger}
 }
