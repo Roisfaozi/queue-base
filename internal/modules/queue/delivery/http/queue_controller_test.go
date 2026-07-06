@@ -396,7 +396,7 @@ func TestQueueController(t *testing.T) {
 		}
 	})
 
-	t.Run("TransitionRejectsMalformedJSON", func(t *testing.T) {
+	t.Run("Negative_TransitionRejectsMalformedJSON", func(t *testing.T) {
 		uc := &stubQueueControllerUseCase{}
 		log := logrus.New()
 		controller := NewQueueController(uc, newQueueTestValidator(), log)
@@ -498,7 +498,7 @@ func TestQueueController(t *testing.T) {
 		}
 	})
 
-	t.Run("ForwardRejectsMalformedJSON", func(t *testing.T) {
+	t.Run("Negative_ForwardRejectsMalformedJSON", func(t *testing.T) {
 		uc := &stubQueueControllerUseCase{}
 		log := logrus.New()
 		controller := NewQueueController(uc, newQueueTestValidator(), log)
