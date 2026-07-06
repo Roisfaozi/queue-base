@@ -4,7 +4,6 @@
 package modules
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -77,7 +76,7 @@ func TestCallerSignageFlowE2E(t *testing.T) {
 
 			assert.NotEmpty(t, resData.Data.CurrentlyCalled)
 			assert.Equal(t, ticketID, resData.Data.CurrentlyCalled[0].ID)
-			assert.Equal(t, counterID, *resData.Data.CurrentlyCalled[0].CounterID)
+			assert.Equal(t, counterID, resData.Data.CurrentlyCalled[0].CounterID)
 		}
 	})
 }

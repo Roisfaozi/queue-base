@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/jwt"
 	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
 	"github.com/google/uuid"
@@ -47,11 +46,11 @@ func TestQMSClientAdminConfigE2E(t *testing.T) {
 	t.Run("Get Effective Config With Inheritance", func(t *testing.T) {
 		// Set a tenant level setting
 		server.DB.Exec("INSERT INTO settings (id, tenant_id, scope_type, scope_id, `key`, value, value_type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			uuid.New().String(), tenantID, "tenant", tenantID, settingsModel.SettingKeyTicketPrefix, "TEN", "string", true)
+			uuid.New().String(), tenantID, "tenant", tenantID, "ticket_prefix", "TEN", "string", true)
 
 		// Set a branch level setting
 		server.DB.Exec("INSERT INTO settings (id, tenant_id, scope_type, scope_id, `key`, value, value_type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			uuid.New().String(), tenantID, "branch", branchID, settingsModel.SettingKeyQueueResetTime, "12:00", "string", true)
+			uuid.New().String(), tenantID, "branch", branchID, "queue_reset_time", "12:00", "string", true)
 
 		reqURL := "/api/v1/settings/qms/effective?branch_id=" + branchID
 		resp := server.Client.GET(reqURL, func(r *http.Request) {
@@ -68,7 +67,16 @@ func TestQMSClientAdminConfigE2E(t *testing.T) {
 		// Let's ensure HTTP OK first.
 		if resp.StatusCode == http.StatusOK {
 			var resData struct {
-				Data settingsModel.EffectiveQueueConfigResponse `json:"data"`
+				Data struct {
+					Queue struct {
+						TicketPrefix struct {
+							Value string `json:"value"`
+						} `json:"ticket_prefix"`
+						QueueResetTime struct {
+							Value string `json:"value"`
+						} `json:"queue_reset_time"`
+					} `json:"queue"`
+				} `json:"data"`
 			}
 			err := resp.JSON(&resData)
 			require.NoError(t, err)
