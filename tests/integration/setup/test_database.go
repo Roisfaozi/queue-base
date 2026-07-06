@@ -193,7 +193,7 @@ func CleanupDatabase(t *testing.T, db *gorm.DB) {
 
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	for _, table := range tables {
-		db.Exec("TRUNCATE TABLE " + table)
+		db.Exec("DELETE FROM " + table)
 	}
 	db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 }
