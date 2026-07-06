@@ -968,3 +968,21 @@ Design sources:
   - result: passed
 - next step:
   - Setup Wizard UI (if product desires it to replace the current standalone dashboard dialogs).
+
+## 2026-07-06 — Minimal QMS setup wizard shell
+
+- status: completed
+- owner paths:
+  - `apps/web/src/app/[locale]/dashboard/qms-setup/page.tsx`
+  - `apps/web/src/app/[locale]/dashboard/qms-setup/_components/qms-setup-wizard.tsx`
+  - `apps/web/src/components/layout/sidebar.tsx`
+- work done:
+  - Added a lightweight QMS setup wizard shell page.
+  - Reused existing dashboard routes instead of building duplicate giant forms.
+  - Setup page now shows step checklist for tenant profile, branches, services, branch services, counters, and QMS clients.
+  - Added sidebar entry `/dashboard/qms-setup`.
+- verification:
+  - command: `pnpm --filter casbin-web typecheck`
+  - result: passed
+- next step:
+  - If product wants a real guided wizard, this shell can later embed or compose the same forms instead of rewriting them.

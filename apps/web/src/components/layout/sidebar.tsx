@@ -113,6 +113,11 @@ const navItems: NavEntry[] = [
 		iconName: "KeyRound",
 	},
 	{
+		title: "QMS Setup",
+		href: "/dashboard/qms-setup",
+		iconName: "ListTodo",
+	},
+	{
 		title: "Branches",
 		href: "/dashboard/branches",
 		iconName: "GitBranch",
