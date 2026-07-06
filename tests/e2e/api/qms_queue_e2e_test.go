@@ -49,8 +49,7 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 		run      func(t *testing.T, server *setup.TestServer)
 	}{
 		{
-			name:     "Positive_LifecycleAndScannerGuard",
-			category: "positive",
+			name: "Positive_LifecycleAndScannerGuard",
 			run: func(t *testing.T, server *setup.TestServer) {
 				token, orgID, userID := loginQueueAdmin(t, server)
 
