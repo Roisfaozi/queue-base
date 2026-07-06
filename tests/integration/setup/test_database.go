@@ -12,6 +12,7 @@ import (
 	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	projectEntity "github.com/Roisfaozi/queue-base/internal/modules/project/entity"
+	qmsClientEntity "github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
@@ -48,6 +49,8 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		&apiKeyEntity.ApiKey{},
 		&webhookEntity.Webhook{},
 		&webhookEntity.WebhookLog{},
+		&qmsClientEntity.QMSClient{},
+		&qmsClientEntity.QMSClientCredential{},
 	)
 	if t != nil {
 		require.NoError(t, err, "Failed to run migrations")
@@ -184,6 +187,8 @@ func CleanupDatabase(t *testing.T, db *gorm.DB) {
 		"api_keys",
 		"webhooks",
 		"webhook_logs",
+		"qms_client_credentials",
+		"qms_clients",
 	}
 
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")

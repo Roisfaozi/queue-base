@@ -46,12 +46,16 @@ func (u *qmsClientAdminUseCase) CreateClient(ctx context.Context, req *model.QMS
 	if tenantID == "" || req == nil || req.BranchID == "" || req.ClientType == "" || req.Name == "" {
 		return nil, exception.ErrBadRequest
 	}
+	cType := entity.ClientType(req.ClientType)
+	if !cType.IsValid() {
+		return nil, exception.ErrBadRequest
+	}
 	now := time.Now().UnixMilli()
 	client := &entity.QMSClient{
 		ID:         uuid.New().String(),
 		TenantID:   tenantID,
 		BranchID:   req.BranchID,
-		ClientType: entity.ClientType(req.ClientType),
+		ClientType: cType,
 		Name:       req.Name,
 		IsActive:   true,
 		CreatedAt:  now,

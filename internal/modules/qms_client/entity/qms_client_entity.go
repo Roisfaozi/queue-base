@@ -9,6 +9,14 @@ const (
 	ClientTypeKiosk   ClientType = "kiosk"
 )
 
+func (c ClientType) IsValid() bool {
+	switch c {
+	case ClientTypeCaller, ClientTypeSignage, ClientTypeScanner, ClientTypeKiosk:
+		return true
+	}
+	return false
+}
+
 type QMSClient struct {
 	ID              string     `gorm:"column:id;primaryKey;type:varchar(36)"`
 	TenantID        string     `gorm:"column:tenant_id;type:varchar(36);not null;index"`
