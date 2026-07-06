@@ -45,7 +45,7 @@ func newAdminTestDB(t *testing.T) *gorm.DB {
 func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 	db := newAdminTestDB(t)
 	audit := &stubAuditLogger{}
-	uc := NewQMSClientAdminUseCase(db, audit)
+	uc := NewQMSClientAdminUseCase(db, nil, audit)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
@@ -108,7 +108,7 @@ func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 	db := newAdminTestDB(t)
 	audit := &stubAuditLogger{}
-	uc := NewQMSClientAdminUseCase(db, audit)
+	uc := NewQMSClientAdminUseCase(db, nil, audit)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
@@ -173,7 +173,7 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
 	db := newAdminTestDB(t)
 	audit := &stubAuditLogger{}
-	uc := NewQMSClientAdminUseCase(db, audit)
+	uc := NewQMSClientAdminUseCase(db, nil, audit)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	otherCtx := database.SetOrganizationContext(context.Background(), "t-2")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)

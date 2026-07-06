@@ -15,6 +15,7 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -32,19 +33,25 @@ type QMSClientAdminUseCase interface {
 }
 
 type qmsClientAdminUseCase struct {
+	log   *logrus.Logger
 	db    *gorm.DB
 	audit AdminAuditLogger
 }
 
-func NewQMSClientAdminUseCase(db *gorm.DB, audit ...AdminAuditLogger) QMSClientAdminUseCase {
+func NewQMSClientAdminUseCase(db *gorm.DB, log *logrus.Logger, audit ...AdminAuditLogger) QMSClientAdminUseCase {
 	var auditLogger AdminAuditLogger
 	if len(audit) > 0 {
 		auditLogger = audit[0]
 	}
-	return &qmsClientAdminUseCase{db: db, audit: auditLogger}
+	return &qmsClientAdminUseCase{db: db, audit: auditLogger, log: log}
 }
 
 func (u *qmsClientAdminUseCase) CreateClient(ctx context.Context, req *model.QMSClientRequest) (*model.QMSClientResponse, error) {
+	entry := u.logEntry(ctx, "CreateClient", nil)
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || req == nil || req.BranchID == "" || req.ClientType == "" || req.Name == "" {
 		return nil, exception.ErrBadRequest
@@ -68,13 +75,24 @@ func (u *qmsClientAdminUseCase) CreateClient(ctx context.Context, req *model.QMS
 		UpdatedAt:  now,
 	}
 	if err := u.db.WithContext(ctx).Create(client).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("create failed")
+		}
 		return nil, err
 	}
 	u.tryAudit(ctx, "QMS_CLIENT_CREATE", client.ID, map[string]string{"branch_id": client.BranchID, "client_type": string(client.ClientType), "name": client.Name})
+	if entry != nil {
+		entry.WithField("client_id", client.ID).Info("ok")
+	}
 	return toClientResponse(client), nil
 }
 
 func (u *qmsClientAdminUseCase) CreateCredential(ctx context.Context, req *model.QMSClientCredentialRequest) (*model.QMSClientCredentialResponse, error) {
+	entry := u.logEntry(ctx, "CreateCredential", nil)
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || req == nil || req.ClientID == "" || req.APIKey == "" {
 		return nil, exception.ErrBadRequest
@@ -85,46 +103,82 @@ func (u *qmsClientAdminUseCase) CreateCredential(ctx context.Context, req *model
 	}
 	hash, err := pkg.HashPassword(req.APIKey)
 	if err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("hash failed")
+		}
 		return nil, err
 	}
 	now := time.Now().UnixMilli()
 	cred := &entity.QMSClientCredential{ID: uuid.New().String(), TenantID: tenantID, ClientID: req.ClientID, ClientSecretHash: hash, CreatedAt: now, UpdatedAt: now}
 	if err := u.db.WithContext(ctx).Create(cred).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("create credential failed")
+		}
 		return nil, err
 	}
 	u.tryAudit(ctx, "QMS_CLIENT_CREDENTIAL_CREATE", cred.ID, map[string]string{"client_id": cred.ClientID})
+	if entry != nil {
+		entry.WithField("credential_id", cred.ID).Info("ok")
+	}
 	return &model.QMSClientCredentialResponse{ID: cred.ID, ClientID: cred.ClientID, ExpiresAt: cred.ExpiresAt, CreatedAt: cred.CreatedAt}, nil
 }
 
 func (u *qmsClientAdminUseCase) GetAll(ctx context.Context) ([]model.QMSClientResponse, error) {
+	entry := u.logEntry(ctx, "GetAll", nil)
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" {
 		return nil, exception.ErrBadRequest
 	}
 	var clients []entity.QMSClient
 	if err := u.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Order("created_at desc").Find(&clients).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("query failed")
+		}
 		return nil, err
 	}
 	res := make([]model.QMSClientResponse, 0, len(clients))
 	for i := range clients {
 		res = append(res, *toClientResponse(&clients[i]))
 	}
+	if entry != nil {
+		entry.WithField("count", len(res)).Info("ok")
+	}
 	return res, nil
 }
 
 func (u *qmsClientAdminUseCase) GetByID(ctx context.Context, id string) (*model.QMSClientResponse, error) {
+	entry := u.logEntry(ctx, "GetByID", logrus.Fields{"client_id": id})
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || id == "" {
 		return nil, exception.ErrBadRequest
 	}
 	client, err := u.findClient(ctx, tenantID, id)
 	if err != nil {
+		if entry != nil {
+			entry.Error("client not found")
+		}
 		return nil, err
+	}
+	if entry != nil {
+		entry.Info("ok")
 	}
 	return toClientResponse(client), nil
 }
 
 func (u *qmsClientAdminUseCase) Update(ctx context.Context, id string, req *model.QMSClientUpdateRequest) (*model.QMSClientResponse, error) {
+	entry := u.logEntry(ctx, "Update", logrus.Fields{"client_id": id})
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || id == "" || req == nil {
 		return nil, exception.ErrBadRequest
@@ -157,13 +211,24 @@ func (u *qmsClientAdminUseCase) Update(ctx context.Context, id string, req *mode
 	}
 	client.UpdatedAt = time.Now().UnixMilli()
 	if err := u.db.WithContext(ctx).Save(client).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("update failed")
+		}
 		return nil, err
 	}
 	u.tryAudit(ctx, "QMS_CLIENT_UPDATE", client.ID, map[string]string{"name": client.Name})
+	if entry != nil {
+		entry.WithField("is_active", client.IsActive).Info("ok")
+	}
 	return toClientResponse(client), nil
 }
 
 func (u *qmsClientAdminUseCase) Delete(ctx context.Context, id string) error {
+	entry := u.logEntry(ctx, "Delete", logrus.Fields{"client_id": id})
+	if entry != nil {
+		entry.Info("start")
+	}
+
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || id == "" {
 		return exception.ErrBadRequest
@@ -173,14 +238,23 @@ func (u *qmsClientAdminUseCase) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	if !client.IsActive {
+		if entry != nil {
+			entry.Info("already inactive")
+		}
 		return nil
 	}
 	client.IsActive = false
 	client.UpdatedAt = time.Now().UnixMilli()
 	if err := u.db.WithContext(ctx).Save(client).Error; err != nil {
+		if entry != nil {
+			entry.WithError(err).Error("deactivate failed")
+		}
 		return err
 	}
 	u.tryAudit(ctx, "QMS_CLIENT_DEACTIVATE", client.ID, map[string]string{"is_active": "false"})
+	if entry != nil {
+		entry.Info("ok")
+	}
 	return nil
 }
 
@@ -194,6 +268,23 @@ func (u *qmsClientAdminUseCase) findClient(ctx context.Context, tenantID, id str
 
 func toClientResponse(client *entity.QMSClient) *model.QMSClientResponse {
 	return &model.QMSClientResponse{ID: client.ID, TenantID: client.TenantID, BranchID: client.BranchID, ClientType: string(client.ClientType), Name: client.Name, BranchServiceID: client.BranchServiceID, CounterID: client.CounterID, IsActive: client.IsActive, CreatedAt: client.CreatedAt}
+}
+
+func (u *qmsClientAdminUseCase) logEntry(ctx context.Context, action string, fields logrus.Fields) *logrus.Entry {
+	if u.log == nil {
+		return nil
+	}
+	f := logrus.Fields{"module": "qms_client", "action": action}
+	for k, v := range fields {
+		f[k] = v
+	}
+	if tenantID := database.GetTenantID(ctx); tenantID != "" {
+		f["tenant_id"] = tenantID
+	}
+	if userID, ok := authcontext.UserIDFromContext(ctx); ok && userID != "" {
+		f["user_id"] = userID
+	}
+	return u.log.WithFields(f)
 }
 
 func (u *qmsClientAdminUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {

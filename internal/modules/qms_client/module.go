@@ -19,7 +19,7 @@ type QMSClientModule struct {
 func NewQMSClientModule(db *gorm.DB, validate *validator.Validate, log *logrus.Logger, audit ...usecase.AdminAuditLogger) *QMSClientModule {
 	repo := repository.NewQmsClientRepository(db)
 	auth := usecase.NewQMSClientAuthenticator(repo)
-	adminUC := usecase.NewQMSClientAdminUseCase(db, audit...)
+	adminUC := usecase.NewQMSClientAdminUseCase(db, log, audit...)
 	ctrl := qmsClientHttp.NewQMSClientController(adminUC, validate, log)
 	return &QMSClientModule{Repo: repo, Authenticator: auth, AdminUseCase: adminUC, Controller: ctrl}
 }
