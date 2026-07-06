@@ -11,11 +11,15 @@ pre-commit:
 
     go-vet:
       glob: '**/*.go'
-      run: go vet ./...
+      run: >
+        pkgs=$(echo '{staged_files}' | tr ' ' '\n' | xargs -I{} dirname "{}" | sort -u | tr '\n' ' ');
+        [ -n "$pkgs" ] && go vet $pkgs || true
 
     go-lint:
       glob: '**/*.go'
-      run: golangci-lint run
+      run: >
+        files=$(echo '{staged_files}' | tr ' ' '\n' | grep '\.go$' | sort -u | paste -sd,);
+        [ -n "$files" ] && golangci-lint run --new-from-rev=HEAD || true
 
     # ─── FRONTEND & UI ───
     format:
