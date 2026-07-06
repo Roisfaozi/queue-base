@@ -162,7 +162,7 @@
 | Sub-Point | Status | Evidence |
 |-----------|--------|----------|
 | cannot activate without address/city/province/phone/running_text/timezone | ✅ done | Branch create guard added in `branch_usecase.go` |
-| can activate without logo if tenant logo exists | ❌ missing | No logo fallback logic |
+| can activate without logo if tenant logo exists | ✅ done | Branch activation guard accepts tenant logo fallback in `internal/modules/organization/usecase/branch_usecase.go` and is covered by `internal/modules/organization/usecase/branch_activation_logo_test.go` |
 | effective logo fallback (branch→tenant) | ✅ done | Effective config response resolves branch logo first and falls back to tenant logo |
 
 ### 8.3 Branch Service Validation
@@ -288,7 +288,7 @@
 |---|---|---|---|
 | 7 Tenant design | done | Tenant profile fields and status exist, and activation completeness rule is enforced including logo/timezone requirements. | `internal/modules/organization/entity/organization_entity.go:15`, `internal/modules/organization/entity/organization_entity.go:30`, `internal/modules/organization/usecase/organization_usecase.go:55`, `internal/modules/organization/usecase/organization_usecase.go:241` |
 | 8 `tenant_queue_settings` | done | Table/entity include defaults and tenant unique constraint. | `db/migrations/000032_align_qms_typed_configuration.up.sql:54`, `db/migrations/000032_align_qms_typed_configuration.up.sql:67`, `internal/modules/settings/entity/qms_queue_settings_entity.go:3` |
-| 9 Branch design | partial | Branch profile fields exist; branch logo field exists; explicit branch-logo-fallback-to-tenant resolver is missing. | `db/migrations/000032_align_qms_typed_configuration.up.sql:14`, `internal/modules/organization/entity/branch_entity.go:22`, `internal/modules/organization/model/branch_model.go:20` |
+| 9 Branch design | done | Branch profile fields exist, activation guard supports tenant-logo fallback, and effective config exposes branch→tenant logo resolution. | `db/migrations/000032_align_qms_typed_configuration.up.sql:14`, `internal/modules/organization/usecase/branch_usecase.go`, `internal/modules/settings/delivery/http/settings_controller.go` |
 | 10 `branch_queue_settings` | done | Nullable override fields and tenant+branch unique key exist. | `db/migrations/000032_align_qms_typed_configuration.up.sql:71`, `db/migrations/000032_align_qms_typed_configuration.up.sql:85`, `internal/modules/settings/entity/qms_queue_settings_entity.go:20` |
 | 11 Services | partial | Service type/duration/pharmacy flags exist; audio/narrative fallback rules are not implemented. | `db/migrations/000032_align_qms_typed_configuration.up.sql:25`, `internal/modules/service/entity/service_entity.go:13`, `internal/modules/service/entity/service_entity.go:17` |
 | 12 Branch services | done | Branch-service table and CRUD/usecase exist with tenant/branch/service binding. | `db/migrations/000032_align_qms_typed_configuration.up.sql:29`, `internal/modules/service/usecase/branch_service_usecase.go:31`, `internal/modules/service/repository/branch_service_repository.go:1` |
@@ -706,7 +706,7 @@ This section expands the raw `partial/missing` markers into concrete implementat
 
 **Needed change**
 
-- Add final integration/E2E proof for caller action lifecycle when Docker slice resumes.
+- Run Docker-native integration/E2E execution in QA environment; compile-level coverage and integration playbooks already exist in repo.
 
 ### Gap I — Estimate and Recall Coverage Missing [BACKEND DONE / E2E PENDING]
 
@@ -723,6 +723,7 @@ This section expands the raw `partial/missing` markers into concrete implementat
 - Queue estimate test covers `queue_left × effective duration`, invalid duration fallback to zero, and serving queue zero estimate.
 - Recall test covers repeated call when `allow_recall=true`, rejection when disabled, and mismatched journey-state rejection.
 - Re-calling a ticket remains intentionally modeled as a visit event, not a separate recall counter field.
+- Integration playbooks now exist for full queue lifecycle and caller→signage one-hop propagation, pending Docker-native execution.
 
 **Evidence**
 
