@@ -1512,3 +1512,35 @@ Design sources:
   - result: passed (compile OK)
 - next step:
   - Wait for QA/Docker agent to run integration tests natively.
+
+## 2026-07-07 — Doc Rebase + Final Audit Sweep
+
+- status: completed
+- owner paths:
+  - `llm/research/typed-config-design-coverage.md`
+  - `llm/tasks/qms-typed-config-progress.md`
+  - `documentation/task-overview.md`
+  - `tests/integration/setup/test_container.go`
+  - `tests/integration/modules/qms_caller_signage_integration_test.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+  - `llm/research/typed-config-design-coverage.md`
+- work done:
+  - Rebased `typed-config-design-coverage.md` rows: services/audio/narrative -> done, operator_assignments/qms_clients/credentials -> done, caller/signage -> done, activation rules -> done.
+  - Fixed Casbin enforcer path in `test_container.go` using walk-up resolver instead of hardcoded relative path.
+  - Fixed caller-signage integration lifecycle: queue must be forwarded to counter before signage binding check.
+  - Updated `documentation/task-overview.md` to reflect real current backend architecture coverage.
+- remaining gaps after audit:
+  - Realtime consumer apps for caller/signage intentionally deferred; spec docs exist in `documentation/QMS_Frontend_App_Specs.md`.
+  - Full E2E lifecycle depends on Docker; compile-path passes.
+  - Setup wizard full multi-step flow not built (YAGNI; product may not need it before launch).
+  - Effective config nested response format (`tenant:{},branch:{}`) still at design wish level; flat compat keys satisfy frontend.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./tests/integration -tags=integration -run 'TestCallerActionsIntegration|TestSignageIntegration' -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./tests/e2e/api -tags=e2e -run 'TestQMSAuditE2E_Visibility|TestQMSQueueE2E_LifecycleAndScannerGuard' -count=1`
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache go test ./tests/integration/modules -tags=integration -run TestIntegration_CallerSignageLifecycle -count=1`
+  - result: passed
+- next step:
+  - End of QMS backend MVP build slice. Hand off to QA or frontend integration.
