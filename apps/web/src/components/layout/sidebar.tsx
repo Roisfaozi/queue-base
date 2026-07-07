@@ -302,6 +302,7 @@ export const Sidebar = memo(function Sidebar({
 	className?: string;
 }) {
 	const pathname = usePathname();
+	const normalizedPathname = pathname.replace(/^\/[a-z]{2}(?=\/|$)/, "") || "/";
 	const { currentOrganization } = useDashboardShell();
 
 	return (
@@ -324,7 +325,7 @@ export const Sidebar = memo(function Sidebar({
 			</div>
 
 			{/* Navigation */}
-			<nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
+			<nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2 pb-24">
 				{navItems.map((item, index) => {
 					if (item.type === "separator") {
 						return (
@@ -336,7 +337,8 @@ export const Sidebar = memo(function Sidebar({
 					}
 
 					const isActive =
-						pathname === item.href || pathname.startsWith(`${item.href}/`);
+						normalizedPathname === item.href ||
+						normalizedPathname.startsWith(`${item.href}/`);
 					const isShowcase = item.href === "/dashboard/showcase";
 
 					return (
@@ -376,10 +378,10 @@ export const Sidebar = memo(function Sidebar({
 							</TooltipProvider>
 
 							{isShowcase && isActive ? (
-								<div className="ml-4 hidden border-l border-border pl-3 [data-density=compact]:hidden">
+								<div className="ml-4 border-l border-border pl-3 [data-density=compact]:hidden">
 									{showcaseNavGroups.map((group) => {
 										const groupActive = group.items.some(
-											(child) => pathname === child.href,
+											(child) => normalizedPathname === child.href,
 										);
 
 										// Group items by category
@@ -398,14 +400,24 @@ export const Sidebar = memo(function Sidebar({
 												open={groupActive || pathname === item.href}
 												className="py-1"
 											>
-												<summary className="cursor-pointer list-none py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground">
+												<summary
+													className={cn(
+														"flex cursor-pointer list-none items-center gap-2 py-1 text-xs font-semibold tracking-wide uppercase",
+														groupActive
+															? "text-primary"
+															: "text-muted-foreground hover:text-foreground",
+													)}
+												>
 													{group.title}
+													<span className="ml-auto rounded-full bg-muted px-1.5 py-0 text-[10px] tabular-nums">
+														{group.items.length}
+													</span>
 												</summary>
 												<div className="mt-2 flex flex-col gap-3">
 													{Object.entries(itemsByCategory).map(
 														([category, items]) => {
 															const catActive = items.some(
-																(child) => pathname === child.href,
+																(child) => normalizedPathname === child.href,
 															);
 															return (
 																<div
@@ -414,20 +426,26 @@ export const Sidebar = memo(function Sidebar({
 																>
 																	<p
 																		className={cn(
-																			"px-2 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/70",
-																			catActive && "text-primary/70",
+																			"flex items-center gap-1 px-2 text-[10px] font-bold tracking-wider uppercase",
+																			catActive
+																				? "text-primary/70"
+																				: "text-muted-foreground/70",
 																		)}
 																	>
 																		{category}
+																		<span className="text-muted-foreground/40 text-[9px]">
+																			{items.length}
+																		</span>
 																	</p>
 																	{items.map((child) => {
-																		const childActive = pathname === child.href;
+																		const childActive =
+																			normalizedPathname === child.href;
 																		return (
 																			<Link
 																				key={child.href}
 																				href={child.href}
 																				className={cn(
-																					"rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+																					"truncate rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
 																					childActive &&
 																						"bg-primary/10 text-primary",
 																				)}

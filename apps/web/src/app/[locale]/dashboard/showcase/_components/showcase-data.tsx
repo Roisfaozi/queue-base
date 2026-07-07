@@ -1387,6 +1387,148 @@ function ComponentPreview({
 			"collapsible",
 		].includes(entry.slug)
 	) {
+		if (entry.slug === "chart") {
+			return (
+				<div className="grid gap-3 rounded-lg border bg-card p-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="text-sm font-medium">Queue volume</p>
+							<p className="text-muted-foreground text-xs">Last 7 days</p>
+						</div>
+						<Badge variant="secondary">+18%</Badge>
+					</div>
+					<div className="grid grid-cols-7 gap-1">
+						{[40, 52, 66, 58, 74, 68, 80].map((value, index) => (
+							<div key={index} className="flex h-24 items-end">
+								<div
+									className="bg-primary/80 w-full rounded-t-md"
+									style={{ height: `${value}%` }}
+								/>
+							</div>
+						))}
+					</div>
+				</div>
+			);
+		}
+
+		if (entry.slug === "label") {
+			return (
+				<div className="grid max-w-sm gap-2">
+					<Label htmlFor="label-preview">Counter name</Label>
+					<p
+						id="label-preview"
+						className="rounded-md border bg-card px-3 py-2 text-sm"
+					>
+						Counter 03 — Priority lane
+					</p>
+				</div>
+			);
+		}
+
+		if (entry.slug === "radio-group") {
+			return (
+				<div className="grid gap-3">
+					<div className="text-sm font-medium">Queue priority</div>
+					<div className="grid gap-2 rounded-lg border p-4">
+						<label className="flex items-center gap-2 text-sm">
+							<input type="radio" name="priority" defaultChecked /> Normal
+						</label>
+						<label className="flex items-center gap-2 text-sm">
+							<input type="radio" name="priority" /> Priority
+						</label>
+						<label className="flex items-center gap-2 text-sm">
+							<input type="radio" name="priority" /> VIP
+						</label>
+					</div>
+				</div>
+			);
+		}
+
+		if (entry.slug === "toggle") {
+			return (
+				<div className="flex items-center justify-between rounded-lg border bg-card p-4">
+					<div className="grid gap-1">
+						<p className="text-sm font-medium">Silent mode</p>
+						<p className="text-muted-foreground text-xs">
+							Mute announcement sound on this counter.
+						</p>
+					</div>
+					<button className="rounded-full border px-3 py-1 text-xs font-medium">
+						On
+					</button>
+				</div>
+			);
+		}
+
+		if (entry.slug === "toggle-group") {
+			return (
+				<div className="grid gap-2 rounded-lg border p-4">
+					<div className="text-sm font-medium">Display mode</div>
+					<div className="flex gap-2">
+						<Badge>Live</Badge>
+						<Badge variant="secondary">Compact</Badge>
+						<Badge variant="outline">Debug</Badge>
+					</div>
+				</div>
+			);
+		}
+
+		if (entry.slug === "tooltip") {
+			return (
+				<div className="flex justify-center">
+					<div className="rounded-md border bg-card px-3 py-2 text-sm">
+						Hover `?` for help
+					</div>
+				</div>
+			);
+		}
+
+		if (entry.slug === "form" || entry.slug === "input-otp") {
+			return (
+				<div className="grid gap-3 rounded-lg border bg-card p-4">
+					<div className="grid gap-1">
+						<Label htmlFor={`${entry.slug}-preview`}>Queue PIN</Label>
+						<Input id={`${entry.slug}-preview`} placeholder="••••••" />
+					</div>
+					<p className="text-muted-foreground text-xs">
+						Enter 6-digit code to open counter session.
+					</p>
+				</div>
+			);
+		}
+
+		if (entry.slug === "pagination") {
+			return (
+				<div className="flex items-center justify-between rounded-lg border bg-card p-4 text-sm">
+					<span className="text-muted-foreground">
+						Showing 1-10 of 128 tickets
+					</span>
+					<div className="flex gap-2">
+						<Button size="sm" variant="outline">
+							Prev
+						</Button>
+						<Button size="sm">Next</Button>
+					</div>
+				</div>
+			);
+		}
+
+		if (entry.slug === "sidebar") {
+			return (
+				<div className="grid gap-3 rounded-lg border bg-card p-4">
+					<Badge variant="secondary" className="w-fit">
+						Branch dashboard
+					</Badge>
+					<div className="grid gap-1 text-sm">
+						<p className="font-medium">Today</p>
+						<p className="text-muted-foreground">
+							128 waiting • 36 served • 4 missed
+						</p>
+					</div>
+				</div>
+			);
+		}
+
 		return (
 			<div className="grid max-w-sm gap-3 rounded-lg border bg-card p-4">
 				<div className="flex items-center gap-3">
@@ -1407,6 +1549,23 @@ function ComponentPreview({
 				<div className="flex justify-between text-sm">
 					<span className="text-muted-foreground">Status</span>
 					<Badge>active</Badge>
+				</div>
+			</div>
+		);
+	}
+
+	if (
+		["Actions", "Brand", "Iconography", "Magic UI", "Settings"].includes(
+			entry.category,
+		)
+	) {
+		return (
+			<div className="flex items-center justify-center rounded-lg border bg-muted/10 p-8">
+				<div className="grid gap-2 text-center">
+					<h4 className="font-medium">{entry.title}</h4>
+					<p className="text-muted-foreground text-xs max-w-[200px]">
+						{entry.description}
+					</p>
 				</div>
 			</div>
 		);
