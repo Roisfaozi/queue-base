@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -225,17 +227,39 @@ func connectWithRetry(connStr string, maxRetries int) (*gorm.DB, error) {
 }
 
 func SetupCasbin(t *testing.T, db *gorm.DB, logger *logrus.Logger) usecase.IEnforcer {
-	// Ensure config path is correct relative to integration tests
+	modelPath, err := findProjectFile("internal/config/casbin_model.conf")
+	require.NoError(t, err, "Failed to locate Casbin model file")
+
 	cfg := &config.AppConfig{
 		Casbin: config.CasbinConfig{
 			Enabled: true,
-			Model:   "../../../internal/config/casbin_model.conf",
+			Model:   modelPath,
 			Watcher: config.WatcherConfig{Enabled: false},
 		},
 	}
 	enforcer, err := config.NewCasbinEnforcer(cfg, db, logger)
 	require.NoError(t, err, "Failed to setup Casbin enforcer")
 	return usecase.NewTransactionalEnforcer(enforcer, cfg.Casbin.Model)
+}
+
+func findProjectFile(relPath string) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		candidate := filepath.Join(wd, relPath)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			return "", fmt.Errorf("could not find %s from %s", relPath, wd)
+		}
+		wd = parent
+	}
 }
 
 func SetupRedisContainer(ctx context.Context) (*redisContainer.RedisContainer, string, error) {

@@ -1,98 +1,86 @@
 //go:build integration
+// +build integration
 
 package integration
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
+	"context"
 	"testing"
+	"time"
 
-	"github.com/Roisfaozi/queue-base/internal/modules/qms/model"
-	"github.com/Roisfaozi/queue-base/tests/integration/testutils"
+	callerUsecase "github.com/Roisfaozi/queue-base/internal/modules/caller/usecase"
+	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	qmsClientEntity "github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
+	queueModule "github.com/Roisfaozi/queue-base/internal/modules/queue"
+	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
+	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/settings"
+	"github.com/Roisfaozi/queue-base/pkg/database"
+	"github.com/Roisfaozi/queue-base/tests/integration/setup"
+	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCallerActionsIntegration(t *testing.T) {
-	app, db, _, cleanup := testutils.SetupIntegrationApp(t)
-	defer cleanup()
+	env := setup.SetupIntegrationEnvironment(t)
+	if env == nil {
+		t.Skip("Skipping integration test; DB not available")
+	}
 
-	// 1. Setup tenant, branch, service, counter, caller user
-	tenant := testutils.CreateTestTenant(t, db, "Tenant A")
-	branch := testutils.CreateTestBranch(t, db, tenant.ID, "Branch 1")
-	service := testutils.CreateTestService(t, db, tenant.ID, branch.ID, "Service A", "SA")
-	counter := testutils.CreateTestCounter(t, db, tenant.ID, branch.ID, "Counter 1")
-	callerUser := testutils.CreateTestUser(t, db, tenant.ID, branch.ID, "caller1@test.com", "caller")
+	tenantID := uuid.New().String()
+	branchID := uuid.New().String()
+	serviceID := uuid.New().String()
+	branchServiceID := uuid.New().String()
+	counterID := uuid.New().String()
+	clientID := uuid.New().String()
+	queueID := uuid.New().String()
+	journeyID := uuid.New().String()
+	now := time.Now().UnixMilli()
 
-	// 2. Setup token
-	token, _ := app.JwtService.GenerateToken(callerUser.ID, tenant.ID, branch.ID, "caller")
-	authHeader := "Bearer " + token
+	require.NoError(t, env.DB.Create(&branchEntity.Organization{ID: tenantID, Code: "caller-it", Name: "Caller IT", Slug: "caller-it-" + tenantID, OwnerID: uuid.New().String(), Status: branchEntity.OrgStatusActive}).Error)
+	require.NoError(t, env.DB.Create(&branchEntity.Branch{ID: branchID, TenantID: tenantID, Code: "BR-CALL", Name: "Caller Branch", Status: branchEntity.BranchStatusActive}).Error)
+	require.NoError(t, env.DB.Create(&serviceEntity.Service{ID: serviceID, TenantID: tenantID, Code: "CALL", Name: "Caller Service", Status: serviceEntity.ServiceStatusActive}).Error)
+	require.NoError(t, env.DB.Create(&serviceEntity.BranchService{ID: branchServiceID, TenantID: tenantID, BranchID: branchID, ServiceID: serviceID, IsActive: true}).Error)
+	require.NoError(t, env.DB.Create(&counterEntity.Counter{ID: counterID, TenantID: tenantID, BranchID: branchID, BranchServiceID: branchServiceID, Code: "C-CALL", Name: "Caller Counter", Status: counterEntity.CounterStatusActive}).Error)
+	require.NoError(t, env.DB.Create(&qmsClientEntity.QMSClient{ID: clientID, TenantID: tenantID, BranchID: branchID, BranchServiceID: &branchServiceID, CounterID: &counterID, ClientType: qmsClientEntity.ClientTypeCaller, Name: "Caller Client", IsActive: true}).Error)
+	require.NoError(t, env.DB.Create(&queueEntity.Queue{ID: queueID, TenantID: tenantID, BranchID: branchID, QueueDate: time.Now().Format("2006-01-02"), TicketNo: "CALL001", QueueNo: 1, PatientName: "Caller Patient", Status: queueEntity.QueueStatusWaiting, CurrentJourneyID: journeyID, CreatedAt: now, UpdatedAt: now}).Error)
+	require.NoError(t, env.DB.Create(&queueEntity.QueueJourney{ID: journeyID, QueueID: queueID, TenantID: tenantID, BranchID: branchID, ServiceID: serviceID, CounterID: counterID, SeqNo: 1, Status: queueEntity.JourneyStatusPending, CreatedAt: now, UpdatedAt: now}).Error)
 
-	// 3. Create a ticket to act on
-	ticket := testutils.CreateTestQueueJourney(t, db, tenant.ID, branch.ID, service.ID, "SA001")
+	v := validator.New()
+	settingsMod := settings.NewSettingsModule(env.DB, v, env.Logger)
+	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, env.Logger)
+	callerUC := callerUsecase.NewCallerUseCase(env.DB, queueMod.QueueUseCase, nil, nil)
+	ctx := database.SetBranchContext(database.SetOrganizationContext(context.Background(), tenantID), branchID)
 
-	// 4. Test endpoints
-	t.Run("Call Next Ticket", func(t *testing.T) {
-		reqBody := `{"counter_id":"` + counter.ID + `","service_ids":["` + service.ID + `"]}`
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/qms/caller/call-next", strings.NewReader(reqBody))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", authHeader)
-		req.Header.Set("X-Tenant-ID", tenant.ID)
-		w := httptest.NewRecorder()
+	tests := []struct {
+		name       string
+		action     string
+		wantStatus string
+	}{
+		{name: "Call Ticket", action: queueModel.QueueActionCall, wantStatus: queueEntity.QueueStatusCalling},
+		{name: "Serve Ticket", action: queueModel.QueueActionServe, wantStatus: queueEntity.QueueStatusServing},
+		{name: "Complete Ticket", action: queueModel.QueueActionComplete, wantStatus: queueEntity.QueueStatusCompleted},
+	}
 
-		app.Router.ServeHTTP(w, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := callerUC.ExecuteAction(ctx, clientID, journeyID, tt.action)
+			require.NoError(t, err)
+			require.NotNil(t, res)
+			assert.Equal(t, journeyID, res.JourneyID)
+			assert.Equal(t, tt.wantStatus, res.Status)
 
-		assert.Equal(t, http.StatusOK, w.Code)
-		var resp struct {
-			Data model.QueueJourney `json:"data"`
-		}
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-		assert.Equal(t, ticket.ID, resp.Data.ID)
-		assert.Equal(t, model.QueueStatusCalled, resp.Data.Status)
-		assert.Equal(t, counter.ID, *resp.Data.CounterID)
+			var queue queueEntity.Queue
+			require.NoError(t, env.DB.First(&queue, "id = ?", queueID).Error)
+			assert.Equal(t, tt.wantStatus, queue.Status)
 
-		// Verify ticket status in DB
-		var updatedTicket model.QueueJourney
-		err := db.First(&updatedTicket, "id = ?", ticket.ID).Error
-		require.NoError(t, err)
-		assert.Equal(t, model.QueueStatusCalled, updatedTicket.Status)
-	})
-
-	t.Run("Serve Ticket", func(t *testing.T) {
-		reqBody := `{"action":"serve"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/qms/caller/journeys/"+ticket.ID+"/action", strings.NewReader(reqBody))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", authHeader)
-		req.Header.Set("X-Tenant-ID", tenant.ID)
-		w := httptest.NewRecorder()
-
-		app.Router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		// Verify DB
-		var updatedTicket model.QueueJourney
-		db.First(&updatedTicket, "id = ?", ticket.ID)
-		assert.Equal(t, model.QueueStatusServing, updatedTicket.Status)
-	})
-
-	t.Run("Complete Ticket", func(t *testing.T) {
-		reqBody := `{"action":"complete"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/qms/caller/journeys/"+ticket.ID+"/action", strings.NewReader(reqBody))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", authHeader)
-		req.Header.Set("X-Tenant-ID", tenant.ID)
-		w := httptest.NewRecorder()
-
-		app.Router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		// Verify DB
-		var updatedTicket model.QueueJourney
-		db.First(&updatedTicket, "id = ?", ticket.ID)
-		assert.Equal(t, model.QueueStatusCompleted, updatedTicket.Status)
-	})
+			var journey queueEntity.QueueJourney
+			require.NoError(t, env.DB.First(&journey, "id = ?", journeyID).Error)
+			assert.Equal(t, tt.wantStatus, journey.Status)
+		})
+	}
 }
