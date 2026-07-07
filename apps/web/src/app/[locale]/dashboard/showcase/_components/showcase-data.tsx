@@ -970,7 +970,15 @@ function getCategoryGroups() {
 		.filter((group) => group.entries.length > 0);
 }
 
-function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
+function ComponentPreview({
+	entry,
+	variant,
+}: {
+	entry: ShowcaseEntry;
+	variant?: string;
+}) {
+	const isVariantPreview = !!variant && variant !== "default";
+
 	if (entry.slug === "button") {
 		return (
 			<div className="flex flex-wrap items-center gap-2">
@@ -1288,6 +1296,124 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 		);
 	}
 
+	if (entry.slug === "accordion") {
+		return (
+			<div className="grid gap-1">
+				<div className="rounded-md border bg-muted/30 px-3 py-2 text-sm font-medium">
+					Service Info
+				</div>
+				<div className="rounded-md border bg-card px-3 py-2 text-sm">
+					Customer waiting at Counter 03 since 10:32.
+				</div>
+				<div className="rounded-md border bg-card px-3 py-2 text-sm">
+					Ticket A-012, Priority Normal.
+				</div>
+			</div>
+		);
+	}
+
+	if (["alert", "toast", "sonner", "toaster"].includes(entry.slug)) {
+		return (
+			<div className="grid max-w-sm gap-3">
+				<div className="rounded-md border-l-4 border-l-emerald-500 bg-muted/40 px-4 py-3 text-sm">
+					<span className="font-medium">Ticket called</span> — A-012 to Counter
+					03.
+				</div>
+				<div className="rounded-md border-l-4 border-l-destructive bg-muted/40 px-4 py-3 text-sm">
+					<span className="font-medium">Skip detected</span> — A-011 missed 3
+					calls.
+				</div>
+			</div>
+		);
+	}
+
+	if (entry.slug === "aspect-ratio") {
+		return (
+			<div className="flex gap-4">
+				<div className="flex aspect-video w-32 items-center justify-center rounded-lg border bg-muted/40 text-muted-foreground text-xs">
+					16:9
+				</div>
+				<div className="flex aspect-square w-12 items-center justify-center rounded-lg border bg-muted/40 text-muted-foreground text-xs">
+					1:1
+				</div>
+			</div>
+		);
+	}
+
+	if (["separator", "scroll-area", "resizable"].includes(entry.slug)) {
+		return (
+			<div className="flex max-w-sm items-center gap-4 rounded-lg border bg-card p-4">
+				<div className="flex-1 text-sm">
+					<span className="font-medium">Ticket A-012</span>
+					<br />
+					<span className="text-muted-foreground text-xs">Waiting</span>
+				</div>
+				<Separator orientation="vertical" className="h-10" />
+				<div className="flex-1 text-sm">
+					<span className="font-medium">Counter 03</span>
+					<br />
+					<span className="text-muted-foreground text-xs">Serving A-011</span>
+				</div>
+			</div>
+		);
+	}
+
+	if (["carousel", "slider"].includes(entry.slug)) {
+		return (
+			<div className="flex max-w-sm gap-2 overflow-hidden rounded-lg border bg-muted/20 p-3">
+				<div className="flex-1 rounded-md border bg-card p-3 text-center text-xs font-medium">
+					CS
+				</div>
+				<div className="flex-1 rounded-md border bg-card p-3 text-center text-xs font-medium">
+					Payment
+				</div>
+				<div className="flex-1 rounded-md border bg-card p-3 text-center text-xs font-medium">
+					Priority
+				</div>
+			</div>
+		);
+	}
+
+	if (
+		[
+			"chart",
+			"label",
+			"radio-group",
+			"toggle",
+			"toggle-group",
+			"tooltip",
+			"form",
+			"input-otp",
+			"pagination",
+			"sidebar",
+			"collapsible",
+		].includes(entry.slug)
+	) {
+		return (
+			<div className="grid max-w-sm gap-3 rounded-lg border bg-card p-4">
+				<div className="flex items-center gap-3">
+					<div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-sm">
+						CS
+					</div>
+					<div className="grid gap-0.5">
+						<p className="text-sm font-medium">{entry.title}</p>
+						<p className="text-muted-foreground text-xs">
+							Ready for {entry.level} interaction
+						</p>
+					</div>
+					<Badge variant="secondary" className="ml-auto">
+						demo
+					</Badge>
+				</div>
+				<Separator />
+				<div className="flex justify-between text-sm">
+					<span className="text-muted-foreground">Status</span>
+					<Badge>active</Badge>
+				</div>
+			</div>
+		);
+	}
+
 	if (["Layout", "Dashboard", "Landing"].includes(entry.category)) {
 		return (
 			<div className="rounded-2xl border bg-gradient-to-br from-primary/5 via-background to-muted/20 p-8">
@@ -1346,7 +1472,7 @@ function VariantGrid({ entry }: { entry: ShowcaseEntry }) {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ComponentPreview entry={entry} />
+						<ComponentPreview entry={entry} variant={variant} />
 					</CardContent>
 				</Card>
 			))}
