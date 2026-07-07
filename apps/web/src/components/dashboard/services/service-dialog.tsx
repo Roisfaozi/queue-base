@@ -38,6 +38,12 @@ import { servicesApi, type Service } from "~/lib/api/qms";
 const serviceSchema = z.object({
 	code: z.string().min(2, "Code must be at least 2 characters.").max(50),
 	name: z.string().min(3, "Name must be at least 3 characters.").max(255),
+	type: z.string().optional(),
+	default_estimated_duration: z.coerce.number().int().nonnegative().optional(),
+	audio_id: z.string().optional(),
+	audio_en: z.string().optional(),
+	narrative_instruction_id: z.string().optional(),
+	narrative_instruction_en: z.string().optional(),
 	is_pharmacy: z.boolean().default(false),
 	is_pharmacy_reception: z.boolean().default(false),
 	status: z.enum(["active", "inactive"]).optional(),
@@ -66,6 +72,12 @@ export function ServiceDialog({
 		defaultValues: {
 			code: "",
 			name: "",
+			type: "",
+			default_estimated_duration: 0,
+			audio_id: "",
+			audio_en: "",
+			narrative_instruction_id: "",
+			narrative_instruction_en: "",
 			is_pharmacy: false,
 			is_pharmacy_reception: false,
 			status: "active",
@@ -77,6 +89,12 @@ export function ServiceDialog({
 			form.reset({
 				code: service?.code || "",
 				name: service?.name || "",
+				type: service?.type || "",
+				default_estimated_duration: service?.default_estimated_duration || 0,
+				audio_id: service?.audio_id || "",
+				audio_en: service?.audio_en || "",
+				narrative_instruction_id: service?.narrative_instruction_id || "",
+				narrative_instruction_en: service?.narrative_instruction_en || "",
 				is_pharmacy: service?.is_pharmacy || false,
 				is_pharmacy_reception: service?.is_pharmacy_reception || false,
 				status: service?.status || "active",
@@ -91,6 +109,12 @@ export function ServiceDialog({
 				await servicesApi.update(service.id, {
 					code: data.code,
 					name: data.name,
+					type: data.type,
+					default_estimated_duration: data.default_estimated_duration,
+					audio_id: data.audio_id,
+					audio_en: data.audio_en,
+					narrative_instruction_id: data.narrative_instruction_id,
+					narrative_instruction_en: data.narrative_instruction_en,
 					status: data.status,
 					is_pharmacy: data.is_pharmacy,
 					is_pharmacy_reception: data.is_pharmacy_reception,
@@ -100,6 +124,12 @@ export function ServiceDialog({
 				await servicesApi.create({
 					code: data.code,
 					name: data.name,
+					type: data.type,
+					default_estimated_duration: data.default_estimated_duration,
+					audio_id: data.audio_id,
+					audio_en: data.audio_en,
+					narrative_instruction_id: data.narrative_instruction_id,
+					narrative_instruction_en: data.narrative_instruction_en,
 					is_pharmacy: data.is_pharmacy,
 					is_pharmacy_reception: data.is_pharmacy_reception,
 				});
@@ -177,6 +207,90 @@ export function ServiceDialog({
 									<FormLabel>Service Name</FormLabel>
 									<FormControl>
 										<Input placeholder="e.g. General Checkup" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="type"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Service Type</FormLabel>
+									<FormControl>
+										<Input placeholder="e.g. primary" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="default_estimated_duration"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Default Estimated Duration</FormLabel>
+									<FormControl>
+										<Input type="number" min={0} placeholder="15" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="audio_id"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Audio ID</FormLabel>
+									<FormControl>
+										<Input placeholder="audio-id" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="audio_en"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Audio EN</FormLabel>
+									<FormControl>
+										<Input placeholder="audio-en" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="narrative_instruction_id"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Narrative ID</FormLabel>
+									<FormControl>
+										<Input placeholder="narrative-id" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="narrative_instruction_en"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Narrative EN</FormLabel>
+									<FormControl>
+										<Input placeholder="narrative-en" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>

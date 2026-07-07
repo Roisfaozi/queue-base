@@ -4,14 +4,22 @@ import (
 	"context"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/repository"
+	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
+	serviceRepository "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
+	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/google/uuid"
 )
+
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
+}
 
 type CounterUseCase interface {
 	CreateCounter(ctx context.Context, req *model.CreateCounterRequest) (*model.CounterResponse, error)
@@ -22,12 +30,18 @@ type CounterUseCase interface {
 }
 
 type counterUseCase struct {
-	repo       repository.CounterRepository
-	branchRepo branchRepository.BranchRepository
+	repo              repository.CounterRepository
+	branchRepo        branchRepository.BranchRepository
+	branchServiceRepo serviceRepository.BranchServiceRepository
+	audit             AuditLogger
 }
 
-func NewCounterUseCase(repo repository.CounterRepository, branchRepo branchRepository.BranchRepository) CounterUseCase {
-	return &counterUseCase{repo: repo, branchRepo: branchRepo}
+func NewCounterUseCase(repo repository.CounterRepository, branchRepo branchRepository.BranchRepository, branchServiceRepo serviceRepository.BranchServiceRepository, audit ...AuditLogger) CounterUseCase {
+	var auditLogger AuditLogger
+	if len(audit) > 0 {
+		auditLogger = audit[0]
+	}
+	return &counterUseCase{repo: repo, branchRepo: branchRepo, branchServiceRepo: branchServiceRepo, audit: auditLogger}
 }
 
 func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCounterRequest) (*model.CounterResponse, error) {
@@ -41,24 +55,34 @@ func (u *counterUseCase) CreateCounter(ctx context.Context, req *model.CreateCou
 	if u.branchRepo == nil {
 		return nil, exception.ErrForbidden
 	}
-	if _, err := u.branchRepo.FindByID(ctx, tenantID, req.BranchID); err != nil {
+	branch, err := u.branchRepo.FindByID(ctx, tenantID, req.BranchID)
+	if err != nil {
 		return nil, exception.ErrForbidden
+	}
+	if branch.Status != branchEntity.BranchStatusActive {
+		return nil, exception.ErrForbidden
+	}
+	if err := u.validateBranchService(ctx, tenantID, req.BranchID, req.BranchServiceID); err != nil {
+		return nil, err
 	}
 	req.Sanitize()
 	now := time.Now().UnixMilli()
 	counter := &entity.Counter{
-		ID:        uuid.New().String(),
-		TenantID:  tenantID,
-		BranchID:  req.BranchID,
-		Code:      req.Code,
-		Name:      req.Name,
-		Status:    entity.CounterStatusActive,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:              uuid.New().String(),
+		TenantID:        tenantID,
+		BranchID:        req.BranchID,
+		BranchServiceID: req.BranchServiceID,
+		Code:            req.Code,
+		Name:            req.Name,
+		DisplayName:     req.DisplayName,
+		Status:          entity.CounterStatusActive,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 	if err := u.repo.Create(ctx, counter); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "COUNTER_CREATE", counter.ID, map[string]any{"branch_id": counter.BranchID, "branch_service_id": counter.BranchServiceID, "code": counter.Code, "status": counter.Status})
 	return u.mapToResponse(counter), nil
 }
 
@@ -109,6 +133,15 @@ func (u *counterUseCase) UpdateCounter(ctx context.Context, counterID string, re
 	if req.Name != nil {
 		counter.Name = *req.Name
 	}
+	if req.BranchServiceID != nil {
+		if err := u.validateBranchService(ctx, tenantID, counter.BranchID, *req.BranchServiceID); err != nil {
+			return nil, err
+		}
+		counter.BranchServiceID = *req.BranchServiceID
+	}
+	if req.DisplayName != nil {
+		counter.DisplayName = *req.DisplayName
+	}
 	if req.Status != nil {
 		counter.Status = *req.Status
 	}
@@ -116,7 +149,25 @@ func (u *counterUseCase) UpdateCounter(ctx context.Context, counterID string, re
 	if err := u.repo.Update(ctx, counter); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "COUNTER_UPDATE", counter.ID, map[string]any{"branch_id": counter.BranchID, "branch_service_id": counter.BranchServiceID, "code": counter.Code, "status": counter.Status})
 	return u.mapToResponse(counter), nil
+}
+
+func (u *counterUseCase) validateBranchService(ctx context.Context, tenantID, branchID, branchServiceID string) error {
+	if branchServiceID == "" {
+		return nil
+	}
+	if u.branchServiceRepo == nil {
+		return exception.ErrForbidden
+	}
+	branchService, err := u.branchServiceRepo.FindByID(ctx, tenantID, branchID, branchServiceID)
+	if err != nil {
+		return exception.ErrForbidden
+	}
+	if !branchService.IsActive {
+		return exception.ErrForbidden
+	}
+	return nil
 }
 
 func (u *counterUseCase) DeleteCounter(ctx context.Context, counterID string) error {
@@ -124,18 +175,42 @@ func (u *counterUseCase) DeleteCounter(ctx context.Context, counterID string) er
 	if tenantID == "" || counterID == "" {
 		return exception.ErrBadRequest
 	}
-	return u.repo.Delete(ctx, tenantID, counterID)
+	if err := u.repo.Delete(ctx, tenantID, counterID); err != nil {
+		return err
+	}
+	u.tryAudit(ctx, "COUNTER_DELETE", counterID, nil)
+	return nil
+}
+
+func (u *counterUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]any) {
+	if u.audit == nil {
+		return
+	}
+	userID, ok := authcontext.UserIDFromContext(ctx)
+	if !ok || userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		OrganizationID: database.GetTenantID(ctx),
+		UserID:         userID,
+		Action:         action,
+		Entity:         "counter",
+		EntityID:       entityID,
+		NewValues:      values,
+	})
 }
 
 func (u *counterUseCase) mapToResponse(counter *entity.Counter) *model.CounterResponse {
 	return &model.CounterResponse{
-		ID:        counter.ID,
-		TenantID:  counter.TenantID,
-		BranchID:  counter.BranchID,
-		Code:      counter.Code,
-		Name:      counter.Name,
-		Status:    counter.Status,
-		CreatedAt: counter.CreatedAt,
-		UpdatedAt: counter.UpdatedAt,
+		ID:              counter.ID,
+		TenantID:        counter.TenantID,
+		BranchID:        counter.BranchID,
+		BranchServiceID: counter.BranchServiceID,
+		Code:            counter.Code,
+		Name:            counter.Name,
+		DisplayName:     counter.DisplayName,
+		Status:          counter.Status,
+		CreatedAt:       counter.CreatedAt,
+		UpdatedAt:       counter.UpdatedAt,
 	}
 }

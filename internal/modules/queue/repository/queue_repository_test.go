@@ -74,7 +74,7 @@ func TestQueueRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("NextQueueNumberConcurrent", func(t *testing.T) {
+	t.Run("Edge_NextQueueNumberConcurrent", func(t *testing.T) {
 		db := newQueueConcurrencyTestDB(t)
 		repo := NewQueueRepository(db)
 		const workers = 8
@@ -186,7 +186,7 @@ func TestQueueRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("CreateRegistrationWithNumber", func(t *testing.T) {
+	t.Run("Positive_CreateRegistrationWithNumber", func(t *testing.T) {
 		t.Run("Negative_RollsBackCounterAndChildrenOnQueueInsertFailure", func(t *testing.T) {
 			db := newQueueTestDB(t)
 			repo := NewQueueRepository(db)

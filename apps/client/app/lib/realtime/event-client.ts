@@ -9,7 +9,22 @@ export type SSEEventType =
 	| "presence"
 	| "system"
 	| "user_update"
-	| "org_update";
+	| "org_update"
+	| "queue_registered"
+	| "queue_forwarded"
+	| "queue_transitioned";
+
+const NAMED_EVENT_TYPES: SSEEventType[] = [
+	"notification",
+	"activity",
+	"presence",
+	"system",
+	"user_update",
+	"org_update",
+	"queue_registered",
+	"queue_forwarded",
+	"queue_transitioned",
+];
 
 export interface SSEEvent {
 	type: SSEEventType;
@@ -56,14 +71,12 @@ export class EventClient {
 				});
 			};
 
-			this.eventSource.onmessage = (e) => {
-				try {
-					const event: SSEEvent = JSON.parse(e.data);
-					this.emit(event);
-				} catch {
-					// ignore malformed messages
-				}
-			};
+			this.eventSource.onmessage = (e) => this.handleMessage("system", e);
+			for (const type of NAMED_EVENT_TYPES) {
+				this.eventSource.addEventListener(type, (e) =>
+					this.handleMessage(type, e),
+				);
+			}
 
 			this.eventSource.onerror = () => {
 				this._connected = false;
@@ -100,6 +113,24 @@ export class EventClient {
 		if (!this.handlers.has(type)) this.handlers.set(type, new Set());
 		this.handlers.get(type)!.add(handler);
 		return () => this.handlers.get(type)?.delete(handler);
+	}
+
+	private handleMessage(type: SSEEventType, e: MessageEvent): void {
+		try {
+			const data = JSON.parse(e.data);
+			if (
+				data &&
+				typeof data === "object" &&
+				"type" in data &&
+				"data" in data
+			) {
+				this.emit(data as SSEEvent);
+				return;
+			}
+			this.emit({ type, data, timestamp: new Date().toISOString() });
+		} catch {
+			// ignore malformed messages
+		}
 	}
 
 	private emit(event: SSEEvent): void {

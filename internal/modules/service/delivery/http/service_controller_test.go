@@ -67,7 +67,7 @@ func (s *stubServiceControllerUseCase) DeleteService(ctx context.Context, servic
 func TestServiceController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	t.Run("Create", func(t *testing.T) {
+	t.Run("Positive_Create", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
@@ -93,7 +93,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -116,7 +116,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
+	t.Run("Positive_Update", func(t *testing.T) {
 		flag := false
 		tests := []struct {
 			name     string
@@ -143,7 +143,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -166,7 +166,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByID", func(t *testing.T) {
+	t.Run("Positive_GetByID", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubServiceControllerUseCase
@@ -189,7 +189,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -210,7 +210,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("Positive_GetAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubServiceControllerUseCase
@@ -244,7 +244,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				if tt.tenantID != "" {
 					router.Use(func(c *gin.Context) {
@@ -267,7 +267,7 @@ func TestServiceController(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubServiceControllerUseCase
@@ -285,7 +285,7 @@ func TestServiceController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewServiceController(uc, newTestValidator(t))
+				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.DELETE("/services/:id", controller.Delete)
 
@@ -294,6 +294,35 @@ func TestServiceController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
+			})
+		}
+	})
+
+	t.Run("Positive_EnableDisable", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			methodPath string
+			wantStatus string
+		}{
+			{name: "Positive_EnableSetsActive", methodPath: "/services/svc-1/enable", wantStatus: "active"},
+			{name: "Positive_DisableSetsInactive", methodPath: "/services/svc-1/disable", wantStatus: "inactive"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := &stubServiceControllerUseCase{updateRes: &model.ServiceResponse{ID: "svc-1", Status: tt.wantStatus}}
+				controller := NewServiceController(uc, newTestValidator(t), nil)
+				router := gin.New()
+				router.POST("/services/:id/enable", controller.Enable)
+				router.POST("/services/:id/disable", controller.Disable)
+
+				req, _ := http.NewRequest("POST", tt.methodPath, nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				require.NotNil(t, uc.updateReq)
+				require.NotNil(t, uc.updateReq.Status)
+				assert.Equal(t, tt.wantStatus, *uc.updateReq.Status)
 			})
 		}
 	})

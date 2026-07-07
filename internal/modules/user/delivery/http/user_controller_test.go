@@ -83,7 +83,7 @@ func TestRegisterUser(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.POST("/users/register", c.RegisterUser)
@@ -116,7 +116,7 @@ func TestRegisterUser(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Invalid Body", func(t *testing.T) {
+				t.Run("Negative_InvalidBody", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.POST("/users/register", c.RegisterUser)
 
@@ -128,7 +128,7 @@ func TestRegisterUser(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("Validation Error", func(t *testing.T) {
+				t.Run("Negative_ValidationError", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.POST("/users/register", c.RegisterUser)
 
@@ -147,7 +147,7 @@ func TestRegisterUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.POST("/users/register", c.RegisterUser)
@@ -193,7 +193,7 @@ func TestGetCurrentUser(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.GET("/users/me", func(ctx *gin.Context) {
@@ -217,7 +217,7 @@ func TestGetCurrentUser(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Unauthorized - Missing Context", func(t *testing.T) {
+				t.Run("Negative_Unauthorized_MissingContext", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.GET("/users/me", c.GetCurrentUser)
 
@@ -228,7 +228,7 @@ func TestGetCurrentUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnauthorized, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.GET("/users/me", func(ctx *gin.Context) {
@@ -268,7 +268,7 @@ func TestUpdateUser(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.PUT("/users/me", func(ctx *gin.Context) {
@@ -301,7 +301,7 @@ func TestUpdateUser(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Unauthorized - Missing Context", func(t *testing.T) {
+				t.Run("Negative_Unauthorized_MissingContext", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PUT("/users/me", c.UpdateUser)
 
@@ -313,7 +313,7 @@ func TestUpdateUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnauthorized, w.Code)
 				})
 
-				t.Run("Invalid Body", func(t *testing.T) {
+				t.Run("Negative_InvalidBody", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PUT("/users/me", func(ctx *gin.Context) {
 						ctx.Set("user_id", "123")
@@ -328,7 +328,7 @@ func TestUpdateUser(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("Validation Error", func(t *testing.T) {
+				t.Run("Negative_ValidationError", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PUT("/users/me", func(ctx *gin.Context) {
 						ctx.Set("user_id", "123")
@@ -348,7 +348,7 @@ func TestUpdateUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.PUT("/users/me", func(ctx *gin.Context) {
@@ -395,7 +395,7 @@ func TestUpdateAvatar(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.PATCH("/users/me/avatar", func(ctx *gin.Context) {
@@ -425,7 +425,7 @@ func TestUpdateAvatar(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Unauthorized - Missing Context", func(t *testing.T) {
+				t.Run("Negative_Unauthorized_MissingContext", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PATCH("/users/me/avatar", c.UpdateAvatar)
 
@@ -436,7 +436,7 @@ func TestUpdateAvatar(t *testing.T) {
 					assert.Equal(t, http.StatusUnauthorized, w.Code)
 				})
 
-				t.Run("No File", func(t *testing.T) {
+				t.Run("Negative_NoFile", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PATCH("/users/me/avatar", func(ctx *gin.Context) {
 						ctx.Set("user_id", "123")
@@ -455,7 +455,7 @@ func TestUpdateAvatar(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("File Too Large", func(t *testing.T) {
+				t.Run("Edge_FileTooLarge", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PATCH("/users/me/avatar", func(ctx *gin.Context) {
 						ctx.Set("user_id", "123")
@@ -478,7 +478,7 @@ func TestUpdateAvatar(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.PATCH("/users/me/avatar", func(ctx *gin.Context) {
@@ -525,7 +525,7 @@ func TestUpdateUserStatus(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.PATCH("/users/:id/status", c.UpdateUserStatus)
@@ -546,7 +546,7 @@ func TestUpdateUserStatus(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Invalid Body", func(t *testing.T) {
+				t.Run("Negative_InvalidBody", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PATCH("/users/:id/status", c.UpdateUserStatus)
 
@@ -558,7 +558,7 @@ func TestUpdateUserStatus(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("Validation Error", func(t *testing.T) {
+				t.Run("Negative_ValidationError", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.PATCH("/users/:id/status", c.UpdateUserStatus)
 
@@ -575,7 +575,7 @@ func TestUpdateUserStatus(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.PATCH("/users/:id/status", c.UpdateUserStatus)
@@ -618,7 +618,7 @@ func TestGetAllUsers(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.GET("/users", c.GetAllUsers)
@@ -640,7 +640,7 @@ func TestGetAllUsers(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Invalid Query Parameters", func(t *testing.T) {
+				t.Run("Negative_InvalidQueryParameters", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.GET("/users", c.GetAllUsers)
 
@@ -651,7 +651,7 @@ func TestGetAllUsers(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("Validation Error", func(t *testing.T) {
+				t.Run("Negative_ValidationError", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.GET("/users", c.GetAllUsers)
 
@@ -662,7 +662,7 @@ func TestGetAllUsers(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.GET("/users", c.GetAllUsers)
@@ -699,7 +699,7 @@ func TestGetUserByID(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.GET("/users/:id", c.GetUserByID)
@@ -719,7 +719,7 @@ func TestGetUserByID(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.GET("/users/:id", c.GetUserByID)
@@ -756,7 +756,7 @@ func TestDeleteUser(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.DELETE("/users/:id", func(ctx *gin.Context) {
@@ -776,7 +776,7 @@ func TestDeleteUser(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Unauthorized - Missing Context", func(t *testing.T) {
+				t.Run("Negative_Unauthorized_MissingContext", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.DELETE("/users/:id", c.DeleteUser)
 
@@ -787,7 +787,7 @@ func TestDeleteUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnauthorized, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.DELETE("/users/:id", func(ctx *gin.Context) {
@@ -827,7 +827,7 @@ func TestGetUsersDynamic(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.POST("/users/search", c.GetUsersDynamic)
@@ -856,7 +856,7 @@ func TestGetUsersDynamic(t *testing.T) {
 					uc.AssertExpectations(t)
 				})
 
-				t.Run("Invalid Body", func(t *testing.T) {
+				t.Run("Negative_InvalidBody", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.POST("/users/search", c.GetUsersDynamic)
 
@@ -868,7 +868,7 @@ func TestGetUsersDynamic(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("Validation Error", func(t *testing.T) {
+				t.Run("Negative_ValidationError", func(t *testing.T) {
 					_, c, r := setupTest()
 					r.POST("/users/search", c.GetUsersDynamic)
 
@@ -885,7 +885,7 @@ func TestGetUsersDynamic(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("UseCase Error", func(t *testing.T) {
+				t.Run("Negative_UseCaseError", func(t *testing.T) {
 					deps, c, r := setupTest()
 					uc := deps.UC
 					r.POST("/users/search", c.GetUsersDynamic)

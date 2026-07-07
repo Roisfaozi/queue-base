@@ -63,7 +63,7 @@ func TestRoleHandler_Create(t *testing.T) {
 		assertNoCall bool
 	}{
 		{
-			name:     "Success",
+			name:     "Positive_Success",
 			category: "positive",
 			body:     `{"name":"admin","description":"Administrator role"}`,
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
@@ -72,10 +72,10 @@ func TestRoleHandler_Create(t *testing.T) {
 			},
 			wantCode: http.StatusCreated,
 		},
-		{name: "BindingError", category: "negative", body: `invalid json`, wantCode: http.StatusBadRequest, wantContains: "invalid request body", assertNoCall: true},
-		{name: "ValidationError", category: "negative", body: `{"name":"","description":"Administrator role"}`, wantCode: http.StatusUnprocessableEntity, wantContains: "validation error", assertNoCall: true},
+		{name: "Negative_BindingError", category: "negative", body: `invalid json`, wantCode: http.StatusBadRequest, wantContains: "invalid request body", assertNoCall: true},
+		{name: "Negative_ValidationError", category: "negative", body: `{"name":"","description":"Administrator role"}`, wantCode: http.StatusUnprocessableEntity, wantContains: "validation error", assertNoCall: true},
 		{
-			name:     "UseCaseError",
+			name:     "Negative_UseCaseError",
 			category: "negative",
 			body:     `{"name":"existing","description":"Existing role"}`,
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
@@ -121,7 +121,7 @@ func TestRoleHandler_GetAll(t *testing.T) {
 		wantContains string
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
 				expectedRoles := []model.RoleResponse{{ID: "1", Name: "admin"}, {ID: "2", Name: "user"}}
 				mockUseCase.On("GetAll", mock.Anything).Return(expectedRoles, nil).Once()
@@ -130,7 +130,7 @@ func TestRoleHandler_GetAll(t *testing.T) {
 			wantDataLen: 2,
 		},
 		{
-			name: "UseCaseError",
+			name: "Negative_UseCaseError",
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase) {
 				mockUseCase.On("GetAll", mock.Anything).Return(nil, errors.New("some database error")).Once()
 			},
@@ -171,9 +171,9 @@ func TestRoleHandler_Delete(t *testing.T) {
 		err      error
 		wantCode int
 	}{
-		{name: "Success", category: "positive", roleID: "test-uuid", wantCode: http.StatusOK},
-		{name: "NotFound", category: "negative", roleID: "non-existent-uuid", err: exception.ErrNotFound, wantCode: http.StatusNotFound},
-		{name: "Forbidden", category: "vulnerability", roleID: "superadmin-uuid", err: exception.ErrForbidden, wantCode: http.StatusForbidden},
+		{name: "Positive_Success", category: "positive", roleID: "test-uuid", wantCode: http.StatusOK},
+		{name: "Negative_NotFound", category: "negative", roleID: "non-existent-uuid", err: exception.ErrNotFound, wantCode: http.StatusNotFound},
+		{name: "Vulnerability_Forbidden", category: "vulnerability", roleID: "superadmin-uuid", err: exception.ErrForbidden, wantCode: http.StatusForbidden},
 	}
 
 	for _, tt := range tests {
@@ -203,7 +203,7 @@ func TestRoleHandler_GetRolesDynamic(t *testing.T) {
 		assertNoCall bool
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			body: `{"filter":{"Name":{"type":"contains","from":"test"}}}`,
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase, dynamicFilter *querybuilder.DynamicFilter) {
 				expectedRoles := []model.RoleResponse{{ID: "1", Name: "test_role"}}
@@ -212,9 +212,9 @@ func TestRoleHandler_GetRolesDynamic(t *testing.T) {
 			wantCode:    http.StatusOK,
 			wantDataLen: 1,
 		},
-		{name: "BindingError", body: `invalid json`, wantCode: http.StatusBadRequest, wantContains: "invalid request body", assertNoCall: true},
+		{name: "Negative_BindingError", body: `invalid json`, wantCode: http.StatusBadRequest, wantContains: "invalid request body", assertNoCall: true},
 		{
-			name: "UseCaseError",
+			name: "Negative_UseCaseError",
 			body: `{"filter":{}}`,
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase, dynamicFilter *querybuilder.DynamicFilter) {
 				mockUseCase.On("GetAllRolesDynamic", mock.Anything, dynamicFilter).Return(nil, errors.New("db error")).Once()
@@ -293,7 +293,7 @@ func TestRoleHandler_Update(t *testing.T) {
 		assertNoCall bool
 	}{
 		{
-			name:   "Success",
+			name:   "Positive_Success",
 			roleID: "test-uuid",
 			body:   `{"description":"Updated description"}`,
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase, roleID string) {
@@ -303,7 +303,7 @@ func TestRoleHandler_Update(t *testing.T) {
 			wantCode: http.StatusOK,
 		},
 		{
-			name:         "BindingError",
+			name:         "Negative_BindingError",
 			roleID:       "test-uuid",
 			body:         `invalid json`,
 			wantCode:     http.StatusBadRequest,
@@ -311,7 +311,7 @@ func TestRoleHandler_Update(t *testing.T) {
 			assertNoCall: true,
 		},
 		{
-			name:   "XSS Sanitization",
+			name:   "Edge_XSSSanitization",
 			roleID: "test-uuid",
 			body:   `{"description":"<script>alert(1)</script>"}`,
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase, roleID string) {
@@ -321,7 +321,7 @@ func TestRoleHandler_Update(t *testing.T) {
 			wantCode: http.StatusOK,
 		},
 		{
-			name:   "UseCaseError",
+			name:   "Negative_UseCaseError",
 			roleID: "test-uuid",
 			body:   `{"description":"Updated description"}`,
 			setupMock: func(mockUseCase *mocks.MockRoleUseCase, roleID string) {

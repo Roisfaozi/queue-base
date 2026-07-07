@@ -34,12 +34,14 @@ func TestScannerE2E_APIKeyCheckInFlow(t *testing.T) {
 
 	// 2. Setup Data
 	// Organizations and Branches
-	server.DB.Exec("INSERT INTO organizations (id, name, slug, owner_id, status, deleted_at) VALUES (?, ?, ?, ?, ?, 0)", tenantID, "Scanner Tenant", "scanner-tenant-"+tenantID[:6], "system", "active")
+	server.DB.Exec("INSERT INTO organizations (id, code, name, slug, owner_id, status, deleted_at) VALUES (?, ?, ?, ?, ?, ?, 0)", tenantID, "scanner-tenant-"+tenantID[:6], "Scanner Tenant", "scanner-tenant-"+tenantID[:6], "system", "active")
 	server.DB.Exec("INSERT INTO branches (id, tenant_id, code, name, status, deleted_at) VALUES (?, ?, ?, ?, ?, 0)", branchID, tenantID, "BR-SCAN", "Scanner Branch", "active")
 
 	// Services
 	server.DB.Exec("INSERT INTO services (id, tenant_id, code, name, status, is_pharmacy, deleted_at) VALUES (?, ?, ?, ?, ?, ?, 0)", regServiceID, tenantID, "REG", "Registration", "active", false)
 	server.DB.Exec("INSERT INTO services (id, tenant_id, code, name, status, is_pharmacy, deleted_at) VALUES (?, ?, ?, ?, ?, ?, 0)", pharmacyServiceID, tenantID, "PHA", "Pharmacy", "active", true)
+	server.DB.Exec("INSERT INTO branch_services (id, tenant_id, branch_id, service_id, is_active) VALUES (?, ?, ?, ?, ?)", uuid.New().String(), tenantID, branchID, regServiceID, true)
+	server.DB.Exec("INSERT INTO branch_services (id, tenant_id, branch_id, service_id, is_active) VALUES (?, ?, ?, ?, ?)", uuid.New().String(), tenantID, branchID, pharmacyServiceID, true)
 
 	// Counters
 	server.DB.Exec("INSERT INTO counters (id, tenant_id, branch_id, code, name, status, deleted_at) VALUES (?, ?, ?, ?, ?, ?, 0)", counterID, tenantID, branchID, "C-PHA", "Pharmacy Counter", "active")

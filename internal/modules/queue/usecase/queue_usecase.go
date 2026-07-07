@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -30,7 +32,18 @@ type AuditLogger interface {
 	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
 }
 
+type EventBroadcaster interface {
+	Broadcast(eventName string, data interface{})
+}
+
+// WSBroadcaster is a narrow interface matching ws.Manager.BroadcastToChannel.
+type WSBroadcaster interface {
+	BroadcastToChannel(channel string, message []byte)
+}
+
 type QueueUseCase interface {
+	SetEventBroadcaster(events EventBroadcaster)
+	SetWSBroadcaster(ws WSBroadcaster)
 	RegisterQueue(ctx context.Context, req *model.RegisterQueueRequest) (*model.QueueResponse, error)
 	ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error)
 	GetQueueByID(ctx context.Context, queueID string) (*model.QueueResponse, error)
@@ -47,6 +60,8 @@ type queueUseCase struct {
 	settingsResolver SettingsResolver
 	validator        RelationValidator
 	audit            AuditLogger
+	events           EventBroadcaster
+	ws               WSBroadcaster
 }
 
 func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsResolver, validator RelationValidator, audit ...AuditLogger) QueueUseCase {
@@ -55,6 +70,14 @@ func NewQueueUseCase(repo repository.QueueRepository, settingsResolver SettingsR
 		auditLogger = audit[0]
 	}
 	return &queueUseCase{repo: repo, settingsResolver: settingsResolver, validator: validator, audit: auditLogger}
+}
+
+func (u *queueUseCase) SetEventBroadcaster(events EventBroadcaster) {
+	u.events = events
+}
+
+func (u *queueUseCase) SetWSBroadcaster(ws WSBroadcaster) {
+	u.ws = ws
 }
 
 func (u *queueUseCase) ListQueues(ctx context.Context, req model.ListQueuesRequest) ([]model.QueueResponse, error) {
@@ -92,8 +115,6 @@ func (u *queueUseCase) GetQueueStats(ctx context.Context) (*model.QueueStatsResp
 	resetTime := "04:00"
 	if u.settingsResolver != nil {
 		if resolved, err := u.settingsResolver.Resolve(ctx, "queue_reset_time", branchID, "", ""); err == nil && resolved != "" {
-			resetTime = resolved
-		} else if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, "", ""); err == nil && resolved != "" {
 			resetTime = resolved
 		}
 	}
@@ -191,6 +212,9 @@ func (u *queueUseCase) GetQueueByID(ctx context.Context, queueID string) (*model
 		return nil, exception.ErrNotFound
 	}
 	res := mapQueueResponse(queue)
+	if err := u.attachQueueEstimate(ctx, &res); err != nil {
+		return nil, err
+	}
 	return &res, nil
 }
 
@@ -209,8 +233,6 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	resetTime := "04:00"
 	if u.settingsResolver != nil {
 		if resolved, err := u.settingsResolver.Resolve(ctx, "queue_reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
-			resetTime = resolved
-		} else if resolved, err := u.settingsResolver.Resolve(ctx, "reset_time", branchID, req.ServiceID, ""); err == nil && resolved != "" {
 			resetTime = resolved
 		}
 	}
@@ -279,7 +301,51 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	u.tryAudit(ctx, "QUEUE_REGISTER", q.ID, map[string]string{"branch_id": branchID, "ticket_no": q.TicketNo})
 	telemetry.QueueOperationsTotal.WithLabelValues("register", "success").Inc()
 	res := mapQueueResponse(q)
+	if err := u.attachQueueEstimate(ctx, &res); err != nil {
+		telemetry.QueueOperationsTotal.WithLabelValues("register", "failed").Inc()
+		return nil, err
+	}
+	u.tryEmitEvent("queue_registered", res)
+	u.emitWSEvent(ctx, "QUEUE_REGISTER", q.BranchID, res)
 	return &res, nil
+}
+
+func (u *queueUseCase) attachQueueEstimate(ctx context.Context, res *model.QueueResponse) error {
+	if res == nil || u.settingsResolver == nil || u.repo == nil || res.TenantID == "" || res.BranchID == "" || res.QueueDate == "" || res.QueueNo == 0 {
+		return nil
+	}
+	if res.Status != entity.QueueStatusWaiting {
+		zero := 0
+		res.QueueLeft = &zero
+		res.EstimateMinutes = &zero
+		return nil
+	}
+	journey, err := u.repo.FindCurrentJourney(ctx, res.TenantID, res.BranchID, res.ID, res.CurrentJourneyID)
+	if err != nil {
+		return err
+	}
+	left, err := u.repo.CountWaitingQueueLeft(ctx, res.TenantID, res.BranchID, res.QueueDate, journey.ServiceID, res.QueueNo)
+	if err != nil {
+		return err
+	}
+	zero := 0
+	if left < 0 {
+		left = 0
+	}
+	res.QueueLeft = &left
+	durationStr, err := u.settingsResolver.Resolve(ctx, "default_estimated_duration", res.BranchID, journey.ServiceID, "")
+	if err != nil || durationStr == "" {
+		res.EstimateMinutes = &zero
+		return nil
+	}
+	duration, err := strconv.Atoi(durationStr)
+	if err != nil || duration < 0 {
+		res.EstimateMinutes = &zero
+		return nil
+	}
+	estimate := left * duration
+	res.EstimateMinutes = &estimate
+	return nil
 }
 
 func resolveTicketPrefix(ctx context.Context, resolver SettingsResolver, branchID, serviceID string) string {
@@ -287,9 +353,6 @@ func resolveTicketPrefix(ctx context.Context, resolver SettingsResolver, branchI
 		return "A"
 	}
 	if resolved, err := resolver.Resolve(ctx, "ticket_prefix", branchID, serviceID, ""); err == nil && resolved != "" {
-		return resolved
-	}
-	if resolved, err := resolver.Resolve(ctx, "prefix", branchID, serviceID, ""); err == nil && resolved != "" {
 		return resolved
 	}
 	return "A"
@@ -304,11 +367,6 @@ func resolveNumberingStrategy(ctx context.Context, resolver SettingsResolver, br
 			return resolved
 		}
 		return "sequential"
-	}
-	if resolved, err := resolver.Resolve(ctx, "numbering", branchID, serviceID, ""); err == nil && resolved != "" {
-		if resolved == "sequential" {
-			return resolved
-		}
 	}
 	return "sequential"
 }
@@ -397,6 +455,8 @@ func (u *queueUseCase) ForwardQueue(ctx context.Context, queueID string, req *mo
 	u.tryAudit(ctx, "QUEUE_FORWARD", queue.ID, map[string]string{"branch_id": branchID, "from_journey_id": currentJourney.ID, "to_service_id": req.DestinationServiceID})
 	telemetry.QueueOperationsTotal.WithLabelValues("forward", "success").Inc()
 	res := mapQueueResponse(queue)
+	u.tryEmitEvent("queue_forwarded", res)
+	u.emitWSEvent(ctx, "QUEUE_FORWARD", queue.BranchID, res)
 	return &res, nil
 }
 
@@ -428,7 +488,25 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 
 	switch req.Action {
 	case model.QueueActionCall:
-		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusSkipped {
+		if queue.Status == entity.QueueStatusCalling {
+			if currentJourney.Status != entity.JourneyStatusCalling {
+				telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+				return nil, exception.ErrBadRequest
+			}
+			allowRecall := true
+			if u.settingsResolver != nil {
+				if resolved, err := u.settingsResolver.Resolve(ctx, "allow_recall", branchID, currentJourney.ServiceID, currentJourney.CounterID); err == nil && resolved != "" {
+					allowRecall = strings.EqualFold(resolved, "true")
+				}
+			}
+			if !allowRecall {
+				telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+				return nil, exception.ErrBadRequest
+			}
+			visit.EventType = "recall"
+			break
+		}
+		if (queue.Status != entity.QueueStatusWaiting || currentJourney.Status != entity.JourneyStatusPending) && (queue.Status != entity.QueueStatusSkipped || currentJourney.Status != entity.JourneyStatusSkipped) {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
@@ -436,7 +514,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusCalling
 		visit.EventType = "call"
 	case model.QueueActionServe:
-		if queue.Status != entity.QueueStatusCalling {
+		if queue.Status != entity.QueueStatusCalling || currentJourney.Status != entity.JourneyStatusCalling {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
@@ -444,7 +522,7 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusServing
 		visit.EventType = "serve"
 	case model.QueueActionComplete:
-		if queue.Status != entity.QueueStatusServing {
+		if queue.Status != entity.QueueStatusServing || currentJourney.Status != entity.JourneyStatusServing {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
@@ -452,7 +530,17 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusCompleted
 		visit.EventType = "complete"
 	case model.QueueActionSkip:
-		if queue.Status != entity.QueueStatusWaiting && queue.Status != entity.QueueStatusCalling {
+		allowSkip := true
+		if u.settingsResolver != nil {
+			if resolved, err := u.settingsResolver.Resolve(ctx, "allow_skip", branchID, currentJourney.ServiceID, currentJourney.CounterID); err == nil && resolved != "" {
+				allowSkip = strings.EqualFold(resolved, "true")
+			}
+		}
+		if !allowSkip {
+			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+			return nil, exception.ErrBadRequest
+		}
+		if (queue.Status != entity.QueueStatusWaiting || currentJourney.Status != entity.JourneyStatusPending) && (queue.Status != entity.QueueStatusCalling || currentJourney.Status != entity.JourneyStatusCalling) {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
 		}
@@ -460,6 +548,16 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		currentJourney.Status = entity.JourneyStatusSkipped
 		visit.EventType = "skip"
 	case model.QueueActionCancel:
+		allowCancel := true
+		if u.settingsResolver != nil {
+			if resolved, err := u.settingsResolver.Resolve(ctx, "allow_cancel", branchID, currentJourney.ServiceID, currentJourney.CounterID); err == nil && resolved != "" {
+				allowCancel = strings.EqualFold(resolved, "true")
+			}
+		}
+		if !allowCancel {
+			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
+			return nil, exception.ErrBadRequest
+		}
 		if queue.Status == entity.QueueStatusCompleted || queue.Status == entity.QueueStatusCanceled {
 			telemetry.QueueOperationsTotal.WithLabelValues("transition", "bad_request").Inc()
 			return nil, exception.ErrBadRequest
@@ -479,11 +577,45 @@ func (u *queueUseCase) TransitionQueue(ctx context.Context, queueID string, req 
 		telemetry.QueueOperationsTotal.WithLabelValues("transition", "failed").Inc()
 		return nil, err
 	}
+	if req.Action == model.QueueActionComplete {
+		u.autoCallNext(ctx, tenantID, branchID, queue.QueueDate, queue.ID, currentJourney.ServiceID, nowMs)
+	}
 
 	u.tryAudit(ctx, "QUEUE_"+strings.ToUpper(req.Action), queue.ID, map[string]string{"branch_id": branchID, "journey_id": currentJourney.ID, "status": queue.Status})
 	telemetry.QueueOperationsTotal.WithLabelValues("transition", "success").Inc()
 	res := mapQueueResponse(queue)
+	u.tryEmitEvent("queue_transitioned", res)
+	u.emitWSEvent(ctx, "QUEUE_"+strings.ToUpper(req.Action), queue.BranchID, res)
 	return &res, nil
+}
+
+func (u *queueUseCase) autoCallNext(ctx context.Context, tenantID, branchID, queueDate, afterQueueID, serviceID string, nowMs int64) {
+	if u.settingsResolver == nil {
+		return
+	}
+	resolved, err := u.settingsResolver.Resolve(ctx, "auto_call_next", branchID, serviceID, "")
+	if err != nil || !strings.EqualFold(resolved, "true") {
+		return
+	}
+	nextQueue, err := u.repo.FindNextWaitingQueue(ctx, tenantID, branchID, queueDate, afterQueueID)
+	if err != nil || nextQueue == nil {
+		return
+	}
+	nextJourney, err := u.repo.FindCurrentJourney(ctx, tenantID, branchID, nextQueue.ID, nextQueue.CurrentJourneyID)
+	if err != nil || nextJourney == nil {
+		return
+	}
+	nextQueue.Status = entity.QueueStatusCalling
+	nextQueue.UpdatedAt = nowMs
+	nextJourney.Status = entity.JourneyStatusCalling
+	nextJourney.UpdatedAt = nowMs
+	visit := &entity.VisitJourney{ID: uuid.New().String(), QueueID: nextQueue.ID, TenantID: tenantID, BranchID: branchID, EventType: "call", CreatedAt: nowMs}
+	if err := u.repo.UpdateQueueState(ctx, nextQueue, nextJourney, visit); err != nil && !errors.Is(err, exception.ErrNotFound) {
+		return
+	}
+	u.tryAudit(ctx, "QUEUE_AUTO_CALL", nextQueue.ID, map[string]string{"branch_id": branchID, "journey_id": nextJourney.ID, "status": nextQueue.Status})
+	u.tryEmitEvent("queue_transitioned", mapQueueResponse(nextQueue))
+	u.emitWSEvent(ctx, "QUEUE_AUTO_CALL", branchID, mapQueueResponse(nextQueue))
 }
 
 func (u *queueUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
@@ -502,6 +634,33 @@ func (u *queueUseCase) tryAudit(ctx context.Context, action, entityID string, va
 		EntityID:       entityID,
 		NewValues:      values,
 	})
+}
+
+func (u *queueUseCase) tryEmitEvent(name string, payload interface{}) {
+	if u.events == nil {
+		return
+	}
+	u.events.Broadcast(name, payload)
+}
+
+func (u *queueUseCase) emitWSEvent(ctx context.Context, action string, branchID string, res model.QueueResponse) {
+	if u.ws == nil {
+		return
+	}
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" || branchID == "" {
+		return
+	}
+	payload, err := json.Marshal(map[string]interface{}{
+		"channel": "queue:" + tenantID + ":" + branchID,
+		"type":    "queue_update",
+		"event":   action,
+		"data":    res,
+	})
+	if err != nil {
+		return
+	}
+	u.ws.BroadcastToChannel("queue:"+tenantID+":"+branchID, payload)
 }
 
 func mapQueueResponse(queue *entity.Queue) model.QueueResponse {

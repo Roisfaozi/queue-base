@@ -32,7 +32,7 @@ func TestApiKeyUseCase_Create(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_Create",
+			name:     "Positive_Success_Create",
 			category: "positive",
 			run: func(t *testing.T) {
 				repo := new(mocks.MockApiKeyRepository)
@@ -73,7 +73,7 @@ func TestApiKeyUseCase_Authenticate(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_Authenticate",
+			name:     "Positive_Success_Authenticate",
 			category: "positive",
 			run: func(t *testing.T) {
 				repo := new(mocks.MockApiKeyRepository)

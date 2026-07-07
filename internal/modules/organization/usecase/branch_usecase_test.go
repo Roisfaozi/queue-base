@@ -4,87 +4,48 @@ import (
 	"context"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
+	testifyMock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-type stubBranchRepo struct {
-	branch *entity.Branch
-	list   []*entity.Branch
-	err    error
-	seen   struct {
-		tenantID string
-		branchID string
-	}
-}
-
-func (s *stubBranchRepo) Create(_ context.Context, branch *entity.Branch) error {
-	s.branch = branch
-	return s.err
-}
-
-func (s *stubBranchRepo) FindByID(_ context.Context, tenantID, branchID string) (*entity.Branch, error) {
-	s.seen.tenantID = tenantID
-	s.seen.branchID = branchID
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.branch, nil
-}
-
-func (s *stubBranchRepo) FindAll(_ context.Context, tenantID string) ([]*entity.Branch, error) {
-	s.seen.tenantID = tenantID
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.list, nil
-}
-
-func (s *stubBranchRepo) Update(_ context.Context, branch *entity.Branch) error {
-	s.branch = branch
-	return s.err
-}
-
-func (s *stubBranchRepo) Delete(_ context.Context, tenantID, branchID string) error {
-	s.seen.tenantID = tenantID
-	s.seen.branchID = branchID
-	return s.err
-}
-
 func TestResolveBranch(t *testing.T) {
 	tests := []struct {
-		name     string
-		category string
-		branchID string
-		stubRepo struct {
-			branch *entity.Branch
-			err    error
-		}
-		tenantID string
-		wantErr  error
-		wantRes  func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo)
+		name      string
+		category  string
+		branchID  string
+		tenantID  string
+		mockSetup func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger)
+		wantErr   error
+		wantRes   func(t *testing.T, res *model.BranchResponse)
 	}{
 		{
 			name:     "Positive_ResolveBranchUsesTenantScope",
 			category: "positive",
 			branchID: "branch-1",
-			stubRepo: struct {
-				branch *entity.Branch
-				err    error
-			}{
-				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive},
-				err:    nil,
-			},
 			tenantID: "tenant-1",
-			wantErr:  nil,
-			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(&entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive}, nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+				})
+				return repo, nil
+			},
+			wantErr: nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse) {
 				assert.Equal(t, "tenant-1", res.TenantID)
-				assert.Equal(t, "tenant-1", repo.seen.tenantID)
-				assert.Equal(t, "branch-1", repo.seen.branchID)
 			},
 		},
 		{
@@ -98,28 +59,37 @@ func TestResolveBranch(t *testing.T) {
 			name:     "Negative_RejectsCrossTenantLookup",
 			category: "negative",
 			branchID: "branch-2",
-			stubRepo: struct {
-				branch *entity.Branch
-				err    error
-			}{
-				err: exception.ErrNotFound,
-			},
 			tenantID: "tenant-1",
-			wantErr:  exception.ErrNotFound,
-			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
-				assert.Equal(t, "tenant-1", repo.seen.tenantID)
-				assert.Equal(t, "branch-2", repo.seen.branchID)
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-2").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(nil, exception.ErrNotFound)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-2", gotBranchID)
+				})
+				return repo, nil
 			},
+			wantErr: exception.ErrNotFound,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubBranchRepo{
-				branch: tt.stubRepo.branch,
-				err:    tt.stubRepo.err,
+			repo := mocks.NewMockBranchRepository(t)
+			var audit *mocks.MockAuditLogger
+			if tt.mockSetup != nil {
+				repo, audit = tt.mockSetup(t)
 			}
-			uc := NewBranchUseCase(repo)
+			var uc BranchUseCase
+			if audit != nil {
+				uc = NewBranchUseCase(repo, audit)
+			} else {
+				uc = NewBranchUseCase(repo)
+			}
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -130,14 +100,11 @@ func TestResolveBranch(t *testing.T) {
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
-				if tt.wantRes != nil {
-					tt.wantRes(t, res, repo)
-				}
 				return
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, res, repo)
+				tt.wantRes(t, res)
 			}
 		})
 	}
@@ -145,24 +112,40 @@ func TestResolveBranch(t *testing.T) {
 
 func TestCreateBranch(t *testing.T) {
 	tests := []struct {
-		name     string
-		category string
-		req      model.CreateBranchRequest
-		tenantID string
-		wantErr  error
-		wantRes  func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo)
+		name      string
+		category  string
+		req       model.CreateBranchRequest
+		tenantID  string
+		mockSetup func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger)
+		wantErr   error
+		wantRes   func(t *testing.T, res *model.BranchResponse)
 	}{
 		{
 			name:     "Positive_CreateBranchUsesTenantContext",
 			category: "positive",
 			req:      model.CreateBranchRequest{Code: "main", Name: "Main Branch"},
 			tenantID: "tenant-1",
-			wantErr:  nil,
-			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotBranch *entity.Branch
+				repo.EXPECT().Create(testifyMock.Anything, testifyMock.AnythingOfType("*entity.Branch")).Run(func(ctx context.Context, branch *entity.Branch) {
+					gotBranch = branch
+				}).Return(nil)
+				t.Cleanup(func() {
+					require.NotNil(t, gotBranch)
+					assert.Equal(t, "tenant-1", gotBranch.TenantID)
+					assert.Equal(t, "MAIN", gotBranch.Code)
+					assert.Equal(t, "Main Branch", gotBranch.Name)
+					assert.Equal(t, entity.BranchStatusDraft, gotBranch.Status)
+				})
+				return repo, nil
+			},
+			wantErr: nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse) {
 				assert.Equal(t, "tenant-1", res.TenantID)
-				require.NotNil(t, repo.branch)
-				assert.Equal(t, "MAIN", repo.branch.Code)
-				assert.Equal(t, "Main Branch", repo.branch.Name)
+				assert.Equal(t, "MAIN", res.Code)
+				assert.Equal(t, "Main Branch", res.Name)
+				assert.Equal(t, entity.BranchStatusDraft, res.Status, "branch without required fields should be draft")
 			},
 		},
 		{
@@ -172,12 +155,45 @@ func TestCreateBranch(t *testing.T) {
 			tenantID: "",
 			wantErr:  exception.ErrBadRequest,
 		},
+		{
+			name:     "Positive_CreateBranchWithFullProfile_SetsActive",
+			category: "positive",
+			req:      model.CreateBranchRequest{Code: "full", Name: "Full Branch", Address: "Jl. Raya", City: "Jakarta", Province: "DKI", Phone: "021123", Timezone: "Asia/Jakarta"},
+			tenantID: "tenant-1",
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotBranch *entity.Branch
+				repo.EXPECT().Create(testifyMock.Anything, testifyMock.AnythingOfType("*entity.Branch")).Run(func(ctx context.Context, branch *entity.Branch) {
+					gotBranch = branch
+				}).Return(nil)
+				t.Cleanup(func() {
+					require.NotNil(t, gotBranch)
+					assert.Equal(t, "tenant-1", gotBranch.TenantID)
+					assert.Equal(t, "FULL", gotBranch.Code)
+					assert.Equal(t, entity.BranchStatusActive, gotBranch.Status)
+				})
+				return repo, nil
+			},
+			wantErr: nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse) {
+				assert.Equal(t, entity.BranchStatusActive, res.Status, "branch with all required fields should be active")
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubBranchRepo{}
-			uc := NewBranchUseCase(repo)
+			repo := mocks.NewMockBranchRepository(t)
+			var audit *mocks.MockAuditLogger
+			if tt.mockSetup != nil {
+				repo, audit = tt.mockSetup(t)
+			}
+			var uc BranchUseCase
+			if audit != nil {
+				uc = NewBranchUseCase(repo, audit)
+			} else {
+				uc = NewBranchUseCase(repo)
+			}
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -192,7 +208,7 @@ func TestCreateBranch(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, res, repo)
+				tt.wantRes(t, res)
 			}
 		})
 	}
@@ -200,29 +216,32 @@ func TestCreateBranch(t *testing.T) {
 
 func TestListBranches(t *testing.T) {
 	tests := []struct {
-		name     string
-		category string
-		stubRepo struct {
-			list []*entity.Branch
-		}
-		tenantID string
-		wantErr  error
-		wantRes  func(t *testing.T, res []model.BranchResponse, repo *stubBranchRepo)
+		name      string
+		category  string
+		tenantID  string
+		mockSetup func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger)
+		wantErr   error
+		wantRes   func(t *testing.T, res []model.BranchResponse)
 	}{
 		{
 			name:     "Positive_ListBranchesUsesTenantScope",
 			category: "positive",
-			stubRepo: struct {
-				list []*entity.Branch
-			}{
-				list: []*entity.Branch{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main"}},
-			},
 			tenantID: "tenant-1",
-			wantErr:  nil,
-			wantRes: func(t *testing.T, res []model.BranchResponse, repo *stubBranchRepo) {
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID string
+				repo.EXPECT().FindAll(testifyMock.Anything, "tenant-1").Run(func(ctx context.Context, tenantID string) {
+					gotTenantID = tenantID
+				}).Return([]*entity.Branch{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main"}}, nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+				})
+				return repo, nil
+			},
+			wantErr: nil,
+			wantRes: func(t *testing.T, res []model.BranchResponse) {
 				require.Len(t, res, 1)
 				assert.Equal(t, "tenant-1", res[0].TenantID)
-				assert.Equal(t, "tenant-1", repo.seen.tenantID)
 			},
 		},
 		{
@@ -235,10 +254,17 @@ func TestListBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubBranchRepo{
-				list: tt.stubRepo.list,
+			repo := mocks.NewMockBranchRepository(t)
+			var audit *mocks.MockAuditLogger
+			if tt.mockSetup != nil {
+				repo, audit = tt.mockSetup(t)
 			}
-			uc := NewBranchUseCase(repo)
+			var uc BranchUseCase
+			if audit != nil {
+				uc = NewBranchUseCase(repo, audit)
+			} else {
+				uc = NewBranchUseCase(repo)
+			}
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -253,7 +279,7 @@ func TestListBranches(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, res, repo)
+				tt.wantRes(t, res)
 			}
 		})
 	}
@@ -262,34 +288,53 @@ func TestListBranches(t *testing.T) {
 func TestUpdateBranch(t *testing.T) {
 	code := " sub "
 	name := " Branch Office "
+	active := entity.BranchStatusActive
+	address := "Jl. Test"
+	city := "Jakarta"
+	province := "DKI Jakarta"
+	phone := "021"
+	timezone := "Asia/Jakarta"
+	runningText := "Counter moved to floor 2"
 	tests := []struct {
-		name     string
-		category string
-		branchID string
-		req      model.UpdateBranchRequest
-		stubRepo struct {
-			branch *entity.Branch
-			err    error
-		}
-		tenantID string
-		wantErr  error
-		wantRes  func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo)
+		name      string
+		category  string
+		branchID  string
+		req       model.UpdateBranchRequest
+		tenantID  string
+		mockSetup func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger)
+		wantErr   error
+		wantRes   func(t *testing.T, res *model.BranchResponse)
 	}{
 		{
 			name:     "Positive_UpdateBranchSanitizesFields",
 			category: "positive",
 			branchID: "branch-1",
 			req:      model.UpdateBranchRequest{Code: &code, Name: &name},
-			stubRepo: struct {
-				branch *entity.Branch
-				err    error
-			}{
-				branch: &entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive},
-				err:    nil,
-			},
 			tenantID: "tenant-1",
-			wantErr:  nil,
-			wantRes: func(t *testing.T, res *model.BranchResponse, repo *stubBranchRepo) {
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				var gotBranch *entity.Branch
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(&entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive}, nil)
+				repo.EXPECT().Update(testifyMock.Anything, testifyMock.AnythingOfType("*entity.Branch")).Run(func(ctx context.Context, branch *entity.Branch) {
+					gotBranch = branch
+				}).Return(nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+					require.NotNil(t, gotBranch)
+					assert.Equal(t, "branch-1", gotBranch.ID)
+					assert.Equal(t, "tenant-1", gotBranch.TenantID)
+					assert.Equal(t, "SUB", gotBranch.Code)
+					assert.Equal(t, "Branch Office", gotBranch.Name)
+				})
+				return repo, nil
+			},
+			wantErr: nil,
+			wantRes: func(t *testing.T, res *model.BranchResponse) {
 				assert.Equal(t, "SUB", res.Code)
 				assert.Equal(t, "Branch Office", res.Name)
 			},
@@ -307,24 +352,203 @@ func TestUpdateBranch(t *testing.T) {
 			category: "negative",
 			branchID: "branch-1",
 			req:      model.UpdateBranchRequest{Code: &code, Name: &name},
-			stubRepo: struct {
-				branch *entity.Branch
-				err    error
-			}{
-				err: exception.ErrNotFound,
+			tenantID: "tenant-1",
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(nil, exception.ErrNotFound)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+				})
+				return repo, nil
+			},
+			wantErr: exception.ErrNotFound,
+		},
+		{
+			name:     "Positive_RunningTextUpdateWritesAudit",
+			category: "positive",
+			branchID: "branch-1",
+			req: model.UpdateBranchRequest{
+				RunningText: &runningText,
 			},
 			tenantID: "tenant-1",
-			wantErr:  exception.ErrNotFound,
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				audit := mocks.NewMockAuditLogger(t)
+				var gotTenantID, gotBranchID string
+				var gotBranch *entity.Branch
+				var gotAudit auditModel.CreateAuditLogRequest
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(&entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusActive}, nil)
+				repo.EXPECT().Update(testifyMock.Anything, testifyMock.AnythingOfType("*entity.Branch")).Run(func(ctx context.Context, branch *entity.Branch) {
+					gotBranch = branch
+				}).Return(nil)
+				audit.EXPECT().LogActivity(testifyMock.Anything, testifyMock.AnythingOfType("model.CreateAuditLogRequest")).Run(func(ctx context.Context, req auditModel.CreateAuditLogRequest) {
+					gotAudit = req
+				}).Return(nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+					require.NotNil(t, gotBranch)
+					assert.Equal(t, "branch-1", gotBranch.ID)
+					assert.Equal(t, runningText, gotBranch.RunningText)
+					assert.Equal(t, "BRANCH_UPDATE", gotAudit.Action)
+					assert.Equal(t, "branch", gotAudit.Entity)
+					assert.Equal(t, "branch-1", gotAudit.EntityID)
+				})
+				return repo, audit
+			},
+			wantRes: func(t *testing.T, res *model.BranchResponse) {
+				assert.Equal(t, runningText, res.RunningText)
+			},
+		},
+		{
+			name:     "Negative_ActivateMissingRequiredFields",
+			category: "negative",
+			branchID: "branch-1",
+			req:      model.UpdateBranchRequest{Status: &active},
+			tenantID: "tenant-1",
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(&entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusInactive}, nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+				})
+				return repo, nil
+			},
+			wantErr: exception.ErrBadRequest,
+		},
+		{
+			name:     "Positive_ActivateWithRequiredFieldsInRequest",
+			category: "positive",
+			branchID: "branch-1",
+			req: model.UpdateBranchRequest{
+				Address:  &address,
+				City:     &city,
+				Province: &province,
+				Phone:    &phone,
+				Timezone: &timezone,
+				Status:   &active,
+			},
+			tenantID: "tenant-1",
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				var gotBranch *entity.Branch
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(&entity.Branch{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN", Name: "Main", Status: entity.BranchStatusInactive}, nil)
+				repo.EXPECT().Update(testifyMock.Anything, testifyMock.AnythingOfType("*entity.Branch")).Run(func(ctx context.Context, branch *entity.Branch) {
+					gotBranch = branch
+				}).Return(nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+					require.NotNil(t, gotBranch)
+					assert.Equal(t, "branch-1", gotBranch.ID)
+					assert.Equal(t, entity.BranchStatusActive, gotBranch.Status)
+					assert.Equal(t, address, gotBranch.Address)
+				})
+				return repo, nil
+			},
+			wantRes: func(t *testing.T, res *model.BranchResponse) {
+				assert.Equal(t, entity.BranchStatusActive, res.Status)
+				assert.Equal(t, address, res.Address)
+			},
+		},
+		{
+			name:     "Edge_UpdateNonProfileFieldsWhenAlreadyActive",
+			category: "edge",
+			branchID: "branch-1",
+			req: model.UpdateBranchRequest{
+				Name: &name,
+			},
+			tenantID: "tenant-1",
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				var gotBranch *entity.Branch
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(&entity.Branch{
+					ID:       "branch-1",
+					TenantID: "tenant-1",
+					Code:     "MAIN",
+					Name:     "Main",
+					Status:   entity.BranchStatusActive,
+					Address:  "Jl. Test",
+					City:     "Jakarta",
+					Province: "DKI",
+					Phone:    "123",
+					Timezone: "Asia",
+				}, nil)
+				repo.EXPECT().Update(testifyMock.Anything, testifyMock.AnythingOfType("*entity.Branch")).Run(func(ctx context.Context, branch *entity.Branch) {
+					gotBranch = branch
+				}).Return(nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+					require.NotNil(t, gotBranch)
+					assert.Equal(t, "branch-1", gotBranch.ID)
+					assert.Equal(t, entity.BranchStatusActive, gotBranch.Status)
+					assert.Equal(t, "Branch Office", gotBranch.Name)
+				})
+				return repo, nil
+			},
+			wantRes: func(t *testing.T, res *model.BranchResponse) {
+				assert.Equal(t, entity.BranchStatusActive, res.Status)
+				assert.Equal(t, "Branch Office", res.Name)
+			},
+		},
+		{
+			name:     "Vulnerability_CrossTenantBranchUpdateRejected",
+			category: "vulnerability",
+			branchID: "branch-1",
+			req:      model.UpdateBranchRequest{Name: &name},
+			tenantID: "tenant-1",
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				repo.EXPECT().FindByID(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(nil, exception.ErrNotFound)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+				})
+				return repo, nil
+			},
+			wantErr: exception.ErrNotFound,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubBranchRepo{
-				branch: tt.stubRepo.branch,
-				err:    tt.stubRepo.err,
+			repo := mocks.NewMockBranchRepository(t)
+			var audit *mocks.MockAuditLogger
+			if tt.mockSetup != nil {
+				repo, audit = tt.mockSetup(t)
 			}
-			uc := NewBranchUseCase(repo)
+			var uc BranchUseCase
+			if audit != nil {
+				uc = NewBranchUseCase(repo, audit)
+			} else {
+				uc = NewBranchUseCase(repo)
+			}
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -339,7 +563,7 @@ func TestUpdateBranch(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, res, repo)
+				tt.wantRes(t, res)
 			}
 		})
 	}
@@ -347,18 +571,32 @@ func TestUpdateBranch(t *testing.T) {
 
 func TestDeleteBranch(t *testing.T) {
 	tests := []struct {
-		name     string
-		category string
-		branchID string
-		tenantID string
-		wantErr  error
+		name      string
+		category  string
+		branchID  string
+		tenantID  string
+		mockSetup func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger)
+		wantErr   error
 	}{
 		{
 			name:     "Positive_DeleteBranch",
 			category: "positive",
 			branchID: "branch-1",
 			tenantID: "tenant-1",
-			wantErr:  nil,
+			mockSetup: func(t *testing.T) (*mocks.MockBranchRepository, *mocks.MockAuditLogger) {
+				repo := mocks.NewMockBranchRepository(t)
+				var gotTenantID, gotBranchID string
+				repo.EXPECT().Delete(testifyMock.Anything, "tenant-1", "branch-1").Run(func(ctx context.Context, tenantID string, branchID string) {
+					gotTenantID = tenantID
+					gotBranchID = branchID
+				}).Return(nil)
+				t.Cleanup(func() {
+					assert.Equal(t, "tenant-1", gotTenantID)
+					assert.Equal(t, "branch-1", gotBranchID)
+				})
+				return repo, nil
+			},
+			wantErr: nil,
 		},
 		{
 			name:     "Negative_DeleteBranchRequiresBranchID",
@@ -378,8 +616,17 @@ func TestDeleteBranch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubBranchRepo{}
-			uc := NewBranchUseCase(repo)
+			repo := mocks.NewMockBranchRepository(t)
+			var audit *mocks.MockAuditLogger
+			if tt.mockSetup != nil {
+				repo, audit = tt.mockSetup(t)
+			}
+			var uc BranchUseCase
+			if audit != nil {
+				uc = NewBranchUseCase(repo, audit)
+			} else {
+				uc = NewBranchUseCase(repo)
+			}
 
 			ctx := context.Background()
 			if tt.tenantID != "" {

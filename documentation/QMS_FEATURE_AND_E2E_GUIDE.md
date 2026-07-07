@@ -135,29 +135,20 @@ Default create:
 
 - `status = active`
 
-## Settings Inheritance Flow
+## Typed Configuration Inheritance Flow
 
-Settings dipakai untuk mengatur perilaku QMS tanpa hardcode per branch/service/counter.
+Config QMS dipakai lewat typed tables per entity, bukan generic settings untuk core behavior.
 
 ### Inheritance order
 
 Resolver berjalan dengan urutan:
 
-1. Counter
-2. Service
-3. Branch
-4. Tenant
+1. Counter (`counter_queue_settings`)
+2. Service (`service_queue_settings`)
+3. Branch (`branch_queue_settings`)
+4. Tenant (`tenant_queue_settings`)
 
-Artinya bila key ditemukan di counter, nilai itu menang. Bila tidak ada, sistem turun ke service, lalu branch, lalu tenant.
-
-### Scope type
-
-Scope yang valid:
-
-- `tenant`
-- `branch`
-- `service`
-- `counter`
+Artinya bila key ditemukan di counter, nilai itu menang. Bila tidak ada, sistem turun ke service, lalu branch, lalu tenant. Kalau tenant juga kosong, pakai default runtime. API `GET /settings/effective` mengembalikan nilai efektif plus metadata asal (`*_source`, `*_inherited`).
 
 ### Value type
 
@@ -168,19 +159,11 @@ Value type yang valid:
 - `boolean`
 - `json`
 
-Default create:
-
-- `value_type = string`
-- `is_active = true`
-
-### QMS settings yang dipakai queue flow
+### QMS typed keys yang dipakai queue flow
 
 #### `queue_reset_time`
 
-Dipakai untuk menentukan business date queue. Bila tidak ada, sistem fallback ke:
-
-- `reset_time`
-- default runtime `04:00`
+Dipakai untuk menentukan business date queue. Bila tidak ada, pakai default runtime `04:00`.
 
 Behavior:
 
@@ -193,7 +176,6 @@ Dipakai untuk prefix ticket.
 
 Fallback:
 
-- `prefix`
 - default runtime `A`
 
 Contoh hasil ticket:
@@ -207,7 +189,6 @@ Saat ini runtime hanya mengizinkan strategi efektif `sequential`.
 
 Fallback:
 
-- `numbering`
 - default runtime `sequential`
 
 ## Queue Lifecycle Flow
@@ -224,15 +205,16 @@ Input utama:
 Runtime sequence:
 
 1. validasi tenant dan branch context
-2. sanitize `patient_name`
-3. resolve reset time
-4. hitung `queue_date`
-5. resolve `ticket_prefix`
-6. cek duplicate registration untuk branch + queue_date + patient
-7. generate nomor antrean berikutnya
-8. buat row `queues`
-9. buat first row `queue_journeys` dengan `seq_no = 1` dan status `pending`
-10. buat row `visit_journeys` dengan event `registration`
+2. validasi service lewat relasi `branch_services`
+3. sanitasi `patient_name`
+4. resolve reset time
+5. hitung `queue_date`
+6. resolve `ticket_prefix`
+7. cek duplicate registration untuk branch + queue_date + patient
+8. generate nomor antrean berikutnya
+9. buat row `queues`
+10. buat first row `queue_journeys` dengan `seq_no = 1` dan status `pending`
+11. buat row `visit_journeys` dengan event `registration`
 
 Output utama:
 
@@ -342,7 +324,7 @@ Field output:
 - total completed visits
 - waiting count per service
 
-Business date stats mengikuti resolver `queue_reset_time`/`reset_time`, bukan selalu calendar date biasa.
+Business date stats mengikuti resolver `queue_reset_time`, bukan selalu calendar date biasa.
 
 ## Scanner Flow
 
@@ -368,6 +350,11 @@ Selain auth tenant route biasa, scanner juga butuh:
 4. autentikasi scanner client ke tenant + branch
 5. validasi relation service/destination bila perlu
 6. panggil `RegisterQueue`
+
+Catatan:
+
+- generic `settings` tetap ada untuk compatibility non-core
+- queue core baca typed config lewat effective config endpoint, bukan list settings generic
 
 ### Scanner forward flow
 
@@ -485,4 +472,3 @@ QMS saat ini sudah diverifikasi pada jalur utama berikut:
 - create setting default `value_type=string` dan `is_active=true`
 - reset date default runtime adalah `04:00` Asia/Jakarta bila setting tidak ada
 - prefix default runtime adalah `A` bila setting tidak ada
-

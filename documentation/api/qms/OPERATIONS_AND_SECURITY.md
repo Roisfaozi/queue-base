@@ -256,19 +256,17 @@ Queue date must use configured reset time.
 
 Fallback chain:
 
-- `queue_reset_time`
-- `reset_time`
-- `04:00`
+- `queue_reset_time` (typed config)
+- default runtime `04:00`
 
 ### Ticket prefix
 
-Ticket prefix must use scoped settings.
+Ticket prefix must use scoped typed config.
 
 Fallback chain:
 
-- `ticket_prefix`
-- `prefix`
-- `A`
+- `ticket_prefix` (typed config)
+- default runtime `A`
 
 ### Numbering strategy
 
@@ -276,9 +274,8 @@ Effective runtime strategy is sequential unless future implementation expands it
 
 Fallback chain:
 
-- `numbering_strategy`
-- `numbering`
-- `sequential`
+- `numbering_strategy` (typed config)
+- default runtime `sequential`
 
 ### Empty reads
 

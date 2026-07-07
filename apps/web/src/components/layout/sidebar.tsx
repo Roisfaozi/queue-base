@@ -93,9 +93,34 @@ const navItems: NavEntry[] = [
 		iconName: "Scan",
 	},
 	{
+		title: "Caller",
+		href: "/dashboard/caller",
+		iconName: "PhoneCall",
+	},
+	{
+		title: "Signage",
+		href: "/dashboard/signage",
+		iconName: "MonitorPlay",
+	},
+	{
 		title: "Queue Settings",
 		href: "/dashboard/queue-settings",
 		iconName: "Settings2",
+	},
+	{
+		title: "QMS Clients",
+		href: "/dashboard/qms-clients",
+		iconName: "KeyRound",
+	},
+	{
+		title: "QMS Setup",
+		href: "/dashboard/qms-setup",
+		iconName: "ListTodo",
+	},
+	{
+		title: "Branches",
+		href: "/dashboard/branches",
+		iconName: "GitBranch",
 	},
 	{ type: "separator" },
 	{

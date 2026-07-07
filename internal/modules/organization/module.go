@@ -1,6 +1,7 @@
 package organization
 
 import (
+	auditUseCase "github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
@@ -36,6 +37,7 @@ func NewOrganizationModule(
 	enforcer permissionUseCase.IEnforcer,
 	presenceReader usecase.PresenceReader,
 	frontendBaseURL string,
+	auditUC ...auditUseCase.AuditUseCase,
 ) *OrganizationModule {
 	// Create repositories
 	orgRepo := repository.NewOrganizationRepository(db, redisClient)
@@ -46,7 +48,7 @@ func NewOrganizationModule(
 	orgReader := usecase.NewCachedOrgReader(memberRepo, redisClient, log)
 
 	// Create use cases
-	orgUseCase := usecase.NewOrganizationUseCase(log, tm, orgRepo, memberRepo, orgReader, enforcer)
+	orgUseCase := usecase.NewOrganizationUseCase(log, tm, orgRepo, memberRepo, orgReader, enforcer, auditUC...)
 	memberUseCase := usecase.NewOrganizationMemberUseCase(log, tm, memberRepo, orgRepo, invitationRepo, userRepo, taskDistributor, enforcer, presenceReader, orgReader, frontendBaseURL)
 
 	// Create controller

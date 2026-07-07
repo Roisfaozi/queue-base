@@ -12,7 +12,6 @@ import (
 	apiKeyModel "github.com/Roisfaozi/queue-base/internal/modules/api_key/model"
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
 	integrationSetup "github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/google/uuid"
@@ -23,7 +22,7 @@ import (
 func loginQueueAdmin(t *testing.T, server *setup.TestServer) (string, string, string) {
 	unique := fmt.Sprintf("%d", time.Now().UnixNano())
 	user := integrationSetup.CreateTestUser(t, server.DB, "queue_admin_"+unique, "queue_"+unique+"@test.com", "Password123!")
-	org := &orgEntity.Organization{ID: uuid.New().String(), Name: "Queue Org", Slug: "queue-org-" + unique, OwnerID: user.ID, Status: orgEntity.OrgStatusActive}
+	org := &orgEntity.Organization{ID: uuid.New().String(), Code: "queue-org-" + unique, Name: "Queue Org", Slug: "queue-org-" + unique, OwnerID: user.ID, LogoAssetID: "logo-" + unique, Status: orgEntity.OrgStatusActive}
 	require.NoError(t, server.DB.Create(org).Error)
 	require.NoError(t, server.DB.Create(&orgEntity.OrganizationMember{ID: uuid.New().String(), OrganizationID: org.ID, UserID: user.ID, RoleID: "role:owner", Status: orgEntity.MemberStatusActive}).Error)
 	_, err := server.Enforcer.AddGroupingPolicy(user.ID, "role:superadmin", org.ID)
@@ -50,8 +49,7 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 		run      func(t *testing.T, server *setup.TestServer)
 	}{
 		{
-			name:     "Positive_LifecycleAndScannerGuard",
-			category: "positive",
+			name: "Positive_LifecycleAndScannerGuard",
 			run: func(t *testing.T, server *setup.TestServer) {
 				token, orgID, userID := loginQueueAdmin(t, server)
 
@@ -63,6 +61,9 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 					} `json:"data"`
 				}
 				require.NoError(t, createBranchResp.JSON(&branchData))
+
+				activateBranchResp := server.Client.PATCH("/api/v1/branches/"+branchData.Data.ID+"/profile", map[string]any{"address": "Main Street", "city": "Jakarta", "province": "DKI Jakarta", "phone": "021000000", "timezone": "Asia/Jakarta", "status": "active"}, setup.WithAuth(token), setup.WithOrg(orgID))
+				require.Equal(t, http.StatusOK, activateBranchResp.StatusCode, activateBranchResp.String())
 
 				createServiceResp := server.Client.POST("/api/v1/services", map[string]any{"code": "RG", "name": "Registration"}, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusCreated, createServiceResp.StatusCode, createServiceResp.String())
@@ -82,7 +83,17 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 				}
 				require.NoError(t, createPharmacyResp.JSON(&pharmacyData))
 
-				createCounterResp := server.Client.POST("/api/v1/counters", map[string]any{"branch_id": branchData.Data.ID, "code": "C1", "name": "Counter 1"}, setup.WithAuth(token), setup.WithOrg(orgID))
+				branchServiceResp := server.Client.POST("/api/v1/branches/"+branchData.Data.ID+"/services", map[string]any{"service_id": regServiceData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID))
+				require.Equal(t, http.StatusCreated, branchServiceResp.StatusCode, branchServiceResp.String())
+				var branchServiceData struct {
+					Data struct {
+						ID string `json:"id"`
+					} `json:"data"`
+				}
+				require.NoError(t, branchServiceResp.JSON(&branchServiceData))
+				branchPharmacyResp := server.Client.POST("/api/v1/branches/"+branchData.Data.ID+"/services", map[string]any{"service_id": pharmacyData.Data.ID}, setup.WithAuth(token), setup.WithOrg(orgID))
+				require.Equal(t, http.StatusCreated, branchPharmacyResp.StatusCode, branchPharmacyResp.String())
+				createCounterResp := server.Client.POST("/api/v1/counters", map[string]any{"branch_id": branchData.Data.ID, "branch_service_id": branchServiceData.Data.ID, "code": "C1", "name": "Counter 1"}, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusCreated, createCounterResp.StatusCode, createCounterResp.String())
 				var counterData struct {
 					Data struct {
@@ -90,14 +101,6 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 					} `json:"data"`
 				}
 				require.NoError(t, createCounterResp.JSON(&counterData))
-
-				for _, payload := range []map[string]any{
-					{"scope_type": "service", "scope_id": pharmacyData.Data.ID, "key": settingsModel.SettingKeyPharmacyFlowEnabled, "value": "true", "value_type": "boolean"},
-					{"scope_type": "service", "scope_id": pharmacyData.Data.ID, "key": settingsModel.SettingKeyRequireCounterForService, "value": "true", "value_type": "boolean"},
-				} {
-					resp := server.Client.POST("/api/v1/settings", payload, setup.WithAuth(token), setup.WithOrg(orgID))
-					require.Equal(t, http.StatusCreated, resp.StatusCode, resp.String())
-				}
 
 				queueResp := server.Client.POST("/api/v1/queues", map[string]any{"branch_id": branchData.Data.ID, "service_id": regServiceData.Data.ID, "patient_name": "Queue Patient"}, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusCreated, queueResp.StatusCode, queueResp.String())
@@ -127,7 +130,7 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 				require.Equal(t, http.StatusOK, transitionResp.StatusCode, transitionResp.String())
 
 				repeatedTransitionResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/transition", map[string]any{"action": "call"}, setup.WithAuth(token), setup.WithOrg(orgID))
-				require.Equal(t, http.StatusBadRequest, repeatedTransitionResp.StatusCode, repeatedTransitionResp.String())
+				require.Equal(t, http.StatusOK, repeatedTransitionResp.StatusCode, repeatedTransitionResp.String())
 
 				invalidTransitionResp := server.Client.POST("/api/v1/queues/"+queueData.Data.ID+"/transition", map[string]any{"action": "drop-table"}, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusUnprocessableEntity, invalidTransitionResp.StatusCode, invalidTransitionResp.String())

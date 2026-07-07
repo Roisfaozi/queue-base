@@ -131,6 +131,9 @@ func TestNewWebSocketManager(t *testing.T) {
 			name:     "Success_NewWebSocketManager",
 			category: "positive",
 			run: func(t *testing.T) {
+				if !canListenTCP(t) {
+					t.Skip("socket not permitted in this environment")
+				}
 				manager, server := setupTestServer()
 				defer server.Close()
 				defer manager.Stop()
@@ -157,6 +160,9 @@ func TestWebSocketManager_UnregisterKeepsPresenceForOtherConnections(t *testing.
 			name:     "Success_UnregisterKeepsPresenceForOtherConnections",
 			category: "positive",
 			run: func(t *testing.T) {
+				if !canListenTCP(t) {
+					t.Skip("socket not permitted in this environment")
+				}
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 				presence := &RecordingPresenceManager{}
@@ -198,6 +204,9 @@ func TestWebSocketManager_UnregisterNilSendClient(t *testing.T) {
 			name:     "Success_UnregisterNilSendClient",
 			category: "edge",
 			run: func(t *testing.T) {
+				if !canListenTCP(t) {
+					t.Skip("socket not permitted in this environment")
+				}
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 				manager := ws.NewWebSocketManager(&ws.WebSocketConfig{}, logger, nil, &NoOpPresenceManager{})
@@ -231,6 +240,9 @@ func TestWebSocketManager_Integration(t *testing.T) {
 			name:     "Success_WebSocketManager_Integration",
 			category: "positive",
 			run: func(t *testing.T) {
+				if !canListenTCP(t) {
+					t.Skip("socket not permitted in this environment")
+				}
 				manager, server := setupTestServer()
 				defer server.Close()
 
@@ -337,6 +349,9 @@ func TestBroadcastToChannel(t *testing.T) {
 			name:     "Success_BroadcastToChannel",
 			category: "positive",
 			run: func(t *testing.T) {
+				if !canListenTCP(t) {
+					t.Skip("socket not permitted in this environment")
+				}
 				manager, server := setupTestServer()
 				defer server.Close()
 				defer manager.Stop()

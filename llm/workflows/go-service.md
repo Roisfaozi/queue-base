@@ -67,6 +67,13 @@ Preferred order:
 - usecase for business behavior
 - constructor for wiring only if dependency graph changed
 
+For QMS feature slices and any new backend development:
+
+- add controller logging for validation and runtime failures
+- add usecase audit emission for transactional side effects
+- standardize audit helper as `tryAudit` when audit failure must remain non-blocking
+- if a new module has no audit path, document the reason before merging
+
 ### Step 4 — Check Boundary Coupling
 
 Re-check whether change also affects:

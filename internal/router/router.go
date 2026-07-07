@@ -11,13 +11,19 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/audit"
 	auditHttp "github.com/Roisfaozi/queue-base/internal/modules/audit/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/auth"
+	"github.com/Roisfaozi/queue-base/internal/modules/caller"
+	callerHttp "github.com/Roisfaozi/queue-base/internal/modules/caller/delivery/http"
 	counterModulePkg "github.com/Roisfaozi/queue-base/internal/modules/counter"
 	counterHttp "github.com/Roisfaozi/queue-base/internal/modules/counter/delivery/http"
+	operatorAssignmentModulePkg "github.com/Roisfaozi/queue-base/internal/modules/operator_assignment"
+	operatorAssignmentHttp "github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
 	organizationHttp "github.com/Roisfaozi/queue-base/internal/modules/organization/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
 	permissionHttp "github.com/Roisfaozi/queue-base/internal/modules/permission/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/project"
+	qmsClientModulePkg "github.com/Roisfaozi/queue-base/internal/modules/qms_client"
+	qmsClientHttp "github.com/Roisfaozi/queue-base/internal/modules/qms_client/delivery/http"
 	queueModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queueHttp "github.com/Roisfaozi/queue-base/internal/modules/queue/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/role"
@@ -28,6 +34,8 @@ import (
 	serviceHttp "github.com/Roisfaozi/queue-base/internal/modules/service/delivery/http"
 	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
 	settingsHttp "github.com/Roisfaozi/queue-base/internal/modules/settings/delivery/http"
+	signageModulePkg "github.com/Roisfaozi/queue-base/internal/modules/signage"
+	signageHttp "github.com/Roisfaozi/queue-base/internal/modules/signage/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/stats"
 	"github.com/Roisfaozi/queue-base/internal/modules/user"
 	userHttp "github.com/Roisfaozi/queue-base/internal/modules/user/delivery/http"
@@ -80,6 +88,11 @@ func SetupRouter(
 	counterModule *counterModulePkg.CounterModule,
 	settingsModule *settingsModulePkg.SettingsModule,
 	queueModule *queueModulePkg.QueueModule,
+	callerModule *caller.CallerModule,
+	operatorAssignmentModule *operatorAssignmentModulePkg.Module,
+	qmsClientModule *qmsClientModulePkg.QMSClientModule,
+	qmsClientMiddleware *middleware.QMSClientMiddleware,
+	signageModule *signageModulePkg.SignageModule,
 	scannerModule *scannerModulePkg.ScannerModule,
 	apiKeyModule *api_key.ApiKeyModule,
 	webhookModule *webhook.WebhookModule,
@@ -234,9 +247,14 @@ func SetupRouter(
 		organizationHttp.RegisterTenantRoutes(tenantAuthorized, organizationModule.OrganizationController, apiKeyMiddleware)
 		organizationHttp.RegisterBranchRoutes(tenantAuthorized, branchModule.BranchController, apiKeyMiddleware)
 		serviceHttp.RegisterServiceRoutes(tenantAuthorized, serviceModule.ServiceController, apiKeyMiddleware)
+		serviceHttp.RegisterBranchServiceRoutes(tenantAuthorized, serviceModule.BranchServiceController, apiKeyMiddleware)
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
 		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
+		operatorAssignmentHttp.RegisterRoutes(tenantAuthorized, operatorAssignmentModule.Controller, apiKeyMiddleware)
+		qmsClientHttp.RegisterQMSClientRoutes(tenantAuthorized, qmsClientModule.Controller, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)
+		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, qmsClientMiddleware)
+		signageHttp.RegisterSignageRoutes(tenantAuthorized, signageModule.SignageController, qmsClientMiddleware)
 		scannerHttp.RegisterScannerRoutes(tenantAuthorized, scannerModule.ScannerController)
 
 		// Project Routes

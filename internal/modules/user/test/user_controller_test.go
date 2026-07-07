@@ -388,7 +388,7 @@ func TestUserHandler_GetAllUsers(t *testing.T) {
 				router := setupUserTestRouter()
 				router.GET("/users", handler.GetAllUsers)
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					expectedUsers := []*model.UserResponse{
 						{ID: "user-1", Name: "User One"},
 						{ID: "user-2", Name: "User Two"},
@@ -411,7 +411,7 @@ func TestUserHandler_GetAllUsers(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Internal Server Error", func(t *testing.T) {
+				t.Run("Negative_InternalServerError", func(t *testing.T) {
 					expectedReq := &model.GetUserListRequest{Page: 0, Limit: 0, Username: "", Email: ""}
 					mockUseCase.On("GetAllUsers", mock.Anything, expectedReq).Return(nil, int64(0), exception.ErrInternalServer).Once()
 
@@ -423,7 +423,7 @@ func TestUserHandler_GetAllUsers(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Bind Error", func(t *testing.T) {
+				t.Run("Negative_BindError", func(t *testing.T) {
 					req, _ := http.NewRequest(http.MethodGet, "/users?page=abc", nil) // Invalid int
 					w := httptest.NewRecorder()
 					router.ServeHTTP(w, req)
@@ -458,7 +458,7 @@ func TestUserHandler_GetUserByID(t *testing.T) {
 				router := setupUserTestRouter()
 				router.GET("/users/:id", handler.GetUserByID)
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					userID := "user-123"
 					expectedUser := &model.UserResponse{ID: userID, Name: "Test User"}
 
@@ -478,7 +478,7 @@ func TestUserHandler_GetUserByID(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Not Found", func(t *testing.T) {
+				t.Run("Negative_NotFound", func(t *testing.T) {
 					userID := "not-found-id"
 					mockUseCase.On("GetUserByID", mock.Anything, userID).Return(nil, exception.ErrNotFound).Once()
 
@@ -520,7 +520,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 				actorUserID := "admin-id"
 				userID := "user-to-delete"
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					mockUseCase.On("DeleteUser", mock.Anything, actorUserID, mock.MatchedBy(func(req *model.DeleteUserRequest) bool {
 						return req.ID == userID
 					})).Return(nil).Once()
@@ -538,7 +538,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Not Found", func(t *testing.T) {
+				t.Run("Negative_NotFound", func(t *testing.T) {
 					mockUseCase.On("DeleteUser", mock.Anything, actorUserID, mock.MatchedBy(func(req *model.DeleteUserRequest) bool {
 						return req.ID == userID
 					})).Return(exception.ErrNotFound).Once()
@@ -556,7 +556,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Unauthorized", func(t *testing.T) {
+				t.Run("Negative_Unauthorized", func(t *testing.T) {
 					req, _ := http.NewRequest(http.MethodDelete, "/users/"+userID, nil)
 					w := httptest.NewRecorder()
 					c, _ := gin.CreateTestContext(w)
@@ -783,7 +783,7 @@ func TestUserHandler_UpdateStatus(t *testing.T) {
 
 				userID := "user-123"
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 					router := setupUserTestRouter()
@@ -803,7 +803,7 @@ func TestUserHandler_UpdateStatus(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Validation Error - Invalid Status", func(t *testing.T) {
+				t.Run("Negative_ValidationError_InvalidStatus", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 					router := setupUserTestRouter()
@@ -820,7 +820,7 @@ func TestUserHandler_UpdateStatus(t *testing.T) {
 					mockUseCase.AssertNotCalled(t, "UpdateStatus", mock.Anything, mock.Anything, mock.Anything)
 				})
 
-				t.Run("Not Found", func(t *testing.T) {
+				t.Run("Negative_NotFound", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 					router := setupUserTestRouter()
@@ -840,7 +840,7 @@ func TestUserHandler_UpdateStatus(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Bind Error", func(t *testing.T) {
+				t.Run("Negative_BindError", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 					router := setupUserTestRouter()
@@ -880,7 +880,7 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 
 				userID := "user-123"
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -913,7 +913,7 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Conflict", func(t *testing.T) {
+				t.Run("Negative_Conflict", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -933,7 +933,7 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 					assert.Equal(t, http.StatusConflict, w.Code)
 				})
 
-				t.Run("Validation Error", func(t *testing.T) {
+				t.Run("Negative_ValidationError", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -951,7 +951,7 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("Validation Error - Long Name", func(t *testing.T) {
+				t.Run("Edge_ValidationError_LongName", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -974,7 +974,7 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("Unauthorized", func(t *testing.T) {
+				t.Run("Negative_Unauthorized", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -990,7 +990,7 @@ func TestUserHandler_UpdateUser(t *testing.T) {
 					assert.Equal(t, http.StatusUnauthorized, w.Code)
 				})
 
-				t.Run("Bind Error", func(t *testing.T) {
+				t.Run("Negative_BindError", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -1035,7 +1035,7 @@ func TestUserHandler_GetUsersDynamic(t *testing.T) {
 				router := setupUserTestRouter()
 				router.POST("/users/search", handler.GetUsersDynamic)
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					expectedUsers := []*model.UserResponse{{ID: "1", Name: "Test"}}
 					mockUseCase.On("GetAllUsersDynamic", mock.Anything, mock.MatchedBy(func(f *querybuilder.DynamicFilter) bool {
 						return f != nil
@@ -1052,7 +1052,7 @@ func TestUserHandler_GetUsersDynamic(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Validation Error - Invalid Filter", func(t *testing.T) {
+				t.Run("Negative_ValidationError_InvalidFilter", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 					router := setupUserTestRouter()
@@ -1068,7 +1068,7 @@ func TestUserHandler_GetUsersDynamic(t *testing.T) {
 					assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 				})
 
-				t.Run("Bind Error", func(t *testing.T) {
+				t.Run("Negative_BindError", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 					router := setupUserTestRouter()
@@ -1084,7 +1084,7 @@ func TestUserHandler_GetUsersDynamic(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("Internal Server Error", func(t *testing.T) {
+				t.Run("Negative_InternalServerError", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 					router := setupUserTestRouter()
@@ -1127,7 +1127,7 @@ func TestUserHandler_UpdateAvatar(t *testing.T) {
 
 				userID := "user-123"
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -1158,7 +1158,7 @@ func TestUserHandler_UpdateAvatar(t *testing.T) {
 					mockUseCase.AssertExpectations(t)
 				})
 
-				t.Run("Bad Request - Missing File", func(t *testing.T) {
+				t.Run("Negative_BadRequest_MissingFile", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -1174,7 +1174,7 @@ func TestUserHandler_UpdateAvatar(t *testing.T) {
 					assert.Equal(t, http.StatusBadRequest, w.Code)
 				})
 
-				t.Run("Internal Error", func(t *testing.T) {
+				t.Run("Negative_InternalError", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -1203,7 +1203,7 @@ func TestUserHandler_UpdateAvatar(t *testing.T) {
 					assert.Equal(t, http.StatusInternalServerError, w.Code)
 				})
 
-				t.Run("Unauthorized", func(t *testing.T) {
+				t.Run("Negative_Unauthorized", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 
@@ -1219,7 +1219,7 @@ func TestUserHandler_UpdateAvatar(t *testing.T) {
 					assert.Equal(t, http.StatusUnauthorized, w.Code)
 				})
 
-				t.Run("File Too Large", func(t *testing.T) {
+				t.Run("Edge_FileTooLarge", func(t *testing.T) {
 					mockUseCase := new(mocks.MockUserUseCase)
 					handler := newTestUserHandler(mockUseCase)
 

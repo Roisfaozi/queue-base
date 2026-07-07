@@ -1645,3 +1645,6 @@ queue_counters
 
 audit_logs
 ```
+
+versi lengkap `New Design Document — QMS MVP Operatio.md`
+lanjut lihat diagram `QMS NEW Design Diagrams.md`

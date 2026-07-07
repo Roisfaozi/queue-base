@@ -1035,5 +1035,3 @@ Diagram NEW ini mencakup:
 27. API grouping map
 28. Deployment boundary
 ```
-
-lanjut lihat diagram `QMS NEW Design Diagrams.md`

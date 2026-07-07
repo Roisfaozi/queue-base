@@ -67,7 +67,7 @@ func (s *stubCounterControllerUseCase) DeleteCounter(ctx context.Context, counte
 func TestCounterController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	t.Run("Create", func(t *testing.T) {
+	t.Run("Positive_Create", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
@@ -103,7 +103,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
 					ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -126,7 +126,7 @@ func TestCounterController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByID", func(t *testing.T) {
+	t.Run("Positive_GetByID", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubCounterControllerUseCase
@@ -148,7 +148,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.GET("/counters/:id", controller.GetByID)
 
@@ -164,7 +164,7 @@ func TestCounterController(t *testing.T) {
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
+	t.Run("Positive_Update", func(t *testing.T) {
 		status := "inactive"
 		tests := []struct {
 			name     string
@@ -191,7 +191,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.PUT("/counters/:id", controller.Update)
 
@@ -209,7 +209,7 @@ func TestCounterController(t *testing.T) {
 		}
 	})
 
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("Positive_GetAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubCounterControllerUseCase
@@ -231,7 +231,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.GET("/counters", controller.GetAll)
 
@@ -247,7 +247,7 @@ func TestCounterController(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func() *stubCounterControllerUseCase
@@ -265,7 +265,7 @@ func TestCounterController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				uc := tt.setup()
-				controller := NewCounterController(uc, newCounterTestValidator(t))
+				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.DELETE("/counters/:id", controller.Delete)
 

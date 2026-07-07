@@ -24,7 +24,7 @@ func newCounterTestDB(t *testing.T) *gorm.DB {
 func TestCounterRepository(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("CreateAndFindByID", func(t *testing.T) {
+	t.Run("Positive_CreateAndFindByID", func(t *testing.T) {
 		tests := []struct {
 			name    string
 			counter *entity.Counter
@@ -61,7 +61,7 @@ func TestCounterRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("FindAll", func(t *testing.T) {
+	t.Run("Positive_FindAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func(repo CounterRepository)
@@ -93,7 +93,7 @@ func TestCounterRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
+	t.Run("Positive_Update", func(t *testing.T) {
 		tests := []struct {
 			name    string
 			setup   func(repo CounterRepository)
@@ -148,7 +148,7 @@ func TestCounterRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name      string
 			setup     func(repo CounterRepository)

@@ -32,7 +32,7 @@ func TestCircularRoleInheritance(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "DirectCycle",
+			name:     "Negative_DirectCycle",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -52,7 +52,7 @@ func TestCircularRoleInheritance(t *testing.T) {
 			},
 		},
 		{
-			name:     "IndirectCycle",
+			name:     "Negative_IndirectCycle",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -91,7 +91,7 @@ func TestGrantPermissionToRole_SQLInjectionInputs(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "in path",
+			name:     "Vulnerability_InPath",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -103,7 +103,7 @@ func TestGrantPermissionToRole_SQLInjectionInputs(t *testing.T) {
 			},
 		},
 		{
-			name:     "in role name",
+			name:     "Vulnerability_InRoleName",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -114,7 +114,7 @@ func TestGrantPermissionToRole_SQLInjectionInputs(t *testing.T) {
 			},
 		},
 		{
-			name:     "in method",
+			name:     "Vulnerability_InMethod",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -145,7 +145,7 @@ func TestPermissionConcurrentOperations(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "GrantPermissionConcurrentSameRole",
+			name:     "Edge_GrantPermissionConcurrentSameRole",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -180,7 +180,7 @@ func TestPermissionConcurrentOperations(t *testing.T) {
 			},
 		},
 		{
-			name:     "RevokePermissionConcurrent",
+			name:     "Edge_RevokePermissionConcurrent",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -234,7 +234,7 @@ func TestGrantPermissionToRole_EdgeInputs(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "EmptyPath",
+			name:     "Negative_EmptyPath",
 			category: "edge",
 			run: func(t *testing.T) {
 				_, uc := setupPermissionTest()
@@ -244,7 +244,7 @@ func TestGrantPermissionToRole_EdgeInputs(t *testing.T) {
 			},
 		},
 		{
-			name:     "WildcardPath",
+			name:     "Edge_WildcardPath",
 			category: "edge",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -255,7 +255,7 @@ func TestGrantPermissionToRole_EdgeInputs(t *testing.T) {
 			},
 		},
 		{
-			name:     "UnicodePath",
+			name:     "Edge_UnicodePath",
 			category: "edge",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -285,7 +285,7 @@ func TestPermissionPolicyFailureHandling(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "GrantEnforcerConnectionError",
+			name:     "Negative_GrantEnforcerConnectionError",
 			category: "error",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -297,7 +297,7 @@ func TestPermissionPolicyFailureHandling(t *testing.T) {
 			},
 		},
 		{
-			name:     "RevokePolicyNotExists",
+			name:     "Negative_RevokePolicyNotExists",
 			category: "error",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -309,7 +309,7 @@ func TestPermissionPolicyFailureHandling(t *testing.T) {
 			},
 		},
 		{
-			name:     "GrantUpdateExistingPolicy",
+			name:     "Positive_GrantUpdateExistingPolicy",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()
@@ -335,7 +335,7 @@ func TestConcurrentBatchPermissionCheck(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "ConcurrentBatchCheck",
+			name:     "Edge_ConcurrentBatchCheck",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupPermissionTest()

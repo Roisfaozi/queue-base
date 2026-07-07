@@ -29,6 +29,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 				user := setup.CreateTestUser(t, env.DB, "testowner", "owner@test.com", "password123")
 				org := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    "test-org-" + uuid.New().String()[:8],
 					Name:    "Test Organization",
 					Slug:    "test-org-" + uuid.New().String()[:8],
 					OwnerID: user.ID,
@@ -63,6 +64,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 
 				org1 := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    slug,
 					Name:    "Org 1",
 					Slug:    slug,
 					OwnerID: user.ID,
@@ -73,6 +75,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 
 				org2 := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    slug + "-2",
 					Name:    "Org 2",
 					Slug:    slug,
 					OwnerID: user.ID,
@@ -91,6 +94,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 
 				orgA := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    "org-a-" + uuid.New().String()[:8],
 					Name:    "Org A",
 					Slug:    "org-a-" + uuid.New().String()[:8],
 					OwnerID: userA.ID,
@@ -101,6 +105,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 
 				orgB := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    "org-b-" + uuid.New().String()[:8],
 					Name:    "Org B",
 					Slug:    "org-b-" + uuid.New().String()[:8],
 					OwnerID: userB.ID,
@@ -141,6 +146,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 				user := setup.CreateTestUser(t, env.DB, "memberuser", "member@test.com", "password123")
 				org := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    "member-test-" + uuid.New().String()[:8],
 					Name:    "Member Test Org",
 					Slug:    "member-test-" + uuid.New().String()[:8],
 					OwnerID: user.ID,
@@ -172,6 +178,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 				user := setup.CreateTestUser(t, env.DB, "banneduser", "banned@test.com", "password123")
 				org := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    "ban-test-" + uuid.New().String()[:8],
 					Name:    "Ban Test Org",
 					Slug:    "ban-test-" + uuid.New().String()[:8],
 					OwnerID: user.ID,
@@ -204,6 +211,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 				user := setup.CreateTestUser(t, env.DB, "atomicowner", "atomic@test.com", "password123")
 				org := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    "atomic-test-" + uuid.New().String()[:8],
 					Name:    "Atomic Test Org",
 					Slug:    "atomic-test-" + uuid.New().String()[:8],
 					OwnerID: user.ID,
@@ -228,6 +236,7 @@ func TestOrganizationRepository_Integration(t *testing.T) {
 				for i := 1; i <= 3; i++ {
 					org := &orgEntity.Organization{
 						ID:      uuid.New().String(),
+						Code:    fmt.Sprintf("org-%d-%s", i, uuid.New().String()[:8]),
 						Name:    fmt.Sprintf("Org %d", i),
 						Slug:    fmt.Sprintf("org-%d-%s", i, uuid.New().String()[:8]),
 						OwnerID: user.ID,

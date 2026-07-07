@@ -1,5 +1,9 @@
 # QMS Rebuild Brief Addendum
 
+Latest design priority:
+
+- `documentation/New Design Document — QMS MVP Operatio.md`
+
 This note augments existing starter AI-native context for QMS rebuild work. It does not replace repo-standard workflow docs.
 
 ## QMS target rules
@@ -9,7 +13,9 @@ This note augments existing starter AI-native context for QMS rebuild work. It d
 - one queue master row per ticket/day
 - forward appends `queue_journeys`
 - `visit_journeys` is readable internal history
-- settings inherit tenant -> branch -> service -> counter
+- settings inherit tenant -> branch -> branch_service -> counter
+- `qms_clients` replace old device concept
+- caller/signage use bound client credential context
 - no external integration scope unless explicitly requested later
 
 ## Starter compatibility
