@@ -974,13 +974,13 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 	if (entry.slug === "button") {
 		return (
 			<div className="flex flex-wrap items-center gap-2">
-				<Button>Default</Button>
-				<Button variant="secondary">Secondary</Button>
-				<Button variant="outline">Outline</Button>
-				<Button variant="ghost">Ghost</Button>
-				<Button variant="destructive">Delete</Button>
-				<Button size="sm">Small</Button>
-				<Button size="lg">Large</Button>
+				<Button>Call Next</Button>
+				<Button variant="secondary">Transfer</Button>
+				<Button variant="outline">Hold Queue</Button>
+				<Button variant="ghost">Pause</Button>
+				<Button variant="destructive">Cancel Ticket</Button>
+				<Button size="sm">Quick</Button>
+				<Button size="lg">Start Serving</Button>
 			</div>
 		);
 	}
@@ -988,10 +988,13 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 	if (["input", "search-input", "smart-form-field"].includes(entry.slug)) {
 		return (
 			<div className="grid max-w-sm gap-2">
-				<Label htmlFor={`${entry.slug}-preview`}>{entry.title}</Label>
-				<Input id={`${entry.slug}-preview`} placeholder="user@example.com" />
+				<Label htmlFor={`${entry.slug}-preview`}>Search queue / ticket</Label>
+				<Input
+					id={`${entry.slug}-preview`}
+					placeholder="A-012, Rina, or Customer Service"
+				/>
 				<p className="text-muted-foreground text-xs">
-					Typed value, helper text, and validation state.
+					Search by ticket number, customer name, or service.
 				</p>
 			</div>
 		);
@@ -1001,12 +1004,12 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 		return (
 			<Select defaultValue="one">
 				<SelectTrigger className="w-[220px]">
-					<SelectValue />
+					<SelectValue placeholder="Choose service" />
 				</SelectTrigger>
 				<SelectContent>
-					<SelectItem value="one">Option one</SelectItem>
-					<SelectItem value="two">Option two</SelectItem>
-					<SelectItem value="three">Option three</SelectItem>
+					<SelectItem value="one">Customer Service</SelectItem>
+					<SelectItem value="two">Payment Counter</SelectItem>
+					<SelectItem value="three">Priority Lane</SelectItem>
 				</SelectContent>
 			</Select>
 		);
@@ -1026,17 +1029,19 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 				<div className="flex items-center gap-3 rounded-lg border bg-background p-4">
 					<Checkbox id={`${entry.slug}-check`} defaultChecked />
 					<div className="grid gap-1">
-						<Label htmlFor={`${entry.slug}-check`}>Remember me</Label>
+						<Label htmlFor={`${entry.slug}-check`}>Auto call next ticket</Label>
 						<p className="text-muted-foreground text-xs">
-							Keep current session.
+							Notify operator when queue advances.
 						</p>
 					</div>
 				</div>
 				<div className="flex items-center justify-between rounded-lg border bg-background p-4">
 					<div className="grid gap-1">
-						<Label htmlFor={`${entry.slug}-switch`}>Auto save</Label>
+						<Label htmlFor={`${entry.slug}-switch`}>
+							Publish to waiting room
+						</Label>
 						<p className="text-muted-foreground text-xs">
-							Sync draft on change.
+							Show current ticket status on display screen.
 						</p>
 					</div>
 					<Switch id={`${entry.slug}-switch`} defaultChecked />
@@ -1049,12 +1054,12 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 		return (
 			<div className="grid max-w-sm gap-3">
 				<div className="flex items-center justify-between text-sm">
-					<span className="font-medium">Syncing</span>
-					<span className="text-muted-foreground">64%</span>
+					<span className="font-medium">Serving queue</span>
+					<span className="text-muted-foreground">64% complete</span>
 				</div>
 				<Progress value={64} />
 				<Skeleton className="h-4 w-full" />
-				<Skeleton className="h-4 w-2/3" />
+				<Skeleton className="h-4 w-3/4" />
 			</div>
 		);
 	}
@@ -1063,18 +1068,18 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 		return (
 			<Tabs defaultValue="one" className="max-w-md">
 				<TabsList>
-					<TabsTrigger value="one">Overview</TabsTrigger>
-					<TabsTrigger value="two">Details</TabsTrigger>
+					<TabsTrigger value="one">Queue</TabsTrigger>
+					<TabsTrigger value="two">Serve</TabsTrigger>
 					<TabsTrigger value="three">History</TabsTrigger>
 				</TabsList>
 				<TabsContent value="one" className="rounded-md border p-3">
-					Overview
+					Queue 18 waiting, 4 being served.
 				</TabsContent>
 				<TabsContent value="two" className="rounded-md border p-3">
-					Details
+					Current operator: Rina, Counter 03.
 				</TabsContent>
 				<TabsContent value="three" className="rounded-md border p-3">
-					History
+					Last called: A-011, A-010, A-009.
 				</TabsContent>
 			</Tabs>
 		);
@@ -1083,12 +1088,12 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 	if (entry.slug === "badge") {
 		return (
 			<div className="flex flex-wrap gap-2">
-				<Badge>Published</Badge>
-				<Badge variant="secondary">Draft</Badge>
-				<Badge variant="destructive">Blocked</Badge>
-				<Badge variant="success">Approved</Badge>
-				<Badge variant="warning">Pending</Badge>
-				<Badge variant="outline">v1.2</Badge>
+				<Badge>Waiting</Badge>
+				<Badge variant="secondary">Serving</Badge>
+				<Badge variant="destructive">Missed</Badge>
+				<Badge variant="success">Completed</Badge>
+				<Badge variant="warning">Priority</Badge>
+				<Badge variant="outline">A-012</Badge>
 			</div>
 		);
 	}
@@ -1096,12 +1101,154 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 	if (entry.slug === "textarea") {
 		return (
 			<div className="grid max-w-sm gap-2">
-				<Label htmlFor="preview-textarea">Description</Label>
+				<Label htmlFor="preview-textarea">Serve note</Label>
 				<Textarea
 					id="preview-textarea"
-					placeholder="Write a short note"
+					placeholder="Customer asks for wheelchair access and priority queue"
 					className="min-h-20 resize-none"
 				/>
+			</div>
+		);
+	}
+
+	if (
+		[
+			"dialog",
+			"alert-dialog",
+			"sheet",
+			"popover",
+			"dropdown-menu",
+			"context-menu",
+		].includes(entry.slug)
+	) {
+		return (
+			<div className="grid gap-4 md:grid-cols-[1fr_280px]">
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-base">Call ticket A-012</CardTitle>
+						<CardDescription>
+							Customer waits at Branch Jakarta Selatan, Counter 03.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="flex flex-wrap gap-2">
+						<Button>Confirm call</Button>
+						<Button variant="outline">Send to counter</Button>
+						<Button variant="ghost">Postpone 5 min</Button>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-base">Menu preview</CardTitle>
+					</CardHeader>
+					<CardContent className="grid gap-2 text-sm">
+						<p>View ticket detail</p>
+						<p>Move to priority lane</p>
+						<p>Print receipt</p>
+						<p>Cancel visit</p>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
+	if (["table", "data-table", "command", "command-menu"].includes(entry.slug)) {
+		return (
+			<div className="overflow-hidden rounded-lg border">
+				<div className="grid grid-cols-[1.2fr_1fr_1fr_0.8fr] gap-0 border-b bg-muted/40 px-4 py-3 text-xs font-medium uppercase tracking-wider">
+					<span>Ticket</span>
+					<span>Service</span>
+					<span>Customer</span>
+					<span>Status</span>
+				</div>
+				<div className="grid grid-cols-[1.2fr_1fr_1fr_0.8fr] gap-0 px-4 py-3 text-sm">
+					<span>A-012</span>
+					<span>Customer Service</span>
+					<span>Rina</span>
+					<span>
+						<Badge>Waiting</Badge>
+					</span>
+				</div>
+				<div className="grid grid-cols-[1.2fr_1fr_1fr_0.8fr] gap-0 border-t px-4 py-3 text-sm">
+					<span>A-013</span>
+					<span>Payment Counter</span>
+					<span>Andi</span>
+					<span>
+						<Badge variant="secondary">Serving</Badge>
+					</span>
+				</div>
+			</div>
+		);
+	}
+
+	if (["calendar", "date-picker"].includes(entry.slug)) {
+		return (
+			<Card className="max-w-sm">
+				<CardHeader>
+					<CardTitle className="text-base">07 Jul 2026</CardTitle>
+					<CardDescription>
+						Queue reset day and branch schedule.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="grid grid-cols-7 gap-2 text-center text-sm">
+					{["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((day) => (
+						<div
+							key={day}
+							className="text-muted-foreground text-xs font-medium"
+						>
+							{day}
+						</div>
+					))}
+					{[
+						"1",
+						"2",
+						"3",
+						"4",
+						"5",
+						"6",
+						"7",
+						"8",
+						"9",
+						"10",
+						"11",
+						"12",
+						"13",
+						"14",
+					].map((day) => (
+						<div
+							key={day}
+							className={cn(
+								"rounded-md border px-0 py-2",
+								day === "7" ? "bg-primary text-primary-foreground" : "",
+							)}
+						>
+							{day}
+						</div>
+					))}
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (["avatar", "presence-avatar-stack", "user-nav"].includes(entry.slug)) {
+		return (
+			<div className="flex items-center gap-4">
+				<div className="flex -space-x-2">
+					<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+						RN
+					</div>
+					<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+						AS
+					</div>
+					<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/80 text-sm font-semibold">
+						+2
+					</div>
+				</div>
+				<div>
+					<p className="font-medium">Rina Putri</p>
+					<p className="text-muted-foreground text-sm">
+						Operator Counter 03 • online
+					</p>
+				</div>
 			</div>
 		);
 	}
@@ -1111,22 +1258,30 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 			<div className="grid gap-4 md:grid-cols-3">
 				<Card className="md:col-span-2">
 					<CardHeader>
-						<CardTitle className="text-base">Volume</CardTitle>
-						<CardDescription>Live traffic.</CardDescription>
+						<CardTitle className="text-base">Today queue</CardTitle>
+						<CardDescription>
+							Live tickets for Branch Jakarta Selatan.
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="flex items-end justify-between gap-4">
 						<div>
-							<p className="text-3xl font-semibold">128</p>
+							<p className="text-3xl font-semibold">128 waiting</p>
+							<p className="text-muted-foreground text-sm">
+								36 served, 4 missed
+							</p>
 						</div>
-						<Badge variant="secondary">+12%</Badge>
+						<Badge variant="secondary">+12% vs yesterday</Badge>
 					</CardContent>
 				</Card>
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-base">Avg Time</CardTitle>
+						<CardTitle className="text-base">Avg serve time</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<p className="text-2xl font-semibold">4m 12s</p>
+						<p className="text-muted-foreground text-sm">
+							Fastest at counter 02
+						</p>
 					</CardContent>
 				</Card>
 			</div>
@@ -1137,15 +1292,17 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 		return (
 			<div className="rounded-2xl border bg-gradient-to-br from-primary/5 via-background to-muted/20 p-8">
 				<div className="max-w-xl space-y-4">
-					<Badge variant="secondary">{entry.category} preview</Badge>
+					<Badge variant="secondary">Branch dashboard</Badge>
 					<h3 className="text-2xl font-semibold tracking-tight">
-						{entry.title}
+						Queue ops for 07 Jul 2026
 					</h3>
 					<p className="text-muted-foreground text-sm">
-						Realistic spatial layout mock for higher-order component.
+						Display current queue, operator status, and service movement in one
+						glance.
 					</p>
-					<div className="flex gap-2">
-						<Button>Primary</Button>
+					<div className="flex flex-wrap gap-2">
+						<Button>Open queue</Button>
+						<Button variant="outline">View counters</Button>
 					</div>
 				</div>
 			</div>
