@@ -72,6 +72,11 @@ func TestIntegration_CallerSignageLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, queueEntity.QueueStatusWaiting, q.Status)
 
+		// Forward to counter so journey has counter_id
+		qForward, err := queueMod.QueueUseCase.ForwardQueue(ctx, q.ID, &queueModel.ForwardQueueRequest{DestinationServiceID: serviceID, DestinationCounterID: counterID})
+		require.NoError(t, err)
+		assert.Equal(t, queueEntity.QueueStatusWaiting, qForward.Status)
+
 		// Call — applies for service under signage branch
 		qCall, err := queueMod.QueueUseCase.TransitionQueue(ctx, q.ID, &queueModel.QueueTransitionRequest{Action: queueModel.QueueActionCall})
 		require.NoError(t, err)
@@ -90,6 +95,9 @@ func TestIntegration_CallerSignageLifecycle(t *testing.T) {
 	t.Run("Complete queue; Signage calls hide completed", func(t *testing.T) {
 		// Serve
 		q, err := queueMod.QueueUseCase.RegisterQueue(ctx, &queueModel.RegisterQueueRequest{ServiceID: serviceID, PatientName: "Signage Hide"})
+		require.NoError(t, err)
+
+		_, err = queueMod.QueueUseCase.ForwardQueue(ctx, q.ID, &queueModel.ForwardQueueRequest{DestinationServiceID: serviceID, DestinationCounterID: counterID})
 		require.NoError(t, err)
 
 		_, err = queueMod.QueueUseCase.TransitionQueue(ctx, q.ID, &queueModel.QueueTransitionRequest{Action: queueModel.QueueActionCall})
