@@ -191,6 +191,9 @@
 		--component-gap: 16px;
 		--input-height: 44px;
 		--button-height: 44px;
+		--input-padding-x: 16px;
+		--input-padding-y: 12px;
+		--button-padding-x: 18px;
 		--icon-size: 20px;
 		--sidebar-width: 280px;
 		--navbar-height: 80px;
@@ -255,6 +258,9 @@
 		--component-gap: 8px;
 		--input-height: 32px;
 		--button-height: 32px;
+		--input-padding-x: 10px;
+		--input-padding-y: 8px;
+		--button-padding-x: 12px;
 		--icon-size: 16px;
 		--sidebar-width: 72px;
 		--navbar-height: 56px;
