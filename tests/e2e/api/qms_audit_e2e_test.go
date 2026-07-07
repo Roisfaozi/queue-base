@@ -27,7 +27,7 @@ func TestQMSAuditE2E_Visibility(t *testing.T) {
 				token, orgID, _ := loginQueueAdmin(t, server)
 
 				// 1. Create Branch
-				branchPayload := map[string]any{"code": fmt.Sprintf("AUD-%d", time.Now().UnixMilli()), "name": "Audit Branch"}
+				branchPayload := map[string]any{"code": fmt.Sprintf("AUD-%d", time.Now().UnixMilli()), "name": "Audit Branch", "address": "Audit Street", "city": "Jakarta", "province": "DKI Jakarta", "phone": "021999999", "timezone": "Asia/Jakarta"}
 				branchResp := server.Client.POST("/api/v1/branches", branchPayload, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusCreated, branchResp.StatusCode, branchResp.String())
 				var branchData struct {

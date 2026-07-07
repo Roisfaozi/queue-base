@@ -22,7 +22,7 @@ import (
 func loginQueueAdmin(t *testing.T, server *setup.TestServer) (string, string, string) {
 	unique := fmt.Sprintf("%d", time.Now().UnixNano())
 	user := integrationSetup.CreateTestUser(t, server.DB, "queue_admin_"+unique, "queue_"+unique+"@test.com", "Password123!")
-	org := &orgEntity.Organization{ID: uuid.New().String(), Code: "queue-org-" + unique, Name: "Queue Org", Slug: "queue-org-" + unique, OwnerID: user.ID, Status: orgEntity.OrgStatusActive}
+	org := &orgEntity.Organization{ID: uuid.New().String(), Code: "queue-org-" + unique, Name: "Queue Org", Slug: "queue-org-" + unique, OwnerID: user.ID, LogoAssetID: "logo-" + unique, Status: orgEntity.OrgStatusActive}
 	require.NoError(t, server.DB.Create(org).Error)
 	require.NoError(t, server.DB.Create(&orgEntity.OrganizationMember{ID: uuid.New().String(), OrganizationID: org.ID, UserID: user.ID, RoleID: "role:owner", Status: orgEntity.MemberStatusActive}).Error)
 	_, err := server.Enforcer.AddGroupingPolicy(user.ID, "role:superadmin", org.ID)
@@ -61,6 +61,9 @@ func TestQMSQueueE2E_LifecycleAndScannerGuard(t *testing.T) {
 					} `json:"data"`
 				}
 				require.NoError(t, createBranchResp.JSON(&branchData))
+
+				activateBranchResp := server.Client.PATCH("/api/v1/branches/"+branchData.Data.ID+"/profile", map[string]any{"address": "Main Street", "city": "Jakarta", "province": "DKI Jakarta", "phone": "021000000", "timezone": "Asia/Jakarta", "status": "active"}, setup.WithAuth(token), setup.WithOrg(orgID))
+				require.Equal(t, http.StatusOK, activateBranchResp.StatusCode, activateBranchResp.String())
 
 				createServiceResp := server.Client.POST("/api/v1/services", map[string]any{"code": "RG", "name": "Registration"}, setup.WithAuth(token), setup.WithOrg(orgID))
 				require.Equal(t, http.StatusCreated, createServiceResp.StatusCode, createServiceResp.String())
