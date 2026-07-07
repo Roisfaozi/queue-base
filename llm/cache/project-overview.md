@@ -56,11 +56,11 @@ Target product must eventually cover:
 - business-day handling around `04:00 Asia/Jakarta`
 - external integration-oriented flows
 
-Those target capabilities are not yet represented as first-class starter modules.
+Those target capabilities are now partially represented as first-class QMS modules, but product completeness and contract polish are still in progress.
 
 ## Current module gap
 
-Current starter modules are platform-oriented:
+Current starter modules still include platform-oriented slices:
 
 - `access`
 - `api_key`
@@ -74,7 +74,19 @@ Current starter modules are platform-oriented:
 - `user`
 - `webhook`
 
-Queue-domain modules still need to be designed and added.
+Queue-domain modules now exist in live code:
+
+- `queue`
+- `caller`
+- `signage`
+- `scanner`
+- `qms_client`
+- `operator_assignment`
+- `counter`
+- `service`
+- `settings` for effective typed config resolution
+
+Remaining gap is not module absence; it is design-completeness, contract shape, legacy cleanup, and full integration proof.
 
 ## Canonical development commands confirmed
 

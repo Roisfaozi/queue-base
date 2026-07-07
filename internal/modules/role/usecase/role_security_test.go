@@ -44,8 +44,8 @@ func TestDeleteRole_SuperadminProtection(t *testing.T) {
 		wantErr      error
 		assertDelete bool
 	}{
-		{name: "forbid exact superadmin", roleID: "role-superadmin-id", roleName: "role:superadmin", wantErr: exception.ErrForbidden, assertDelete: false},
-		{name: "allow case variation", roleID: "role-fake-superadmin", roleName: "Role:SuperAdmin", setupDelete: true, assertDelete: true},
+		{name: "Vulnerability_ForbidExactSuperadmin", roleID: "role-superadmin-id", roleName: "role:superadmin", wantErr: exception.ErrForbidden, assertDelete: false},
+		{name: "Edge_AllowCaseVariation", roleID: "role-fake-superadmin", roleName: "Role:SuperAdmin", setupDelete: true, assertDelete: true},
 	}
 
 	for _, tt := range tests {
@@ -81,7 +81,7 @@ func TestUpdateRole_SuperadminProtection(t *testing.T) {
 		role   *entity.Role
 		body   *model.UpdateRoleRequest
 	}{
-		{name: "update allowed for exact superadmin", roleID: "role-superadmin-id", role: &entity.Role{ID: "role-superadmin-id", Name: "role:superadmin"}, body: &model.UpdateRoleRequest{Description: "Updated description"}},
+		{name: "Positive_UpdateAllowedForExactSuperadmin", roleID: "role-superadmin-id", role: &entity.Role{ID: "role-superadmin-id", Name: "role:superadmin"}, body: &model.UpdateRoleRequest{Description: "Updated description"}},
 	}
 
 	for _, tt := range tests {

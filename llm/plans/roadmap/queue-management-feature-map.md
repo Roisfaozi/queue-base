@@ -1,15 +1,21 @@
 # QMS Feature Map Addendum
 
+Latest design priority:
+
+- `documentation/New Design Document — QMS MVP Operatio.md`
+
 This feature map adds QMS domain slices on top of the starter roadmap model.
 
 ## QMS slices
 
 - tenant and branch foundation
+- qms_clients and credential binding
+- operator counter assignments
 - queue master
 - queue_journeys
 - visit_journeys
 - scanner
-- settings inheritance
+- typed settings inheritance via branch_service scope
 
 ## Rule
 

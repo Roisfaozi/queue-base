@@ -1,7 +1,6 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -10,42 +9,37 @@ import (
 	"strings"
 	"testing"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
-type stubSettingsControllerUseCase struct {
-	createReq  *model.CreateSettingRequest
-	resolveReq *model.ResolveSettingRequest
-	createRes  *model.SettingResponse
-	resolveRes *model.SettingResponse
+type stubQueueResolver struct {
+	values map[string]string
 }
 
-func (s *stubSettingsControllerUseCase) CreateSetting(ctx context.Context, req *model.CreateSettingRequest) (*model.SettingResponse, error) {
-	s.createReq = req
-	return s.createRes, nil
+type stubSettingsAudit struct {
+	requests []auditModel.CreateAuditLogRequest
 }
 
-func (s *stubSettingsControllerUseCase) GetSetting(ctx context.Context, settingID string) (*model.SettingResponse, error) {
-	return nil, nil
-}
-
-func (s *stubSettingsControllerUseCase) UpdateSetting(ctx context.Context, settingID string, req *model.UpdateSettingRequest) (*model.SettingResponse, error) {
-	return nil, nil
-}
-
-func (s *stubSettingsControllerUseCase) DeleteSetting(ctx context.Context, settingID string) error {
+func (s *stubSettingsAudit) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.requests = append(s.requests, req)
 	return nil
 }
 
-func (s *stubSettingsControllerUseCase) ResolveSetting(ctx context.Context, req *model.ResolveSettingRequest) (*model.SettingResponse, error) {
-	s.resolveReq = req
-	return s.resolveRes, nil
+func (s stubQueueResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
+	return s.values[key], nil
+}
+
+func (s stubQueueResolver) ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*model.ResolvedQueueSetting, error) {
+	return &model.ResolvedQueueSetting{Key: key, Value: s.values[key], Source: "tenant", Inherited: branchID != "" || serviceID != "" || counterID != "", CanOverride: true, CanReset: branchID != "" || serviceID != "" || counterID != ""}, nil
 }
 
 func newSettingsTestValidator(t *testing.T) *validator.Validate {
@@ -62,155 +56,202 @@ func newSettingsTestValidator(t *testing.T) *validator.Validate {
 	return v
 }
 
-func TestSettingsController(t *testing.T) {
+func newSettingsControllerTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.Exec(`
+		CREATE TABLE organizations (id TEXT PRIMARY KEY, logo_asset_id TEXT);
+		CREATE TABLE branches (id TEXT PRIMARY KEY, tenant_id TEXT, logo_asset_id TEXT);
+		CREATE TABLE branch_queue_settings (id TEXT PRIMARY KEY, tenant_id TEXT, branch_id TEXT, ticket_prefix TEXT, queue_reset_time TEXT, default_estimated_duration INTEGER, auto_call_next BOOLEAN);
+		CREATE TABLE branch_service_queue_settings (id TEXT PRIMARY KEY, tenant_id TEXT, branch_id TEXT, branch_service_id TEXT, default_estimated_duration INTEGER, auto_call_next BOOLEAN);
+		CREATE TABLE counter_queue_settings (id TEXT PRIMARY KEY, tenant_id TEXT, counter_id TEXT, ticket_prefix TEXT, queue_reset_time TEXT, default_estimated_duration INTEGER, auto_call_next BOOLEAN);
+		INSERT INTO organizations (id, logo_asset_id) VALUES ('tenant-1', 'tenant-logo');
+		INSERT INTO branches (id, tenant_id, logo_asset_id) VALUES ('550e8400-e29b-41d4-a716-446655440000', 'tenant-1', 'branch-logo');
+		INSERT INTO branches (id, tenant_id, logo_asset_id) VALUES ('550e8400-e29b-41d4-a716-446655440001', 'tenant-1', '');
+		INSERT INTO branch_queue_settings (id, tenant_id, branch_id, ticket_prefix) VALUES ('bqs-1', 'tenant-1', '550e8400-e29b-41d4-a716-446655440000', 'B');
+		INSERT INTO branch_service_queue_settings (id, tenant_id, branch_id, branch_service_id, default_estimated_duration) VALUES ('bsqs-1', 'tenant-1', '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440002', 9);
+		INSERT INTO counter_queue_settings (id, tenant_id, counter_id, ticket_prefix) VALUES ('cqs-1', 'tenant-1', '550e8400-e29b-41d4-a716-446655440003', 'C');
+	`).Error)
+	return db
+}
+
+func TestSettingsController_EffectiveQueueConfig(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	boolPtr := func(v bool) *bool { return &v }
 
-	t.Run("Create", func(t *testing.T) {
-		tests := []struct {
-			name     string
-			reqBody  interface{}
-			setup    func() *stubSettingsControllerUseCase
-			wantCode int
-			assert   func(t *testing.T, uc *stubSettingsControllerUseCase)
-		}{
-			{
-				name:    "Positive_CreateWorkflowSetting",
-				reqBody: model.CreateSettingRequest{ScopeType: "service", ScopeID: "550e8400-e29b-41d4-a716-446655440000", Key: model.SettingKeyPharmacyFlowEnabled, Value: "true", ValueType: "boolean"},
-				setup: func() *stubSettingsControllerUseCase {
-					return &stubSettingsControllerUseCase{createRes: &model.SettingResponse{ID: "set-1", Key: model.SettingKeyPharmacyFlowEnabled, Value: "true"}}
-				},
-				wantCode: http.StatusCreated,
-				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
-					require.NotNil(t, uc.createReq)
-					assert.Equal(t, model.SettingKeyPharmacyFlowEnabled, uc.createReq.Key)
-					assert.Equal(t, "service", uc.createReq.ScopeType)
-				},
-			},
-		}
+	tests := []struct {
+		name            string
+		query           string
+		tenantID        string
+		wantCode        int
+		wantAuto        *bool
+		wantCanOverride bool
+		wantLogo        string
+	}{
+		{
+			name:            "Positive_ResolvesTypedConfig",
+			query:           "?branch_id=550e8400-e29b-41d4-a716-446655440000",
+			tenantID:        "tenant-1",
+			wantCode:        http.StatusOK,
+			wantAuto:        boolPtr(true),
+			wantCanOverride: true,
+			wantLogo:        "branch-logo",
+		},
+		{
+			name:            "Edge_FallsBackToTenantLogoWhenBranchLogoEmpty",
+			query:           "?branch_id=550e8400-e29b-41d4-a716-446655440001",
+			tenantID:        "tenant-1",
+			wantCode:        http.StatusOK,
+			wantAuto:        boolPtr(true),
+			wantCanOverride: true,
+			wantLogo:        "tenant-logo",
+		},
+		{
+			name:     "Negative_RejectsMissingTenantContext",
+			query:    "?branch_id=550e8400-e29b-41d4-a716-446655440000",
+			tenantID: "",
+			wantCode: http.StatusBadRequest,
+		},
+	}
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
-				controller := NewSettingsController(uc, newSettingsTestValidator(t))
-				router := gin.New()
-				router.POST("/settings", controller.Create)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			controller := NewSettingsController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{
+				"queue_reset_time":           "04:00",
+				"ticket_prefix":              "A",
+				"numbering_strategy":         "daily_branch_sequence",
+				"default_estimated_duration": "5",
+				"auto_call_next":             "true",
+			}}, nil, newSettingsControllerTestDB(t))
 
-				body, err := json.Marshal(tt.reqBody)
-				require.NoError(t, err)
-				req, _ := http.NewRequest("POST", "/settings", bytes.NewBuffer(body))
-				w := httptest.NewRecorder()
-				router.ServeHTTP(w, req)
-
-				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
-				}
-			})
-		}
-	})
-
-	t.Run("Resolve", func(t *testing.T) {
-		tests := []struct {
-			name     string
-			query    string
-			setup    func() *stubSettingsControllerUseCase
-			tenantID string
-			wantCode int
-			assert   func(t *testing.T, uc *stubSettingsControllerUseCase)
-		}{
-			{
-				name:  "Positive_ResolveWorkflowSetting",
-				query: "?Key=require_counter_for_service",
-				setup: func() *stubSettingsControllerUseCase {
-					return &stubSettingsControllerUseCase{resolveRes: &model.SettingResponse{ID: "set-1", Key: model.SettingKeyRequireCounterForService, Value: "true"}}
-				},
-				tenantID: "tenant-1",
-				wantCode: http.StatusOK,
-				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
-					require.NotNil(t, uc.resolveReq)
-					assert.Equal(t, model.SettingKeyRequireCounterForService, uc.resolveReq.Key)
-				},
-			},
-			{
-				name:  "Negative_ResolveRejectsInvalidWorkflowScopeIDs",
-				query: "?Key=pharmacy_flow_enabled&ServiceID=bad-id",
-				setup: func() *stubSettingsControllerUseCase {
-					return &stubSettingsControllerUseCase{}
-				},
-				tenantID: "tenant-1",
-				wantCode: http.StatusUnprocessableEntity,
-				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
-					assert.Nil(t, uc.resolveReq)
-				},
-			},
-			{
-				name:  "Negative_ResolveRejectsMissingTenantContext",
-				query: "?Key=reset_time",
-				setup: func() *stubSettingsControllerUseCase {
-					return &stubSettingsControllerUseCase{}
-				},
-				tenantID: "",
-				wantCode: http.StatusBadRequest,
-				assert: func(t *testing.T, uc *stubSettingsControllerUseCase) {
-					assert.Nil(t, uc.resolveReq)
-				},
-			},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
-				controller := NewSettingsController(uc, newSettingsTestValidator(t))
-				router := gin.New()
+			router := gin.New()
+			router.GET("/settings/effective", func(c *gin.Context) {
+				ctx := c.Request.Context()
 				if tt.tenantID != "" {
-					router.Use(func(c *gin.Context) {
-						ctx := database.SetOrganizationContext(c.Request.Context(), tt.tenantID)
-						c.Request = c.Request.WithContext(ctx)
-						c.Next()
-					})
+					ctx = database.SetOrganizationContext(ctx, tt.tenantID)
 				}
-				router.GET("/settings/resolve", controller.Resolve)
+				c.Request = c.Request.WithContext(ctx)
+				controller.EffectiveQueueConfig(c)
+			})
 
-				req, _ := http.NewRequest("GET", "/settings/resolve"+tt.query, nil)
-				w := httptest.NewRecorder()
-				router.ServeHTTP(w, req)
+			req, _ := http.NewRequest("GET", "/settings/effective"+tt.query, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
 
-				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
+			assert.Equal(t, tt.wantCode, w.Code)
+			if tt.wantCode == http.StatusOK {
+				var resp struct {
+					Data model.EffectiveQueueConfigResponse `json:"data"`
 				}
-			})
-		}
+				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+				assert.Equal(t, tt.wantAuto, resp.Data.AutoCallNext)
+				assert.Equal(t, tt.wantAuto, resp.Data.Queue.AutoCallNext)
+				assert.Equal(t, tt.wantCanOverride, resp.Data.Queue.QueueResetTime.CanOverride)
+				assert.Equal(t, "tenant-1", resp.Data.Tenant.TenantID)
+				assert.NotEmpty(t, resp.Data.Branch.BranchID)
+				assert.Equal(t, tt.wantLogo, resp.Data.Branch.EffectiveLogoAssetID)
+			}
+		})
+	}
+}
+
+func TestSettingsController_EffectiveConfigAliasPaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	controller := NewSettingsController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{
+		"queue_reset_time":           "04:00",
+		"ticket_prefix":              "A",
+		"numbering_strategy":         "daily_branch_sequence",
+		"default_estimated_duration": "5",
+		"auto_call_next":             "true",
+	}}, nil, newSettingsControllerTestDB(t))
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
 	})
+	router.GET("/branches/:branch_id/effective-config", controller.EffectiveBranchConfig)
+	router.GET("/branches/:branch_id/services/:service_id/effective-config", controller.EffectiveBranchServiceConfig)
+	router.GET("/branches/:branch_id/counters/:counter_id/effective-config", controller.EffectiveCounterConfig)
 
-	t.Run("Delete", func(t *testing.T) {
-		tests := []struct {
-			name     string
-			setup    func() *stubSettingsControllerUseCase
-			wantCode int
-		}{
-			{
-				name: "Positive_DeleteReturnsNoContent",
-				setup: func() *stubSettingsControllerUseCase {
-					return &stubSettingsControllerUseCase{}
-				},
-				wantCode: http.StatusNoContent,
-			},
-		}
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "Positive_BranchEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/effective-config"},
+		{name: "Positive_ServiceEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/services/550e8400-e29b-41d4-a716-446655440002/effective-config"},
+		{name: "Positive_CounterEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/counters/550e8400-e29b-41d4-a716-446655440003/effective-config"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", tt.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Contains(t, w.Body.String(), `"effective_logo_asset_id":"branch-logo"`)
+		})
+	}
+}
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
-				controller := NewSettingsController(uc, newSettingsTestValidator(t))
-				router := gin.New()
-				router.DELETE("/settings/:id", controller.Delete)
-
-				req, _ := http.NewRequest("DELETE", "/settings/set-1", nil)
-				w := httptest.NewRecorder()
-				router.ServeHTTP(w, req)
-
-				assert.Equal(t, tt.wantCode, w.Code)
-			})
-		}
+func TestSettingsController_ResetQueueSetting(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newSettingsControllerTestDB(t)
+	audit := &stubSettingsAudit{}
+	controller := NewSettingsController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, db, audit)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
 	})
+	router.DELETE("/branches/:branch_id/queue-settings/:field", controller.ResetBranchQueueSetting)
+	router.DELETE("/branches/:branch_id/services/:branch_service_id/queue-settings/:field", controller.ResetBranchServiceQueueSetting)
+	router.DELETE("/branches/:branch_id/counters/:counter_id/queue-settings/:field", controller.ResetCounterQueueSetting)
+
+	tests := []struct {
+		name      string
+		path      string
+		table     string
+		column    string
+		where     string
+		whereArgs []any
+	}{
+		{name: "Positive_ResetBranchTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/queue-settings/ticket_prefix", table: "branch_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND branch_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440000"}},
+		{name: "Positive_ResetBranchServiceDuration", path: "/branches/550e8400-e29b-41d4-a716-446655440000/services/550e8400-e29b-41d4-a716-446655440002/queue-settings/default_estimated_duration", table: "branch_service_queue_settings", column: "default_estimated_duration", where: "tenant_id = ? AND branch_service_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440002"}},
+		{name: "Positive_ResetCounterTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/counters/550e8400-e29b-41d4-a716-446655440003/queue-settings/ticket_prefix", table: "counter_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND counter_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440003"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodDelete, tt.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusNoContent, w.Code)
+			var value *string
+			require.NoError(t, db.Table(tt.table).Select(tt.column).Where(tt.where, tt.whereArgs...).Scan(&value).Error)
+			assert.Nil(t, value)
+		})
+	}
+	require.Len(t, audit.requests, len(tests))
+	assert.Equal(t, "SETTING_RESET", audit.requests[0].Action)
+}
+
+func TestSettingsController_ResetQueueSetting_InvalidField(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	controller := NewSettingsController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, newSettingsControllerTestDB(t))
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.DELETE("/branches/:branch_id/queue-settings/:field", controller.ResetBranchQueueSetting)
+
+	req, _ := http.NewRequest(http.MethodDelete, "/branches/550e8400-e29b-41d4-a716-446655440000/queue-settings/not_allowed", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

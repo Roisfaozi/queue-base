@@ -20,7 +20,7 @@ WORKTREE_ROOT_SIBLING ?= $(abspath $(REPO_ROOT)/../$(REPO_NAME)-worktrees)
 WORKTREE_BRANCH_ARG ?= $(word 1,$(filter-out $@,$(MAKECMDGOALS)))
 WORKTREE_BASE_ARG ?= $(word 2,$(filter-out $@,$(MAKECMDGOALS)))
 ENV_LOCAL_FILE ?= .env.local
-GO_VERIFY_PREFIX ?= PATH=/home/user/sdk/go/bin:$$PATH GOCACHE=/tmp/gocache
+GO_VERIFY_PREFIX ?= PATH=/home/user/sdk/go/bin:$$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache
 TEST_PKG ?= ./internal/... ./pkg/...
 
 # Database
@@ -486,7 +486,7 @@ run: docs
 .PHONY: build
 build:
 	@echo "Building the application binary..."
-	$(GOBUILD) -o $(BINARY_NAME) ./cmd/api/main.go
+	$(GO_VERIFY_PREFIX) $(GOBUILD) -o $(BINARY_NAME) ./cmd/api/main.go
 
 # --- TESTING ---
 
@@ -494,7 +494,7 @@ build:
 .PHONY: test
 test:
 	@echo "Running unit tests (internal and pkg)..."
-	$(GOTEST) -v ./internal/... ./pkg/...
+	$(GO_VERIFY_PREFIX) $(GOTEST) -v ./internal/... ./pkg/...
 
 .PHONY: test-unit
 test-unit: test
@@ -603,7 +603,7 @@ tidy:
 .PHONY: lint
 lint:
 	@echo "Running linter..."
-	golangci-lint run
+	$(GO_VERIFY_PREFIX) golangci-lint run
 
 .PHONY: lint-fix
 lint-fix:

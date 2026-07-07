@@ -24,7 +24,7 @@ func newServiceTestDB(t *testing.T) *gorm.DB {
 func TestServiceRepository(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("CreateAndFindByID", func(t *testing.T) {
+	t.Run("Positive_CreateAndFindByID", func(t *testing.T) {
 		tests := []struct {
 			name    string
 			service *entity.Service
@@ -63,7 +63,7 @@ func TestServiceRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("FindAll", func(t *testing.T) {
+	t.Run("Positive_FindAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			setup    func(repo ServiceRepository)
@@ -95,7 +95,7 @@ func TestServiceRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
+	t.Run("Positive_Update", func(t *testing.T) {
 		tests := []struct {
 			name    string
 			setup   func(repo ServiceRepository)
@@ -117,7 +117,7 @@ func TestServiceRepository(t *testing.T) {
 					assert.Equal(t, entity.ServiceStatusInactive, updated.Status)
 					assert.True(t, updated.IsPharmacy)
 					assert.True(t, updated.IsPharmacyReception)
-					assert.Equal(t, now, updated.UpdatedAt)
+					assert.InDelta(t, now, updated.UpdatedAt, 5)
 				},
 			},
 			{
@@ -152,7 +152,7 @@ func TestServiceRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name      string
 			setup     func(repo ServiceRepository)

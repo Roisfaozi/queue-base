@@ -12,6 +12,7 @@ import (
 
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	queueUseCasePkg "github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,10 @@ type stubQueueControllerUseCase struct {
 	statsRes                 *model.QueueStatsResponse
 	statsCalled              bool
 }
+
+func (s *stubQueueControllerUseCase) SetEventBroadcaster(events queueUseCasePkg.EventBroadcaster) {}
+
+func (s *stubQueueControllerUseCase) SetWSBroadcaster(ws queueUseCasePkg.WSBroadcaster) {}
 
 func (s *stubQueueControllerUseCase) ResolveQueueBranchID(ctx context.Context, queueID string) (string, error) {
 	if s.ResolveQueueBranchIDFunc != nil {
@@ -391,7 +396,7 @@ func TestQueueController(t *testing.T) {
 		}
 	})
 
-	t.Run("TransitionRejectsMalformedJSON", func(t *testing.T) {
+	t.Run("Negative_TransitionRejectsMalformedJSON", func(t *testing.T) {
 		uc := &stubQueueControllerUseCase{}
 		log := logrus.New()
 		controller := NewQueueController(uc, newQueueTestValidator(), log)
@@ -493,7 +498,7 @@ func TestQueueController(t *testing.T) {
 		}
 	})
 
-	t.Run("ForwardRejectsMalformedJSON", func(t *testing.T) {
+	t.Run("Negative_ForwardRejectsMalformedJSON", func(t *testing.T) {
 		uc := &stubQueueControllerUseCase{}
 		log := logrus.New()
 		controller := NewQueueController(uc, newQueueTestValidator(), log)

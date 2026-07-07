@@ -296,6 +296,7 @@ func (s *Service) HandleSSOCallback(ctx context.Context, providerName string, co
 				slug := pkg.Slugify(fmt.Sprintf("%s-%s", defaultOrgName, usr.ID[:8]))
 				defaultOrg := &orgEntity.Organization{
 					ID:      uuid.New().String(),
+					Code:    slug,
 					Name:    defaultOrgName,
 					Slug:    slug,
 					OwnerID: usr.ID,

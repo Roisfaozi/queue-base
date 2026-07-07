@@ -29,6 +29,12 @@ func RegisterPublicRoutes(router *gin.RouterGroup, controller *OrganizationContr
 // RegisterTenantRoutes registers routes that require tenant context
 // These routes use TenantMiddleware to set organization context
 func RegisterTenantRoutes(router *gin.RouterGroup, controller *OrganizationController, apiKeyMiddleware *middleware.APIKeyMiddleware) {
+	tenantGroup := router.Group("/tenant")
+	{
+		tenantGroup.GET("/profile", apiKeyMiddleware.RequireScopes("org:view", "org:manage"), controller.GetTenantProfile)
+		tenantGroup.PATCH("/profile", apiKeyMiddleware.RequireScopes("org:manage"), controller.UpdateTenantProfile)
+	}
+
 	orgGroup := router.Group("/organizations")
 	{
 		orgGroup.GET("/:id", apiKeyMiddleware.RequireScopes("org:view", "org:manage"), controller.GetOrganization)

@@ -52,6 +52,9 @@ func setupTestServerWithRedis(rdb *redis.Client, prefix string) (*ws.WebSocketMa
 }
 
 func TestWebSocketManager_RedisIntegration(t *testing.T) {
+	if !canListenTCP(t) {
+		t.Skip("socket not permitted in this environment")
+	}
 	tests := []struct {
 		name     string
 		category string
@@ -163,6 +166,9 @@ func TestWebSocketManager_RedisIntegration(t *testing.T) {
 }
 
 func TestWebSocketManager_Redis_ExternalPublish(t *testing.T) {
+	if !canListenTCP(t) {
+		t.Skip("socket not permitted in this environment")
+	}
 	tests := []struct {
 		name     string
 		category string

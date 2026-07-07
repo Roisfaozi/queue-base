@@ -1,5 +1,9 @@
 # QMS Domain Map Addendum
 
+Latest design priority:
+
+- `documentation/New Design Document — QMS MVP Operatio.md`
+
 This note supplements existing starter domain map guidance.
 
 ## New QMS domain slices
@@ -7,11 +11,16 @@ This note supplements existing starter domain map guidance.
 - tenants
 - branches
 - services
+- branch_services
+- branch_service_queue_settings
 - counters
+- qms_clients
+- qms_client_credentials
+- operator_counter_assignments
 - queues
 - queue_journeys
 - visit_journeys
-- settings
+- typed queue settings
 - scanner
 
 ## Rule

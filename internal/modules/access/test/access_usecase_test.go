@@ -383,7 +383,7 @@ func TestCreateAccessRight_Sanitization(t *testing.T) {
 		wantDescription string
 	}{
 		{
-			name: "sanitizes html",
+			name: "Edge_SanitizesHtml",
 			req: model.CreateAccessRightRequest{
 				Name:        "<b>Bold</b> Right",
 				Description: "<script>alert('xss')</script> Description",
@@ -422,7 +422,7 @@ func TestCreateEndpoint_Sanitization(t *testing.T) {
 		wantPath string
 	}{
 		{
-			name: "sanitizes html path",
+			name: "Edge_SanitizesHtmlPath",
 			req: model.CreateEndpointRequest{
 				Path:   "/api/v1/test/<script>alert(1)</script>",
 				Method: "GET",
@@ -460,7 +460,7 @@ func TestCreateEndpoint_DuplicateDetection(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "duplicate detection",
+			name:    "Negative_DuplicateDetection",
 			req:     model.CreateEndpointRequest{Path: "/api/users", Method: "GET"},
 			repoErr: exception.ErrConflict,
 			wantErr: exception.ErrConflict,
@@ -492,7 +492,7 @@ func TestLinkEndpointToAccessRight_Duplicate(t *testing.T) {
 		wantMsg string
 	}{
 		{
-			name:    "duplicate link",
+			name:    "Negative_DuplicateLink",
 			req:     model.LinkEndpointRequest{AccessRightID: "access-right-uuid", EndpointID: "endpoint-uuid"},
 			repoErr: errors.New("duplicate entry"),
 			wantMsg: "duplicate",

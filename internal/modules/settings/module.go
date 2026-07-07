@@ -1,24 +1,24 @@
 package settings
 
 import (
+	auditUsecase "github.com/Roisfaozi/queue-base/internal/modules/audit/usecase"
 	settingsHttp "github.com/Roisfaozi/queue-base/internal/modules/settings/delivery/http"
-	"github.com/Roisfaozi/queue-base/internal/modules/settings/repository"
-	"github.com/Roisfaozi/queue-base/internal/modules/settings/usecase"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
 type SettingsModule struct {
 	SettingsController    *settingsHttp.SettingsController
-	SettingsRepo          repository.SettingsRepository
-	SettingsUseCase       usecase.SettingsUseCase
 	QueueSettingsResolver *QueueSettingsResolver
 }
 
-func NewSettingsModule(db *gorm.DB, validate *validator.Validate) *SettingsModule {
-	repo := repository.NewSettingsRepository(db)
-	uc := usecase.NewSettingsUseCase(repo)
-	ctrl := settingsHttp.NewSettingsController(uc, validate)
-	resolver := NewQueueSettingsResolver(uc)
-	return &SettingsModule{SettingsController: ctrl, SettingsRepo: repo, SettingsUseCase: uc, QueueSettingsResolver: resolver}
+func NewSettingsModule(db *gorm.DB, validate *validator.Validate, log *logrus.Logger, audit ...auditUsecase.AuditUseCase) *SettingsModule {
+	resolver := NewQueueSettingsResolver(db)
+	var auditUC auditUsecase.AuditUseCase
+	if len(audit) > 0 {
+		auditUC = audit[0]
+	}
+	ctrl := settingsHttp.NewSettingsController(validate, resolver, log, db, auditUC)
+	return &SettingsModule{SettingsController: ctrl, QueueSettingsResolver: resolver}
 }

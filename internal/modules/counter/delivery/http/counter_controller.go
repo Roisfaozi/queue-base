@@ -10,15 +10,17 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
 )
 
 type CounterController struct {
 	useCase  usecase.CounterUseCase
 	validate *validator.Validate
+	log      *logrus.Logger
 }
 
-func NewCounterController(useCase usecase.CounterUseCase, validate *validator.Validate) *CounterController {
-	return &CounterController{useCase: useCase, validate: validate}
+func NewCounterController(useCase usecase.CounterUseCase, validate *validator.Validate, log *logrus.Logger) *CounterController {
+	return &CounterController{useCase: useCase, validate: validate, log: log}
 }
 
 // Create godoc
@@ -42,11 +44,34 @@ func (h *CounterController) Create(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
+		h.logError(err, "validation error on create counter")
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	res, err := h.useCase.CreateCounter(c.Request.Context(), &req)
 	if err != nil {
+		h.logError(err, "failed to create counter")
+		response.HandleError(c, err, "failed to create counter")
+		return
+	}
+	response.Created(c, res)
+}
+
+func (h *CounterController) CreateUnderBranch(c *gin.Context) {
+	var req model.CreateCounterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
+		return
+	}
+	req.BranchID = branchIDParam(c)
+	if err := h.validate.Struct(req); err != nil {
+		h.logError(err, "validation error on create counter")
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	res, err := h.useCase.CreateCounter(c.Request.Context(), &req)
+	if err != nil {
+		h.logError(err, "failed to create counter")
 		response.HandleError(c, err, "failed to create counter")
 		return
 	}
@@ -67,10 +92,28 @@ func (h *CounterController) Create(c *gin.Context) {
 func (h *CounterController) GetAll(c *gin.Context) {
 	res, err := h.useCase.ListCounters(c.Request.Context())
 	if err != nil {
+		h.logError(err, "failed to get counters")
 		response.HandleError(c, err, "failed to get counters")
 		return
 	}
 	response.Success(c, res)
+}
+
+func (h *CounterController) GetAllUnderBranch(c *gin.Context) {
+	branchID := branchIDParam(c)
+	res, err := h.useCase.ListCounters(c.Request.Context())
+	if err != nil {
+		h.logError(err, "failed to get counters")
+		response.HandleError(c, err, "failed to get counters")
+		return
+	}
+	filtered := make([]model.CounterResponse, 0, len(res))
+	for _, counter := range res {
+		if counter.BranchID == branchID {
+			filtered = append(filtered, counter)
+		}
+	}
+	response.Success(c, filtered)
 }
 
 // GetByID godoc
@@ -88,10 +131,17 @@ func (h *CounterController) GetAll(c *gin.Context) {
 func (h *CounterController) GetByID(c *gin.Context) {
 	res, err := h.useCase.GetCounter(c.Request.Context(), c.Param("id"))
 	if err != nil {
+		h.logError(err, "failed to get counter")
 		response.HandleError(c, err, "failed to get counter")
 		return
 	}
 	response.Success(c, res)
+}
+
+func (h *CounterController) GetByIDUnderBranch(c *gin.Context) {
+	h.withBranchCounter(c, func(counter *model.CounterResponse) {
+		response.Success(c, counter)
+	})
 }
 
 // Update godoc
@@ -117,15 +167,24 @@ func (h *CounterController) Update(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {
+		h.logError(err, "validation error on update counter")
 		response.ValidationError(c, err, validation.FormatValidationErrors(err))
 		return
 	}
 	res, err := h.useCase.UpdateCounter(c.Request.Context(), c.Param("id"), &req)
 	if err != nil {
+		h.logError(err, "failed to update counter")
 		response.HandleError(c, err, "failed to update counter")
 		return
 	}
 	response.Success(c, res)
+}
+
+func (h *CounterController) UpdateUnderBranch(c *gin.Context) {
+	if !h.counterMatchesBranch(c) {
+		return
+	}
+	h.Update(c)
 }
 
 // Delete godoc
@@ -142,8 +201,56 @@ func (h *CounterController) Update(c *gin.Context) {
 // @Router       /counters/{id} [delete]
 func (h *CounterController) Delete(c *gin.Context) {
 	if err := h.useCase.DeleteCounter(c.Request.Context(), c.Param("id")); err != nil {
+		h.logError(err, "failed to delete counter")
 		response.HandleError(c, err, "failed to delete counter")
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *CounterController) DeleteUnderBranch(c *gin.Context) {
+	if !h.counterMatchesBranch(c) {
+		return
+	}
+	h.Delete(c)
+}
+
+func (h *CounterController) withBranchCounter(c *gin.Context, fn func(*model.CounterResponse)) {
+	counter, err := h.useCase.GetCounter(c.Request.Context(), counterIDParam(c))
+	if err != nil {
+		h.logError(err, "failed to get counter")
+		response.HandleError(c, err, "failed to get counter")
+		return
+	}
+	if counter.BranchID != branchIDParam(c) {
+		response.NotFound(c, exception.ErrNotFound, "counter not found")
+		return
+	}
+	fn(counter)
+}
+
+func branchIDParam(c *gin.Context) string {
+	if v := c.Param("branch_id"); v != "" {
+		return v
+	}
+	return c.Param("id")
+}
+
+func counterIDParam(c *gin.Context) string {
+	if v := c.Param("counter_id"); v != "" {
+		return v
+	}
+	return c.Param("id")
+}
+
+func (h *CounterController) counterMatchesBranch(c *gin.Context) bool {
+	ok := false
+	h.withBranchCounter(c, func(*model.CounterResponse) { ok = true })
+	return ok
+}
+
+func (h *CounterController) logError(err error, msg string) {
+	if h.log != nil && err != nil {
+		h.log.WithError(err).Error(msg)
+	}
 }

@@ -56,7 +56,7 @@ func (r *counterRepository) Update(ctx context.Context, counter *entity.Counter)
 	res := r.getDB(ctx).
 		Model(&entity.Counter{}).
 		Where("tenant_id = ? AND id = ?", counter.TenantID, counter.ID).
-		Select("Code", "Name", "Status", "Settings", "UpdatedAt").
+		Select("BranchServiceID", "Code", "Name", "DisplayName", "Status", "Settings", "UpdatedAt").
 		Updates(counter)
 	if res.Error != nil {
 		return res.Error

@@ -53,7 +53,7 @@ func simulateDBError(db *gorm.DB) {
 func TestUserRepository(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("Create", func(t *testing.T) {
+	t.Run("Positive_Create", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -104,7 +104,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("FindByUsername", func(t *testing.T) {
+	t.Run("Positive_FindByUsername", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -149,7 +149,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("FindByEmail", func(t *testing.T) {
+	t.Run("Positive_FindByEmail", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -194,7 +194,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("FindByToken", func(t *testing.T) {
+	t.Run("Positive_FindByToken", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -239,7 +239,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
+	t.Run("Positive_Update", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -293,7 +293,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("UpdateStatus", func(t *testing.T) {
+	t.Run("Positive_UpdateStatus", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -330,7 +330,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete", func(t *testing.T) {
+	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -368,7 +368,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("FindAll", func(t *testing.T) {
+	t.Run("Positive_FindAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -439,7 +439,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("FindAllDynamic", func(t *testing.T) {
+	t.Run("Positive_FindAllDynamic", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -501,7 +501,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("HardDeleteSoftDeletedUsers", func(t *testing.T) {
+	t.Run("Positive_HardDeleteSoftDeletedUsers", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -541,7 +541,7 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("GetByOrganization", func(t *testing.T) {
+	t.Run("Positive_GetByOrganization", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			category string
@@ -591,7 +591,7 @@ func TestUserRepository(t *testing.T) {
 	})
 
 	t.Run("SSOIdentity", func(t *testing.T) {
-		t.Run("FindBySSOIdentity", func(t *testing.T) {
+		t.Run("Positive_FindBySSOIdentity", func(t *testing.T) {
 			tests := []struct {
 				name     string
 				category string
@@ -633,7 +633,7 @@ func TestUserRepository(t *testing.T) {
 			}
 		})
 
-		t.Run("CreateSSOIdentity", func(t *testing.T) {
+		t.Run("Positive_CreateSSOIdentity", func(t *testing.T) {
 			tests := []struct {
 				name     string
 				category string
@@ -667,7 +667,7 @@ func TestUserRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("TransactionContext", func(t *testing.T) {
+	t.Run("Edge_TransactionContext", func(t *testing.T) {
 		repo, db := setupUserRepo(t)
 		tm := tx.NewTransactionManager(db, logrus.New())
 

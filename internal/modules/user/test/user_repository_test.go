@@ -44,7 +44,7 @@ func TestUserRepository_GetByOrganization(t *testing.T) {
 
 				repo, mock := setupUserRepositoryTest(t)
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					orgID := "org-1"
 					rows := sqlmock.NewRows([]string{"id", "email", "username"}).
 						AddRow("user-1", "user1@example.com", "user1").
@@ -64,7 +64,7 @@ func TestUserRepository_GetByOrganization(t *testing.T) {
 					assert.NoError(t, mock.ExpectationsWereMet())
 				})
 
-				t.Run("DBError", func(t *testing.T) {
+				t.Run("Negative_DBError", func(t *testing.T) {
 					orgID := "org-1"
 
 					mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "users" WHERE users.id IN (SELECT organization_members.user_id FROM "organization_members" WHERE organization_members.organization_id = $1 AND (organization_members.deleted_at = 0 OR organization_members.deleted_at IS NULL)) AND "users"."deleted_at" = $2`)).
@@ -102,7 +102,7 @@ func TestUserRepository_FindBySSOIdentity(t *testing.T) {
 
 				repo, mock := setupUserRepositoryTest(t)
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					provider := "google"
 					providerID := "12345"
 
@@ -123,7 +123,7 @@ func TestUserRepository_FindBySSOIdentity(t *testing.T) {
 					assert.NoError(t, mock.ExpectationsWereMet())
 				})
 
-				t.Run("DBError", func(t *testing.T) {
+				t.Run("Negative_DBError", func(t *testing.T) {
 					provider := "google"
 					providerID := "12345"
 
@@ -163,7 +163,7 @@ func TestUserRepository_CreateSSOIdentity(t *testing.T) {
 
 				repo, mock := setupUserRepositoryTest(t)
 
-				t.Run("Success", func(t *testing.T) {
+				t.Run("Positive_Success", func(t *testing.T) {
 					identity := &entity.UserSSOIdentity{
 						ID:         "sso-1",
 						UserID:     "user-1",
@@ -181,7 +181,7 @@ func TestUserRepository_CreateSSOIdentity(t *testing.T) {
 					assert.NoError(t, mock.ExpectationsWereMet())
 				})
 
-				t.Run("DBError", func(t *testing.T) {
+				t.Run("Negative_DBError", func(t *testing.T) {
 					identity := &entity.UserSSOIdentity{
 						ID:         "sso-1",
 						UserID:     "user-1",

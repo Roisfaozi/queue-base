@@ -249,13 +249,30 @@ definitions:
     required:
     - token
     type: object
+  github_com_Roisfaozi_queue-base_internal_modules_caller_model.CallerActionRequest:
+    properties:
+      action:
+        enum:
+        - call
+        - serve
+        - complete
+        - skip
+        - cancel
+        type: string
+    required:
+    - action
+    type: object
   github_com_Roisfaozi_queue-base_internal_modules_counter_model.CreateCounterRequest:
     properties:
       branch_id:
         type: string
+      branch_service_id:
+        type: string
       code:
         maxLength: 50
         minLength: 2
+        type: string
+      display_name:
         type: string
       name:
         maxLength: 255
@@ -268,9 +285,13 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_counter_model.UpdateCounterRequest:
     properties:
+      branch_service_id:
+        type: string
       code:
         maxLength: 50
         minLength: 2
+        type: string
+      display_name:
         type: string
       name:
         maxLength: 255
@@ -297,6 +318,10 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.CreateBranchRequest:
     properties:
+      address:
+        type: string
+      city:
+        type: string
       code:
         maxLength: 50
         minLength: 2
@@ -304,6 +329,14 @@ definitions:
       name:
         maxLength: 255
         minLength: 3
+        type: string
+      phone:
+        type: string
+      province:
+        type: string
+      running_text:
+        type: string
+      timezone:
         type: string
     required:
     - code
@@ -374,18 +407,36 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateBranchRequest:
     properties:
+      address:
+        type: string
+      city:
+        type: string
       code:
         maxLength: 50
         minLength: 2
+        type: string
+      email:
+        type: string
+      logo_asset_id:
         type: string
       name:
         maxLength: 255
         minLength: 3
         type: string
+      phone:
+        type: string
+      postal_code:
+        type: string
+      province:
+        type: string
+      running_text:
+        type: string
       status:
         enum:
         - active
         - inactive
+        type: string
+      timezone:
         type: string
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateMemberRequest:
@@ -736,10 +787,16 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_service_model.CreateServiceRequest:
     properties:
+      audio_en:
+        type: string
+      audio_id:
+        type: string
       code:
         maxLength: 50
         minLength: 2
         type: string
+      default_estimated_duration:
+        type: integer
       is_pharmacy:
         type: boolean
       is_pharmacy_reception:
@@ -747,6 +804,12 @@ definitions:
       name:
         maxLength: 255
         minLength: 3
+        type: string
+      narrative_instruction_en:
+        type: string
+      narrative_instruction_id:
+        type: string
+      type:
         type: string
     required:
     - code
@@ -754,10 +817,16 @@ definitions:
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_service_model.UpdateServiceRequest:
     properties:
+      audio_en:
+        type: string
+      audio_id:
+        type: string
       code:
         maxLength: 50
         minLength: 2
         type: string
+      default_estimated_duration:
+        type: integer
       is_pharmacy:
         type: boolean
       is_pharmacy_reception:
@@ -766,47 +835,16 @@ definitions:
         maxLength: 255
         minLength: 3
         type: string
+      narrative_instruction_en:
+        type: string
+      narrative_instruction_id:
+        type: string
       status:
         enum:
         - active
         - inactive
         type: string
-    type: object
-  github_com_Roisfaozi_queue-base_internal_modules_settings_model.CreateSettingRequest:
-    properties:
-      key:
-        maxLength: 100
-        minLength: 1
-        type: string
-      scope_id:
-        type: string
-      scope_type:
-        enum:
-        - tenant
-        - branch
-        - service
-        - counter
-        type: string
-      value:
-        type: string
-      value_type:
-        enum:
-        - string
-        - number
-        - boolean
-        - json
-        type: string
-    required:
-    - key
-    - scope_id
-    - scope_type
-    - value
-    type: object
-  github_com_Roisfaozi_queue-base_internal_modules_settings_model.UpdateSettingRequest:
-    properties:
-      is_active:
-        type: boolean
-      value:
+      type:
         type: string
     type: object
   github_com_Roisfaozi_queue-base_internal_modules_stats_model.ActivityPoint:
@@ -2285,6 +2323,53 @@ paths:
       summary: List active journeys by branch and service
       tags:
       - queues
+  /caller/queue-journeys/{journey_id}/action:
+    post:
+      consumes:
+      - application/json
+      description: Perform call/serve/complete/skip/cancel on a queue journey.
+      parameters:
+      - description: Queue Journey ID
+        in: path
+        name: journey_id
+        required: true
+        type: string
+      - description: QMS Client ID
+        in: header
+        name: X-Client-ID
+        type: string
+      - description: QMS Client API Key
+        in: header
+        name: X-API-Key
+        type: string
+      - description: Action request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_caller_model.CallerActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      summary: Caller action on queue journey
+      tags:
+      - caller
   /counters:
     get:
       description: Returns all counters under active tenant scope.
@@ -4655,90 +4740,76 @@ paths:
       summary: Update service
       tags:
       - services
-  /settings:
-    post:
+  /signage/current-calls:
+    get:
+      description: Returns active calling queues for the bound signage scope.
+      parameters:
+      - description: QMS Client ID
+        in: header
+        name: X-Client-ID
+        required: true
+        type: string
+      - description: QMS Client API Key
+        in: header
+        name: X-API-Key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+      summary: Get current calls for signage
+      tags:
+      - signage
+  /signage/me:
+    get:
       consumes:
       - application/json
-      description: Creates tenant, branch, service, or counter scoped setting override.
+      description: Returns bound tenant, branch, and profile info for signage client.
       parameters:
-      - description: Tenant ID
+      - description: QMS Client ID
         in: header
-        name: X-Organization-ID
+        name: X-Client-ID
         required: true
         type: string
-      - description: Create Setting Request
-        in: body
-        name: request
+      - description: QMS Client API Key
+        in: header
+        name: X-API-Key
         required: true
-        schema:
-          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_settings_model.CreateSettingRequest'
+        type: string
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "422":
-          description: Unprocessable Entity
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-      security:
-      - BearerAuth: []
-      summary: Create setting
+      summary: Get signage client info
       tags:
-      - settings
-  /settings/{id}:
-    delete:
-      description: Deletes scoped setting override under active tenant scope.
-      parameters:
-      - description: Setting ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tenant ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-      security:
-      - BearerAuth: []
-      summary: Delete setting
-      tags:
-      - settings
+      - signage
+  /signage/queues:
     get:
-      description: Returns setting details under active tenant scope.
+      description: Returns active waiting queues for the bound signage scope.
       parameters:
-      - description: Setting ID
-        in: path
-        name: id
+      - description: QMS Client ID
+        in: header
+        name: X-Client-ID
         required: true
         type: string
-      - description: Tenant ID
+      - description: QMS Client API Key
         in: header
-        name: X-Organization-ID
+        name: X-API-Key
         required: true
         type: string
       produces:
@@ -4748,119 +4819,9 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-      security:
-      - BearerAuth: []
-      summary: Get setting by ID
+      summary: Get waiting queues for signage
       tags:
-      - settings
-    put:
-      consumes:
-      - application/json
-      description: Updates scoped setting override under active tenant scope.
-      parameters:
-      - description: Setting ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tenant ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      - description: Update Setting Request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_Roisfaozi_queue-base_internal_modules_settings_model.UpdateSettingRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-      security:
-      - BearerAuth: []
-      summary: Update setting
-      tags:
-      - settings
-  /settings/resolve:
-    get:
-      description: Resolves setting value using tenant -> branch -> service -> counter
-        inheritance.
-      parameters:
-      - description: Tenant ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      - description: Setting key
-        in: query
-        name: Key
-        required: true
-        type: string
-      - description: Branch ID
-        in: query
-        name: BranchID
-        type: string
-      - description: Service ID
-        in: query
-        name: ServiceID
-        type: string
-      - description: Counter ID
-        in: query
-        name: CounterID
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
-      security:
-      - BearerAuth: []
-      summary: Resolve effective setting
-      tags:
-      - settings
+      - signage
   /stats/activity:
     get:
       description: Returns daily activity metrics (logins, audit events) for a given

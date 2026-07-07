@@ -24,18 +24,20 @@ type QueueModule struct {
 }
 
 type defaultRelationValidator struct {
-	branchRepo  branchRepo.BranchRepository
-	serviceRepo serviceRepo.ServiceRepository
-	counterRepo counterRepo.CounterRepository
-	settings    usecase.SettingsResolver
+	branchRepo        branchRepo.BranchRepository
+	serviceRepo       serviceRepo.ServiceRepository
+	branchServiceRepo serviceRepo.BranchServiceRepository
+	counterRepo       counterRepo.CounterRepository
+	settings          usecase.SettingsResolver
 }
 
 func NewDefaultRelationValidator(db *gorm.DB, settingsResolver usecase.SettingsResolver) usecase.RelationValidator {
 	return &defaultRelationValidator{
-		branchRepo:  branchRepo.NewBranchRepository(db),
-		serviceRepo: serviceRepo.NewServiceRepository(db),
-		counterRepo: counterRepo.NewCounterRepository(db),
-		settings:    settingsResolver,
+		branchRepo:        branchRepo.NewBranchRepository(db),
+		serviceRepo:       serviceRepo.NewServiceRepository(db),
+		branchServiceRepo: serviceRepo.NewBranchServiceRepository(db),
+		counterRepo:       counterRepo.NewCounterRepository(db),
+		settings:          settingsResolver,
 	}
 }
 
@@ -46,6 +48,13 @@ func (v *defaultRelationValidator) Validate(ctx context.Context, tenantID, branc
 	if serviceID != "" {
 		service, err := v.serviceRepo.FindByID(ctx, tenantID, serviceID)
 		if err != nil {
+			return exception.ErrForbidden
+		}
+		if v.branchServiceRepo != nil {
+			if _, err := v.branchServiceRepo.FindByService(ctx, tenantID, branchID, serviceID); err != nil {
+				return exception.ErrForbidden
+			}
+		} else {
 			return exception.ErrForbidden
 		}
 		requireCounter := service.IsPharmacy

@@ -9,14 +9,22 @@ import (
 
 // OrganizationResponse represents the response for organization operations
 type OrganizationResponse struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Slug      string                 `json:"slug"`
-	OwnerID   string                 `json:"owner_id"`
-	Settings  map[string]interface{} `json:"settings"`
-	Status    string                 `json:"status"`
-	CreatedAt int64                  `json:"created_at"`
-	UpdatedAt int64                  `json:"updated_at"`
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	LegalName   string                 `json:"legal_name,omitempty"`
+	Slug        string                 `json:"slug"`
+	OwnerID     string                 `json:"owner_id"`
+	Address     string                 `json:"address,omitempty"`
+	City        string                 `json:"city,omitempty"`
+	Province    string                 `json:"province,omitempty"`
+	Phone       string                 `json:"phone,omitempty"`
+	Email       string                 `json:"email,omitempty"`
+	Timezone    string                 `json:"timezone,omitempty"`
+	LogoAssetID string                 `json:"logo_asset_id,omitempty"`
+	Settings    map[string]interface{} `json:"settings"`
+	Status      string                 `json:"status"`
+	CreatedAt   int64                  `json:"created_at"`
+	UpdatedAt   int64                  `json:"updated_at"`
 }
 
 type UserOrganizationsResponse struct {
@@ -25,24 +33,64 @@ type UserOrganizationsResponse struct {
 }
 
 type CreateOrganizationRequest struct {
-	Name string `json:"name" binding:"required,min=3,max=100" validate:"xss"`
-	Slug string `json:"slug" binding:"omitempty,min=3,max=100" validate:"slug"`
+	Name        string `json:"name" binding:"required,min=3,max=100" validate:"xss"`
+	Slug        string `json:"slug" binding:"omitempty,min=3,max=100" validate:"slug"`
+	LegalName   string `json:"legal_name,omitempty" validate:"omitempty,xss"`
+	Address     string `json:"address,omitempty" validate:"omitempty,xss"`
+	City        string `json:"city,omitempty" validate:"omitempty,xss"`
+	Province    string `json:"province,omitempty" validate:"omitempty,xss"`
+	Phone       string `json:"phone,omitempty" validate:"omitempty,xss"`
+	Email       string `json:"email,omitempty" binding:"omitempty,email"`
+	Timezone    string `json:"timezone,omitempty" validate:"omitempty,xss"`
+	LogoAssetID string `json:"logo_asset_id,omitempty"`
 }
 
 func (r *CreateOrganizationRequest) Sanitize() {
 	r.Name = pkg.SanitizeString(r.Name)
 	r.Slug = strings.ToLower(strings.TrimSpace(r.Slug))
+	r.LegalName = pkg.SanitizeString(r.LegalName)
+	r.Address = pkg.SanitizeString(r.Address)
+	r.City = pkg.SanitizeString(r.City)
+	r.Province = pkg.SanitizeString(r.Province)
+	r.Phone = pkg.SanitizeString(r.Phone)
+	r.Timezone = pkg.SanitizeString(r.Timezone)
 }
 
 type UpdateOrganizationRequest struct {
-	Name     string                 `json:"name" binding:"omitempty,min=3,max=100" validate:"xss"`
-	Settings map[string]interface{} `json:"settings"`
-	Status   string                 `json:"status" binding:"omitempty,oneof=active suspended"`
+	Name        string                 `json:"name" binding:"omitempty,min=3,max=100" validate:"xss"`
+	LegalName   string                 `json:"legal_name,omitempty" validate:"omitempty,xss"`
+	Address     string                 `json:"address,omitempty" validate:"omitempty,xss"`
+	City        string                 `json:"city,omitempty" validate:"omitempty,xss"`
+	Province    string                 `json:"province,omitempty" validate:"omitempty,xss"`
+	Phone       string                 `json:"phone,omitempty" validate:"omitempty,xss"`
+	Email       string                 `json:"email,omitempty" binding:"omitempty,email"`
+	Timezone    string                 `json:"timezone,omitempty" validate:"omitempty,xss"`
+	LogoAssetID string                 `json:"logo_asset_id,omitempty"`
+	Settings    map[string]interface{} `json:"settings"`
+	Status      string                 `json:"status" binding:"omitempty,oneof=active suspended draft"`
 }
 
 func (r *UpdateOrganizationRequest) Sanitize() {
 	if r.Name != "" {
 		r.Name = pkg.SanitizeString(r.Name)
+	}
+	if r.LegalName != "" {
+		r.LegalName = pkg.SanitizeString(r.LegalName)
+	}
+	if r.Address != "" {
+		r.Address = pkg.SanitizeString(r.Address)
+	}
+	if r.City != "" {
+		r.City = pkg.SanitizeString(r.City)
+	}
+	if r.Province != "" {
+		r.Province = pkg.SanitizeString(r.Province)
+	}
+	if r.Phone != "" {
+		r.Phone = pkg.SanitizeString(r.Phone)
+	}
+	if r.Timezone != "" {
+		r.Timezone = pkg.SanitizeString(r.Timezone)
 	}
 	if r.Settings != nil {
 		for k, v := range r.Settings {

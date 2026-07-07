@@ -68,7 +68,7 @@ func TestStatsUseCase_GetDashboardSummary_Success(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_WithSeededData",
+			name:     "Positive_Success_WithSeededData",
 			category: "positive",
 			run: func(t *testing.T) {
 				db, uc := setupStatsTest(t)
@@ -345,7 +345,7 @@ func TestStatsUseCase_GetSystemInsights_Success(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "Success_GetSystemInsights",
+			name:     "Positive_Success_GetSystemInsights",
 			category: "positive",
 			run: func(t *testing.T) {
 				_, uc := setupStatsTest(t)

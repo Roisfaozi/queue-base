@@ -51,7 +51,7 @@ func TestAuditUseCase(t *testing.T) {
 		run      func(t *testing.T)
 	}{
 		{
-			name:     "LogActivity_Positive_Success",
+			name:     "Positive_LogActivity_Success",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -70,7 +70,7 @@ func TestAuditUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "LogActivity_Positive_TransactionalPath_WriteToOutbox",
+			name:     "Positive_LogActivity_TransactionalPath_WriteToOutbox",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -99,7 +99,7 @@ func TestAuditUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "LogActivity_Positive_OrganizationContext_CapturesOrgID",
+			name:     "Positive_LogActivity_OrganizationContext_CapturesOrgID",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -119,7 +119,7 @@ func TestAuditUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "LogActivity_Edge_NilJSONValues",
+			name:     "Edge_LogActivity_NilJSONValues",
 			category: "edge",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -138,7 +138,7 @@ func TestAuditUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "LogActivity_Negative_RepoError",
+			name:     "Negative_LogActivity_RepoError",
 			category: "negative",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -150,7 +150,7 @@ func TestAuditUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "GetLogsDynamic_Positive_Success",
+			name:     "Positive_GetLogsDynamic_Success",
 			category: "positive",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -173,7 +173,7 @@ func TestAuditUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "GetLogsDynamic_Edge_MalformedJSONInDB",
+			name:     "Edge_GetLogsDynamic_MalformedJSONInDB",
 			category: "edge",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()
@@ -192,7 +192,7 @@ func TestAuditUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "GetLogsDynamic_Negative_RepoError",
+			name:     "Negative_GetLogsDynamic_RepoError",
 			category: "negative",
 			run: func(t *testing.T) {
 				deps, uc := setupAuditTest()

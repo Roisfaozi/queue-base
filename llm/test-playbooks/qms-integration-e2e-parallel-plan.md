@@ -1,5 +1,9 @@
 # QMS Integration and E2E Parallel Plan
 
+Latest design priority:
+
+- `documentation/New Design Document — QMS MVP Operatio.md`
+
 ## Purpose
 
 Reusable test plan for QMS rebuild work. Use when integration and e2e verification should run in parallel across independent slices.
@@ -11,11 +15,13 @@ This plan separates queue-domain behavior into parallel-safe test groups so diff
 Current QMS targets:
 
 - tenant and branch foundation
+- qms client and credential binding
+- operator assignment
 - queue master registration
 - queue_journeys forward history
 - visit_journeys readable history
 - scanner check-in orchestration
-- settings inheritance
+- typed settings inheritance via branch_service scope
 - service and counter CRUD boundaries
 
 ## Preconditions

@@ -53,6 +53,40 @@ export function useRealtimeInit() {
 			addActivity({ user, action, target, type: type || "info" });
 		});
 
+		const unsubQueueRegistered = eventClient.subscribe(
+			"queue_registered",
+			(e) => {
+				addActivity({
+					user: "QMS",
+					action: "registered queue",
+					target: String(e.data.ticket_no || e.data.id || "queue"),
+					type: "success",
+				});
+			},
+		);
+		const unsubQueueForwarded = eventClient.subscribe(
+			"queue_forwarded",
+			(e) => {
+				addActivity({
+					user: "QMS",
+					action: "forwarded queue",
+					target: String(e.data.ticket_no || e.data.id || "queue"),
+					type: "info",
+				});
+			},
+		);
+		const unsubQueueTransitioned = eventClient.subscribe(
+			"queue_transitioned",
+			(e) => {
+				addActivity({
+					user: "QMS",
+					action: `queue ${String(e.data.status || "transitioned")}`,
+					target: String(e.data.ticket_no || e.data.id || "queue"),
+					type: "info",
+				});
+			},
+		);
+
 		eventClient.connect();
 
 		// ── WebSocket subscriptions ──
@@ -88,6 +122,9 @@ export function useRealtimeInit() {
 			unsubSystem();
 			unsubNotification();
 			unsubActivity();
+			unsubQueueRegistered();
+			unsubQueueForwarded();
+			unsubQueueTransitioned();
 			unsubPresenceJoin();
 			unsubPresenceLeave();
 			unsubPresenceUpdate();

@@ -22,11 +22,13 @@ type QueueRepository interface {
 	FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error)
 	FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
 	FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error)
+	FindNextWaitingQueue(ctx context.Context, tenantID, branchID, queueDate, afterQueueID string) (*entity.Queue, error)
 	NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error)
 	CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error
 	FindVisitJourneysByQueueID(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error)
 	GetQueueStats(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error)
+	CountWaitingQueueLeft(ctx context.Context, tenantID, branchID, queueDate, serviceID string, queueNo int) (int, error)
 }
 
 type queueRepository struct {
@@ -229,6 +231,20 @@ func (r *queueRepository) FindCurrentJourney(ctx context.Context, tenantID, bran
 	return &j, nil
 }
 
+func (r *queueRepository) FindNextWaitingQueue(ctx context.Context, tenantID, branchID, queueDate, afterQueueID string) (*entity.Queue, error) {
+	var q entity.Queue
+	query := r.getDB(ctx).
+		Where("tenant_id = ? AND branch_id = ? AND queue_date = ? AND status = ?", tenantID, branchID, queueDate, entity.QueueStatusWaiting).
+		Order("queue_no ASC")
+	if afterQueueID != "" {
+		query = query.Where("id > ?", afterQueueID)
+	}
+	if err := query.First(&q).Error; err != nil {
+		return nil, err
+	}
+	return &q, nil
+}
+
 func (r *queueRepository) NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error) {
 	var maxSeq int
 	if err := r.getDB(ctx).Model(&entity.QueueJourney{}).Where("tenant_id = ? AND branch_id = ? AND queue_id = ?", tenantID, branchID, queueID).Select("COALESCE(MAX(seq_no), 0)").Scan(&maxSeq).Error; err != nil {
@@ -348,4 +364,13 @@ func (r *queueRepository) GetQueueStats(ctx context.Context, tenantID, branchID,
 	}
 
 	return stats, nil
+}
+
+func (r *queueRepository) CountWaitingQueueLeft(ctx context.Context, tenantID, branchID, queueDate, serviceID string, queueNo int) (int, error) {
+	var count int64
+	err := r.getDB(ctx).Model(&entity.QueueJourney{}).
+		Joins("JOIN queues ON queues.id = queue_journeys.queue_id").
+		Where("queues.tenant_id = ? AND queues.branch_id = ? AND queues.queue_date = ? AND queue_journeys.service_id = ? AND queue_journeys.status = ? AND queues.queue_no < ?", tenantID, branchID, queueDate, serviceID, entity.JourneyStatusPending, queueNo).
+		Count(&count).Error
+	return int(count), err
 }

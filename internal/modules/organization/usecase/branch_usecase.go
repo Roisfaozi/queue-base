@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
@@ -20,12 +21,25 @@ type BranchUseCase interface {
 	DeleteBranch(ctx context.Context, branchID string) error
 }
 
-type branchUseCase struct {
-	repo repository.BranchRepository
+type AuditLogger interface {
+	LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error
 }
 
-func NewBranchUseCase(repo repository.BranchRepository) BranchUseCase {
-	return &branchUseCase{repo: repo}
+type branchUseCase struct {
+	repo  repository.BranchRepository
+	audit AuditLogger
+}
+
+type tenantLogoReader interface {
+	TenantLogoAssetID(ctx context.Context, tenantID string) (string, error)
+}
+
+func NewBranchUseCase(repo repository.BranchRepository, auditUC ...AuditLogger) BranchUseCase {
+	var audit AuditLogger
+	if len(auditUC) > 0 {
+		audit = auditUC[0]
+	}
+	return &branchUseCase{repo: repo, audit: audit}
 }
 
 func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranchRequest) (*model.BranchResponse, error) {
@@ -35,18 +49,29 @@ func (u *branchUseCase) CreateBranch(ctx context.Context, req *model.CreateBranc
 	}
 	req.Sanitize()
 	now := time.Now().UnixMilli()
+	status := entity.BranchStatusDraft
+	if req.Address != "" && req.City != "" && req.Province != "" && req.Phone != "" && req.Timezone != "" && u.hasTenantLogo(ctx, tenantID) {
+		status = entity.BranchStatusActive
+	}
 	branch := &entity.Branch{
-		ID:        uuid.New().String(),
-		TenantID:  tenantID,
-		Code:      req.Code,
-		Name:      req.Name,
-		Status:    entity.BranchStatusActive,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:          uuid.New().String(),
+		TenantID:    tenantID,
+		Code:        req.Code,
+		Name:        req.Name,
+		Address:     req.Address,
+		City:        req.City,
+		Province:    req.Province,
+		Phone:       req.Phone,
+		RunningText: req.RunningText,
+		Timezone:    req.Timezone,
+		Status:      status,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := u.repo.Create(ctx, branch); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "BRANCH_CREATE", branch.ID, map[string]string{"tenant_id": branch.TenantID, "code": branch.Code, "status": branch.Status})
 	return u.mapToResponse(branch), nil
 }
 
@@ -90,11 +115,47 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 	if err != nil {
 		return nil, exception.ErrNotFound
 	}
+	newStatus := branch.Status
+	if req.Status != nil {
+		newStatus = *req.Status
+	}
+	if newStatus == entity.BranchStatusActive && branch.Status != entity.BranchStatusActive {
+		if u.missingRequiredFields(ctx, tenantID, branch, req) {
+			return nil, exception.ErrBadRequest
+		}
+	}
 	if req.Code != nil {
 		branch.Code = *req.Code
 	}
 	if req.Name != nil {
 		branch.Name = *req.Name
+	}
+	if req.Address != nil {
+		branch.Address = *req.Address
+	}
+	if req.City != nil {
+		branch.City = *req.City
+	}
+	if req.Province != nil {
+		branch.Province = *req.Province
+	}
+	if req.PostalCode != nil {
+		branch.PostalCode = *req.PostalCode
+	}
+	if req.Phone != nil {
+		branch.Phone = *req.Phone
+	}
+	if req.Email != nil {
+		branch.Email = *req.Email
+	}
+	if req.LogoAssetID != nil {
+		branch.LogoAssetID = *req.LogoAssetID
+	}
+	if req.RunningText != nil {
+		branch.RunningText = *req.RunningText
+	}
+	if req.Timezone != nil {
+		branch.Timezone = *req.Timezone
 	}
 	if req.Status != nil {
 		branch.Status = *req.Status
@@ -103,6 +164,7 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 	if err := u.repo.Update(ctx, branch); err != nil {
 		return nil, err
 	}
+	u.tryAudit(ctx, "BRANCH_UPDATE", branch.ID, map[string]string{"tenant_id": branch.TenantID, "code": branch.Code, "status": branch.Status})
 	return u.mapToResponse(branch), nil
 }
 
@@ -111,17 +173,84 @@ func (u *branchUseCase) DeleteBranch(ctx context.Context, branchID string) error
 	if tenantID == "" || branchID == "" {
 		return exception.ErrBadRequest
 	}
-	return u.repo.Delete(ctx, tenantID, branchID)
+	if err := u.repo.Delete(ctx, tenantID, branchID); err != nil {
+		return err
+	}
+	u.tryAudit(ctx, "BRANCH_DELETE", branchID, map[string]string{"tenant_id": tenantID})
+	return nil
 }
 
 func (u *branchUseCase) mapToResponse(branch *entity.Branch) *model.BranchResponse {
 	return &model.BranchResponse{
-		ID:        branch.ID,
-		TenantID:  branch.TenantID,
-		Code:      branch.Code,
-		Name:      branch.Name,
-		Status:    branch.Status,
-		CreatedAt: branch.CreatedAt,
-		UpdatedAt: branch.UpdatedAt,
+		ID:          branch.ID,
+		TenantID:    branch.TenantID,
+		Code:        branch.Code,
+		Name:        branch.Name,
+		Address:     branch.Address,
+		City:        branch.City,
+		Province:    branch.Province,
+		PostalCode:  branch.PostalCode,
+		Phone:       branch.Phone,
+		Email:       branch.Email,
+		LogoAssetID: branch.LogoAssetID,
+		RunningText: branch.RunningText,
+		Timezone:    branch.Timezone,
+		Status:      branch.Status,
+		CreatedAt:   branch.CreatedAt,
+		UpdatedAt:   branch.UpdatedAt,
 	}
+}
+
+func (u *branchUseCase) missingRequiredFields(ctx context.Context, tenantID string, branch *entity.Branch, req *model.UpdateBranchRequest) bool {
+	address := branch.Address
+	city := branch.City
+	province := branch.Province
+	phone := branch.Phone
+	timezone := branch.Timezone
+	if req.Address != nil {
+		address = *req.Address
+	}
+	if req.City != nil {
+		city = *req.City
+	}
+	if req.Province != nil {
+		province = *req.Province
+	}
+	if req.Phone != nil {
+		phone = *req.Phone
+	}
+	if req.Timezone != nil {
+		timezone = *req.Timezone
+	}
+	logo := branch.LogoAssetID
+	if req.LogoAssetID != nil {
+		logo = *req.LogoAssetID
+	}
+	return address == "" || city == "" || province == "" || phone == "" || timezone == "" || (logo == "" && !u.hasTenantLogo(ctx, tenantID))
+}
+
+func (u *branchUseCase) hasTenantLogo(ctx context.Context, tenantID string) bool {
+	reader, ok := u.repo.(tenantLogoReader)
+	if !ok {
+		return true
+	}
+	logo, err := reader.TenantLogoAssetID(ctx, tenantID)
+	return err == nil && logo != ""
+}
+
+func (u *branchUseCase) tryAudit(ctx context.Context, action, entityID string, values map[string]string) {
+	if u.audit == nil {
+		return
+	}
+	userID, _ := ctx.Value("user_id").(string)
+	if userID == "" {
+		userID = "system"
+	}
+	_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+		UserID:    userID,
+		Action:    action,
+		Entity:    "branch",
+		EntityID:  entityID,
+		NewValues: values,
+	})
 }

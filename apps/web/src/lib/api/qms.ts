@@ -1,97 +1,113 @@
+import type {
+	BranchService,
+	CallerActionRequest,
+	CallerActionResponse,
+	CallerLoginRequest,
+	CallerLoginResponse,
+	CallerMeResponse,
+	Counter,
+	EffectiveQueueConfigResponse,
+	BranchResponse,
+	BranchUpsertRequest,
+	QMSClientResponse,
+	QMSClientUpdateRequest,
+	Queue,
+	QueueJourney,
+	QMSClientCreateRequest,
+	QMSClientCreateResponse,
+	QMSClientCredentialCreateRequest,
+	QMSClientCredentialCreateResponse,
+	QueueStatsResponse,
+	ScannerCheckInResponse,
+	Service,
+	SignageCurrentCallResponse,
+	SignageMeResponse,
+	VisitJourney,
+} from "@casbin/api-types";
+
 import { api } from "./client";
 
-export interface Branch {
-	id: string;
-	tenant_id: string;
-	code: string;
-	name: string;
-	status: "active" | "inactive";
-	created_at: number;
-	updated_at: number;
+export type Branch = BranchResponse;
+export type BranchUpsertPayload = BranchUpsertRequest;
+
+export type EffectiveQueueConfig = EffectiveQueueConfigResponse;
+export type {
+	CallerActionResponse,
+	CallerMeResponse,
+	Counter,
+	BranchService,
+	QMSClientResponse,
+	QMSClientUpdateRequest,
+	Queue,
+	QueueJourney,
+	QueueStatsResponse,
+	ScannerCheckInResponse,
+	Service,
+	SignageCurrentCallResponse,
+	SignageMeResponse,
+	VisitJourney,
+};
+
+export const qmsClientsApi = {
+	getAll: () => api.get<{ data: QMSClientResponse[] }>("/qms-clients"),
+	getById: (id: string) =>
+		api.get<{ data: QMSClientResponse }>(`/qms-clients/${id}`),
+	create: (data: QMSClientCreateRequest) =>
+		api.post<{ data: QMSClientCreateResponse }>("/qms-clients", data),
+	update: (id: string, data: QMSClientUpdateRequest) =>
+		api.patch<{ data: QMSClientResponse }>(`/qms-clients/${id}`, data),
+	deactivate: (id: string) => api.delete(`/qms-clients/${id}`),
+	createCredential: (data: QMSClientCredentialCreateRequest) =>
+		api.post<{ data: QMSClientCredentialCreateResponse }>(
+			"/qms-clients/credentials",
+			data,
+		),
+};
+
+export const callerApi = {
+	login: (data: CallerLoginRequest, headers: QMSClientHeaders) =>
+		api.post<{ data: CallerLoginResponse }>("/caller/login", data, {
+			headers: qmsClientHeaders(headers),
+		}),
+	me: (headers: QMSClientHeaders) =>
+		api.get<{ data: CallerMeResponse }>("/caller/me", {
+			headers: qmsClientHeaders(headers),
+		}),
+	action: (
+		journeyId: string,
+		data: CallerActionRequest,
+		headers: QMSClientHeaders,
+	) =>
+		api.post<{ data: CallerActionResponse }>(
+			`/caller/queue-journeys/${journeyId}/action`,
+			data,
+			{ headers: qmsClientHeaders(headers) },
+		),
+};
+
+type QMSClientHeaders = { clientId: string; apiKey: string };
+
+function qmsClientHeaders(headers: QMSClientHeaders) {
+	return {
+		"X-Client-ID": headers.clientId,
+		"X-API-Key": headers.apiKey,
+	};
 }
 
-export interface Service {
-	id: string;
-	tenant_id: string;
-	code: string;
-	name: string;
-	status: "active" | "inactive";
-	is_pharmacy: boolean;
-	is_pharmacy_reception: boolean;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface Counter {
-	id: string;
-	tenant_id: string;
-	branch_id: string;
-	code: string;
-	name: string;
-	status: "active" | "inactive";
-	created_at: number;
-	updated_at: number;
-}
-
-export interface Setting {
-	id: string;
-	tenant_id: string;
-	scope_type: "tenant" | "branch" | "service" | "counter";
-	scope_id: string;
-	key: string;
-	value: string;
-	value_type: "string" | "number" | "boolean" | "json";
-	is_active: boolean;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface Queue {
-	id: string;
-	tenant_id: string;
-	branch_id: string;
-	queue_date: string;
-	ticket_no: string;
-	queue_no: number;
-	patient_id?: string;
-	patient_name?: string;
-	status: string;
-	current_journey_id?: string;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface QueueJourney {
-	id: string;
-	queue_id: string;
-	service_id: string;
-	counter_id?: string;
-	seq_no: number;
-	status: string;
-	created_at: number;
-	updated_at: number;
-}
-
-export interface VisitJourney {
-	id: string;
-	queue_id: string;
-	tenant_id: string;
-	event_type: string;
-	payload?: string;
-	created_at: number;
-}
-
-export interface QueueStatsResponse {
-	total_queues_today: number;
-	total_active_journeys: number;
-	total_completed_visits: number;
-	waiting_by_service: Record<string, number>;
-}
-
-export interface ScannerCheckInResponse {
-	action: "register" | "forward";
-	queue: Queue;
-}
+export const signageApi = {
+	me: (headers: QMSClientHeaders) =>
+		api.get<{ data: SignageMeResponse }>("/signage/me", {
+			headers: qmsClientHeaders(headers),
+		}),
+	getCurrentCalls: (headers: QMSClientHeaders) =>
+		api.get<{ data: SignageCurrentCallResponse[] }>("/signage/current-calls", {
+			headers: qmsClientHeaders(headers),
+		}),
+	getQueues: (headers: QMSClientHeaders) =>
+		api.get<{ data: Queue[] }>("/signage/queues", {
+			headers: qmsClientHeaders(headers),
+		}),
+};
 
 // -----------------------------------------------------------------------------
 // BRANCHES API
@@ -99,12 +115,10 @@ export interface ScannerCheckInResponse {
 export const branchesApi = {
 	getAll: () => api.get<{ data: Branch[] }>("/branches"),
 	getById: (id: string) => api.get<{ data: Branch }>(`/branches/${id}`),
-	create: (data: { code: string; name: string }) =>
+	create: (data: BranchUpsertPayload) =>
 		api.post<{ data: Branch }>("/branches", data),
-	update: (
-		id: string,
-		data: { code?: string; name?: string; status?: "active" | "inactive" },
-	) => api.put<{ data: Branch }>(`/branches/${id}`, data),
+	update: (id: string, data: BranchUpsertPayload) =>
+		api.put<{ data: Branch }>(`/branches/${id}`, data),
 	delete: (id: string) => api.delete(`/branches/${id}`),
 };
 
@@ -117,6 +131,12 @@ export const servicesApi = {
 	create: (data: {
 		code: string;
 		name: string;
+		type?: string;
+		default_estimated_duration?: number;
+		audio_id?: string;
+		audio_en?: string;
+		narrative_instruction_id?: string;
+		narrative_instruction_en?: string;
 		is_pharmacy: boolean;
 		is_pharmacy_reception: boolean;
 	}) => api.post<{ data: Service }>("/services", data),
@@ -125,6 +145,12 @@ export const servicesApi = {
 		data: {
 			code?: string;
 			name?: string;
+			type?: string;
+			default_estimated_duration?: number;
+			audio_id?: string;
+			audio_en?: string;
+			narrative_instruction_id?: string;
+			narrative_instruction_en?: string;
 			status?: "active" | "inactive";
 			is_pharmacy?: boolean;
 			is_pharmacy_reception?: boolean;
@@ -139,11 +165,22 @@ export const servicesApi = {
 export const countersApi = {
 	getAll: () => api.get<{ data: Counter[] }>("/counters"),
 	getById: (id: string) => api.get<{ data: Counter }>(`/counters/${id}`),
-	create: (data: { branch_id: string; code: string; name: string }) =>
-		api.post<{ data: Counter }>("/counters", data),
+	create: (data: {
+		branch_id: string;
+		branch_service_id?: string;
+		code: string;
+		name: string;
+		display_name?: string;
+	}) => api.post<{ data: Counter }>("/counters", data),
 	update: (
 		id: string,
-		data: { code?: string; name?: string; status?: "active" | "inactive" },
+		data: {
+			branch_service_id?: string;
+			code?: string;
+			name?: string;
+			display_name?: string;
+			status?: "active" | "inactive";
+		},
 	) => api.put<{ data: Counter }>(`/counters/${id}`, data),
 	delete: (id: string) => api.delete(`/counters/${id}`),
 };
@@ -231,45 +268,40 @@ export const scannerApi = {
 			destination_service_id?: string;
 			destination_counter_id?: string;
 		},
-		headers: { clientId: string; apiKey: string },
+		headers: QMSClientHeaders,
 	) =>
 		api.post<{ data: ScannerCheckInResponse }>("/scanner/check-in", data, {
-			headers: {
-				"X-Client-ID": headers.clientId,
-				"X-API-Key": headers.apiKey,
-			},
+			headers: qmsClientHeaders(headers),
 		}),
+};
+
+// -----------------------------------------------------------------------------
+// BRANCH SERVICES API
+// -----------------------------------------------------------------------------
+export const branchServicesApi = {
+	getByBranch: (branchId: string) =>
+		api.get<{ data: BranchService[] }>(`/branches/${branchId}/services`),
 };
 
 // -----------------------------------------------------------------------------
 // SETTINGS API
 // -----------------------------------------------------------------------------
 export const settingsApi = {
-	resolve: (params: {
-		key: string;
+	getEffective: (params?: {
 		branch_id?: string;
 		service_id?: string;
 		counter_id?: string;
 	}) => {
 		const searchParams = new URLSearchParams();
-		searchParams.append("key", params.key);
-		if (params.branch_id) searchParams.append("branch_id", params.branch_id);
-		if (params.service_id) searchParams.append("service_id", params.service_id);
-		if (params.counter_id) searchParams.append("counter_id", params.counter_id);
+		if (params?.branch_id) searchParams.append("branch_id", params.branch_id);
+		if (params?.service_id)
+			searchParams.append("service_id", params.service_id);
+		if (params?.counter_id)
+			searchParams.append("counter_id", params.counter_id);
 
-		return api.get<{ data: Setting }>(
-			`/settings/resolve?${searchParams.toString()}`,
+		const query = searchParams.toString();
+		return api.get<{ data: EffectiveQueueConfigResponse }>(
+			`/settings/effective${query ? `?${query}` : ""}`,
 		);
 	},
-	getById: (id: string) => api.get<{ data: Setting }>(`/settings/${id}`),
-	create: (data: {
-		scope_type: "tenant" | "branch" | "service" | "counter";
-		scope_id: string;
-		key: string;
-		value: string;
-		value_type?: "string" | "number" | "boolean" | "json";
-	}) => api.post<{ data: Setting }>("/settings", data),
-	update: (id: string, data: { value?: string; is_active?: boolean }) =>
-		api.put<{ data: Setting }>(`/settings/${id}`, data),
-	delete: (id: string) => api.delete(`/settings/${id}`),
 };

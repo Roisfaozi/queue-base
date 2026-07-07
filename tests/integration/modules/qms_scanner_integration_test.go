@@ -22,8 +22,6 @@ import (
 	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -56,11 +54,11 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	}
 
 	v := validator.New()
-	settingsMod := settingsModulePkg.NewSettingsModule(env.DB, v)
+	settingsMod := settingsModulePkg.NewSettingsModule(env.DB, v, env.Logger)
 	queueMod := queueModulePkg.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, env.Logger)
 	branchMod := branchModulePkg.NewBranchModule(env.DB, v, env.Logger)
-	serviceMod := serviceModulePkg.NewServiceModule(env.DB, v)
-	counterMod := counterModulePkg.NewCounterModule(env.DB, v, branchMod.BranchRepo)
+	serviceMod := serviceModulePkg.NewServiceModule(env.DB, v, branchMod.BranchRepo, env.Logger)
+	counterMod := counterModulePkg.NewCounterModule(env.DB, v, branchMod.BranchRepo, serviceMod.BranchServiceRepo, env.Logger)
 
 	deps := &scannerDeps{
 		db:                env.DB,
@@ -75,20 +73,20 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	}
 
 	// Create tenant organizations and branches
-	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.tenantID, Name: "TestTenant", Slug: "test-tenant-" + deps.tenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
+	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.tenantID, Code: "test-tenant-" + deps.tenantID[:6], Name: "TestTenant", Slug: "test-tenant-" + deps.tenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
 	require.NoError(t, deps.db.Create(&branchEntity.Branch{ID: deps.branchID, TenantID: deps.tenantID, Code: "BR1", Name: "Main Branch", Status: branchEntity.BranchStatusActive}).Error)
-	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.otherTenantID, Name: "OtherTenant", Slug: "other-tenant-" + deps.otherTenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
+	require.NoError(t, deps.db.Create(&orgEntity.Organization{ID: deps.otherTenantID, Code: "other-tenant-" + deps.otherTenantID[:6], Name: "OtherTenant", Slug: "other-tenant-" + deps.otherTenantID[:6], OwnerID: "system", Status: orgEntity.OrgStatusActive}).Error)
 
 	// Create services
 	require.NoError(t, deps.db.Create(&serviceEntity.Service{ID: deps.regServiceID, TenantID: deps.tenantID, Code: "RG", Name: "Registration", Status: serviceEntity.ServiceStatusActive}).Error)
 	require.NoError(t, deps.db.Create(&serviceEntity.Service{ID: deps.pharmacyServiceID, TenantID: deps.tenantID, Code: "PH", Name: "Pharmacy", Status: serviceEntity.ServiceStatusActive, IsPharmacy: true}).Error)
+	require.NoError(t, deps.db.Create(&serviceEntity.BranchService{ID: uuid.New().String(), TenantID: deps.tenantID, BranchID: deps.branchID, ServiceID: deps.regServiceID, IsActive: true}).Error)
+	require.NoError(t, deps.db.Create(&serviceEntity.BranchService{ID: uuid.New().String(), TenantID: deps.tenantID, BranchID: deps.branchID, ServiceID: deps.pharmacyServiceID, IsActive: true}).Error)
 
 	// Create counter
 	require.NoError(t, deps.db.Create(&counterEntity.Counter{ID: deps.counterID, TenantID: deps.tenantID, BranchID: deps.branchID, Code: "C1", Name: "Counter 1", Status: counterEntity.CounterStatusActive}).Error)
 
 	// Create pharmacy settings
-	require.NoError(t, deps.db.Create(&settingsEntity.Setting{ID: uuid.New().String(), TenantID: deps.tenantID, ScopeType: settingsEntity.ScopeTypeService, ScopeID: deps.pharmacyServiceID, Key: settingsModel.SettingKeyPharmacyFlowEnabled, Value: "true", ValueType: "boolean", IsActive: true}).Error)
-	require.NoError(t, deps.db.Create(&settingsEntity.Setting{ID: uuid.New().String(), TenantID: deps.tenantID, ScopeType: settingsEntity.ScopeTypeService, ScopeID: deps.pharmacyServiceID, Key: settingsModel.SettingKeyRequireCounterForService, Value: "true", ValueType: "boolean", IsActive: true}).Error)
 
 	// Create API key for scanner auth
 	apiKeyHash := sha256.Sum256([]byte(deps.apiKey))

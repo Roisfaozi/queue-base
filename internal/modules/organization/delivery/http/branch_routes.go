@@ -11,7 +11,9 @@ func RegisterBranchRoutes(router *gin.RouterGroup, controller *BranchController,
 		branchGroup.POST("", apiKeyMiddleware.RequireScopes("branch:manage"), controller.Create)
 		branchGroup.GET("", apiKeyMiddleware.RequireScopes("branch:view", "branch:manage"), controller.GetAll)
 		branchGroup.GET("/:id", apiKeyMiddleware.RequireScopes("branch:view", "branch:manage"), controller.GetByID)
+		branchGroup.GET("/:id/profile", apiKeyMiddleware.RequireScopes("branch:view", "branch:manage"), controller.GetByID)
 		branchGroup.PUT("/:id", apiKeyMiddleware.RequireScopes("branch:manage"), controller.Update)
+		branchGroup.PATCH("/:id/profile", apiKeyMiddleware.RequireScopes("branch:manage"), controller.Update)
 		branchGroup.DELETE("/:id", apiKeyMiddleware.RequireScopes("branch:manage"), controller.Delete)
 	}
 }

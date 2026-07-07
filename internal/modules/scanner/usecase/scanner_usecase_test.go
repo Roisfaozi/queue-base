@@ -74,7 +74,7 @@ func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID
 }
 
 func TestScannerAuditLogging(t *testing.T) {
-	t.Run("Register_EmitsAuditAndSurvivesFailure", func(t *testing.T) {
+	t.Run("Edge_Register_EmitsAuditAndSurvivesFailure", func(t *testing.T) {
 		qh := &stubQueueHandler{registerRes: &queueModel.QueueResponse{ID: "q-1"}}
 		audit := &stubAuditLogger{err: assert.AnError}
 		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
@@ -96,7 +96,7 @@ func TestScannerAuditLogging(t *testing.T) {
 		assert.Equal(t, "b-1", values["branch_id"])
 	})
 
-	t.Run("Forward_DoesNotLeakAPIKey", func(t *testing.T) {
+	t.Run("Vulnerability_Forward_DoesNotLeakAPIKey", func(t *testing.T) {
 		qh := &stubQueueHandler{forwardRes: &queueModel.QueueResponse{ID: "q-1"}}
 		audit := &stubAuditLogger{}
 		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
@@ -116,7 +116,7 @@ func TestScannerAuditLogging(t *testing.T) {
 		require.Equal("q-1", audit.entries[0].EntityID)
 	})
 
-	t.Run("Register_DoesNotLeakPatientData", func(t *testing.T) {
+	t.Run("Vulnerability_Register_DoesNotLeakPatientData", func(t *testing.T) {
 		qh := &stubQueueHandler{registerRes: &queueModel.QueueResponse{ID: "q-1"}}
 		audit := &stubAuditLogger{}
 		uc := NewScannerUseCase(qh, stubScannerAuthenticator{}, &stubRelationValidator{}, audit)
@@ -134,7 +134,7 @@ func TestScannerAuditLogging(t *testing.T) {
 		assert.NotContains(t, values, "patient_name")
 	})
 
-	t.Run("RejectsBranchMismatch", func(t *testing.T) {
+	t.Run("Vulnerability_RejectsBranchMismatch", func(t *testing.T) {
 		uc := NewScannerUseCase(&stubQueueHandler{}, stubScannerAuthenticator{}, &stubRelationValidator{}, &stubAuditLogger{})
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
 		ctx = database.SetBranchContext(ctx, "b-1")

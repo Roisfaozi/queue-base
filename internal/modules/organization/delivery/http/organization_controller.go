@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/pkg/response"
 	"github.com/Roisfaozi/queue-base/pkg/validation"
@@ -116,6 +117,26 @@ func (ctrl *OrganizationController) GetOrganization(c *gin.Context) {
 	response.Success(c, result)
 }
 
+func (ctrl *OrganizationController) GetTenantProfile(c *gin.Context) {
+	orgID := database.GetTenantID(c.Request.Context())
+	if orgID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, nil, "user not authenticated")
+		return
+	}
+	ctx := usecase.WithActorUserID(c.Request.Context(), userID.(string))
+	result, err := ctrl.OrgUseCase.GetOrganization(ctx, orgID)
+	if err != nil {
+		response.HandleError(c, err, "failed to get tenant profile")
+		return
+	}
+	response.Success(c, result)
+}
+
 // GetOrganizationBySlug retrieves an organization by slug
 // @Summary      Get organization by slug
 // @Description  Retrieves organization details by its slug
@@ -204,6 +225,36 @@ func (ctrl *OrganizationController) UpdateOrganization(c *gin.Context) {
 		return
 	}
 
+	response.Success(c, result)
+}
+
+func (ctrl *OrganizationController) UpdateTenantProfile(c *gin.Context) {
+	orgID := database.GetTenantID(c.Request.Context())
+	if orgID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, nil, "user not authenticated")
+		return
+	}
+	var request model.UpdateOrganizationRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid request body")
+		return
+	}
+	request.Sanitize()
+	if err := ctrl.validate.Struct(&request); err != nil {
+		response.ValidationError(c, err, validation.FormatValidationErrors(err))
+		return
+	}
+	ctx := usecase.WithActorUserID(c.Request.Context(), userID.(string))
+	result, err := ctrl.OrgUseCase.UpdateOrganization(ctx, orgID, &request)
+	if err != nil {
+		response.HandleError(c, err, "failed to update tenant profile")
+		return
+	}
 	response.Success(c, result)
 }
 

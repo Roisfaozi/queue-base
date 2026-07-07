@@ -12,10 +12,10 @@ import (
 	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	projectEntity "github.com/Roisfaozi/queue-base/internal/modules/project/entity"
+	qmsClientEntity "github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	webhookEntity "github.com/Roisfaozi/queue-base/internal/modules/webhook/entity"
 	"github.com/google/uuid"
@@ -38,8 +38,8 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		&orgEntity.OrganizationMember{},
 		&orgEntity.Branch{},
 		&serviceEntity.Service{},
+		&serviceEntity.BranchService{},
 		&counterEntity.Counter{},
-		&settingsEntity.Setting{},
 		&userEntity.UserSSOIdentity{},
 		&orgEntity.InvitationToken{},
 		&projectEntity.Project{},
@@ -49,6 +49,8 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		&apiKeyEntity.ApiKey{},
 		&webhookEntity.Webhook{},
 		&webhookEntity.WebhookLog{},
+		&qmsClientEntity.QMSClient{},
+		&qmsClientEntity.QMSClientCredential{},
 	)
 	if t != nil {
 		require.NoError(t, err, "Failed to run migrations")
@@ -95,6 +97,7 @@ func SeedTestData(t *testing.T, db *gorm.DB) {
 	globalOrg := "global"
 	globalOrgRecord := orgEntity.Organization{
 		ID:      globalOrg,
+		Code:    "global",
 		Name:    "Global Organization",
 		Slug:    "global",
 		OwnerID: "system",
@@ -164,6 +167,7 @@ func CleanupDatabase(t *testing.T, db *gorm.DB) {
 		"queue_counters",
 		"settings",
 		"counters",
+		"branch_services",
 		"services",
 		"branches",
 		"projects",
@@ -183,11 +187,13 @@ func CleanupDatabase(t *testing.T, db *gorm.DB) {
 		"api_keys",
 		"webhooks",
 		"webhook_logs",
+		"qms_client_credentials",
+		"qms_clients",
 	}
 
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	for _, table := range tables {
-		db.Exec("TRUNCATE TABLE " + table)
+		db.Exec("DELETE FROM " + table)
 	}
 	db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 }
@@ -226,6 +232,7 @@ func CreateTestUser(t *testing.T, db *gorm.DB, username, email, password string,
 func CreateTestOrganization(t *testing.T, db *gorm.DB, ownerID, name, slug string) *orgEntity.Organization {
 	org := &orgEntity.Organization{
 		ID:      uuid.New().String(),
+		Code:    slug,
 		Name:    name,
 		Slug:    slug,
 		OwnerID: ownerID,
@@ -242,6 +249,7 @@ func CreateTestRole(t *testing.T, db *gorm.DB, name string) *roleEntity.Role {
 	globalOrg := "global"
 	db.FirstOrCreate(&orgEntity.Organization{}, orgEntity.Organization{
 		ID:      globalOrg,
+		Code:    "global",
 		Name:    "Global Organization",
 		Slug:    "global",
 		OwnerID: "system",

@@ -53,7 +53,7 @@ func TestAccessRepository_FindEndpointsDynamic(t *testing.T) {
 		expectedCount int
 	}{
 		{
-			name: "Method GET",
+			name: "Positive_MethodGET",
 			filter: &querybuilder.DynamicFilter{
 				Filter: map[string]querybuilder.Filter{
 					"Method": {Type: "equals", From: "GET"},
@@ -129,7 +129,7 @@ func TestAccessRepository_CreateEndpoint(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, context.Context)
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			run: func(t *testing.T, repo repository.AccessRepository, ctx context.Context) {
 				endpoint := &entity.Endpoint{ID: "ep-1", Path: "/api/test", Method: "GET"}
 				err := repo.CreateEndpoint(ctx, endpoint)
@@ -141,7 +141,7 @@ func TestAccessRepository_CreateEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name: "Duplicate ID error",
+			name: "Negative_DuplicateIDError",
 			run: func(t *testing.T, repo repository.AccessRepository, ctx context.Context) {
 				endpoint := &entity.Endpoint{ID: "ep-dup", Path: "/api/first", Method: "GET"}
 				err := repo.CreateEndpoint(ctx, endpoint)
@@ -168,7 +168,7 @@ func TestAccessRepository_GetEndpoints(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Returns all endpoints",
+			name: "Positive_ReturnsAllEndpoints",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				endpoints := []entity.Endpoint{{ID: "get-1", Path: "/api/users", Method: "GET"}, {ID: "get-2", Path: "/api/roles", Method: "POST"}}
 				db.Create(&endpoints)
@@ -178,7 +178,7 @@ func TestAccessRepository_GetEndpoints(t *testing.T) {
 			},
 		},
 		{
-			name: "Empty table returns empty slice",
+			name: "Edge_EmptyTableReturnsEmptySlice",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				db.Exec("DELETE FROM endpoints")
 				result, err := repo.GetEndpoints(ctx)
@@ -203,7 +203,7 @@ func TestAccessRepository_GetEndpointByID(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Found",
+			name: "Positive_Found",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				endpoint := entity.Endpoint{ID: "find-1", Path: "/api/find", Method: "GET"}
 				db.Create(&endpoint)
@@ -213,7 +213,7 @@ func TestAccessRepository_GetEndpointByID(t *testing.T) {
 			},
 		},
 		{
-			name: "Not found",
+			name: "Negative_NotFound",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				_, err := repo.GetEndpointByID(ctx, "non-existent-id")
 				require.Error(t, err)
@@ -236,7 +236,7 @@ func TestAccessRepository_DeleteEndpoint(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				endpoint := entity.Endpoint{ID: "del-1", Path: "/api/delete", Method: "DELETE"}
 				db.Create(&endpoint)
@@ -247,7 +247,7 @@ func TestAccessRepository_DeleteEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name: "Delete non-existent does not error",
+			name: "Edge_DeleteNonExistentDoesNotError",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				err := repo.DeleteEndpoint(ctx, "never-existed")
 				require.NoError(t, err)
@@ -274,7 +274,7 @@ func TestAccessRepository_CreateAccessRight(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, context.Context)
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			run: func(t *testing.T, repo repository.AccessRepository, ctx context.Context) {
 				ar := &entity.AccessRight{ID: "ar-1", Name: "Test Access", Description: "Test description"}
 				err := repo.CreateAccessRight(ctx, ar)
@@ -285,7 +285,7 @@ func TestAccessRepository_CreateAccessRight(t *testing.T) {
 			},
 		},
 		{
-			name: "Duplicate ID error",
+			name: "Negative_DuplicateIDError",
 			run: func(t *testing.T, repo repository.AccessRepository, ctx context.Context) {
 				ar := &entity.AccessRight{ID: "ar-dup", Name: "First"}
 				err := repo.CreateAccessRight(ctx, ar)
@@ -312,7 +312,7 @@ func TestAccessRepository_GetAccessRights(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Returns all with preloaded endpoints",
+			name: "Positive_ReturnsAllWithPreloadedEndpoints",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				endpoint := entity.Endpoint{ID: "preload-ep", Path: "/api/preload", Method: "GET"}
 				db.Create(&endpoint)
@@ -348,7 +348,7 @@ func TestAccessRepository_GetAccessRightByID(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Found with preload",
+			name: "Positive_FoundWithPreload",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				endpoint := entity.Endpoint{ID: "ar-ep-1", Path: "/api/ar", Method: "GET"}
 				db.Create(&endpoint)
@@ -361,7 +361,7 @@ func TestAccessRepository_GetAccessRightByID(t *testing.T) {
 			},
 		},
 		{
-			name: "Not found",
+			name: "Negative_NotFound",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				_, err := repo.GetAccessRightByID(ctx, "non-existent")
 				require.Error(t, err)
@@ -384,7 +384,7 @@ func TestAccessRepository_DeleteAccessRight(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				ar := entity.AccessRight{ID: "ar-del", Name: "Delete Me"}
 				db.Create(&ar)
@@ -411,7 +411,7 @@ func TestAccessRepository_LinkEndpointToAccessRight(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				endpoint := entity.Endpoint{ID: "link-ep", Path: "/api/link", Method: "GET"}
 				db.Create(&endpoint)
@@ -442,7 +442,7 @@ func TestAccessRepository_UnlinkEndpointFromAccessRight(t *testing.T) {
 		run  func(*testing.T, repository.AccessRepository, *gorm.DB, context.Context)
 	}{
 		{
-			name: "Success",
+			name: "Positive_Success",
 			run: func(t *testing.T, repo repository.AccessRepository, db *gorm.DB, ctx context.Context) {
 				endpoint := entity.Endpoint{ID: "unlink-ep", Path: "/api/unlink", Method: "GET"}
 				require.NoError(t, db.Create(&endpoint).Error)

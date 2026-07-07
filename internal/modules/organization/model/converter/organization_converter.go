@@ -12,14 +12,22 @@ func OrganizationToResponse(org *entity.Organization) *model.OrganizationRespons
 		return nil
 	}
 	return &model.OrganizationResponse{
-		ID:        org.ID,
-		Name:      org.Name,
-		Slug:      org.Slug,
-		OwnerID:   org.OwnerID,
-		Settings:  org.Settings,
-		Status:    org.Status,
-		CreatedAt: org.CreatedAt,
-		UpdatedAt: org.UpdatedAt,
+		ID:          org.ID,
+		Name:        org.Name,
+		LegalName:   org.LegalName,
+		Slug:        org.Slug,
+		OwnerID:     org.OwnerID,
+		Address:     org.Address,
+		City:        org.City,
+		Province:    org.Province,
+		Phone:       org.Phone,
+		Email:       org.Email,
+		Timezone:    org.Timezone,
+		LogoAssetID: org.LogoAssetID,
+		Settings:    org.Settings,
+		Status:      org.Status,
+		CreatedAt:   org.CreatedAt,
+		UpdatedAt:   org.UpdatedAt,
 	}
 }
 

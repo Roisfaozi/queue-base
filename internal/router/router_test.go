@@ -10,15 +10,19 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/api_key"
 	"github.com/Roisfaozi/queue-base/internal/modules/audit"
 	"github.com/Roisfaozi/queue-base/internal/modules/auth"
+	"github.com/Roisfaozi/queue-base/internal/modules/caller"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter"
+	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
 	"github.com/Roisfaozi/queue-base/internal/modules/project"
+	"github.com/Roisfaozi/queue-base/internal/modules/qms_client"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue"
 	"github.com/Roisfaozi/queue-base/internal/modules/role"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner"
 	"github.com/Roisfaozi/queue-base/internal/modules/service"
 	"github.com/Roisfaozi/queue-base/internal/modules/settings"
+	"github.com/Roisfaozi/queue-base/internal/modules/signage"
 	"github.com/Roisfaozi/queue-base/internal/modules/stats"
 	"github.com/Roisfaozi/queue-base/internal/modules/user"
 	"github.com/Roisfaozi/queue-base/internal/modules/webhook"
@@ -49,6 +53,11 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&counter.CounterModule{},
 		&settings.SettingsModule{},
 		&queue.QueueModule{},
+		&caller.CallerModule{},
+		&operator_assignment.Module{},
+		&qms_client.QMSClientModule{},
+		&middleware.QMSClientMiddleware{},
+		&signage.SignageModule{},
 		&scanner.ScannerModule{},
 		&api_key.ApiKeyModule{},
 		&webhook.WebhookModule{},

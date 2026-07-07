@@ -64,6 +64,7 @@ func TestApiKeyLifecycle_Integration(t *testing.T) {
 				orgID, _ := uuid.NewV7()
 				org := &orgEntity.Organization{
 					ID:   orgID.String(),
+					Code: "test-org",
 					Name: "Test Org",
 					Slug: "test-org",
 				}

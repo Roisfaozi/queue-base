@@ -7,12 +7,14 @@ import (
 	"testing"
 
 	mocking "github.com/Roisfaozi/queue-base/internal/mocking"
+	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
 	permissionMocks "github.com/Roisfaozi/queue-base/internal/modules/permission/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -24,16 +26,40 @@ type organizationTestDeps struct {
 	OrgReader  *mocks.MockIOrganizationReader
 	TM         *mocking.MockWithTransactionManager
 	Enforcer   *permissionMocks.MockIEnforcer
+	AuditStub  *stubAuditUsecase
+}
+
+type stubAuditUsecase struct {
+	requests []auditModel.CreateAuditLogRequest
+}
+
+func (s *stubAuditUsecase) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
+	s.requests = append(s.requests, req)
+	return nil
+}
+
+func (s *stubAuditUsecase) GetLogsDynamic(ctx context.Context, filter *querybuilder.DynamicFilter) ([]auditModel.AuditLogResponse, int64, error) {
+	return nil, 0, nil
+}
+
+func (s *stubAuditUsecase) ExportLogs(ctx context.Context, fromDate, toDate string, process func([]auditModel.AuditLogResponse) error) error {
+	return nil
+}
+
+func (s *stubAuditUsecase) ExportLogsAsync(ctx context.Context, userID, orgID, fromDate, toDate, format string) error {
+	return nil
 }
 
 func setupOrganizationTest() (*organizationTestDeps, usecase.OrganizationUseCase) {
 	mockEnforcer := new(permissionMocks.MockIEnforcer)
+	auditStub := &stubAuditUsecase{}
 	deps := &organizationTestDeps{
 		OrgRepo:    new(mocks.MockOrganizationRepository),
 		MemberRepo: new(mocks.MockOrganizationMemberRepository),
 		OrgReader:  new(mocks.MockIOrganizationReader),
 		TM:         new(mocking.MockWithTransactionManager),
 		Enforcer:   mockEnforcer,
+		AuditStub:  auditStub,
 	}
 
 	log := logrus.New()
@@ -44,7 +70,7 @@ func setupOrganizationTest() (*organizationTestDeps, usecase.OrganizationUseCase
 	mockEnforcer.On("LoadPolicy").Maybe().Return(nil)
 	deps.OrgReader.On("InvalidateOrganizationCache", mock.Anything, mock.Anything).Maybe().Return(nil)
 
-	uc := usecase.NewOrganizationUseCase(log, deps.TM, deps.OrgRepo, deps.MemberRepo, deps.OrgReader, deps.Enforcer)
+	uc := usecase.NewOrganizationUseCase(log, deps.TM, deps.OrgRepo, deps.MemberRepo, deps.OrgReader, deps.Enforcer, auditStub)
 
 	return deps, uc
 }
@@ -71,7 +97,7 @@ func TestOrganizationUseCase(t *testing.T) {
 
 				deps.OrgRepo.On("SlugExists", ctx, req.Slug).Return(false, nil)
 				deps.OrgRepo.On("Create", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
-					return org.Name == req.Name && org.Slug == req.Slug && org.OwnerID == userID
+					return org.Name == req.Name && org.Slug == req.Slug && org.OwnerID == userID && org.Status == entity.OrgStatusDraft
 				}), usecase.DefaultOwnerRoleID).Return(nil)
 				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{
@@ -100,6 +126,45 @@ func TestOrganizationUseCase(t *testing.T) {
 				assert.Equal(t, req.Name, res.Name)
 				deps.OrgRepo.AssertExpectations(t)
 				deps.Enforcer.AssertExpectations(t)
+			},
+		},
+		{
+			name:     "Positive_CreateOrganization_ActiveWhenProfileComplete",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := context.Background()
+				userID := "user-123"
+				req := &model.CreateOrganizationRequest{
+					Name:        "Acme Corp",
+					Slug:        "acme-corp",
+					Address:     "Jl. Test",
+					City:        "Jakarta",
+					Province:    "DKI Jakarta",
+					Phone:       "021",
+					Timezone:    "Asia/Jakarta",
+					LogoAssetID: "asset-123",
+				}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(nil)
+
+				deps.OrgRepo.On("SlugExists", ctx, req.Slug).Return(false, nil)
+				deps.OrgRepo.On("Create", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
+					return org.Status == entity.OrgStatusActive && org.Address == req.Address && org.City == req.City && org.LogoAssetID == req.LogoAssetID
+				}), usecase.DefaultOwnerRoleID).Return(nil)
+				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
+				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{}, nil)
+				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:user", "global"}).Return([][]string{}, nil)
+				deps.Enforcer.On("AddGroupingPolicy", mock.Anything).Return(true, nil)
+
+				res, err := uc.CreateOrganization(ctx, userID, req)
+
+				assert.NoError(t, err)
+				assert.NotNil(t, res)
+				assert.Equal(t, entity.OrgStatusActive, res.Status)
 			},
 		},
 		{
@@ -308,6 +373,142 @@ func TestOrganizationUseCase(t *testing.T) {
 			},
 		},
 		{
+			name:     "Negative_UpdateOrganization_MissingLogoToActivate",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Status: entity.OrgStatusActive, Address: "A", City: "C", Province: "P", Phone: "1"}
+				existingOrg := &entity.Organization{ID: orgID, Status: entity.OrgStatusDraft, OwnerID: "owner-1"}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(exception.ErrBadRequest)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.ErrorIs(t, err, exception.ErrBadRequest)
+			},
+		},
+		{
+			name:     "Negative_UpdateOrganization_MissingAddressToActivate",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Status: entity.OrgStatusActive, City: "C", Province: "P", Phone: "1", LogoAssetID: "123"}
+				existingOrg := &entity.Organization{ID: orgID, Status: entity.OrgStatusDraft, OwnerID: "owner-1"}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(exception.ErrBadRequest)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.ErrorIs(t, err, exception.ErrBadRequest)
+			},
+		},
+		{
+			name:     "Negative_UpdateOrganization_MissingCityToActivate",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Status: entity.OrgStatusActive, Address: "A", Province: "P", Phone: "1", LogoAssetID: "123"}
+				existingOrg := &entity.Organization{ID: orgID, Status: entity.OrgStatusDraft, OwnerID: "owner-1"}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(exception.ErrBadRequest)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.ErrorIs(t, err, exception.ErrBadRequest)
+			},
+		},
+		{
+			name:     "Negative_UpdateOrganization_MissingProvinceToActivate",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Status: entity.OrgStatusActive, Address: "A", City: "C", Phone: "1", LogoAssetID: "123"}
+				existingOrg := &entity.Organization{ID: orgID, Status: entity.OrgStatusDraft, OwnerID: "owner-1"}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(exception.ErrBadRequest)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.ErrorIs(t, err, exception.ErrBadRequest)
+			},
+		},
+		{
+			name:     "Negative_UpdateOrganization_MissingPhoneToActivate",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Status: entity.OrgStatusActive, Address: "A", City: "C", Province: "P", LogoAssetID: "123"}
+				existingOrg := &entity.Organization{ID: orgID, Status: entity.OrgStatusDraft, OwnerID: "owner-1"}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(exception.ErrBadRequest)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.ErrorIs(t, err, exception.ErrBadRequest)
+			},
+		},
+		{
+			name:     "Positive_UpdateOrganization_AuditLogSettingsUpdate",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Settings: map[string]interface{}{"theme": "dark"}}
+				existingOrg := &entity.Organization{ID: orgID, Name: "Old Name", OwnerID: "owner-1"}
+				existingOrg.Settings = map[string]interface{}{"theme": "light"}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(nil)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+				deps.OrgRepo.On("Update", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
+					return org.Settings["theme"] == "dark"
+				})).Return(nil)
+				deps.OrgReader.On("InvalidateOrganizationCache", ctx, orgID).Return(nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.NoError(t, err)
+
+				// Verify audit log captured the setting change specifically
+				assert.Len(t, deps.AuditStub.requests, 1)
+				assert.Equal(t, "ORGANIZATION_UPDATE", deps.AuditStub.requests[0].Action)
+				assert.Equal(t, "organization", deps.AuditStub.requests[0].Entity)
+			},
+		},
+		{
 			name:     "Positive_UpdateOrganization_Success",
 			category: "positive",
 			run: func(t *testing.T) {
@@ -330,6 +531,39 @@ func TestOrganizationUseCase(t *testing.T) {
 				res, err := uc.UpdateOrganization(ctx, orgID, req)
 				assert.NoError(t, err)
 				assert.Equal(t, "New Name", res.Name)
+			},
+		},
+		{
+			name:     "Positive_UpdateOrganization_ActivateWithFieldsInSameRequest",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{
+					Status:      entity.OrgStatusActive,
+					Address:     "Jl. Test",
+					City:        "Jakarta",
+					Province:    "DKI Jakarta",
+					Phone:       "021",
+					Timezone:    "Asia/Jakarta",
+					LogoAssetID: "asset-123",
+				}
+				existingOrg := &entity.Organization{ID: orgID, OwnerID: "owner-1", Status: entity.OrgStatusDraft}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					_ = fn(ctx)
+				}).Return(nil)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+				deps.OrgRepo.On("Update", ctx, mock.MatchedBy(func(org *entity.Organization) bool {
+					return org.Status == entity.OrgStatusActive && org.Address == req.Address && org.Timezone == req.Timezone
+				})).Return(nil)
+
+				res, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.NoError(t, err)
+				assert.Equal(t, entity.OrgStatusActive, res.Status)
 			},
 		},
 		{
@@ -379,6 +613,28 @@ func TestOrganizationUseCase(t *testing.T) {
 				res, err := uc.UpdateOrganization(ctx, orgID, req)
 				assert.NoError(t, err)
 				assert.Equal(t, "Name", res.Name)
+			},
+		},
+		{
+			name:     "Negative_UpdateOrganization_ActivateMissingFields",
+			category: "negative",
+			run: func(t *testing.T) {
+				deps, uc := setupOrganizationTest()
+				ctx := usecase.WithActorUserID(context.Background(), "owner-1")
+				orgID := "org-1"
+				req := &model.UpdateOrganizationRequest{Status: entity.OrgStatusActive}
+				existingOrg := &entity.Organization{ID: orgID, OwnerID: "owner-1", Status: entity.OrgStatusInactive}
+
+				deps.TM.On("WithinTransaction", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					fn := args.Get(1).(func(context.Context) error)
+					err := fn(ctx)
+					assert.ErrorIs(t, err, exception.ErrBadRequest)
+				}).Return(exception.ErrBadRequest)
+
+				deps.OrgRepo.On("FindByID", ctx, orgID).Return(existingOrg, nil)
+
+				_, err := uc.UpdateOrganization(ctx, orgID, req)
+				assert.ErrorIs(t, err, exception.ErrBadRequest)
 			},
 		},
 		{
@@ -438,7 +694,7 @@ func TestOrganizationUseCase(t *testing.T) {
 			},
 		},
 		{
-			name:     "Security_UpdateOrganization_ForbiddenForNonManagerActor",
+			name:     "Vulnerability_UpdateOrganization_ForbiddenForNonManagerActor",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupOrganizationTest()
@@ -602,7 +858,7 @@ func TestOrganizationUseCase(t *testing.T) {
 		},
 
 		{
-			name:     "Security_CreateOrganization_XSS",
+			name:     "Vulnerability_CreateOrganization_XSS",
 			category: "security",
 			run: func(t *testing.T) {
 				deps, uc := setupOrganizationTest()

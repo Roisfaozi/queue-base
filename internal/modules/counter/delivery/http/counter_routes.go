@@ -14,4 +14,14 @@ func RegisterCounterRoutes(router *gin.RouterGroup, controller *CounterControlle
 		counterGroup.PUT("/:id", apiKeyMiddleware.RequireScopes("counter:manage"), controller.Update)
 		counterGroup.DELETE("/:id", apiKeyMiddleware.RequireScopes("counter:manage"), controller.Delete)
 	}
+
+	branchCounterGroup := router.Group("/branches/:id/counters")
+	{
+		branchCounterGroup.POST("", apiKeyMiddleware.RequireScopes("counter:manage"), controller.CreateUnderBranch)
+		branchCounterGroup.GET("", apiKeyMiddleware.RequireScopes("counter:view", "counter:manage"), controller.GetAllUnderBranch)
+		branchCounterGroup.GET("/:counter_id", apiKeyMiddleware.RequireScopes("counter:view", "counter:manage"), controller.GetByIDUnderBranch)
+		branchCounterGroup.PUT("/:counter_id", apiKeyMiddleware.RequireScopes("counter:manage"), controller.UpdateUnderBranch)
+		branchCounterGroup.PATCH("/:counter_id", apiKeyMiddleware.RequireScopes("counter:manage"), controller.UpdateUnderBranch)
+		branchCounterGroup.DELETE("/:counter_id", apiKeyMiddleware.RequireScopes("counter:manage"), controller.DeleteUnderBranch)
+	}
 }
