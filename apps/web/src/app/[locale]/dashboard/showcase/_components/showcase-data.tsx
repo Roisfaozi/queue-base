@@ -973,22 +973,30 @@ function getCategoryGroups() {
 function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 	if (entry.slug === "button") {
 		return (
-			<div className="flex flex-wrap gap-2">
+			<div className="flex flex-wrap items-center gap-2">
 				<Button>Default</Button>
 				<Button variant="secondary">Secondary</Button>
 				<Button variant="outline">Outline</Button>
-				<Button variant="destructive">Danger</Button>
+				<Button variant="ghost">Ghost</Button>
+				<Button variant="destructive">Delete</Button>
+				<Button size="sm">Small</Button>
+				<Button size="lg">Large</Button>
 			</div>
 		);
 	}
+
 	if (["input", "search-input", "smart-form-field"].includes(entry.slug)) {
 		return (
 			<div className="grid max-w-sm gap-2">
-				<Label>{entry.title}</Label>
-				<Input placeholder={`${entry.title} preview`} />
+				<Label htmlFor={`${entry.slug}-preview`}>{entry.title}</Label>
+				<Input id={`${entry.slug}-preview`} placeholder="user@example.com" />
+				<p className="text-muted-foreground text-xs">
+					Typed value, helper text, and validation state.
+				</p>
 			</div>
 		);
 	}
+
 	if (entry.slug === "select") {
 		return (
 			<Select defaultValue="one">
@@ -998,94 +1006,156 @@ function ComponentPreview({ entry }: { entry: ShowcaseEntry }) {
 				<SelectContent>
 					<SelectItem value="one">Option one</SelectItem>
 					<SelectItem value="two">Option two</SelectItem>
+					<SelectItem value="three">Option three</SelectItem>
 				</SelectContent>
 			</Select>
 		);
 	}
+
 	if (
 		[
 			"checkbox",
 			"switch",
-			"radio-group",
-			"toggle",
-			"toggle-group",
 			"density-switcher",
 			"density-toggle",
 			"theme-toggle",
 		].includes(entry.slug)
 	) {
 		return (
-			<div className="flex flex-wrap items-center gap-4">
-				<div className="flex items-center gap-2">
+			<div className="grid gap-4 sm:grid-cols-2">
+				<div className="flex items-center gap-3 rounded-lg border bg-background p-4">
 					<Checkbox id={`${entry.slug}-check`} defaultChecked />
-					<Label htmlFor={`${entry.slug}-check`}>Checked</Label>
+					<div className="grid gap-1">
+						<Label htmlFor={`${entry.slug}-check`}>Remember me</Label>
+						<p className="text-muted-foreground text-xs">
+							Keep current session.
+						</p>
+					</div>
 				</div>
-				<Switch defaultChecked />
+				<div className="flex items-center justify-between rounded-lg border bg-background p-4">
+					<div className="grid gap-1">
+						<Label htmlFor={`${entry.slug}-switch`}>Auto save</Label>
+						<p className="text-muted-foreground text-xs">
+							Sync draft on change.
+						</p>
+					</div>
+					<Switch id={`${entry.slug}-switch`} defaultChecked />
+				</div>
 			</div>
 		);
 	}
+
 	if (["progress", "skeleton", "skeletons"].includes(entry.slug)) {
 		return (
 			<div className="grid max-w-sm gap-3">
+				<div className="flex items-center justify-between text-sm">
+					<span className="font-medium">Syncing</span>
+					<span className="text-muted-foreground">64%</span>
+				</div>
 				<Progress value={64} />
 				<Skeleton className="h-4 w-full" />
 				<Skeleton className="h-4 w-2/3" />
 			</div>
 		);
 	}
+
 	if (["tabs", "navigation-menu", "menubar"].includes(entry.slug)) {
 		return (
 			<Tabs defaultValue="one" className="max-w-md">
 				<TabsList>
 					<TabsTrigger value="one">Overview</TabsTrigger>
 					<TabsTrigger value="two">Details</TabsTrigger>
+					<TabsTrigger value="three">History</TabsTrigger>
 				</TabsList>
 				<TabsContent value="one" className="rounded-md border p-3">
-					Tab content
+					Overview
 				</TabsContent>
 				<TabsContent value="two" className="rounded-md border p-3">
-					More content
+					Details
+				</TabsContent>
+				<TabsContent value="three" className="rounded-md border p-3">
+					History
 				</TabsContent>
 			</Tabs>
 		);
 	}
-	if (entry.category === "Landing") {
+
+	if (entry.slug === "badge") {
 		return (
-			<div className="rounded-xl bg-gradient-to-b from-primary/10 to-background p-8 text-center">
-				<h3 className="text-xl font-semibold">{entry.title}</h3>
-				<p className="text-muted-foreground mt-2 text-sm">
-					Landing section preview.
-				</p>
-				<Button className="mt-4" size="sm">
-					Call to action
-				</Button>
+			<div className="flex flex-wrap gap-2">
+				<Badge>Published</Badge>
+				<Badge variant="secondary">Draft</Badge>
+				<Badge variant="destructive">Blocked</Badge>
+				<Badge variant="success">Approved</Badge>
+				<Badge variant="warning">Pending</Badge>
+				<Badge variant="outline">v1.2</Badge>
 			</div>
 		);
 	}
-	if (["Layout", "Dashboard"].includes(entry.category)) {
+
+	if (entry.slug === "textarea") {
 		return (
-			<div className="grid gap-3 md:grid-cols-3">
+			<div className="grid max-w-sm gap-2">
+				<Label htmlFor="preview-textarea">Description</Label>
+				<Textarea
+					id="preview-textarea"
+					placeholder="Write a short note"
+					className="min-h-20 resize-none"
+				/>
+			</div>
+		);
+	}
+
+	if (entry.slug === "card" || entry.slug === "kpi-card") {
+		return (
+			<div className="grid gap-4 md:grid-cols-3">
 				<Card className="md:col-span-2">
 					<CardHeader>
-						<CardTitle className="text-base">Main section</CardTitle>
-						<CardDescription>
-							{entry.title} composition preview.
-						</CardDescription>
+						<CardTitle className="text-base">Volume</CardTitle>
+						<CardDescription>Live traffic.</CardDescription>
 					</CardHeader>
+					<CardContent className="flex items-end justify-between gap-4">
+						<div>
+							<p className="text-3xl font-semibold">128</p>
+						</div>
+						<Badge variant="secondary">+12%</Badge>
+					</CardContent>
 				</Card>
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-base">Side</CardTitle>
-						<CardDescription>Supporting panel.</CardDescription>
+						<CardTitle className="text-base">Avg Time</CardTitle>
 					</CardHeader>
+					<CardContent>
+						<p className="text-2xl font-semibold">4m 12s</p>
+					</CardContent>
 				</Card>
 			</div>
 		);
 	}
+
+	if (["Layout", "Dashboard", "Landing"].includes(entry.category)) {
+		return (
+			<div className="rounded-2xl border bg-gradient-to-br from-primary/5 via-background to-muted/20 p-8">
+				<div className="max-w-xl space-y-4">
+					<Badge variant="secondary">{entry.category} preview</Badge>
+					<h3 className="text-2xl font-semibold tracking-tight">
+						{entry.title}
+					</h3>
+					<p className="text-muted-foreground text-sm">
+						Realistic spatial layout mock for higher-order component.
+					</p>
+					<div className="flex gap-2">
+						<Button>Primary</Button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<Card className="max-w-md">
 			<CardHeader>
-				<div className="flex items-center justify-between">
+				<div className="flex items-center justify-between gap-3">
 					<CardTitle className="text-base">{entry.title}</CardTitle>
 					<Badge variant="secondary">{entry.level}</Badge>
 				</div>
