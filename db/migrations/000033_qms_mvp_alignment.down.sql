@@ -8,6 +8,8 @@ DROP INDEX uk_branch_service_queue_settings_branch_service ON branch_service_que
 CREATE UNIQUE INDEX uk_service_queue_settings_service 
     ON branch_service_queue_settings (tenant_id, branch_service_id);
 
+DROP INDEX idx_branch_service_queue_settings_tenant ON branch_service_queue_settings;
+
 ALTER TABLE branch_service_queue_settings 
     DROP FOREIGN KEY fk_branch_service_queue_settings_branches;
 

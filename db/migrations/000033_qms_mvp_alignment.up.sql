@@ -20,6 +20,9 @@ SET bsqs.branch_id = bs.branch_id;
 ALTER TABLE branch_service_queue_settings
     MODIFY COLUMN branch_id VARCHAR(36) NOT NULL;
 
+CREATE INDEX idx_branch_service_queue_settings_tenant
+    ON branch_service_queue_settings (tenant_id);
+
 ALTER TABLE branch_service_queue_settings 
     ADD CONSTRAINT fk_branch_service_queue_settings_branch_services 
     FOREIGN KEY (branch_service_id) REFERENCES branch_services(id) ON DELETE CASCADE;
