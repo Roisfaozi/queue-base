@@ -1119,43 +1119,41 @@ function ComponentPreview({
 		);
 	}
 
-	if (
-		[
-			"dialog",
-			"alert-dialog",
-			"sheet",
-			"popover",
-			"dropdown-menu",
-			"context-menu",
-		].includes(entry.slug)
-	) {
+	if (["dialog", "alert-dialog", "sheet"].includes(entry.slug)) {
 		return (
-			<div className="grid gap-4 md:grid-cols-[1fr_280px]">
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Call ticket A-012</CardTitle>
-						<CardDescription>
-							Customer waits at Branch Jakarta Selatan, Counter 03.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="flex flex-wrap gap-2">
-						<Button>Confirm call</Button>
-						<Button variant="outline">Send to counter</Button>
-						<Button variant="ghost">Postpone 5 min</Button>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Menu preview</CardTitle>
-					</CardHeader>
-					<CardContent className="grid gap-2 text-sm">
-						<p>View ticket detail</p>
-						<p>Move to priority lane</p>
-						<p>Print receipt</p>
-						<p>Cancel visit</p>
-					</CardContent>
-				</Card>
-			</div>
+			<Card className="shadow-none">
+				<CardHeader className="pb-3">
+					<CardTitle className="text-base">Call ticket A-012</CardTitle>
+					<CardDescription>
+						Customer waits at Branch Jakarta Selatan, Counter 03.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="flex flex-wrap gap-2">
+					<Button size="sm">Confirm call</Button>
+					<Button size="sm" variant="outline">
+						Send to counter
+					</Button>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (["popover", "dropdown-menu", "context-menu"].includes(entry.slug)) {
+		return (
+			<Card className="shadow-none">
+				<CardHeader className="pb-3">
+					<CardTitle className="text-sm font-medium">Menu preview</CardTitle>
+				</CardHeader>
+				<CardContent className="grid gap-3 text-sm">
+					<p className="cursor-pointer hover:underline">View ticket detail</p>
+					<p className="cursor-pointer hover:underline">
+						Move to priority lane
+					</p>
+					<p className="cursor-pointer text-destructive hover:underline">
+						Cancel visit
+					</p>
+				</CardContent>
+			</Card>
 		);
 	}
 
