@@ -171,6 +171,11 @@ func TestSettingsController_EffectiveConfigAliasPaths(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
+	router.GET("/queue-config/effective", func(c *gin.Context) {
+		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
+		c.Request = c.Request.WithContext(ctx)
+		controller.EffectiveQueueConfig(c)
+	})
 	router.GET("/branches/:branch_id/effective-config", controller.EffectiveBranchConfig)
 	router.GET("/branches/:branch_id/services/:service_id/effective-config", controller.EffectiveBranchServiceConfig)
 	router.GET("/branches/:branch_id/counters/:counter_id/effective-config", controller.EffectiveCounterConfig)
@@ -179,6 +184,7 @@ func TestSettingsController_EffectiveConfigAliasPaths(t *testing.T) {
 		name string
 		path string
 	}{
+		{name: "Positive_QueueConfigEffective", path: "/queue-config/effective?branch_id=550e8400-e29b-41d4-a716-446655440000"},
 		{name: "Positive_BranchEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/effective-config"},
 		{name: "Positive_ServiceEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/services/550e8400-e29b-41d4-a716-446655440002/effective-config"},
 		{name: "Positive_CounterEffectiveConfig", path: "/branches/550e8400-e29b-41d4-a716-446655440000/counters/550e8400-e29b-41d4-a716-446655440003/effective-config"},

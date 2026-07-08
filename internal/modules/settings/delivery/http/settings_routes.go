@@ -11,6 +11,12 @@ func RegisterSettingsRoutes(router *gin.RouterGroup, controller *SettingsControl
 		settingsGroup.GET("/effective", apiKeyMiddleware.RequireScopes("settings:view", "settings:manage"), controller.EffectiveQueueConfig)
 	}
 
+	// QMS domain compliant routes
+	qmsConfigGroup := router.Group("/queue-config")
+	{
+		qmsConfigGroup.GET("/effective", apiKeyMiddleware.RequireScopes("settings:view", "settings:manage"), controller.EffectiveQueueConfig)
+	}
+
 	branchGroup := router.Group("/branches/:id")
 	{
 		branchGroup.GET("/effective-config", apiKeyMiddleware.RequireScopes("settings:view", "settings:manage"), controller.EffectiveBranchConfig)

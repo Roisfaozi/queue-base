@@ -301,7 +301,7 @@ export const settingsApi = {
 
 		const query = searchParams.toString();
 		return api.get<{ data: EffectiveQueueConfigResponse }>(
-			`/settings/effective${query ? `?${query}` : ""}`,
+			`/queue-config/effective${query ? `?${query}` : ""}`,
 		);
 	},
 };
