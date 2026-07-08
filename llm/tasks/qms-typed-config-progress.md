@@ -1544,3 +1544,46 @@ Design sources:
   - result: passed
 - next step:
   - End of QMS backend MVP build slice. Hand off to QA or frontend integration.
+
+## 2026-07-08 — queue_config Unit Tests + Operator Assignments Frontend
+
+- status: completed
+- owner paths:
+  - `internal/modules/queue_config/repository/queue_config_repository_test.go`
+  - `internal/modules/queue_config/usecase/queue_config_usecase_test.go`
+  - `internal/modules/queue_config/test/mocks/mock_audit_usecase.go`
+  - `internal/modules/queue_config/test/mocks/mock_queue_config_repository.go`
+  - `packages/api-types/src/qms/operator.ts`
+  - `apps/web/src/lib/api/qms.ts`
+  - `apps/web/src/app/[locale]/dashboard/operator-assignments/`
+  - `apps/web/src/components/layout/sidebar.tsx`
+  - `apps/web/src/app/[locale]/dashboard/qms-setup/_components/qms-setup-wizard.tsx`
+  - `tests/integration/qms_caller_integration_test.go`
+  - `tests/integration/modules/qms_journey_lifecycle_integration_test.go`
+  - `tests/integration/modules/qms_queue_integration_test.go`
+- design source:
+  - `documentation/New Design Document — QMS MVP Operatio.md`
+- work done:
+  - Added unit tests for `QueueConfigRepository` (4 subtests covering all upsert types with SQLite in-memory).
+  - Added unit tests for `QueueConfigUseCase` covering tenant update with audit emission, bad request validation, and reset without audit.
+  - Fixed integration test build errors: renamed `settings` → `queue_config` package reference in 3 integration test files.
+  - Fixed `queue_config_repository.go` upsert SQLite compatibility (fresh query for Updates after Take).
+  - Added `OperatorAssignmentRequest`/`OperatorAssignmentResponse` types to `@casbin/api-types`.
+  - Added `operatorAssignmentsApi` helper to `apps/web/src/lib/api/qms.ts`.
+  - Created `/dashboard/operator-assignments` page with table and create form.
+  - Added sidebar nav entry for Operator Assignments.
+  - Added Operator Assignment step to QMS Setup Wizard (steps array, stepDone, blockers).
+- tests added/updated:
+  - positive: repo upsert creates and updates all 4 setting types.
+  - positive: usecase update emits audit log on success.
+  - negative: usecase rejects empty tenant ID.
+  - vulnerability: usecase reset does not panic when audit is nil.
+- verification:
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test ./internal/modules/queue_config/... -count=1`
+  - result: passed
+  - command: `pnpm typecheck` (in apps/web)
+  - result: passed
+  - command: `PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go test -tags=integration -run=^$ ./tests/integration/...`
+  - result: build OK (no tests run, compile check only)
+- next step:
+  - All MVP backend and frontend gaps closed. Ready for full integration E2E with Docker.

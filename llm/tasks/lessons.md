@@ -146,3 +146,10 @@
 - error: `NewQueueUseCase(...)` returns `QueueUseCase`, so concrete helper methods are not callable on the returned value.
 - fix: in same-package tests that need an unexported helper, type assert once to `*queueUseCase` after construction.
 - prevention: prefer public behavior tests first; only use concrete type assertion for focused internal helper coverage that avoids wider fixture setup.
+
+## 2026-07-08 — Batch sed edits on structured TSX files break easily
+
+- problem: using sed to insert entire objects into large `.tsx` arrays matched too many patterns (e.g., matching `qms_client` in key name, href, description, and requirement text), causing duplicate inserts and corrupt structure.
+- root cause: sed pattern `/pattern/,/anchor/` on single-line triggers in a multi-line object is too brittle.
+- fix: restore file from `git show HEAD:path > path`, then use exact line-number sed insertion (`sed -i '<line>i\` or `<line>a\`) instead of pattern ranges.
+- prevention: for TSX/JS array inserts, prefer targeted line-number insertion over pattern-based sed when the object spans multiple lines and the anchor word appears in string values.
