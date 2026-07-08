@@ -52,7 +52,7 @@ func (r *queueConfigRepository) upsert(ctx context.Context, table, firstKey stri
 		for i := 0; i < len(extraWhere); i += 2 {
 			query = query.Where(fmt.Sprintf("%s = ?", extraWhere[i]), extraWhere[i+1])
 		}
-		if err := query.Take(map[string]any{}).Error; err != nil {
+		if err := query.Take(&map[string]any{}).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				payload := make(map[string]any, len(values)+len(extraWhere)/2+1)
 				payload[firstKey] = firstValue
@@ -66,6 +66,11 @@ func (r *queueConfigRepository) upsert(ctx context.Context, table, firstKey stri
 			}
 			return err
 		}
-		return query.Updates(values).Error
+		
+		updateQuery := tx.Table(table).Where(fmt.Sprintf("%s = ?", firstKey), firstValue)
+		for i := 0; i < len(extraWhere); i += 2 {
+			updateQuery = updateQuery.Where(fmt.Sprintf("%s = ?", extraWhere[i]), extraWhere[i+1])
+		}
+		return updateQuery.Updates(values).Error
 	})
 }
