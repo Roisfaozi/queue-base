@@ -10,8 +10,12 @@ import (
 	branchRepository "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	serviceRepository "github.com/Roisfaozi/queue-base/internal/modules/service/repository"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+)
+
+const (
+	queueConfigKeyPharmacyFlowEnabled      = "pharmacy_flow_enabled"
+	queueConfigKeyRequireCounterForService = "require_counter_for_service"
 )
 
 type settingsResolver interface {
@@ -60,10 +64,10 @@ func (v *relationValidator) Validate(ctx context.Context, tenantID, branchID, se
 		requireCounter := service.IsPharmacy
 		pharmacyFlowEnabled := service.IsPharmacy
 		if v.settings != nil {
-			if value, resolveErr := v.settings.Resolve(ctx, settingsModel.SettingKeyPharmacyFlowEnabled, branchID, serviceID, counterID); resolveErr == nil {
+			if value, resolveErr := v.settings.Resolve(ctx, queueConfigKeyPharmacyFlowEnabled, branchID, serviceID, counterID); resolveErr == nil {
 				pharmacyFlowEnabled = value == "true"
 			}
-			if value, resolveErr := v.settings.Resolve(ctx, settingsModel.SettingKeyRequireCounterForService, branchID, serviceID, counterID); resolveErr == nil {
+			if value, resolveErr := v.settings.Resolve(ctx, queueConfigKeyRequireCounterForService, branchID, serviceID, counterID); resolveErr == nil {
 				requireCounter = value == "true"
 			}
 		}

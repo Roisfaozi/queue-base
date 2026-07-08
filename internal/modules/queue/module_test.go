@@ -7,7 +7,6 @@ import (
 	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
 )
@@ -140,8 +139,8 @@ func TestDefaultRelationValidator_Validate(t *testing.T) {
 					branchServiceRepo: &stubBranchServiceRepo{branchService: &serviceEntity.BranchService{ServiceID: "svc-1", BranchID: "b-1", TenantID: "t-1", IsActive: true}},
 					counterRepo:       &stubCounterRepo{counter: &counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1"}},
 					settings: &stubQueueSettingsResolver{values: map[string]string{
-						settingsModel.SettingKeyPharmacyFlowEnabled:      "true",
-						settingsModel.SettingKeyRequireCounterForService: "true",
+						queueConfigKeyPharmacyFlowEnabled:      "true",
+						queueConfigKeyRequireCounterForService: "true",
 					}},
 				}
 			},
@@ -160,7 +159,7 @@ func TestDefaultRelationValidator_Validate(t *testing.T) {
 					branchServiceRepo: &stubBranchServiceRepo{branchService: &serviceEntity.BranchService{ServiceID: "svc-1", BranchID: "b-1", TenantID: "t-1", IsActive: true}},
 					counterRepo:       &stubCounterRepo{},
 					settings: &stubQueueSettingsResolver{values: map[string]string{
-						settingsModel.SettingKeyPharmacyFlowEnabled: "false",
+						queueConfigKeyPharmacyFlowEnabled: "false",
 					}},
 				}
 			},
@@ -180,7 +179,7 @@ func TestDefaultRelationValidator_Validate(t *testing.T) {
 					branchServiceRepo: &stubBranchServiceRepo{branchService: &serviceEntity.BranchService{ServiceID: "svc-1", BranchID: "b-1", TenantID: "t-1", IsActive: true}},
 					counterRepo:       &stubCounterRepo{},
 					settings: &stubQueueSettingsResolver{values: map[string]string{
-						settingsModel.SettingKeyRequireCounterForService: "true",
+						queueConfigKeyRequireCounterForService: "true",
 					}},
 				}
 			},
