@@ -251,6 +251,42 @@ export const queuesApi = {
 			`/branches/${branchId}/counters/${counterId}/queue-journeys${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
 		);
 	},
+	updateTenant: (data: Record<string, unknown>) =>
+		api.patch<{ data: void }>("/queue-config", data),
+	updateBranch: (branchId: string, data: Record<string, unknown>) =>
+		api.patch<{ data: void }>(`/branches/${branchId}/queue-config`, data),
+	updateBranchService: (
+		branchId: string,
+		branchServiceId: string,
+		data: Record<string, unknown>,
+	) =>
+		api.patch<{ data: void }>(
+			`/branches/${branchId}/services/${branchServiceId}/queue-config`,
+			data,
+		),
+	updateCounter: (
+		branchId: string,
+		counterId: string,
+		data: Record<string, unknown>,
+	) =>
+		api.patch<{ data: void }>(
+			`/branches/${branchId}/counters/${counterId}/queue-config`,
+			data,
+		),
+	resetBranch: (branchId: string, field: string) =>
+		api.delete(`/branches/${branchId}/queue-config/${field}`),
+	resetBranchService: (
+		branchId: string,
+		branchServiceId: string,
+		field: string,
+	) =>
+		api.delete(
+			`/branches/${branchId}/services/${branchServiceId}/queue-config/${field}`,
+		),
+	resetCounter: (branchId: string, counterId: string, field: string) =>
+		api.delete(
+			`/branches/${branchId}/counters/${counterId}/queue-config/${field}`,
+		),
 };
 
 // -----------------------------------------------------------------------------
@@ -304,4 +340,40 @@ export const settingsApi = {
 			`/queue-config/effective${query ? `?${query}` : ""}`,
 		);
 	},
+	updateTenant: (data: Record<string, unknown>) =>
+		api.patch<{ data: void }>("/queue-config", data),
+	updateBranch: (branchId: string, data: Record<string, unknown>) =>
+		api.patch<{ data: void }>(`/branches/${branchId}/queue-config`, data),
+	updateBranchService: (
+		branchId: string,
+		branchServiceId: string,
+		data: Record<string, unknown>,
+	) =>
+		api.patch<{ data: void }>(
+			`/branches/${branchId}/services/${branchServiceId}/queue-config`,
+			data,
+		),
+	updateCounter: (
+		branchId: string,
+		counterId: string,
+		data: Record<string, unknown>,
+	) =>
+		api.patch<{ data: void }>(
+			`/branches/${branchId}/counters/${counterId}/queue-config`,
+			data,
+		),
+	resetBranch: (branchId: string, field: string) =>
+		api.delete(`/branches/${branchId}/queue-config/${field}`),
+	resetBranchService: (
+		branchId: string,
+		branchServiceId: string,
+		field: string,
+	) =>
+		api.delete(
+			`/branches/${branchId}/services/${branchServiceId}/queue-config/${field}`,
+		),
+	resetCounter: (branchId: string, counterId: string, field: string) =>
+		api.delete(
+			`/branches/${branchId}/counters/${counterId}/queue-config/${field}`,
+		),
 };
