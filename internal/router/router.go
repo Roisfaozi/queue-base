@@ -26,14 +26,14 @@ import (
 	qmsClientHttp "github.com/Roisfaozi/queue-base/internal/modules/qms_client/delivery/http"
 	queueModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queueHttp "github.com/Roisfaozi/queue-base/internal/modules/queue/delivery/http"
+	queueConfigModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue_config"
+	queueConfigHttp "github.com/Roisfaozi/queue-base/internal/modules/queue_config/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/role"
 	roleHttp "github.com/Roisfaozi/queue-base/internal/modules/role/delivery/http"
 	scannerModulePkg "github.com/Roisfaozi/queue-base/internal/modules/scanner"
 	scannerHttp "github.com/Roisfaozi/queue-base/internal/modules/scanner/delivery/http"
 	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
 	serviceHttp "github.com/Roisfaozi/queue-base/internal/modules/service/delivery/http"
-	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	settingsHttp "github.com/Roisfaozi/queue-base/internal/modules/settings/delivery/http"
 	signageModulePkg "github.com/Roisfaozi/queue-base/internal/modules/signage"
 	signageHttp "github.com/Roisfaozi/queue-base/internal/modules/signage/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/stats"
@@ -86,7 +86,7 @@ func SetupRouter(
 	projectModule *project.ProjectModule,
 	serviceModule *serviceModulePkg.ServiceModule,
 	counterModule *counterModulePkg.CounterModule,
-	settingsModule *settingsModulePkg.SettingsModule,
+	queueConfigModule *queueConfigModulePkg.QueueConfigModule,
 	queueModule *queueModulePkg.QueueModule,
 	callerModule *caller.CallerModule,
 	operatorAssignmentModule *operatorAssignmentModulePkg.Module,
@@ -249,7 +249,7 @@ func SetupRouter(
 		serviceHttp.RegisterServiceRoutes(tenantAuthorized, serviceModule.ServiceController, apiKeyMiddleware)
 		serviceHttp.RegisterBranchServiceRoutes(tenantAuthorized, serviceModule.BranchServiceController, apiKeyMiddleware)
 		counterHttp.RegisterCounterRoutes(tenantAuthorized, counterModule.CounterController, apiKeyMiddleware)
-		settingsHttp.RegisterSettingsRoutes(tenantAuthorized, settingsModule.SettingsController, apiKeyMiddleware)
+		queueConfigHttp.RegisterQueueConfigRoutes(tenantAuthorized, queueConfigModule.QueueConfigController, apiKeyMiddleware)
 		operatorAssignmentHttp.RegisterRoutes(tenantAuthorized, operatorAssignmentModule.Controller, apiKeyMiddleware)
 		qmsClientHttp.RegisterQMSClientRoutes(tenantAuthorized, qmsClientModule.Controller, apiKeyMiddleware)
 		queueHttp.RegisterQueueRoutes(tenantAuthorized, queueModule.QueueController, apiKeyMiddleware)

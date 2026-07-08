@@ -23,11 +23,11 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/project"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue_config"
 	"github.com/Roisfaozi/queue-base/internal/modules/role"
 	roleRepository "github.com/Roisfaozi/queue-base/internal/modules/role/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner"
 	"github.com/Roisfaozi/queue-base/internal/modules/service"
-	"github.com/Roisfaozi/queue-base/internal/modules/settings"
 	"github.com/Roisfaozi/queue-base/internal/modules/signage"
 	"github.com/Roisfaozi/queue-base/internal/modules/stats"
 	"github.com/Roisfaozi/queue-base/internal/modules/user"
@@ -218,13 +218,13 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	statsModule := stats.NewStatsModule(dbConnection, logger)
 
 	projectModule := project.NewProjectModule(dbConnection, validate)
-	settingsModule := settings.NewSettingsModule(dbConnection, validate, logger, auditModule.AuditUseCase)
+	queueConfigModule := queue_config.NewQueueConfigModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL, auditModule.AuditUseCase)
 	branchModule := organization.NewBranchModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo, logger, auditModule.AuditUseCase)
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
-	queueModule := queue.NewQueueModule(dbConnection, validate, settingsModule.QueueSettingsResolver, logger, auditModule.AuditUseCase)
+	queueModule := queue.NewQueueModule(dbConnection, validate, queueConfigModule.QueueConfigResolver, logger, auditModule.AuditUseCase)
 	queueModule.QueueUseCase.SetEventBroadcaster(sseManager)
 	queueModule.QueueUseCase.SetWSBroadcaster(wsManager)
 	callerModule := caller.NewCallerModule(dbConnection, queueModule.QueueUseCase, authModule.AuthUseCase, auditModule.AuditUseCase, validate, logger)
@@ -232,7 +232,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	qmsClientModule := qms_client.NewQMSClientModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 	qmsClientMiddleware := middleware.NewQMSClientMiddleware(qmsClientModule.Authenticator, logger)
 	signageModule := signage.NewSignageModule(dbConnection, queueModule.QueueUseCase, validate, logger)
-	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, settingsModule, validate, scanner.NewAPIKeyAuthenticator(apiKeyModule.UseCase), logger, auditModule.AuditUseCase)
+	scannerModule := scanner.NewScannerModule(queueModule, branchModule, serviceModule, counterModule, queueConfigModule, validate, scanner.NewAPIKeyAuthenticator(apiKeyModule.UseCase), logger, auditModule.AuditUseCase)
 
 	logger.Info("Application modules initialized.")
 
@@ -387,7 +387,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		projectModule,
 		serviceModule,
 		counterModule,
-		settingsModule,
+		queueConfigModule,
 		queueModule,
 		callerModule,
 		operatorAssignmentModule,

@@ -9,10 +9,10 @@ import (
 	counterModulePkg "github.com/Roisfaozi/queue-base/internal/modules/counter"
 	branchModulePkg "github.com/Roisfaozi/queue-base/internal/modules/organization"
 	queueModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue"
+	queueConfigModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue_config"
 	scannerHttp "github.com/Roisfaozi/queue-base/internal/modules/scanner/delivery/http"
 	scannerUsecase "github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
-	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 )
@@ -61,10 +61,10 @@ func (a APIKeyAuthenticator) Authenticate(ctx context.Context, tenantID, branchI
 	return nil
 }
 
-func NewScannerModule(queueModule *queueModulePkg.QueueModule, branchModule *branchModulePkg.BranchModule, serviceModule *serviceModulePkg.ServiceModule, counterModule *counterModulePkg.CounterModule, settingsModule *settingsModulePkg.SettingsModule, validate *validator.Validate, authenticator ScannerAuthenticator, log *logrus.Logger, audit ...scannerUsecase.AuditLogger) *ScannerModule {
-	var resolver *settingsModulePkg.QueueSettingsResolver
-	if settingsModule != nil {
-		resolver = settingsModule.QueueSettingsResolver
+func NewScannerModule(queueModule *queueModulePkg.QueueModule, branchModule *branchModulePkg.BranchModule, serviceModule *serviceModulePkg.ServiceModule, counterModule *counterModulePkg.CounterModule, queueConfigModule *queueConfigModulePkg.QueueConfigModule, validate *validator.Validate, authenticator ScannerAuthenticator, log *logrus.Logger, audit ...scannerUsecase.AuditLogger) *ScannerModule {
+	var resolver *queueConfigModulePkg.QueueConfigResolver
+	if queueConfigModule != nil {
+		resolver = queueConfigModule.QueueConfigResolver
 	}
 	relationValidator := scannerUsecase.NewRelationValidator(branchModule.BranchRepo, serviceModule.ServiceRepo, serviceModule.BranchServiceRepo, counterModule.CounterRepo, resolver)
 	uc := scannerUsecase.NewScannerUseCase(queueModule.QueueUseCase, authenticator, relationValidator, audit...)

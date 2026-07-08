@@ -18,10 +18,10 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/project"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue"
+	queue_config "github.com/Roisfaozi/queue-base/internal/modules/queue_config"
 	"github.com/Roisfaozi/queue-base/internal/modules/role"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner"
 	"github.com/Roisfaozi/queue-base/internal/modules/service"
-	"github.com/Roisfaozi/queue-base/internal/modules/settings"
 	"github.com/Roisfaozi/queue-base/internal/modules/signage"
 	"github.com/Roisfaozi/queue-base/internal/modules/stats"
 	"github.com/Roisfaozi/queue-base/internal/modules/user"
@@ -51,7 +51,7 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&project.ProjectModule{},
 		&service.ServiceModule{},
 		&counter.CounterModule{},
-		&settings.SettingsModule{},
+		&queue_config.QueueConfigModule{},
 		&queue.QueueModule{},
 		&caller.CallerModule{},
 		&operator_assignment.Module{},
