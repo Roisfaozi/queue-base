@@ -6,12 +6,6 @@ import (
 )
 
 func RegisterQueueConfigRoutes(router *gin.RouterGroup, controller *QueueConfigController, apiKeyMiddleware *middleware.APIKeyMiddleware) {
-	settingsGroup := router.Group("/settings")
-	{
-		settingsGroup.GET("/effective", apiKeyMiddleware.RequireScopes("settings:view", "settings:manage", "queue-config:view", "queue-config:manage"), controller.EffectiveQueueConfig)
-	}
-
-	// QMS domain compliant routes
 	qmsConfigGroup := router.Group("/queue-config")
 	{
 		qmsConfigGroup.GET("/effective", apiKeyMiddleware.RequireScopes("queue-config:view", "queue-config:manage"), controller.EffectiveQueueConfig)
