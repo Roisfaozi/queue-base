@@ -42,7 +42,7 @@ func TestIntegration_QMSJourneyLifecycle(t *testing.T) {
 		&settingsEntity.CounterQueueSetting{},
 	)
 
-	settingsMod := settings.NewQueueConfigModule(db, v, log, nil)
+	settingsMod := queue_config.NewQueueConfigModule(db, v, log, nil)
 	queueMod := queueModule.NewQueueModule(db, v, settingsMod.QueueConfigResolver, log, nil)
 
 	tenantID := uuid.New().String()

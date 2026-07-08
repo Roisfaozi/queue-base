@@ -51,7 +51,7 @@ func TestCallerActionsIntegration(t *testing.T) {
 	require.NoError(t, env.DB.Create(&queueEntity.QueueJourney{ID: journeyID, QueueID: queueID, TenantID: tenantID, BranchID: branchID, ServiceID: serviceID, CounterID: counterID, SeqNo: 1, Status: queueEntity.JourneyStatusPending, CreatedAt: now, UpdatedAt: now}).Error)
 
 	v := validator.New()
-	settingsMod := settings.NewQueueConfigModule(env.DB, v, env.Logger)
+	settingsMod := queue_config.NewQueueConfigModule(env.DB, v, env.Logger)
 	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueConfigResolver, env.Logger)
 	callerUC := callerUsecase.NewCallerUseCase(env.DB, queueMod.QueueUseCase, nil, nil)
 	ctx := database.SetBranchContext(database.SetOrganizationContext(context.Background(), tenantID), branchID)
