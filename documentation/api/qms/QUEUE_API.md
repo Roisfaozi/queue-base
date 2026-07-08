@@ -19,7 +19,7 @@ Register queue ticket.
 - `ticket_prefix` — default runtime `A`
 - `numbering_strategy` — default runtime `sequential`
 
-Queue config resolved via typed tables (`tenant_queue_settings` / `branch_queue_settings` / `service_queue_settings` / `counter_queue_settings`). Use `GET /settings/effective` to inspect effective values and inheritance chain (`*_source`, `*_inherited`). Generic `settings` table is compatibility-only for non-core config.
+Queue config resolved via typed tables (`tenant_queue_settings` / `branch_queue_settings` / `branch_service_queue_settings` / `counter_queue_settings`). Use `GET /queue-config/effective` to inspect effective values and inheritance chain (`*_source`, `*_inherited`). Generic `settings` table is compatibility-only for non-core config.
 
 ### Example request body
 

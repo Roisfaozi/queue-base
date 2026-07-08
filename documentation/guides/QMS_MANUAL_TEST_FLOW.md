@@ -87,7 +87,7 @@ Permission minimal:
 - `branch:view`, `branch:manage`
 - `service:view`, `service:manage`
 - `counter:view`, `counter:manage`
-- `settings:view`, `settings:manage`
+- `queue-config:view`, `queue-config:manage`
 - `queue:view`, `queue:manage`
 
 ### 2. QMS Operator / Caller
@@ -282,7 +282,7 @@ Action:
 Example request:
 
 ```bash
-curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=<BRANCH_ID>' \
+curl 'http://127.0.0.1:8080/api/v1/queue-config/effective?branch_id=<BRANCH_ID>' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
   -H 'X-Organization-ID: <TENANT_ID>'
 ```
@@ -309,7 +309,7 @@ Action:
 Example request:
 
 ```bash
-curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=<BRANCH_ID>&service_id=<SERVICE_ID>' \
+curl 'http://127.0.0.1:8080/api/v1/queue-config/effective?branch_id=<BRANCH_ID>&service_id=<SERVICE_ID>' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
   -H 'X-Organization-ID: <TENANT_ID>'
 ```
@@ -331,7 +331,7 @@ Action:
 Example resolve request:
 
 ```bash
-curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=<BRANCH_ID>' \
+curl 'http://127.0.0.1:8080/api/v1/queue-config/effective?branch_id=<BRANCH_ID>' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
   -H 'X-Organization-ID: <TENANT_ID>'
 ```

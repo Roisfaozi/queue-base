@@ -61,7 +61,7 @@ curl -X POST 'http://127.0.0.1:8080/api/v1/settings' \
   }'
 ```
 
-## `GET /api/v1/settings/effective`
+## `GET /api/v1/queue-config/effective`
 
 Mengembalikan nilai efektif core queue config dengan metadata inheritance (`*_source`, `*_inherited`). Gunakan endpoint ini untuk queue runtime. Generic `/settings/resolve` tetap tersedia untuk non-core compatibility.
 
@@ -77,7 +77,7 @@ Resolve effective queue config by inheritance order: counter -> service -> branc
 
 ### Example request
 
-`GET /api/v1/settings/effective?branch_id=550e8400-e29b-41d4-a716-446655440100`
+`GET /api/v1/queue-config/effective?branch_id=550e8400-e29b-41d4-a716-446655440100`
 
 ### Example success response
 
@@ -103,7 +103,7 @@ Resolve effective queue config by inheritance order: counter -> service -> branc
 ### Curl
 
 ```bash
-curl 'http://127.0.0.1:8080/api/v1/settings/effective?branch_id=550e8400-e29b-41d4-a716-446655440100' \
+curl 'http://127.0.0.1:8080/api/v1/queue-config/effective?branch_id=550e8400-e29b-41d4-a716-446655440100' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'X-Organization-ID: 550e8400-e29b-41d4-a716-446655440000'
 ```

@@ -144,11 +144,11 @@ Config QMS dipakai lewat typed tables per entity, bukan generic settings untuk c
 Resolver berjalan dengan urutan:
 
 1. Counter (`counter_queue_settings`)
-2. Service (`service_queue_settings`)
+2. Service (`branch_service_queue_settings`)
 3. Branch (`branch_queue_settings`)
 4. Tenant (`tenant_queue_settings`)
 
-Artinya bila key ditemukan di counter, nilai itu menang. Bila tidak ada, sistem turun ke service, lalu branch, lalu tenant. Kalau tenant juga kosong, pakai default runtime. API `GET /settings/effective` mengembalikan nilai efektif plus metadata asal (`*_source`, `*_inherited`).
+Artinya bila key ditemukan di counter, nilai itu menang. Bila tidak ada, sistem turun ke service, lalu branch, lalu tenant. Kalau tenant juga kosong, pakai default runtime. API `GET /queue-config/effective` mengembalikan nilai efektif plus metadata asal (`*_source`, `*_inherited`).
 
 ### Value type
 
