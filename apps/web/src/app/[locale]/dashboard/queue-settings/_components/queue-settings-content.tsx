@@ -199,7 +199,7 @@ export function QueueSettingsContent() {
 							<CardTitle className="text-lg">Runtime Context</CardTitle>
 							<CardDescription>
 								Pilih scope untuk lihat effective config dari endpoint `GET
-								/settings/effective`.
+								/queue-config/effective`.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="grid gap-4 md:grid-cols-3">
