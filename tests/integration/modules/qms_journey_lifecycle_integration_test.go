@@ -13,9 +13,9 @@ import (
 	queueModule "github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue_config"
+	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/queue_config/entity"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	"github.com/Roisfaozi/queue-base/internal/modules/settings"
-	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/go-playground/validator/v10"
@@ -42,8 +42,8 @@ func TestIntegration_QMSJourneyLifecycle(t *testing.T) {
 		&settingsEntity.CounterQueueSetting{},
 	)
 
-	settingsMod := settings.NewSettingsModule(db, v, log, nil)
-	queueMod := queueModule.NewQueueModule(db, v, settingsMod.QueueSettingsResolver, log, nil)
+	settingsMod := settings.NewQueueConfigModule(db, v, log, nil)
+	queueMod := queueModule.NewQueueModule(db, v, settingsMod.QueueConfigResolver, log, nil)
 
 	tenantID := uuid.New().String()
 	branchID := uuid.New().String()

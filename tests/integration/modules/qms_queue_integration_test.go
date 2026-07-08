@@ -12,8 +12,8 @@ import (
 	queueModule "github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue_config"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	"github.com/Roisfaozi/queue-base/internal/modules/settings"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
@@ -42,8 +42,8 @@ func setupQMSIntegration(t *testing.T) *qmsDeps {
 
 	v := validator.New()
 	log := env.Logger
-	settingsMod := settings.NewSettingsModule(env.DB, v, log)
-	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, log)
+	settingsMod := settings.NewQueueConfigModule(env.DB, v, log)
+	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueConfigResolver, log)
 
 	deps := &qmsDeps{
 		db:                env.DB,

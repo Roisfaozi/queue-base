@@ -13,7 +13,6 @@ import (
 
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
-	settingsModel "github.com/Roisfaozi/queue-base/internal/modules/settings/model"
 	"github.com/Roisfaozi/queue-base/tests/e2e/setup"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +47,7 @@ func TestScannerE2E_APIKeyCheckInFlow(t *testing.T) {
 
 	// Settings
 	server.DB.Exec("INSERT INTO settings (id, tenant_id, scope_type, scope_id, `key`, value, value_type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		uuid.New().String(), tenantID, "service", pharmacyServiceID, settingsModel.SettingKeyPharmacyFlowEnabled, "true", "boolean", true)
+		uuid.New().String(), tenantID, "service", pharmacyServiceID, "pharmacy_flow_enabled", "true", "boolean", true)
 
 	// API Key and User
 	server.DB.Exec("INSERT INTO users (id, username, email, password, status, deleted_at) VALUES (?, ?, ?, ?, ?, ?)", clientID, "scanner-client", "scanner@example.com", "hash", "active", 0)

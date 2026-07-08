@@ -16,12 +16,12 @@ import (
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	queueModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue"
+	queueConfigModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue_config"
 	scannerModulePkg "github.com/Roisfaozi/queue-base/internal/modules/scanner"
 	scannerModel "github.com/Roisfaozi/queue-base/internal/modules/scanner/model"
 	scannerUsecase "github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	serviceModulePkg "github.com/Roisfaozi/queue-base/internal/modules/service"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	settingsModulePkg "github.com/Roisfaozi/queue-base/internal/modules/settings"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	userRepository "github.com/Roisfaozi/queue-base/internal/modules/user/repository"
 	"github.com/Roisfaozi/queue-base/pkg/database"
@@ -54,8 +54,8 @@ func setupScannerIntegration(t *testing.T) *scannerDeps {
 	}
 
 	v := validator.New()
-	settingsMod := settingsModulePkg.NewSettingsModule(env.DB, v, env.Logger)
-	queueMod := queueModulePkg.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, env.Logger)
+	settingsMod := queueConfigModulePkg.NewQueueConfigModule(env.DB, v, env.Logger)
+	queueMod := queueModulePkg.NewQueueModule(env.DB, v, settingsMod.QueueConfigResolver, env.Logger)
 	branchMod := branchModulePkg.NewBranchModule(env.DB, v, env.Logger)
 	serviceMod := serviceModulePkg.NewServiceModule(env.DB, v, branchMod.BranchRepo, env.Logger)
 	counterMod := counterModulePkg.NewCounterModule(env.DB, v, branchMod.BranchRepo, serviceMod.BranchServiceRepo, env.Logger)

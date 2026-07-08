@@ -14,9 +14,9 @@ import (
 	queueModule "github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	queueConfigModule "github.com/Roisfaozi/queue-base/internal/modules/queue_config"
+	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/queue_config/entity"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	settingsModule "github.com/Roisfaozi/queue-base/internal/modules/settings"
-	settingsEntity "github.com/Roisfaozi/queue-base/internal/modules/settings/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/signage/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
@@ -43,8 +43,8 @@ func TestIntegration_CallerSignageLifecycle(t *testing.T) {
 		&settingsEntity.CounterQueueSetting{},
 	)
 
-	settingsMod := settingsModule.NewSettingsModule(db, v, log)
-	queueMod := queueModule.NewQueueModule(db, v, settingsMod.QueueSettingsResolver, log)
+	settingsMod := queueConfigModule.NewQueueConfigModule(db, v, log)
+	queueMod := queueModule.NewQueueModule(db, v, settingsMod.QueueConfigResolver, log)
 	signageUC := usecase.NewSignageUseCase(db, queueMod.QueueUseCase, log)
 
 	tenantID := uuid.New().String()

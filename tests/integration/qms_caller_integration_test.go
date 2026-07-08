@@ -15,8 +15,8 @@ import (
 	queueModule "github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	queueModel "github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue_config"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
-	"github.com/Roisfaozi/queue-base/internal/modules/settings"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/tests/integration/setup"
 	"github.com/go-playground/validator/v10"
@@ -51,8 +51,8 @@ func TestCallerActionsIntegration(t *testing.T) {
 	require.NoError(t, env.DB.Create(&queueEntity.QueueJourney{ID: journeyID, QueueID: queueID, TenantID: tenantID, BranchID: branchID, ServiceID: serviceID, CounterID: counterID, SeqNo: 1, Status: queueEntity.JourneyStatusPending, CreatedAt: now, UpdatedAt: now}).Error)
 
 	v := validator.New()
-	settingsMod := settings.NewSettingsModule(env.DB, v, env.Logger)
-	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueSettingsResolver, env.Logger)
+	settingsMod := settings.NewQueueConfigModule(env.DB, v, env.Logger)
+	queueMod := queueModule.NewQueueModule(env.DB, v, settingsMod.QueueConfigResolver, env.Logger)
 	callerUC := callerUsecase.NewCallerUseCase(env.DB, queueMod.QueueUseCase, nil, nil)
 	ctx := database.SetBranchContext(database.SetOrganizationContext(context.Background(), tenantID), branchID)
 
