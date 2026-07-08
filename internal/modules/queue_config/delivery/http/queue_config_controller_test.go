@@ -123,7 +123,7 @@ func TestQueueConfigController_EffectiveQueueConfig(t *testing.T) {
 				"numbering_strategy":         "daily_branch_sequence",
 				"default_estimated_duration": "5",
 				"auto_call_next":             "true",
-			}}, nil, newQueueConfigControllerTestDB(t))
+			}}, nil, newQueueConfigControllerTestDB(t), nil)
 
 			router := gin.New()
 			router.GET("/queue-config/effective", func(c *gin.Context) {
@@ -164,7 +164,7 @@ func TestQueueConfigController_EffectiveConfigAliasPaths(t *testing.T) {
 		"numbering_strategy":         "daily_branch_sequence",
 		"default_estimated_duration": "5",
 		"auto_call_next":             "true",
-	}}, nil, newQueueConfigControllerTestDB(t))
+	}}, nil, newQueueConfigControllerTestDB(t), nil)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -204,7 +204,7 @@ func TestQueueConfigController_ResetQueueSetting(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newQueueConfigControllerTestDB(t)
 	audit := &stubSettingsAudit{}
-	controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, db, audit)
+	controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, db, nil, audit)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -246,7 +246,7 @@ func TestQueueConfigController_ResetQueueSetting(t *testing.T) {
 
 func TestQueueConfigController_ResetQueueSetting_InvalidField(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, newQueueConfigControllerTestDB(t))
+	controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, newQueueConfigControllerTestDB(t), nil)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")

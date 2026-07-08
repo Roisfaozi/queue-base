@@ -5,6 +5,7 @@ import (
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue_config/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue_config/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
@@ -26,6 +27,8 @@ type AuditLogger interface {
 }
 
 type QueueConfigController struct {
+	queueConfigUc usecase.QueueConfigUseCase
+
 	queueResolver QueueSettingResolver
 	validate      *validator.Validate
 	log           *logrus.Logger
@@ -281,7 +284,7 @@ func parseBoolPtr(value string) *bool {
 	return nil
 }
 
-func NewQueueConfigController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger, db *gorm.DB, audit ...AuditLogger) *QueueConfigController {
+func NewQueueConfigController(validate *validator.Validate, resolver QueueSettingResolver, log *logrus.Logger, db *gorm.DB, queueConfigUc usecase.QueueConfigUseCase, audit ...AuditLogger) *QueueConfigController {
 	var gormDB *gorm.DB
 	if db != nil {
 		gormDB = db
@@ -290,5 +293,105 @@ func NewQueueConfigController(validate *validator.Validate, resolver QueueSettin
 	if len(audit) > 0 {
 		auditLogger = audit[0]
 	}
-	return &QueueConfigController{queueResolver: resolver, validate: validate, log: log, db: gormDB, audit: auditLogger}
+	return &QueueConfigController{queueConfigUc: queueConfigUc, queueResolver: resolver, validate: validate, log: log, db: gormDB, audit: auditLogger}
+}
+
+func (h *QueueConfigController) UpdateTenantQueueSetting(c *gin.Context) {
+	tenantID := database.GetTenantID(c.Request.Context())
+	if tenantID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	var req map[string]any
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid payload")
+		return
+	}
+	filtered := filterUpdatePayload(req)
+	if err := h.queueConfigUc.UpdateTenantQueueSetting(c.Request.Context(), tenantID, filtered); err != nil {
+		response.HandleError(c, err, "failed to update tenant queue settings")
+		return
+	}
+	c.Status(204)
+}
+
+func (h *QueueConfigController) UpdateBranchQueueSetting(c *gin.Context) {
+	tenantID := database.GetTenantID(c.Request.Context())
+	if tenantID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	var req map[string]any
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid payload")
+		return
+	}
+	filtered := filterUpdatePayload(req)
+	if err := h.queueConfigUc.UpdateBranchQueueSetting(c.Request.Context(), tenantID, branchParam(c), filtered); err != nil {
+		response.HandleError(c, err, "failed to update branch queue settings")
+		return
+	}
+	c.Status(204)
+}
+
+func (h *QueueConfigController) UpdateBranchServiceQueueSetting(c *gin.Context) {
+	tenantID := database.GetTenantID(c.Request.Context())
+	if tenantID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	var req map[string]any
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid payload")
+		return
+	}
+	filtered := filterUpdatePayload(req)
+	if err := h.queueConfigUc.UpdateBranchServiceQueueSetting(c.Request.Context(), tenantID, branchParam(c), c.Param("branch_service_id"), filtered); err != nil {
+		response.HandleError(c, err, "failed to update branch service queue settings")
+		return
+	}
+	c.Status(204)
+}
+
+func (h *QueueConfigController) UpdateCounterQueueSetting(c *gin.Context) {
+	tenantID := database.GetTenantID(c.Request.Context())
+	if tenantID == "" {
+		response.BadRequest(c, exception.ErrBadRequest, "missing tenant context")
+		return
+	}
+	var req map[string]any
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, exception.ErrBadRequest, "invalid payload")
+		return
+	}
+	filtered := filterUpdatePayload(req)
+	if err := h.queueConfigUc.UpdateCounterQueueSetting(c.Request.Context(), tenantID, c.Param("counter_id"), filtered); err != nil {
+		response.HandleError(c, err, "failed to update counter queue settings")
+		return
+	}
+	c.Status(204)
+}
+
+func filterUpdatePayload(raw map[string]any) map[string]any {
+	filtered := make(map[string]any)
+	allowed := map[string]bool{
+		"queue_reset_time":           true,
+		"ticket_prefix":              true,
+		"default_estimated_duration": true,
+		"allow_forward":              true,
+		"allow_skip":                 true,
+		"allow_recall":               true,
+		"allow_cancel":               true,
+		"auto_call_next":             true,
+		"numbering_strategy":         true,
+		"require_counter":            true,
+		"allow_forward_from":         true,
+		"allow_forward_to":           true,
+	}
+	for k, v := range raw {
+		if allowed[k] {
+			filtered[k] = v
+		}
+	}
+	return filtered
 }
