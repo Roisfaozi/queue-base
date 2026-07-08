@@ -85,6 +85,13 @@ export function SignageContent() {
 	}, [headers]);
 
 	useEffect(() => {
+		if (!hasHeaders) return;
+		void handleMe();
+		void handleCurrentCalls();
+		void handleQueues();
+	}, [handleCurrentCalls, handleMe, handleQueues, hasHeaders]);
+
+	useEffect(() => {
 		if (!me?.tenant_id || !me?.branch_id) return;
 		const channel = `queue:${me.tenant_id}:${me.branch_id}`;
 		const onMessage = (message: any) => {
@@ -110,17 +117,16 @@ export function SignageContent() {
 			<div>
 				<h2 className="text-2xl font-bold tracking-tight">Signage Display</h2>
 				<p className="text-muted-foreground">
-					Thin admin surface untuk signage client. Cek me, current calls, dan
-					queues dari scope signage.
+					Live display untuk signage client. Status tenant, current calls, dan
+					waiting queues tampil otomatis setelah credential valid.
 				</p>
 			</div>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Client Credentials</CardTitle>
+					<CardTitle>Display Binding</CardTitle>
 					<CardDescription>
-						Signage endpoints menggunakan client credential headers, bukan
-						session web biasa.
+						Isi credential binding sekali, lalu display refresh otomatis.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="grid gap-4 md:grid-cols-2">
@@ -151,7 +157,7 @@ export function SignageContent() {
 					{isLoadingMe && (
 						<Icon name="Loader" className="mr-2 h-4 w-4 animate-spin" />
 					)}
-					Get Signage Info
+					Refresh Display
 				</Button>
 				<Button
 					variant="secondary"
@@ -161,7 +167,7 @@ export function SignageContent() {
 					{isLoadingCalls && (
 						<Icon name="Loader" className="mr-2 h-4 w-4 animate-spin" />
 					)}
-					Get Current Calls
+					Refresh Calls
 				</Button>
 				<Button
 					variant="outline"
@@ -171,9 +177,17 @@ export function SignageContent() {
 					{isLoadingQueues && (
 						<Icon name="Loader" className="mr-2 h-4 w-4 animate-spin" />
 					)}
-					Get Queues
+					Refresh Queues
 				</Button>
 			</div>
+
+			{hasHeaders && !me && !isLoadingMe && (
+				<Card>
+					<CardContent className="py-6 text-sm text-muted-foreground">
+						Display ready. Refresh akan jalan otomatis setelah binding valid.
+					</CardContent>
+				</Card>
+			)}
 
 			{me && (
 				<Card>
@@ -200,26 +214,26 @@ export function SignageContent() {
 									<div className="font-mono">{me.counter_display_name}</div>
 								</>
 							)}
-						{me.running_text && (
-							<>
-								<div>Running Text:</div>
-								<div className="font-mono">{me.running_text}</div>
-							</>
-						)}
-						{me.audio_id && (
-							<>
-								<div>Audio:</div>
-								<div className="font-mono">{me.audio_id}</div>
-							</>
-						)}
-						{me.narrative_instruction_id && (
-							<>
-								<div>Narrative:</div>
-								<div className="font-mono">{me.narrative_instruction_id}</div>
-							</>
-						)}
-						<div>Name:</div>
-						<div className="font-mono">{me.name}</div>
+							{me.running_text && (
+								<>
+									<div>Running Text:</div>
+									<div className="font-mono">{me.running_text}</div>
+								</>
+							)}
+							{me.audio_id && (
+								<>
+									<div>Audio:</div>
+									<div className="font-mono">{me.audio_id}</div>
+								</>
+							)}
+							{me.narrative_instruction_id && (
+								<>
+									<div>Narrative:</div>
+									<div className="font-mono">{me.narrative_instruction_id}</div>
+								</>
+							)}
+							<div>Name:</div>
+							<div className="font-mono">{me.name}</div>
 							<div>Client Type:</div>
 							<div className="font-mono">{me.client_type}</div>
 						</div>
@@ -286,9 +300,19 @@ export function SignageContent() {
 			)}
 
 			{currentCalls.length === 0 && me && !isLoadingCalls && (
-				<p className="text-muted-foreground text-sm">
-					No current calls. Click &quot;Get Current Calls&quot; to fetch.
-				</p>
+				<Card>
+					<CardContent className="py-6 text-sm text-muted-foreground">
+						No current calls. Display akan ikut update saat queue berubah.
+					</CardContent>
+				</Card>
+			)}
+
+			{queues.length === 0 && me && !isLoadingQueues && (
+				<Card>
+					<CardContent className="py-6 text-sm text-muted-foreground">
+						No waiting queues for current binding.
+					</CardContent>
+				</Card>
 			)}
 		</div>
 	);

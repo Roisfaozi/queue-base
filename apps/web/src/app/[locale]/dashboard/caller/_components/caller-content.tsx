@@ -190,17 +190,16 @@ export function CallerContent() {
 			<div>
 				<h2 className="text-2xl font-bold tracking-tight">Caller</h2>
 				<p className="text-muted-foreground">
-					Thin admin surface untuk login caller, inspect bound context, dan
-					trigger action endpoint.
+					Operator caller panel. Login dengan credential binding lalu trigger
+					call/serve/complete/skip/cancel langsung.
 				</p>
 			</div>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Client Credentials</CardTitle>
+					<CardTitle>Binding Credentials</CardTitle>
 					<CardDescription>
-						Caller endpoints butuh session operator plus client credential
-						headers.
+						Client ID + API key untuk authenticasi caller device ke backend.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="grid gap-4 md:grid-cols-2">
@@ -231,8 +230,7 @@ export function CallerContent() {
 					<CardHeader>
 						<CardTitle>Operator Login</CardTitle>
 						<CardDescription>
-							Login operator lewat `POST /caller/login`, lalu cek `GET
-							/caller/me`.
+							Login operator dengan username/password untuk dapat session token.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
@@ -302,10 +300,9 @@ export function CallerContent() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Journey Action</CardTitle>
+						<CardTitle>Queue Action</CardTitle>
 						<CardDescription>
-							Action tipis untuk current branch/service scope. Picker hanya
-							bantu isi ID journey.
+							Select branch/service, pilih journey lalu trigger action.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
