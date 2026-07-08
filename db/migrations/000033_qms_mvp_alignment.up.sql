@@ -5,6 +5,8 @@ RENAME TABLE service_queue_settings TO branch_service_queue_settings;
 ALTER TABLE branch_service_queue_settings 
     DROP FOREIGN KEY fk_service_queue_settings_services;
 
+DROP INDEX uk_service_queue_settings_service ON branch_service_queue_settings;
+
 ALTER TABLE branch_service_queue_settings 
     CHANGE COLUMN service_id branch_service_id VARCHAR(36) NOT NULL;
 
@@ -31,7 +33,6 @@ ALTER TABLE branch_service_queue_settings
     ADD CONSTRAINT fk_branch_service_queue_settings_branches 
     FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE;
 
-DROP INDEX uk_service_queue_settings_service ON branch_service_queue_settings;
 CREATE UNIQUE INDEX uk_branch_service_queue_settings_branch_service 
     ON branch_service_queue_settings (tenant_id, branch_id, branch_service_id);
 
