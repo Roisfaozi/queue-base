@@ -72,10 +72,16 @@ const steps = [
 		requirement:
 			"Butuh branch active; opsional bind ke branch-service/counter.",
 	},
+	{
+		key: "operator_assignment",
+		title: "Operator Assignments",
+		href: "/dashboard/operator-assignments",
+		description: "Assign operator ke counter untuk mulai layani antrian.",
+		requirement: "Butuh branch, user, dan counter active.",
+	},
 ] as const;
 
 type StepKey = (typeof steps)[number]["key"];
-
 export function QMSSetupWizard() {
 	const { currentOrganization } = useDashboardShell();
 	const [branches, setBranches] = useState<Branch[]>([]);
@@ -150,6 +156,7 @@ export function QMSSetupWizard() {
 		branch_service: activeBranchServices.length > 0,
 		counter: activeCounters.length > 0,
 		qms_client: clients.length > 0,
+		operator_assignment: true,
 	};
 	const firstTodo =
 		steps.find((step) => !stepDone[step.key])?.key ??
@@ -196,6 +203,8 @@ export function QMSSetupWizard() {
 					...(activeBranches.length > 0 ? [] : ["Branch active belum ada."]),
 					...(activeCounters.length > 0 ? [] : ["Belum ada counter active."]),
 				];
+			case "operator_assignment":
+				return [];
 			case "qms_client":
 				return [
 					...(activeBranches.length > 0 ? [] : ["Branch active belum ada."]),

@@ -22,6 +22,8 @@ import type {
 	Service,
 	SignageCurrentCallResponse,
 	SignageMeResponse,
+	OperatorAssignmentRequest,
+	OperatorAssignmentResponse,
 	VisitJourney,
 } from "@casbin/api-types";
 
@@ -45,6 +47,8 @@ export type {
 	Service,
 	SignageCurrentCallResponse,
 	SignageMeResponse,
+	OperatorAssignmentRequest,
+	OperatorAssignmentResponse,
 	VisitJourney,
 };
 
@@ -376,4 +380,13 @@ export const settingsApi = {
 		api.delete(
 			`/branches/${branchId}/counters/${counterId}/queue-config/${field}`,
 		),
+};
+
+export const operatorAssignmentsApi = {
+  create: (data: OperatorAssignmentRequest) =>
+    api.post<{ data: OperatorAssignmentResponse }>("/operator-counter-assignments", data),
+  getAll: () =>
+    api.get<{ data: OperatorAssignmentResponse[] }>("/operator-counter-assignments"),
+  delete: (id: string) =>
+    api.delete<{ data: void }>(`/operator-counter-assignments/${id}`),
 };

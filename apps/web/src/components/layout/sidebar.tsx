@@ -274,6 +274,11 @@ const navItems: NavEntry[] = [
 		iconName: "KeyRound",
 	},
 	{
+		title: "Operator Assignments",
+		href: "/dashboard/operator-assignments",
+		iconName: "UserCog",
+	},
+	{
 		title: "QMS Setup",
 		href: "/dashboard/qms-setup",
 		iconName: "ListTodo",
