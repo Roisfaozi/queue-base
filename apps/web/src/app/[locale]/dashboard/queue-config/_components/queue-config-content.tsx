@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { Icon } from "~/components/shared/icon";
+import { QueueConfigDialog, type OverrideScope } from "./queue-config-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -153,6 +154,51 @@ export function QueueConfigContent() {
 
 	const handleCreate = () => {
 		setDialogOpen(true);
+	};
+
+	const overrideScope = useMemo((): OverrideScope => {
+		if (selectedCounter)
+			return {
+				type: "counter",
+				branchId: selectedBranch!,
+				counterId: selectedCounter,
+			};
+		if (selectedBranch && selectedService)
+			return {
+				type: "branch_service",
+				branchId: selectedBranch,
+				branchServiceId: selectedService,
+			};
+		if (selectedBranch) return { type: "branch", branchId: selectedBranch };
+		return { type: "tenant" };
+	}, [selectedBranch, selectedService, selectedCounter]);
+
+	const handleDeleteOverride = async (fieldKey: string, source: string) => {
+		try {
+			if (source === "counter" && selectedCounter)
+				await settingsApi.resetCounter(
+					selectedBranch!,
+					selectedCounter,
+					fieldKey,
+				);
+			else if (source === "branch_service" && selectedBranch && selectedService)
+				await settingsApi.resetBranchService(
+					selectedBranch,
+					selectedService,
+					fieldKey,
+				);
+			else if (source === "branch" && selectedBranch)
+				await settingsApi.resetBranch(selectedBranch, fieldKey);
+			else {
+				toast.error("Cannot reset tenant base config from here");
+				return;
+			}
+
+			toast.success("Override removed");
+			await fetchInitialData();
+		} catch {
+			toast.error("Failed to remove override");
+		}
 	};
 
 	const handleDialogSuccess = async () => {
@@ -336,6 +382,13 @@ export function QueueConfigContent() {
 						</CardContent>
 					</Card>
 				</div>
+
+				<QueueConfigDialog
+					open={dialogOpen}
+					onOpenChange={setDialogOpen}
+					scope={overrideScope}
+					onSuccess={handleDialogSuccess}
+				/>
 
 				<div className="space-y-4">
 					<Card>
