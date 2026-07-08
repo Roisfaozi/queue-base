@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { useWebSocket } from "~/components/shared/providers/websocket-provider";
 import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
@@ -24,7 +23,6 @@ import {
 } from "~/lib/api/qms";
 
 export function SignageContent() {
-	const { currentOrganization } = useDashboardShell();
 	const { subscribe, unsubscribe } = useWebSocket();
 	const [clientId, setClientId] = useState("");
 	const [apiKey, setApiKey] = useState("");
@@ -109,8 +107,6 @@ export function SignageContent() {
 		subscribe,
 		unsubscribe,
 	]);
-
-	if (!currentOrganization) return null;
 
 	return (
 		<div className="space-y-6">

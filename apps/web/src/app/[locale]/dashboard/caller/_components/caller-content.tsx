@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboard-shell-context";
 import { Icon } from "~/components/shared/icon";
 import { useWebSocket } from "~/components/shared/providers/websocket-provider";
 import { Badge } from "~/components/ui/badge";
@@ -39,7 +38,6 @@ const ACTIONS = ["call", "serve", "complete", "skip", "cancel"] as const;
 type BranchOption = { id: string; code: string; name: string; status: string };
 
 export function CallerContent() {
-	const { currentOrganization } = useDashboardShell();
 	const { subscribe, unsubscribe } = useWebSocket();
 	const [clientId, setClientId] = useState("");
 	const [apiKey, setApiKey] = useState("");
@@ -81,10 +79,8 @@ export function CallerContent() {
 	}, []);
 
 	useEffect(() => {
-		if (currentOrganization) {
-			fetchRefs();
-		}
-	}, [currentOrganization, fetchRefs]);
+		fetchRefs();
+	}, [fetchRefs]);
 
 	const fetchJourneys = useCallback(async () => {
 		if (!branchId || !serviceId || !headers.clientId || !headers.apiKey) {
@@ -182,8 +178,6 @@ export function CallerContent() {
 		username.trim().length >= 3 &&
 		password.length >= 8;
 	const canAct = !!headers.clientId && !!headers.apiKey && !!journeyId.trim();
-
-	if (!currentOrganization) return null;
 
 	return (
 		<div className="space-y-6">
