@@ -2471,18 +2471,18 @@ raw uploaded file data
 
 ```text
 GET/PATCH /api/v1/tenant/profile
-GET/PATCH /api/v1/tenant/queue-settings
+GET/PATCH /api/v1/tenant/queue-config
 
 GET/PATCH /api/v1/branches/{branch_id}/profile
-GET/PATCH /api/v1/branches/{branch_id}/queue-settings
+GET/PATCH /api/v1/branches/{branch_id}/queue-config
 
 POST/GET/PATCH/DELETE /api/v1/services
 
 GET/POST/PATCH /api/v1/branches/{branch_id}/services
-GET/PATCH /api/v1/branches/{branch_id}/branch-services/{branch_service_id}/queue-settings
+GET/PATCH /api/v1/branches/{branch_id}/branch-services/{branch_service_id}/queue-config
 
 POST/GET/PATCH/DELETE /api/v1/branches/{branch_id}/counters
-GET/PATCH /api/v1/branches/{branch_id}/counters/{counter_id}/queue-settings
+GET/PATCH /api/v1/branches/{branch_id}/counters/{counter_id}/queue-config
 
 POST/GET/PATCH /api/v1/qms-clients
 POST /api/v1/qms-clients/{client_id}/rotate-key

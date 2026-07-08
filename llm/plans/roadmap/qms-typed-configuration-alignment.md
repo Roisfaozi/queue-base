@@ -143,7 +143,7 @@ The following slices have **no overlapping write sets** and can be executed in p
 **Work**:
 - Add `BranchServiceQueueSetting` resolver path under `resolveTypedDetailed`:
   - Override chain: counter → branch_service → branch → tenant
-- Update `GET /settings/effective` to support new `branch_service_queue_settings` override.
+- Update `GET /queue-config/effective` to support new `branch_service_queue_settings` override.
 - Add `branch_service_id` query parameter to effective config endpoint.
 - Remove generic settings fallback when resolving core QMS keys.
 

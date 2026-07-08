@@ -24,9 +24,9 @@ Source of truth checked against live code:
 | `GET /api/v1/branches/{branch_id}/effective-config` | done | `internal/modules/settings/delivery/http/settings_routes.go:16` |
 | `GET /api/v1/branches/{branch_id}/services/{service_id}/effective-config` | done | `internal/modules/settings/delivery/http/settings_routes.go:18` |
 | `GET /api/v1/branches/{branch_id}/counters/{counter_id}/effective-config` | done | `internal/modules/settings/delivery/http/settings_routes.go:20` |
-| `DELETE /api/v1/branches/{branch_id}/queue-settings/{field}` | done | `internal/modules/settings/delivery/http/settings_routes.go:17` |
-| `DELETE /api/v1/branches/{branch_id}/services/{branch_service_id}/queue-settings/{field}` | done | `internal/modules/settings/delivery/http/settings_routes.go:19` |
-| `DELETE /api/v1/branches/{branch_id}/counters/{counter_id}/queue-settings/{field}` | done | `internal/modules/settings/delivery/http/settings_routes.go:21` |
+| `DELETE /api/v1/branches/{branch_id}/queue-config/{field}` | done | `internal/modules/settings/delivery/http/settings_routes.go:17` |
+| `DELETE /api/v1/branches/{branch_id}/services/{branch_service_id}/queue-config/{field}` | done | `internal/modules/settings/delivery/http/settings_routes.go:19` |
+| `DELETE /api/v1/branches/{branch_id}/counters/{counter_id}/queue-config/{field}` | done | `internal/modules/settings/delivery/http/settings_routes.go:21` |
 | `POST/GET/PATCH /api/v1/qms-clients` | done | `internal/modules/qms_client/delivery/http/qms_client_routes.go:9-15` |
 | `POST/GET/PATCH /api/v1/operator-counter-assignments` | done | `internal/modules/operator_assignment/delivery/http/operator_assignment_routes.go:9-14` |
 | `POST /api/v1/caller/login` | done | `internal/modules/caller/delivery/http/caller_routes.go` |
@@ -40,8 +40,8 @@ Source of truth checked against live code:
 
 | Design route | Live status | Decision |
 |---|---|---|
-| `GET/PATCH /api/v1/tenant/queue-settings` | deferred | MVP reads through `GET /api/v1/settings/effective`; generic typed write path not exposed as dedicated route. |
-| `GET/PATCH /api/v1/branches/{branch_id}/queue-settings` | deferred | Same as above; reset alias exists, effective alias exists, but direct CRUD route skipped. |
+| `GET/PATCH /api/v1/tenant/queue-config` | deferred | MVP reads through `GET /api/v1/queue-config/effective`; generic typed write path not exposed as dedicated route. |
+| `GET/PATCH /api/v1/branches/{branch_id}/queue-config` | deferred | Same as above; reset alias exists, effective alias exists, but direct CRUD route skipped. |
 | `POST /api/v1/qms-clients/{client_id}/rotate-key` | alternative | Live runtime exposes `POST /api/v1/qms-clients/credentials` creation path instead of design verb-specific rotate alias. |
 
 Conclusion: route parity is complete for runtime-critical MVP paths; remaining differences are explicit MVP scope choices, not missing backend wiring.
@@ -141,5 +141,5 @@ Conclusion: typed settings write-audit parity is complete for all live write pat
 ### Still intentionally open
 - Standalone realtime consumer apps for caller/signage.
 - Wizard UX.
-- Dedicated tenant/branch queue-settings write endpoints.
+- Dedicated tenant/branch queue-config write endpoints.
 - Docker-native execution remains environment-dependent even though tests exist.

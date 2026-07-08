@@ -800,8 +800,8 @@ PATCH  /api/v1/tenant/profile
 ## 6.2 Tenant Queue Settings
 
 ```text
-GET    /api/v1/tenant/queue-settings
-PATCH  /api/v1/tenant/queue-settings
+GET    /api/v1/tenant/queue-config
+PATCH  /api/v1/tenant/queue-config
 ```
 
 ### PATCH Request
@@ -850,9 +850,9 @@ PATCH  /api/v1/branches/{branch_id}/profile
 ## 6.4 Branch Queue Settings
 
 ```text
-GET    /api/v1/branches/{branch_id}/queue-settings
-PATCH  /api/v1/branches/{branch_id}/queue-settings
-DELETE /api/v1/branches/{branch_id}/queue-settings/{field}
+GET    /api/v1/branches/{branch_id}/queue-config
+PATCH  /api/v1/branches/{branch_id}/queue-config
+DELETE /api/v1/branches/{branch_id}/queue-config/{field}
 ```
 
 ### PATCH Request
@@ -876,7 +876,7 @@ DELETE /api/v1/branches/{branch_id}/queue-settings/{field}
 Contoh:
 
 ```text
-DELETE /api/v1/branches/{branch_id}/queue-settings/ticket_prefix
+DELETE /api/v1/branches/{branch_id}/queue-config/ticket_prefix
 ```
 
 Maka:
@@ -937,9 +937,9 @@ PATCH  /api/v1/branches/{branch_id}/services/{service_id}
 ## 6.7 Service Queue Settings
 
 ```text
-GET    /api/v1/services/{service_id}/queue-settings
-PATCH  /api/v1/services/{service_id}/queue-settings
-DELETE /api/v1/services/{service_id}/queue-settings/{field}
+GET    /api/v1/services/{service_id}/queue-config
+PATCH  /api/v1/services/{service_id}/queue-config
+DELETE /api/v1/services/{service_id}/queue-config/{field}
 ```
 
 ---
@@ -971,9 +971,9 @@ DELETE /api/v1/branches/{branch_id}/counters/{counter_id}
 ## 6.9 Counter Queue Settings
 
 ```text
-GET    /api/v1/branches/{branch_id}/counters/{counter_id}/queue-settings
-PATCH  /api/v1/branches/{branch_id}/counters/{counter_id}/queue-settings
-DELETE /api/v1/branches/{branch_id}/counters/{counter_id}/queue-settings/{field}
+GET    /api/v1/branches/{branch_id}/counters/{counter_id}/queue-config
+PATCH  /api/v1/branches/{branch_id}/counters/{counter_id}/queue-config
+DELETE /api/v1/branches/{branch_id}/counters/{counter_id}/queue-config/{field}
 ```
 
 ---

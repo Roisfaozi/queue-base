@@ -304,7 +304,7 @@ Design sources:
 - design source:
   - `documentation/New Design — Typed Configuration Architecture for QMS.md`
 - work done:
-  - Added `GET /settings/effective` endpoint using typed queue settings resolver.
+  - Added `GET /queue-config/effective` endpoint using typed queue settings resolver.
   - Added `EffectiveQueueConfigRequest/Response` model with all core QMS keys.
   - Wired `QueueSettingsResolver` as typed resolver, with fallback to generic settings via `genericQueueResolver`.
   - Added positive + negative controller tests.
@@ -321,29 +321,29 @@ Design sources:
   - error: none significant in this slice.
 - next step:
   - Phase 4: Remove direct generic-settings dependence from queue core where possible.
-  - Phase 5: Frontend sync for queue-settings page.
+  - Phase 5: Frontend sync for queue-config page.
 
 ## 2026-07-02 — Phase 5A Frontend Effective Config Sync
 
 - status: completed
 - owner paths:
   - `apps/web/src/lib/api/qms.ts`
-  - `apps/web/src/app/[locale]/dashboard/queue-settings/_components/queue-settings-content.tsx`
+  - `apps/web/src/app/[locale]/dashboard/queue-config/_components/queue-config-content.tsx`
   - `llm/tasks/qms-typed-config-progress.md`
   - `llm/tasks/lessons.md`
 - design source:
   - `documentation/New Design — Typed Configuration Architecture for QMS.md`
   - `documentation/QMS NEW Design Diagrams.md`
 - work done:
-  - Replaced stale `GET /settings` UI dependency with typed `GET /settings/effective` client helper.
+  - Replaced stale `GET /queue-config` UI dependency with typed `GET /queue-config/effective` client helper.
   - Added `EffectiveQueueConfig` frontend type for queue reset time, ticket prefix, numbering strategy, and default estimated duration.
-  - Updated queue-settings dashboard to show runtime context selectors for branch, service, and counter.
-  - Updated queue-settings dashboard to show effective typed config cards and preserve loading, error, refresh, and empty states.
+  - Updated queue-config dashboard to show runtime context selectors for branch, service, and counter.
+  - Updated queue-config dashboard to show effective typed config cards and preserve loading, error, refresh, and empty states.
   - Kept generic settings dialog available only as compatibility override creation path, not as source of truth list.
-  - Confirmed `apps/client` has no matching queue-settings consumer for this route.
+  - Confirmed `apps/client` has no matching queue-config consumer for this route.
 - tests added/updated:
   - positive: `apps/web` typecheck proves new typed API helper and page compile.
-  - negative: UI error state now renders backend/proxy failures instead of swallowing missing `GET /settings` into empty data.
+  - negative: UI error state now renders backend/proxy failures instead of swallowing missing `GET /queue-config` into empty data.
   - edge: empty effective response renders explicit empty state.
   - vulnerability/security: frontend still uses existing `/api/v1` proxy and backend tenant context; no UI-only authorization added.
 - verification:
@@ -399,7 +399,7 @@ Design sources:
   - `internal/modules/settings/delivery/http/settings_controller.go`
   - `internal/modules/settings/delivery/http/settings_controller_test.go`
   - `apps/web/src/lib/api/qms.ts`
-  - `apps/web/src/app/[locale]/dashboard/queue-settings/_components/queue-settings-content.tsx`
+  - `apps/web/src/app/[locale]/dashboard/queue-config/_components/queue-config-content.tsx`
   - `llm/tasks/qms-typed-config-progress.md`
 - design source:
   - `documentation/New Design — Typed Configuration Architecture for QMS.md`
@@ -409,7 +409,7 @@ Design sources:
   - Updated `QueueSettingResolver` interface with `ResolveDetailed` method.
   - Added `ResolveDetailed` on `genericQueueResolver` fallback.
   - Updated frontend `EffectiveQueueConfig` type with source fields.
-  - Updated queue-settings content to read and display source badge per effective field.
+  - Updated queue-config content to read and display source badge per effective field.
 - tests added/updated:
   - positive: resolver test passes with stub `ResolveDetailed`.
   - negative: generic fallback (nil resolver) covered by existing test.
@@ -503,7 +503,7 @@ Design sources:
 - work done:
   - Rewrote feature guide settings section to typed configuration inheritance flow.
   - Removed legacy `reset_time`, `prefix`, and `numbering` fallback narrative from core queue flow.
-  - Updated manual test flow to use `GET /settings/effective` and typed config metadata instead of generic settings resolve flow.
+  - Updated manual test flow to use `GET /queue-config/effective` and typed config metadata instead of generic settings resolve flow.
   - Marked generic `settings` as compatibility-only for non-core usage in docs.
 - tests added/updated:
   - positive: docs now describe typed effective values and source metadata for queue config.
@@ -511,7 +511,7 @@ Design sources:
   - edge: manual flow now covers tenant, branch, and service inheritance with default runtime fallback.
   - vulnerability/security: docs keep tenant-scoped auth and cross-tenant validation in the test flow.
 - verification:
-  - command: `rg -n "reset_time|prefix|numbering|settings/effective|branch_services|branch_service_id|/settings/resolve|GET /settings" documentation/QMS_FEATURE_AND_E2E_GUIDE.md documentation/guides/QMS_MANUAL_TEST_FLOW.md llm/tasks/qms-typed-config-progress.md llm/tasks/lessons.md`
+  - command: `rg -n "reset_time|prefix|numbering|queue-config/effective|branch_services|branch_service_id|/queue-config/effective|GET /queue-config" documentation/QMS_FEATURE_AND_E2E_GUIDE.md documentation/guides/QMS_MANUAL_TEST_FLOW.md llm/tasks/qms-typed-config-progress.md llm/tasks/lessons.md`
   - result: confirmed stale legacy references before patch; updated docs remove them from core flow.
 - errors and fixes:
   - error: temporary `patch.txt` file was left behind after a malformed patch attempt.
@@ -585,7 +585,7 @@ Design sources:
   - fix: Updated `router_test.go` struct injector.
   - lesson recorded in: `llm/tasks/lessons.md`
 - next step:
-  - Sync Frontend `/api/v1/settings/effective` consumption for `auto_call_next`, `audio_id` or start `qms_clients` logic for Caller and Signage credentials check-in.
+  - Sync Frontend `/api/v1/queue-config/effective` consumption for `auto_call_next`, `audio_id` or start `qms_clients` logic for Caller and Signage credentials check-in.
 
 ## 2026-07-02 — Phase 2: Signage API Skeleton
 
@@ -1420,7 +1420,7 @@ Design sources:
   - Added dedicated tenant profile aliases: `GET/PATCH /api/v1/tenant/profile`.
   - Added dedicated branch profile aliases: `GET/PATCH /api/v1/branches/{branch_id}/profile`.
   - Added nested counter aliases under `/api/v1/branches/{branch_id}/counters` with branch checks for item routes.
-  - Added branch/service/counter effective-config aliases while keeping `GET /api/v1/settings/effective` backward compatible.
+  - Added branch/service/counter effective-config aliases while keeping `GET /api/v1/queue-config/effective` backward compatible.
   - Added service enable/disable verbs: `POST /api/v1/services/{service_id}/enable` and `/disable`.
   - Added centralized logrus redaction hook for sensitive log fields.
 - tests added/updated:
