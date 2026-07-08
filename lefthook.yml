@@ -12,8 +12,8 @@ pre-commit:
     go-vet:
       glob: '**/*.go'
       run: >
-        pkgs=$(echo '{staged_files}' | tr ' ' '\n' | xargs -I{} dirname "{}" | sort -u | tr '\n' ' ');
-        [ -n "$pkgs" ] && go vet $pkgs || true
+        pkgs=$(echo '{staged_files}' | tr ' ' '\n' | xargs -I{} dirname "{}" | sort -u | sed 's|^|./|' | tr '\n' ' ');
+        [ -n "$pkgs" ] && PATH=/home/user/sdk/go/bin:$PATH GOCACHE=/tmp/gocache go vet $pkgs || true
 
     go-lint:
       glob: '**/*.go'
