@@ -126,7 +126,7 @@ func TestQueueConfigController_EffectiveQueueConfig(t *testing.T) {
 			}}, nil, newQueueConfigControllerTestDB(t))
 
 			router := gin.New()
-			router.GET("/settings/effective", func(c *gin.Context) {
+			router.GET("/queue-config/effective", func(c *gin.Context) {
 				ctx := c.Request.Context()
 				if tt.tenantID != "" {
 					ctx = database.SetOrganizationContext(ctx, tt.tenantID)
@@ -135,7 +135,7 @@ func TestQueueConfigController_EffectiveQueueConfig(t *testing.T) {
 				controller.EffectiveQueueConfig(c)
 			})
 
-			req, _ := http.NewRequest("GET", "/settings/effective"+tt.query, nil)
+			req, _ := http.NewRequest("GET", "/queue-config/effective"+tt.query, nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -211,9 +211,9 @@ func TestQueueConfigController_ResetQueueSetting(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.DELETE("/branches/:branch_id/queue-settings/:field", controller.ResetBranchQueueSetting)
-	router.DELETE("/branches/:branch_id/services/:branch_service_id/queue-settings/:field", controller.ResetBranchServiceQueueSetting)
-	router.DELETE("/branches/:branch_id/counters/:counter_id/queue-settings/:field", controller.ResetCounterQueueSetting)
+	router.DELETE("/branches/:branch_id/queue-config/:field", controller.ResetBranchQueueSetting)
+	router.DELETE("/branches/:branch_id/services/:branch_service_id/queue-config/:field", controller.ResetBranchServiceQueueSetting)
+	router.DELETE("/branches/:branch_id/counters/:counter_id/queue-config/:field", controller.ResetCounterQueueSetting)
 
 	tests := []struct {
 		name      string
@@ -223,9 +223,9 @@ func TestQueueConfigController_ResetQueueSetting(t *testing.T) {
 		where     string
 		whereArgs []any
 	}{
-		{name: "Positive_ResetBranchTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/queue-settings/ticket_prefix", table: "branch_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND branch_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440000"}},
-		{name: "Positive_ResetBranchServiceDuration", path: "/branches/550e8400-e29b-41d4-a716-446655440000/services/550e8400-e29b-41d4-a716-446655440002/queue-settings/default_estimated_duration", table: "branch_service_queue_settings", column: "default_estimated_duration", where: "tenant_id = ? AND branch_service_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440002"}},
-		{name: "Positive_ResetCounterTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/counters/550e8400-e29b-41d4-a716-446655440003/queue-settings/ticket_prefix", table: "counter_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND counter_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440003"}},
+		{name: "Positive_ResetBranchTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/queue-config/ticket_prefix", table: "branch_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND branch_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440000"}},
+		{name: "Positive_ResetBranchServiceDuration", path: "/branches/550e8400-e29b-41d4-a716-446655440000/services/550e8400-e29b-41d4-a716-446655440002/queue-config/default_estimated_duration", table: "branch_service_queue_settings", column: "default_estimated_duration", where: "tenant_id = ? AND branch_service_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440002"}},
+		{name: "Positive_ResetCounterTicketPrefix", path: "/branches/550e8400-e29b-41d4-a716-446655440000/counters/550e8400-e29b-41d4-a716-446655440003/queue-config/ticket_prefix", table: "counter_queue_settings", column: "ticket_prefix", where: "tenant_id = ? AND counter_id = ?", whereArgs: []any{"tenant-1", "550e8400-e29b-41d4-a716-446655440003"}},
 	}
 
 	for _, tt := range tests {
@@ -253,9 +253,9 @@ func TestQueueConfigController_ResetQueueSetting_InvalidField(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.DELETE("/branches/:branch_id/queue-settings/:field", controller.ResetBranchQueueSetting)
+	router.DELETE("/branches/:branch_id/queue-config/:field", controller.ResetBranchQueueSetting)
 
-	req, _ := http.NewRequest(http.MethodDelete, "/branches/550e8400-e29b-41d4-a716-446655440000/queue-settings/not_allowed", nil)
+	req, _ := http.NewRequest(http.MethodDelete, "/branches/550e8400-e29b-41d4-a716-446655440000/queue-config/not_allowed", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

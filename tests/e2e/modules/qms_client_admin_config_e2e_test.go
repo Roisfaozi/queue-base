@@ -32,7 +32,7 @@ func TestQMSClientAdminConfigE2E(t *testing.T) {
 	server.DB.Exec("INSERT INTO organization_members (id, organization_id, user_id, role_id, status) VALUES (?, ?, ?, ?, ?)", uuid.New().String(), tenantID, adminID, "branch_admin", "active")
 
 	// Set Casbin rules for branch admin to access settings and qms config endpoints
-	server.DB.Exec("INSERT INTO casbin_rule (ptype, v0, v1, v2, v3) VALUES ('p', ?, ?, '/api/v1/settings/qms/effective', 'GET')", adminID, tenantID)
+	server.DB.Exec("INSERT INTO casbin_rule (ptype, v0, v1, v2, v3) VALUES ('p', ?, ?, '/api/v1/queue-config/effective', 'GET')", adminID, tenantID)
 	if server.Enforcer != nil {
 		server.Enforcer.LoadPolicy()
 	}
@@ -52,7 +52,7 @@ func TestQMSClientAdminConfigE2E(t *testing.T) {
 		server.DB.Exec("INSERT INTO settings (id, tenant_id, scope_type, scope_id, `key`, value, value_type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 			uuid.New().String(), tenantID, "branch", branchID, "queue_reset_time", "12:00", "string", true)
 
-		reqURL := "/api/v1/settings/qms/effective?branch_id=" + branchID
+		reqURL := "/api/v1/queue-config/effective?branch_id=" + branchID
 		resp := server.Client.GET(reqURL, func(r *http.Request) {
 			r.Header.Set("X-Client-ID", adminID)
 			r.Header.Set("X-Organization-ID", tenantID)
