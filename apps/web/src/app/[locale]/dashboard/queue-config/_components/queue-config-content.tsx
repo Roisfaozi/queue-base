@@ -58,7 +58,7 @@ const EFFECTIVE_FIELDS: Array<{
 	},
 ];
 
-export function QueueSettingsContent() {
+export function QueueConfigContent() {
 	const { currentOrganization } = useDashboardShell();
 	const [branches, setBranches] = useState<Branch[]>([]);
 	const [services, setServices] = useState<Service[]>([]);
@@ -166,7 +166,7 @@ export function QueueSettingsContent() {
 		<>
 			<div className="flex items-center justify-between gap-4">
 				<div>
-					<h2 className="text-2xl font-bold tracking-tight">Queue Settings</h2>
+					<h2 className="text-2xl font-bold tracking-tight">Queue Config</h2>
 					<p className="text-muted-foreground">
 						Typed configuration runtime for tenant, branch, service, and counter
 						scope.

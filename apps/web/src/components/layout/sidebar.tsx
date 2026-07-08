@@ -264,8 +264,8 @@ const navItems: NavEntry[] = [
 		iconName: "MonitorPlay",
 	},
 	{
-		title: "Queue Settings",
-		href: "/dashboard/queue-settings",
+		title: "Queue Config",
+		href: "/dashboard/queue-config",
 		iconName: "Settings2",
 	},
 	{

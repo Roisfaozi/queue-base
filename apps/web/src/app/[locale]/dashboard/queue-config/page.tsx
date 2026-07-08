@@ -2,9 +2,9 @@
 
 import { Icon } from "~/components/shared/icon";
 import { useDashboardShell } from "../_components/dashboard-shell-context";
-import { QueueSettingsContent } from "./_components/queue-settings-content";
+import { QueueConfigContent } from "./_components/queue-config-content";
 
-export default function QueueSettingsPage() {
+export default function QueueConfigPage() {
 	const { currentOrganization, isLoading } = useDashboardShell();
 
 	if (isLoading) {
@@ -33,7 +33,7 @@ export default function QueueSettingsPage() {
 
 	return (
 		<div className="space-y-6">
-			<QueueSettingsContent />
+			<QueueConfigContent />
 		</div>
 	);
 }
