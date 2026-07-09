@@ -12,20 +12,29 @@ Dokumen API QMS dipecah per domain agar lebih mudah dibaca dan dirawat.
 - `documentation/api/qms/BRANCH_API.md` — CRUD branch
 - `documentation/api/qms/SERVICE_API.md` — CRUD service
 - `documentation/api/qms/COUNTER_API.md` — CRUD counter
-- `documentation/api/qms/SETTINGS_API.md` — create, resolve, get, update, delete setting
 - `documentation/api/qms/QUEUE_API.md` — register, list, detail, transition, forward, stats, active journeys, visit history
+- `documentation/api/qms/QUEUE_CONFIG_API.md` — typed queue config effective, patch, and reset endpoints
 - `documentation/api/qms/SCANNER_API.md` — scanner check-in register/forward
-- `documentation/api/qms/OPERATIONS_AND_SECURITY.md` — Phase 9 backend operations, audit, tenant/branch isolation, and scanner API-key contract
-- `documentation/api/qms/QMS_ALERT_POLICY.md` — Phase 11 observability alert policy for queue/scanner metrics and triage
-- `documentation/api/qms/QMS_LOGGING_CONTRACT.md` — Phase 11 logging field contract and sensitive-field deny list
+- `documentation/api/qms/CALLER_API.md` — caller device login, me, and journey actions
+- `documentation/api/qms/SIGNAGE_API.md` — signage device me, current calls, and queues
+- `documentation/api/qms/QMS_CLIENT_API.md` — qms client CRUD and credential creation
+- `documentation/api/qms/OPERATOR_ASSIGNMENT_API.md` — operator-to-counter assignment CRUD
+- `documentation/api/qms/SETTINGS_API.md` — legacy note and redirect to typed queue config surface
+- `documentation/api/qms/OPERATIONS_AND_SECURITY.md` — queue/scanner operations, audit, tenant/branch isolation, and API-key contract
+- `documentation/api/qms/QMS_ALERT_POLICY.md` — observability alert policy for queue/scanner metrics and triage
+- `documentation/api/qms/QMS_LOGGING_CONTRACT.md` — logging field contract and sensitive-field deny list
 
 ## Suggested Reading Order
 
 1. `documentation/api/qms/COMMON.md`
 2. domain master data yang relevan (`BRANCH_API.md`, `SERVICE_API.md`, `COUNTER_API.md`)
-3. `documentation/api/qms/SETTINGS_API.md`
+3. `documentation/api/qms/QUEUE_CONFIG_API.md`
 4. `documentation/api/qms/QUEUE_API.md`
 5. `documentation/api/qms/SCANNER_API.md`
-6. `documentation/api/qms/OPERATIONS_AND_SECURITY.md`
-7. `documentation/api/qms/QMS_ALERT_POLICY.md`
-8. `documentation/api/qms/QMS_LOGGING_CONTRACT.md`
+6. `documentation/api/qms/CALLER_API.md`
+7. `documentation/api/qms/SIGNAGE_API.md`
+8. `documentation/api/qms/QMS_CLIENT_API.md`
+9. `documentation/api/qms/OPERATOR_ASSIGNMENT_API.md`
+10. `documentation/api/qms/OPERATIONS_AND_SECURITY.md`
+11. `documentation/api/qms/QMS_ALERT_POLICY.md`
+12. `documentation/api/qms/QMS_LOGGING_CONTRACT.md`
