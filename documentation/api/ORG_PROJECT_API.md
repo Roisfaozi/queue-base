@@ -6,9 +6,32 @@
 - `POST /api/v1/organizations/invitations/accept`
   - request: `token` (required), `password` (conditionally required), `name` (no)
 
+#### Example Request
+```json
+{
+  "token": "invite-token-uuid",
+  "password": "Password123!",
+  "name": "John Doe"
+}
+```
+
 ### Authenticated
 - `POST /api/v1/organizations` — create organization
 - `GET /api/v1/organizations/me` — list organizations current user belongs to
+
+#### Example Request `POST /api/v1/organizations`
+```json
+{
+  "name": "Acme Corp",
+  "slug": "acme-corp"
+}
+```
+
+#### Example Request `GET /api/v1/organizations/me`
+```bash
+curl 'http://127.0.0.1:8080/api/v1/organizations/me' \
+  -H 'Authorization: Bearer <token>'
+```
 
 ### Tenant Context
 Requires `X-Organization-ID` or `X-Organization-Slug`.
@@ -20,6 +43,15 @@ Requires `X-Organization-ID` or `X-Organization-Slug`.
 - `PUT /api/v1/organizations/:id`
 - `DELETE /api/v1/organizations/:id`
 
+#### Example Request `PATCH /api/v1/tenant/profile`
+```json
+{
+  "name": "Acme Corp Updated",
+  "timezone": "Asia/Jakarta",
+  "logo_asset_id": "asset-uuid"
+}
+```
+
 ### Member Management
 - `POST /api/v1/organizations/:id/members/invite`
   - request: `email` (yes), `role_id` (yes)
@@ -28,6 +60,22 @@ Requires `X-Organization-ID` or `X-Organization-Slug`.
   - request fields: `role_id` (no), `status` (no, valid values: active/suspended)
 - `DELETE /api/v1/organizations/:id/members/:userId`
 - `GET /api/v1/organizations/:id/presence`
+
+#### Example Request `POST /api/v1/organizations/:id/members/invite`
+```json
+{
+  "email": "member@example.com",
+  "role_id": "role-uuid"
+}
+```
+
+#### Example Request `PATCH /api/v1/organizations/:id/members/:userId`
+```json
+{
+  "role_id": "role-uuid",
+  "status": "active"
+}
+```
 
 ### Response Fields (Organization)
 | Field | Type | Required | Notes |
@@ -65,6 +113,23 @@ Tenant-scoped CRUD.
 - `GET /api/v1/projects/:id`
 - `PUT /api/v1/projects/:id`
 - `DELETE /api/v1/projects/:id`
+
+#### Example Request `POST /api/v1/projects`
+```json
+{
+  "name": "Landing Page",
+  "domain": "landing.acme.test"
+}
+```
+
+#### Example Request `PUT /api/v1/projects/:id`
+```json
+{
+  "name": "Landing Page Updated",
+  "domain": "landing-v2.acme.test",
+  "status": "active"
+}
+```
 
 ### Response Fields (Project)
 | Field | Type | Required | Notes |

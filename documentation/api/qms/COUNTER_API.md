@@ -69,6 +69,18 @@ curl -X POST 'http://127.0.0.1:8080/api/v1/counters' \
 
 List counters.
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data[].id` | string | Yes | Counter UUID |
+| `data[].tenant_id` | string | Yes | Tenant UUID |
+| `data[].branch_id` | string | Yes | Branch UUID |
+| `data[].code` | string | Yes | Counter code |
+| `data[].name` | string | Yes | Counter name |
+| `data[].status` | string | Yes | Counter status |
+| `data[].created_at` | int64 | Yes | Creation timestamp |
+| `data[].updated_at` | int64 | Yes | Update timestamp |
+
 ### Example success response
 
 ```json
@@ -105,6 +117,18 @@ Get counter by ID.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `id` | string(uuid) | Yes | Counter ID |
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Counter UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.branch_id` | string | Yes | Branch UUID |
+| `data.code` | string | Yes | Counter code |
+| `data.name` | string | Yes | Counter name |
+| `data.status` | string | Yes | Counter status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
 
 ### Example success response
 
@@ -144,7 +168,16 @@ Update counter.
 | `status` | body | string | Optional | `active`, `inactive` | - |
 
 ### Response Fields
-Same as create response fields.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Counter UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.branch_id` | string | Yes | Branch UUID |
+| `data.code` | string | Yes | Counter code |
+| `data.name` | string | Yes | Counter name |
+| `data.status` | string | Yes | Counter status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
 
 ### Example request body
 
@@ -188,6 +221,9 @@ curl -X PUT 'http://127.0.0.1:8080/api/v1/counters/550e8400-e29b-41d4-a716-44665
 ## `DELETE /api/v1/counters/{id}`
 
 Delete counter.
+
+### Response Fields
+None (204 No Content).
 
 ### Example success response
 

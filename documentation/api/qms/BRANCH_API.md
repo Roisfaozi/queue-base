@@ -75,6 +75,17 @@ List all branches in active tenant.
 
 Tidak ada query parameter.
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data[].id` | string | Yes | Branch UUID |
+| `data[].tenant_id` | string | Yes | Tenant UUID |
+| `data[].code` | string | Yes | Branch code |
+| `data[].name` | string | Yes | Branch name |
+| `data[].status` | string | Yes | Branch status |
+| `data[].created_at` | int64 | Yes | Creation timestamp |
+| `data[].updated_at` | int64 | Yes | Update timestamp |
+
 ### Example success response
 
 ```json
@@ -110,6 +121,17 @@ Get one branch by ID.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `id` | string(uuid) | Yes | Branch ID |
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Branch UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.code` | string | Yes | Branch code |
+| `data.name` | string | Yes | Branch name |
+| `data.status` | string | Yes | Branch status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
 
 ### Example success response
 
@@ -154,7 +176,15 @@ Update branch.
 | `status` | body | string | Optional | `active`, `inactive` | - | branch status |
 
 ### Response Fields
-Same as create response fields.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Branch UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.code` | string | Yes | Branch code |
+| `data.name` | string | Yes | Branch name |
+| `data.status` | string | Yes | Branch status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
 
 ### Example request body
 
@@ -203,6 +233,9 @@ Delete branch in active tenant scope.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `id` | string(uuid) | Yes | Branch ID |
+
+### Response Fields
+None (204 No Content).
 
 ### Example success response
 

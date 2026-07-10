@@ -12,6 +12,13 @@ Create role.
 |---|---|---|---|
 | `name` | string | Yes | role slug like `role:editor` |
 
+### Example Request
+```json
+{
+  "name": "role:manager"
+}
+```
+
 ### `GET /api/v1/roles`
 List roles.
 
@@ -21,6 +28,12 @@ List roles.
 | `data[].id` | string | Yes | role UUID |
 | `data[].name` | string | Yes | role slug |
 | `data[].description` | string | No | description if present |
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/roles' \
+  -H 'Authorization: Bearer <token>'
+```
 
 ### Permissions
 
@@ -34,6 +47,15 @@ List roles.
 | `method` | string | Yes | action / HTTP method |
 | `domain` | string | No | default/global domain fallback |
 
+### Example Request
+```json
+{
+  "role": "role:manager",
+  "path": "/api/v1/projects",
+  "method": "POST"
+}
+```
+
 #### `POST /api/v1/permissions/assign-role`
 
 ### Request Fields
@@ -42,6 +64,14 @@ List roles.
 | `user_id` | string | Yes | target user |
 | `role` | string | Yes | assigned role |
 | `domain` | string | No | tenant/domain |
+
+### Example Request
+```json
+{
+  "user_id": "user-uuid",
+  "role": "role:manager"
+}
+```
 
 #### `POST /api/v1/permissions/check-batch`
 
@@ -52,6 +82,15 @@ List roles.
 | `items[].resource` | string | Yes | resource path |
 | `items[].action` | string | Yes | action |
 | `items[].domain` | string | No | domain |
+
+### Example Request
+```json
+{
+  "items": [
+    {"resource": "/api/v1/users", "action": "GET"}
+  ]
+}
+```
 
 ### Response Fields
 | Field | Type | Required | Notes |
@@ -97,6 +136,15 @@ Create access right.
 | `name` | string | Yes | logical access-right name |
 | `resource` | string | Yes | target resource |
 | `action` | string | Yes | target action |
+
+### Example Request
+```json
+{
+  "name": "manage_projects",
+  "resource": "/api/v1/projects",
+  "action": "POST"
+}
+```
 
 ### Response Fields
 Depends on controller output; minimally includes created access-right identifier and metadata.

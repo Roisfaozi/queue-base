@@ -24,6 +24,25 @@ Scanner entrypoint untuk action `register` atau `forward`.
 | `destination_service_id` | body | string(uuid) | Conditional | - | - | required for `action=forward` |
 | `destination_counter_id` | body | string(uuid) | Optional | - | - | optional destination counter |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.action` | string | Yes | `register` or `forward` |
+| `data.queue.id` | string | Yes | Queue UUID |
+| `data.queue.tenant_id` | string | Yes | Tenant UUID |
+| `data.queue.branch_id` | string | Yes | Branch UUID |
+| `data.queue.queue_date` | string | Yes | Business date |
+| `data.queue.ticket_no` | string | Yes | Display ticket number |
+| `data.queue.queue_no` | int | Yes | Queue sequence |
+| `data.queue.patient_id` | string | No | Linked patient UUID |
+| `data.queue.patient_name` | string | No | Display patient name |
+| `data.queue.status` | string | Yes | Queue status |
+| `data.queue.current_journey_id` | string | No | Active journey UUID |
+| `data.queue.queue_left` | int | No | Waiting count before ticket |
+| `data.queue.estimate_time_minutes` | int | No | Estimated wait minutes |
+| `data.queue.created_at` | int64 | Yes | Creation timestamp |
+| `data.queue.updated_at` | int64 | Yes | Update timestamp |
+
 ### Example request body for register
 
 ```json
@@ -94,6 +113,25 @@ Scanner entrypoint untuk action `register` atau `forward`.
   }
 }
 ```
+
+### Example response fields for forward
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.action` | string | Yes | `forward` |
+| `data.queue.id` | string | Yes | Queue UUID |
+| `data.queue.tenant_id` | string | Yes | Tenant UUID |
+| `data.queue.branch_id` | string | Yes | Branch UUID |
+| `data.queue.queue_date` | string | Yes | Business date |
+| `data.queue.ticket_no` | string | Yes | Display ticket number |
+| `data.queue.queue_no` | int | Yes | Queue sequence |
+| `data.queue.patient_id` | string | No | Linked patient UUID |
+| `data.queue.patient_name` | string | No | Display patient name |
+| `data.queue.status` | string | Yes | Queue status |
+| `data.queue.current_journey_id` | string | No | Active journey UUID |
+| `data.queue.queue_left` | int | No | Waiting count before ticket |
+| `data.queue.estimate_time_minutes` | int | No | Estimated wait minutes |
+| `data.queue.created_at` | int64 | Yes | Creation timestamp |
+| `data.queue.updated_at` | int64 | Yes | Update timestamp |
 
 ### Curl register
 

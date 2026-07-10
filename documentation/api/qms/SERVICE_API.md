@@ -74,6 +74,19 @@ curl -X POST 'http://127.0.0.1:8080/api/v1/services' \
 
 List services in active tenant.
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data[].id` | string | Yes | Service UUID |
+| `data[].tenant_id` | string | Yes | Tenant UUID |
+| `data[].code` | string | Yes | Service code |
+| `data[].name` | string | Yes | Service name |
+| `data[].status` | string | Yes | Service status |
+| `data[].is_pharmacy` | bool | Yes | Pharmacy service flag |
+| `data[].is_pharmacy_reception` | bool | Yes | Pharmacy reception flag |
+| `data[].created_at` | int64 | Yes | Creation timestamp |
+| `data[].updated_at` | int64 | Yes | Update timestamp |
+
 ### Example success response
 
 ```json
@@ -111,6 +124,19 @@ Get service by ID.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `id` | string(uuid) | Yes | Service ID |
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Service UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.code` | string | Yes | Service code |
+| `data.name` | string | Yes | Service name |
+| `data.status` | string | Yes | Service status |
+| `data.is_pharmacy` | bool | Yes | Pharmacy service flag |
+| `data.is_pharmacy_reception` | bool | Yes | Pharmacy reception flag |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
 
 ### Example success response
 
@@ -153,7 +179,17 @@ Update service.
 | `is_pharmacy_reception` | body | boolean | Optional | - | - |
 
 ### Response Fields
-Same as create response fields.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Service UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.code` | string | Yes | Service code |
+| `data.name` | string | Yes | Service name |
+| `data.status` | string | Yes | Service status |
+| `data.is_pharmacy` | bool | Yes | Pharmacy service flag |
+| `data.is_pharmacy_reception` | bool | Yes | Pharmacy reception flag |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
 
 ### Example request body
 
@@ -198,6 +234,9 @@ curl -X PUT 'http://127.0.0.1:8080/api/v1/services/550e8400-e29b-41d4-a716-44665
 ## `DELETE /api/v1/services/{id}`
 
 Delete service.
+
+### Response Fields
+None (204 No Content).
 
 ### Example success response
 

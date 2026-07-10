@@ -14,6 +14,17 @@ Creates a QMS client.
 | `client_type` | string | Yes | `caller`, `signage`, `scanner`, `kiosk` |
 | `name` | string | Yes | Human-readable client name |
 
+### Example Request Body
+```json
+{
+  "branch_id": "branch-uuid",
+  "branch_service_id": "bs-uuid",
+  "counter_id": "counter-uuid",
+  "client_type": "caller",
+  "name": "Loket 1 Admission"
+}
+```
+
 ### Response Fields
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -54,6 +65,15 @@ Creates new credentials for a QMS client.
 | `api_key` | string | Yes | Plain secret used to derive hash |
 | `expires_at` | integer(ms) | No | Credential expiration |
 
+### Example Request Body
+```json
+{
+  "client_id": "client-uuid",
+  "api_key": "scanner-secret-key-123",
+  "expires_at": 1761890000000
+}
+```
+
 ### Response Fields
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -81,6 +101,13 @@ Creates new credentials for a QMS client.
 
 ## `GET /api/v1/qms-clients`
 Lists QMS clients in active tenant scope.
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/qms-clients' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'X-Organization-ID: tenant-uuid'
+```
 
 ### Response Fields
 | Field | Type | Required | Notes |
@@ -117,11 +144,42 @@ Lists QMS clients in active tenant scope.
 ## `GET /api/v1/qms-clients/:id`
 Gets QMS client by ID.
 
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/qms-clients/client-uuid' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'X-Organization-ID: tenant-uuid'
+```
+
 ### Response Fields
-Same as list item fields.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | QMS client UUID |
+| `data.tenant_id` | string | No | Tenant UUID |
+| `data.branch_id` | string | Yes | Branch UUID |
+| `data.client_type` | string | Yes | Client type |
+| `data.name` | string | Yes | Client display name |
+| `data.branch_service_id` | string | No | Bound branch-service UUID |
+| `data.counter_id` | string | No | Bound counter UUID |
+| `data.is_active` | bool | Yes | Client active status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
 
 ### Example Response
-Same shape as list item.
+```json
+{
+  "data": {
+    "id": "client-uuid",
+    "tenant_id": "tenant-uuid",
+    "branch_id": "branch-uuid",
+    "client_type": "caller",
+    "name": "Loket 1 Admission",
+    "branch_service_id": "bs-uuid",
+    "counter_id": "counter-uuid",
+    "is_active": true,
+    "created_at": 1761800000000
+  }
+}
+```
 
 ## `PATCH /api/v1/qms-clients/:id`
 Updates QMS client metadata and binding.
@@ -145,7 +203,17 @@ Updates QMS client metadata and binding.
 ```
 
 ### Response Fields
-Same as list item fields.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | QMS client UUID |
+| `data.tenant_id` | string | No | Tenant UUID |
+| `data.branch_id` | string | Yes | Branch UUID |
+| `data.client_type` | string | Yes | Client type |
+| `data.name` | string | Yes | Client display name |
+| `data.branch_service_id` | string | No | Bound branch-service UUID |
+| `data.counter_id` | string | No | Bound counter UUID |
+| `data.is_active` | bool | Yes | Client active status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
 
 ### Example Response
 ```json
@@ -167,5 +235,17 @@ Same as list item fields.
 ## `DELETE /api/v1/qms-clients/:id`
 Deletes or deactivates QMS client depending on backend policy.
 
-### Response
-- `204 No Content`
+### Path Params
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `id` | string(uuid) | Yes | QMS client UUID |
+
+### Example Request
+```bash
+curl -X DELETE 'http://127.0.0.1:8080/api/v1/qms-clients/client-uuid' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'X-Organization-ID: tenant-uuid'
+```
+
+### Response Fields
+None (204 No Content).

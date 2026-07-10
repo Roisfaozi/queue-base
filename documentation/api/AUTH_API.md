@@ -39,6 +39,14 @@ Authenticates a user and establishes a Redis-backed session.
 | `username` | string | Yes | login identifier |
 | `password` | string | Yes | plain password |
 
+### Example Request
+```json
+{
+  "username": "johndoe",
+  "password": "Password123!"
+}
+```
+
 ### Response Fields
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -83,6 +91,13 @@ Issues a new access token using a valid refresh token.
 |---|---|---|---|
 | `refresh_token` | string | Yes | previously issued refresh token |
 
+### Example Request
+```json
+{
+  "refresh_token": "refresh-token-uuid"
+}
+```
+
 ### Response Fields
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -102,14 +117,41 @@ Issues a new access token using a valid refresh token.
 ```
 
 ### Password & Verification
-- `POST /api/v1/auth/forgot-password`
-  - request: `email` required
-- `POST /api/v1/auth/reset-password`
-  - request: `token`, `new_password` required
-- `POST /api/v1/auth/verify-email`
-  - request: `token` required
-- `GET /api/v1/auth/sso/:provider`
-- `GET /api/v1/auth/sso/:provider/callback`
+
+#### `POST /api/v1/auth/forgot-password`
+Request password reset link.
+
+### Example Request
+```json
+{
+  "email": "john@example.com"
+}
+```
+
+#### `POST /api/v1/auth/reset-password`
+Reset password using token.
+
+### Example Request
+```json
+{
+  "token": "reset-token-uuid",
+  "new_password": "NewPassword123!"
+}
+```
+
+#### `POST /api/v1/auth/verify-email`
+Verify email address using token.
+
+### Example Request
+```json
+{
+  "token": "verify-token-uuid"
+}
+```
+
+#### SSO Endpoints
+- `GET /api/v1/auth/sso/:provider` (Redirects to provider)
+- `GET /api/v1/auth/sso/:provider/callback` (Provider callback)
 
 ## Authenticated Routes
 Requires `Authorization: Bearer <token>`.
@@ -117,17 +159,32 @@ Requires `Authorization: Bearer <token>`.
 ### `GET /api/v1/auth/me`
 Gets current session context.
 
+### Request Headers
+`Authorization: Bearer <token>`
+
 ### Response Fields
 Same shape as login response.
 
 ### `POST /api/v1/auth/logout`
 Destroys the current Redis session.
 
+### Request Headers
+`Authorization: Bearer <token>`
+
+### Example Request
+Empty body `{}`.
+
 ### Response
 - `204 No Content`
 
 ### `POST /api/v1/auth/ticket`
 Exchanges session for a short-lived ticket.
+
+### Request Headers
+`Authorization: Bearer <token>`
+
+### Example Request
+Empty body `{}`.
 
 ### Response Fields
 | Field | Type | Required | Notes |

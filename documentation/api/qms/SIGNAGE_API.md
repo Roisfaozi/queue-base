@@ -9,6 +9,13 @@ Returns signage device binding and branding context.
 - `X-Client-ID`: Client identifier
 - `X-API-Key`: Client secret
 
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/signage/me' \
+  -H 'X-Client-ID: signage-client-uuid' \
+  -H 'X-API-Key: signage-api-key'
+```
+
 ### Response Fields
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -61,6 +68,13 @@ Returns current live calls bound to signage branch.
 - Should be safe for auto-refresh / polling.
 - Array order typically depends on the most recently called items.
 
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/signage/current-calls' \
+  -H 'X-Client-ID: signage-client-uuid' \
+  -H 'X-API-Key: signage-api-key'
+```
+
 ### Response Fields
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -103,6 +117,13 @@ Returns queue list view for signage screens.
 |---|---|---|---|
 | `status` | string | No | Filter by status (e.g., `waiting`, `called`) |
 | `limit` | int | No | Pagination |
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/signage/queues?status=waiting&limit=10' \
+  -H 'X-Client-ID: signage-client-uuid' \
+  -H 'X-API-Key: signage-api-key'
+```
 
 ### Response Fields
 | Field | Type | Required | Notes |

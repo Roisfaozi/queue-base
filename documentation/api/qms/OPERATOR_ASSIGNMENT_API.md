@@ -50,8 +50,23 @@ Creates a counter assignment for a user.
 ## `GET /api/v1/operator-counter-assignments`
 Lists current assignments in active tenant scope.
 
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/operator-counter-assignments' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'X-Organization-ID: tenant-uuid'
+```
+
 ### Response Fields
-Same as create response fields.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data[].id` | string | Yes | Assignment UUID |
+| `data[].tenant_id` | string | No | Tenant UUID |
+| `data[].branch_id` | string | Yes | Branch UUID |
+| `data[].user_id` | string | Yes | User UUID |
+| `data[].counter_id` | string | Yes | Counter UUID |
+| `data[].assigned_at` | int64 | Yes | Assignment timestamp |
+| `data[].unassigned_at` | int64 | No | Unassignment timestamp |
 
 ### Example Response
 ```json
@@ -78,8 +93,16 @@ Unassigns or deletes an operator assignment.
 |---|---|---|---|
 | `id` | string(uuid) | Yes | Assignment ID |
 
+### Example Request
+```bash
+curl -X DELETE 'http://127.0.0.1:8080/api/v1/operator-counter-assignments/assignment-uuid' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'X-Organization-ID: tenant-uuid'
+```
+
 ### Success Response
-- `204 No Content`
+### Response Fields
+None (204 No Content).
 
 ## Security Notes
 - Requires `operator_assignment:manage` scope.

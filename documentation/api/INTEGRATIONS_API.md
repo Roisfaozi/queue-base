@@ -4,13 +4,36 @@
 
 Tenant-scoped API-key CRUD.
 
-- `POST /api/v1/api-keys`
-  - request: (depends on controller)
-  - response: returns raw secret once only
-- `GET /api/v1/api-keys`
-  - response: `data[]` — list of api key metadata (no secret)
-- `DELETE /api/v1/api-keys/:id`
-  - response: `204 No Content`
+### `POST /api/v1/api-keys`
+Create API key.
+
+### Example Request
+```json
+{
+  "name": "Web Dashboard Key",
+  "description": "Used by admin dashboard"
+}
+```
+
+### `GET /api/v1/api-keys`
+List API keys.
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/api-keys' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'X-Organization-ID: <organization_id>'
+```
+
+### `DELETE /api/v1/api-keys/:id`
+Delete API key.
+
+### Example Request
+```bash
+curl -X DELETE 'http://127.0.0.1:8080/api/v1/api-keys/api-key-uuid' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'X-Organization-ID: <organization_id>'
+```
 
 ### Security Notes
 - API key creation returns the raw secret once.
@@ -30,6 +53,16 @@ Dynamic query-builder search. Uses filter/sort/page/limit pattern.
 | `page` | integer | No | pagination |
 | `limit` | integer | No | results per page |
 
+### Example Request
+```json
+{
+  "filter": {"event_type": "USER_LOGIN"},
+  "sort": [{"field": "created_at", "direction": "desc"}],
+  "page": 1,
+  "limit": 20
+}
+```
+
 ### Response Fields
 Standard paginated envelope with `data[]`.
 
@@ -37,14 +70,67 @@ Standard paginated envelope with `data[]`.
 
 Tenant-scoped outbound webhook management.
 
-- `POST /api/v1/webhooks`
-  - request: endpoint URL, events
-- `GET /api/v1/webhooks`
-  - response: `data[]` with webhook configs
-- `GET /api/v1/webhooks/:id`
-- `PUT /api/v1/webhooks/:id`
-- `DELETE /api/v1/webhooks/:id`
-- `GET /api/v1/webhooks/:id/logs`
+### `POST /api/v1/webhooks`
+Create webhook.
+
+### Example Request
+```json
+{
+  "url": "https://example.com/webhook",
+  "events": ["user.created", "queue.registered"]
+}
+```
+
+### `GET /api/v1/webhooks`
+List webhooks.
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/webhooks' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'X-Organization-ID: <organization_id>'
+```
+
+### `GET /api/v1/webhooks/:id`
+Get webhook.
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/webhooks/webhook-uuid' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'X-Organization-ID: <organization_id>'
+```
+
+### `PUT /api/v1/webhooks/:id`
+Update webhook.
+
+### Example Request
+```json
+{
+  "url": "https://example.com/webhook-v2",
+  "events": ["queue.registered"]
+}
+```
+
+### `DELETE /api/v1/webhooks/:id`
+Delete webhook.
+
+### Example Request
+```bash
+curl -X DELETE 'http://127.0.0.1:8080/api/v1/webhooks/webhook-uuid' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'X-Organization-ID: <organization_id>'
+```
+
+### `GET /api/v1/webhooks/:id/logs`
+List webhook logs.
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/webhooks/webhook-uuid/logs' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'X-Organization-ID: <organization_id>'
+```
 
 ### Delivery Details
 - Signed with HMAC-SHA256 (`X-Webhook-Signature` header)

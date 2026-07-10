@@ -67,6 +67,12 @@ Validates QMS client credentials and returns a short-lived token (if web UI) or 
 ## `GET /api/v1/caller/me`
 Retrieves currently authenticated Caller context. Requires `caller` client authorization.
 
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/caller/me' \
+  -H 'Authorization: Bearer <access_token>'
+```
+
 ### Success Response
 Same shape as Login response.
 ### Response Fields
