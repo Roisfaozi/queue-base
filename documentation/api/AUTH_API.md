@@ -163,7 +163,25 @@ Gets current session context.
 `Authorization: Bearer <token>`
 
 ### Response Fields
-Same shape as login response.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.access_token` | string | Yes | bearer token |
+| `data.token_type` | string | Yes | usually `Bearer` |
+| `data.expires_in` | integer | Yes | seconds |
+| `data.refresh_token` | string | Yes | refresh token |
+| `data.expires_at` | string(datetime) | Yes | token expiry |
+| `data.user.id` | string | Yes | user UUID |
+| `data.user.name` | string | Yes | display name |
+| `data.user.email` | string | Yes | email |
+| `data.user.username` | string | Yes | username |
+| `data.user.role` | string | Yes | effective role string |
+| `data.user.avatar_url` | string | No | avatar URL |
+
+### Example Request
+```bash
+curl 'http://127.0.0.1:8080/api/v1/auth/me' \
+  -H 'Authorization: Bearer <token>'
+```
 
 ### `POST /api/v1/auth/logout`
 Destroys the current Redis session.
@@ -184,7 +202,9 @@ Exchanges session for a short-lived ticket.
 `Authorization: Bearer <token>`
 
 ### Example Request
-Empty body `{}`.
+```json
+{}
+```
 
 ### Response Fields
 | Field | Type | Required | Notes |

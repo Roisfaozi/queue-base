@@ -9,8 +9,10 @@ Create counter under one branch.
 | Field | In | Type | Required | Enum | Default | Notes |
 |---|---|---|---|---|---|---|
 | `branch_id` | body | string(uuid) | Yes | - | - | target branch |
+| `branch_service_id` | body | string(uuid) | Optional | - | - | bound service |
 | `code` | body | string | Yes | - | - | 2..50 chars, uppercased |
 | `name` | body | string | Yes | - | - | 3..255 chars |
+| `display_name` | body | string | Optional | - | - | human friendly name |
 
 ### Response Fields
 | Field | Type | Required | Notes |
@@ -18,8 +20,10 @@ Create counter under one branch.
 | `data.id` | string | Yes | Counter UUID |
 | `data.tenant_id` | string | Yes | Tenant UUID |
 | `data.branch_id` | string | Yes | Branch UUID |
+| `data.branch_service_id` | string | No | Service binding |
 | `data.code` | string | Yes | Counter code |
 | `data.name` | string | Yes | Counter name |
+| `data.display_name` | string | No | Display name |
 | `data.status` | string | Yes | Counter status |
 | `data.created_at` | int64 | Yes | Creation timestamp |
 | `data.updated_at` | int64 | Yes | Update timestamp |
@@ -75,8 +79,10 @@ List counters.
 | `data[].id` | string | Yes | Counter UUID |
 | `data[].tenant_id` | string | Yes | Tenant UUID |
 | `data[].branch_id` | string | Yes | Branch UUID |
+| `data[].branch_service_id` | string | No | Service binding |
 | `data[].code` | string | Yes | Counter code |
 | `data[].name` | string | Yes | Counter name |
+| `data[].display_name` | string | No | Display name |
 | `data[].status` | string | Yes | Counter status |
 | `data[].created_at` | int64 | Yes | Creation timestamp |
 | `data[].updated_at` | int64 | Yes | Update timestamp |
@@ -124,8 +130,10 @@ Get counter by ID.
 | `data.id` | string | Yes | Counter UUID |
 | `data.tenant_id` | string | Yes | Tenant UUID |
 | `data.branch_id` | string | Yes | Branch UUID |
+| `data.branch_service_id` | string | No | Service binding |
 | `data.code` | string | Yes | Counter code |
 | `data.name` | string | Yes | Counter name |
+| `data.display_name` | string | No | Display name |
 | `data.status` | string | Yes | Counter status |
 | `data.created_at` | int64 | Yes | Creation timestamp |
 | `data.updated_at` | int64 | Yes | Update timestamp |
@@ -163,8 +171,10 @@ Update counter.
 
 | Field | In | Type | Required | Enum | Default | Notes |
 |---|---|---|---|---|---|---|
+| `branch_service_id` | body | string(uuid) | Optional | - | - | target service |
 | `code` | body | string | Optional | - | - |
 | `name` | body | string | Optional | - | - |
+| `display_name` | body | string | Optional | - | - |
 | `status` | body | string | Optional | `active`, `inactive` | - |
 
 ### Response Fields
@@ -173,8 +183,10 @@ Update counter.
 | `data.id` | string | Yes | Counter UUID |
 | `data.tenant_id` | string | Yes | Tenant UUID |
 | `data.branch_id` | string | Yes | Branch UUID |
+| `data.branch_service_id` | string | No | Service binding |
 | `data.code` | string | Yes | Counter code |
 | `data.name` | string | Yes | Counter name |
+| `data.display_name` | string | No | Display name |
 | `data.status` | string | Yes | Counter status |
 | `data.created_at` | int64 | Yes | Creation timestamp |
 | `data.updated_at` | int64 | Yes | Update timestamp |
@@ -183,7 +195,10 @@ Update counter.
 
 ```json
 {
+  "branch_service_id": "bs-uuid",
+  "code": "C1",
   "name": "Counter Utama",
+  "display_name": "Loket 1",
   "status": "active"
 }
 ```
