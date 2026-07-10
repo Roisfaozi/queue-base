@@ -1,13 +1,26 @@
 # Authentication API Reference
 
-Handles user registration, login, token refresh, and SSO.
+Handles user registration, login, token refresh, password reset, email verification, and SSO.
 
 ## Public Routes
 
 ### `POST /api/v1/auth/register`
 Creates a new user and assigns default role in the global domain.
 
-**Request Body:**
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | Yes | 3..100 chars |
+| `username` | string | Yes | 3..50 chars |
+| `email` | string(email) | Yes | max 100 |
+| `password` | string | Yes | 8..72 chars |
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data` | object/null | No | handler may return empty payload or created user summary |
+
+### Example Request
 ```json
 {
   "name": "John Doe",
@@ -17,21 +30,31 @@ Creates a new user and assigns default role in the global domain.
 }
 ```
 
-**Response (201 Created):**
-Standard envelope with empty data or user info.
-
 ### `POST /api/v1/auth/login`
 Authenticates a user and establishes a Redis-backed session.
 
-**Request Body:**
-```json
-{
-  "username": "johndoe",
-  "password": "Password123!"
-}
-```
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `username` | string | Yes | login identifier |
+| `password` | string | Yes | plain password |
 
-**Response (200 OK):**
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.access_token` | string | Yes | bearer token |
+| `data.token_type` | string | Yes | usually `Bearer` |
+| `data.expires_in` | integer | Yes | seconds |
+| `data.refresh_token` | string | Yes | refresh token |
+| `data.expires_at` | string(datetime) | Yes | token expiry |
+| `data.user.id` | string | Yes | user UUID |
+| `data.user.name` | string | Yes | display name |
+| `data.user.email` | string | Yes | email |
+| `data.user.username` | string | Yes | username |
+| `data.user.role` | string | Yes | effective role string |
+| `data.user.avatar_url` | string | No | avatar URL |
+
+### Response (200 OK)
 ```json
 {
   "data": {
@@ -55,14 +78,19 @@ Authenticates a user and establishes a Redis-backed session.
 ### `POST /api/v1/auth/refresh`
 Issues a new access token using a valid refresh token.
 
-**Request Body:**
-```json
-{
-  "refresh_token": "refresh-token-uuid"
-}
-```
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `refresh_token` | string | Yes | previously issued refresh token |
 
-**Response (200 OK):**
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.access_token` | string | Yes | new bearer token |
+| `data.token_type` | string | Yes | usually `Bearer` |
+| `data.expires_in` | integer | Yes | seconds |
+
+### Response (200 OK)
 ```json
 {
   "data": {
@@ -74,19 +102,35 @@ Issues a new access token using a valid refresh token.
 ```
 
 ### Password & Verification
-- `POST /api/v1/auth/forgot-password` (`{"email": ""}`)
-- `POST /api/v1/auth/reset-password` (`{"token": "", "new_password": ""}`)
-- `POST /api/v1/auth/verify-email` (`{"token": ""}`)
+- `POST /api/v1/auth/forgot-password`
+  - request: `email` required
+- `POST /api/v1/auth/reset-password`
+  - request: `token`, `new_password` required
+- `POST /api/v1/auth/verify-email`
+  - request: `token` required
+- `GET /api/v1/auth/sso/:provider`
+- `GET /api/v1/auth/sso/:provider/callback`
 
 ## Authenticated Routes
-
 Requires `Authorization: Bearer <token>`.
 
 ### `GET /api/v1/auth/me`
 Gets current session context.
 
+### Response Fields
+Same shape as login response.
+
 ### `POST /api/v1/auth/logout`
 Destroys the current Redis session.
 
+### Response
+- `204 No Content`
+
 ### `POST /api/v1/auth/ticket`
-Exchanges session for a short-lived ticket (useful for WebSocket upgrades).
+Exchanges session for a short-lived ticket.
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.ticket` | string | Yes | short-lived auth ticket |
+| `data.expires_at` | string/datetime | No | expiry if returned by handler |

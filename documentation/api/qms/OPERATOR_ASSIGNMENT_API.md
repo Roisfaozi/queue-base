@@ -12,6 +12,17 @@ Creates a counter assignment for a user.
 | `user_id` | string(uuid) | Yes | Operator user |
 | `counter_id` | string(uuid) | Yes | Counter to operate |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Assignment UUID |
+| `data.tenant_id` | string | No | Tenant UUID |
+| `data.branch_id` | string | Yes | Branch UUID |
+| `data.user_id` | string | Yes | User UUID |
+| `data.counter_id` | string | Yes | Counter UUID |
+| `data.assigned_at` | int64 | Yes | Assignment timestamp |
+| `data.unassigned_at` | int64 | No | Unassignment timestamp |
+
 ### Example Request
 ```json
 {
@@ -38,6 +49,9 @@ Creates a counter assignment for a user.
 
 ## `GET /api/v1/operator-counter-assignments`
 Lists current assignments in active tenant scope.
+
+### Response Fields
+Same as create response fields.
 
 ### Example Response
 ```json

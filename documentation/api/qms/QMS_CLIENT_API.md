@@ -14,6 +14,19 @@ Creates a QMS client.
 | `client_type` | string | Yes | `caller`, `signage`, `scanner`, `kiosk` |
 | `name` | string | Yes | Human-readable client name |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | QMS client UUID |
+| `data.tenant_id` | string | No | Tenant UUID |
+| `data.branch_id` | string | Yes | Branch UUID |
+| `data.client_type` | string | Yes | Client type |
+| `data.name` | string | Yes | Client display name |
+| `data.branch_service_id` | string | No | Bound branch-service UUID |
+| `data.counter_id` | string | No | Bound counter UUID |
+| `data.is_active` | bool | Yes | Client active status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+
 ### Example Success Response
 ```json
 {
@@ -41,6 +54,14 @@ Creates new credentials for a QMS client.
 | `api_key` | string | Yes | Plain secret used to derive hash |
 | `expires_at` | integer(ms) | No | Credential expiration |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Credential UUID |
+| `data.client_id` | string | Yes | QMS client UUID |
+| `data.expires_at` | int64 | No | Expiration timestamp |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+
 ### Example Success Response
 ```json
 {
@@ -60,6 +81,19 @@ Creates new credentials for a QMS client.
 
 ## `GET /api/v1/qms-clients`
 Lists QMS clients in active tenant scope.
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data[].id` | string | Yes | QMS client UUID |
+| `data[].tenant_id` | string | No | Tenant UUID |
+| `data[].branch_id` | string | Yes | Branch UUID |
+| `data[].client_type` | string | Yes | Client type |
+| `data[].name` | string | Yes | Client display name |
+| `data[].branch_service_id` | string | No | Bound branch-service UUID |
+| `data[].counter_id` | string | No | Bound counter UUID |
+| `data[].is_active` | bool | Yes | Client active status |
+| `data[].created_at` | int64 | Yes | Creation timestamp |
 
 ### Example Response
 ```json
@@ -83,13 +117,24 @@ Lists QMS clients in active tenant scope.
 ## `GET /api/v1/qms-clients/:id`
 Gets QMS client by ID.
 
+### Response Fields
+Same as list item fields.
+
 ### Example Response
 Same shape as list item.
 
 ## `PATCH /api/v1/qms-clients/:id`
 Updates QMS client metadata and binding.
 
-### Body
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | No | Client display name |
+| `branch_service_id` | string | No | New branch-service binding UUID |
+| `counter_id` | string | No | New counter binding UUID |
+| `is_active` | bool | No | Active status toggle |
+
+### Example Request Body
 ```json
 {
   "name": "Loket 1 Frontdesk",
@@ -98,6 +143,9 @@ Updates QMS client metadata and binding.
   "is_active": true
 }
 ```
+
+### Response Fields
+Same as list item fields.
 
 ### Example Response
 ```json

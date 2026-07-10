@@ -2,14 +2,22 @@
 
 Manages user profiles and identities.
 
-## Authenticated Routes (Own Profile)
-
-Requires `Authorization: Bearer <token>`.
-
-### `GET /api/v1/users/me`
+## `GET /api/v1/users/me`
 Gets the authenticated user's profile.
 
-**Response:**
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | user UUID |
+| `data.name` | string | Yes | full name |
+| `data.username` | string | Yes | username |
+| `data.email` | string | Yes | email |
+| `data.avatar_url` | string | No | avatar URL |
+| `data.status` | string | No | active/suspended/banned |
+| `data.created_at` | integer | No | unix ms |
+| `data.updated_at` | integer | No | unix ms |
+
+### Response Example
 ```json
 {
   "data": {
@@ -25,42 +33,65 @@ Gets the authenticated user's profile.
 }
 ```
 
-### `PUT /api/v1/users/me`
+## `PUT /api/v1/users/me`
 Updates profile information.
 
-**Request Body:**
-```json
-{
-  "name": "John Doe Updated",
-  "username": "johndoe2"
-}
-```
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | No | new display name |
+| `username` | string | Yes | new username |
 
-### `PATCH /api/v1/users/me/avatar`
-Sets avatar URL (usually after a TUS upload).
+### Response Fields
+Same as `GET /me`.
 
-## Authorized Routes (Admin)
+## `PATCH /api/v1/users/me/avatar`
+Sets avatar URL.
 
-Requires `role:admin` or higher via Casbin.
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `avatar_url` | string | Yes | avatar URL |
 
-### `GET /api/v1/users`
-Lists users with optional pagination.
+## `GET /api/v1/users`
+Lists users.
 
-### `POST /api/v1/users/search`
-Dynamic query-builder search for users.
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data[].id` | string | Yes | user UUID |
+| `data[].name` | string | Yes | full name |
+| `data[].username` | string | Yes | username |
+| `data[].email` | string | Yes | email |
+| `data[].avatar_url` | string | No | avatar URL |
+| `data[].status` | string | No | user status |
+| `data[].created_at` | integer | No | unix ms |
+| `data[].updated_at` | integer | No | unix ms |
 
-### `GET /api/v1/users/:id`
+## `POST /api/v1/users/search`
+Dynamic query-builder search for users. Request/response are paginated and depend on filters.
+
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `page` | integer | No | default 1 |
+| `limit` | integer | No | 1..100 |
+| `username` | string | No | filter |
+| `email` | string | No | filter |
+
+## `GET /api/v1/users/:id`
 Retrieves any user by ID.
 
-### `PATCH /api/v1/users/:id/status`
+## `PATCH /api/v1/users/:id/status`
 Changes a user's status.
 
-**Request Body:**
-```json
-{
-  "status": "suspended"
-}
-```
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `status` | string | Yes | `active`, `suspended`, `banned` |
 
-### `DELETE /api/v1/users/:id`
+## `DELETE /api/v1/users/:id`
 Soft-deletes a user account.
+
+### Response
+- `204 No Content`

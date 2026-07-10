@@ -7,48 +7,58 @@ Covers RBAC role CRUD, permission grants, access-rights, and inheritance.
 ### `POST /api/v1/roles`
 Create role.
 
-**Request:**
-```json
-{ "name": "role:editor" }
-```
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | Yes | role slug like `role:editor` |
 
 ### `GET /api/v1/roles`
 List roles.
 
-### `GET /api/v1/roles/:id`
-Get role by ID.
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data[].id` | string | Yes | role UUID |
+| `data[].name` | string | Yes | role slug |
+| `data[].description` | string | No | description if present |
 
-### `PUT /api/v1/roles/:id`
-Update role.
+### Permissions
 
-### `DELETE /api/v1/roles/:id`
-Delete role.
+#### `POST /api/v1/permissions/grant`
 
-## Permissions
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `role` | string | Yes | role slug |
+| `path` | string | Yes | protected resource path |
+| `method` | string | Yes | action / HTTP method |
+| `domain` | string | No | default/global domain fallback |
 
-### `POST /api/v1/permissions/grant`
-Grant permission to role.
+#### `POST /api/v1/permissions/assign-role`
 
-**Request:**
-```json
-{ "role": "role:editor", "path": "/api/v1/users", "method": "GET", "domain": "global" }
-```
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `user_id` | string | Yes | target user |
+| `role` | string | Yes | assigned role |
+| `domain` | string | No | tenant/domain |
 
-### `POST /api/v1/permissions/assign-role`
-Assign role to user.
+#### `POST /api/v1/permissions/check-batch`
 
-**Request:**
-```json
-{ "user_id": "user-uuid", "role": "role:admin", "domain": "acme-corp" }
-```
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `items` | array | Yes | batch items |
+| `items[].resource` | string | Yes | resource path |
+| `items[].action` | string | Yes | action |
+| `items[].domain` | string | No | domain |
 
-### `DELETE /api/v1/permissions/revoke`
-Revoke permission.
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.results` | object | Yes | map of `resource:action` to boolean |
 
-### `POST /api/v1/permissions/check-batch`
-Batch check permissions.
-
-**Response:**
+### Response Example
 ```json
 {
   "data": {
@@ -60,31 +70,33 @@ Batch check permissions.
 }
 ```
 
-### `GET /api/v1/permissions/inheritance-tree`
-Returns role inheritance tree.
-
-### `POST /api/v1/permissions/inheritance`
-Add parent role inheritance.
-
-### `DELETE /api/v1/permissions/inheritance`
-Remove parent role inheritance.
-
-### `GET /api/v1/permissions/resources`
-Aggregated resources view.
+#### Other Permission Routes
+- `DELETE /api/v1/permissions/revoke`
+- `DELETE /api/v1/permissions/revoke-role`
+- `GET /api/v1/permissions`
+- `GET /api/v1/permissions/:role`
+- `GET /api/v1/permissions/roles/:role/users`
+- `PUT /api/v1/permissions`
+- `POST /api/v1/permissions/inheritance`
+- `DELETE /api/v1/permissions/inheritance`
+- `GET /api/v1/permissions/:role/parents`
+- `GET /api/v1/permissions/resources`
+- `GET /api/v1/permissions/inheritance-tree`
+- `GET /api/v1/permissions/roles/:role/access-rights`
+- `POST /api/v1/permissions/assign-access-right`
+- `DELETE /api/v1/permissions/revoke-access-right`
 
 ## Access Rights
 
 ### `POST /api/v1/access-rights`
 Create access right.
 
-### `GET /api/v1/access-rights`
-List access rights.
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | Yes | logical access-right name |
+| `resource` | string | Yes | target resource |
+| `action` | string | Yes | target action |
 
-### `GET /api/v1/access-rights/:id`
-Get access right.
-
-### `PUT /api/v1/access-rights/:id`
-Update access right.
-
-### `DELETE /api/v1/access-rights/:id`
-Delete access right.
+### Response Fields
+Depends on controller output; minimally includes created access-right identifier and metadata.

@@ -12,6 +12,18 @@ Create counter under one branch.
 | `code` | body | string | Yes | - | - | 2..50 chars, uppercased |
 | `name` | body | string | Yes | - | - | 3..255 chars |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Counter UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.branch_id` | string | Yes | Branch UUID |
+| `data.code` | string | Yes | Counter code |
+| `data.name` | string | Yes | Counter name |
+| `data.status` | string | Yes | Counter status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
+
 ### Example request body
 
 ```json
@@ -130,6 +142,9 @@ Update counter.
 | `code` | body | string | Optional | - | - |
 | `name` | body | string | Optional | - | - |
 | `status` | body | string | Optional | `active`, `inactive` | - |
+
+### Response Fields
+Same as create response fields.
 
 ### Example request body
 

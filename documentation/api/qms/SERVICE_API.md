@@ -13,6 +13,19 @@ Create service.
 | `is_pharmacy` | body | boolean | Optional | - | `false` | pharmacy flag |
 | `is_pharmacy_reception` | body | boolean | Optional | - | `false` | pharmacy reception flag |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Service UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.code` | string | Yes | Service code |
+| `data.name` | string | Yes | Service name |
+| `data.status` | string | Yes | Service status |
+| `data.is_pharmacy` | bool | Yes | Pharmacy service flag |
+| `data.is_pharmacy_reception` | bool | Yes | Pharmacy reception flag |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
+
 ### Example request body
 
 ```json
@@ -138,6 +151,9 @@ Update service.
 | `status` | body | string | Optional | `active`, `inactive` | - |
 | `is_pharmacy` | body | boolean | Optional | - | - |
 | `is_pharmacy_reception` | body | boolean | Optional | - | - |
+
+### Response Fields
+Same as create response fields.
 
 ### Example request body
 

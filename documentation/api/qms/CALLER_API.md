@@ -11,6 +11,27 @@ Validates QMS client credentials and returns a short-lived token (if web UI) or 
 - `X-Client-ID`: Client identifier
 - `X-API-Key`: Client secret
 
+### Request Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `username` | string | Yes | Caller username, min 3 chars |
+| `password` | string | Yes | Caller password, min 8 chars |
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.access_token` | string | Yes | JWT access token |
+| `data.context.tenant_id` | string | Yes | Tenant UUID |
+| `data.context.tenant_name` | string | No | Tenant display name |
+| `data.context.branch_id` | string | Yes | Branch UUID |
+| `data.context.branch_name` | string | No | Branch display name |
+| `data.context.branch_service_id` | string | No | Bound branch-service UUID |
+| `data.context.service_name` | string | No | Service display name |
+| `data.context.counter_id` | string | No | Bound counter UUID |
+| `data.context.counter_name` | string | No | Counter display name |
+| `data.context.display_name` | string | No | Human-friendly counter label |
+| `data.permissions` | array<string> | Yes | Granted permission codes |
+
 ### Success Response
 ```json
 {
@@ -35,11 +56,32 @@ Validates QMS client credentials and returns a short-lived token (if web UI) or 
 }
 ```
 
+### Example Request
+```json
+{
+  "username": "caller-01",
+  "password": "secret-password"
+}
+```
+
 ## `GET /api/v1/caller/me`
 Retrieves currently authenticated Caller context. Requires `caller` client authorization.
 
 ### Success Response
 Same shape as Login response.
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.access_token` | string | Yes | Existing JWT access token |
+| `data.context.tenant_id` | string | Yes | Tenant UUID |
+| `data.context.branch_id` | string | Yes | Branch UUID |
+| `data.context.branch_name` | string | No | Branch display name |
+| `data.context.branch_service_id` | string | No | Bound branch-service UUID |
+| `data.context.service_name` | string | No | Service display name |
+| `data.context.counter_id` | string | No | Bound counter UUID |
+| `data.context.counter_name` | string | No | Counter display name |
+| `data.permissions` | array<string> | Yes | Granted permission codes |
+
 ```json
 {
   "data": {
@@ -68,6 +110,22 @@ Executes an operational state transition on a specific queue journey. Action val
 | Field | Type | Required | Enum | Notes |
 |---|---|---|---|---|
 | `action` | string | Yes | `call`, `serve`, `complete`, `skip`, `cancel` | Operation to perform |
+
+### Request Example
+```json
+{
+  "action": "call"
+}
+```
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.success` | bool | Yes | Action outcome |
+| `data.track_no` | string | No | Queue track number |
+| `data.queue_no` | int | No | Queue sequence number |
+| `data.status` | string | Yes | Resulting journey status |
+| `data.journey_id` | string | Yes | Queue journey UUID |
 
 ### Special Action Behaviors
 - **`call`**: Transitions waiting to called. If already called, transitions act as `recall` internally without needing a separate action string.

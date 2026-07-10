@@ -15,6 +15,50 @@ Get effective tenant-level queue configuration.
 | `service_id` | string(uuid) | No | Further narrow to service scope |
 | `counter_id` | string(uuid) | No | Further narrow to counter scope |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.branch_id` | string | No | Effective branch UUID when branch scope supplied |
+| `data.service_id` | string | No | Effective service UUID when service scope supplied |
+| `data.counter_id` | string | No | Effective counter UUID when counter scope supplied |
+| `data.tenant.tenant_id` | string | Yes | Tenant UUID wrapper |
+| `data.branch.branch_id` | string | No | Branch UUID in branch context |
+| `data.branch.effective_logo_asset_id` | string | No | Resolved branch logo asset UUID |
+| `data.queue.<field>.key` | string | Yes | Config field key |
+| `data.queue.<field>.value` | string | Yes | Resolved value as string |
+| `data.queue.<field>.source` | string | No | Source scope, e.g. `tenant`, `branch`, `counter` |
+| `data.queue.<field>.inherited` | bool | No | Whether value is inherited |
+| `data.queue.<field>.can_override` | bool | Yes | Whether caller may override field |
+| `data.queue.<field>.can_reset` | bool | Yes | Whether caller may reset field |
+| `data.queue_reset_time` | string | Yes | Flattened reset time |
+| `data.queue_reset_time_source` | string | No | Source scope for flattened reset time |
+| `data.queue_reset_time_inherited` | bool | No | Inheritance flag for flattened reset time |
+| `data.ticket_prefix` | string | Yes | Flattened ticket prefix |
+| `data.ticket_prefix_source` | string | No | Source scope for flattened prefix |
+| `data.ticket_prefix_inherited` | bool | No | Inheritance flag for flattened prefix |
+| `data.numbering_strategy` | string | Yes | Flattened numbering strategy |
+| `data.numbering_strategy_source` | string | No | Source scope for flattened strategy |
+| `data.numbering_strategy_inherited` | bool | No | Inheritance flag for flattened strategy |
+| `data.default_estimated_duration` | string | No | Flattened default duration |
+| `data.default_estimated_duration_source` | string | No | Source scope for flattened duration |
+| `data.default_estimated_duration_inherited` | bool | No | Inheritance flag for flattened duration |
+| `data.allow_forward` | bool | No | Forwarding toggle |
+| `data.allow_skip` | bool | No | Skip toggle |
+| `data.allow_recall` | bool | No | Recall toggle |
+| `data.allow_cancel` | bool | No | Cancel toggle |
+| `data.auto_call_next` | bool | No | Auto-call toggle |
+| `data.max_service_duration` | int | No | Maximum service duration in minutes |
+| `data.min_service_duration` | int | No | Minimum service duration in minutes |
+| `data.require_counter` | bool | No | Branch-service destination counter requirement |
+| `data.allow_forward_from` | bool | No | Branch-service source forwarding toggle |
+| `data.allow_forward_to` | bool | No | Branch-service destination forwarding toggle |
+| `data.audio_id` | string | No | ID audio asset UUID |
+| `data.audio_en` | string | No | EN audio asset UUID |
+| `data.narrative_instruction_id` | string | No | ID narrative instruction asset UUID |
+| `data.narrative_instruction_en` | string | No | EN narrative instruction asset UUID |
+| `data.effective_until` | string | No | Expiration or validity marker if configured |
+
 ### Example Success Response
 ```json
 {
@@ -73,6 +117,28 @@ curl 'http://127.0.0.1:8080/api/v1/queue-config/effective?branch_id=550e8400-e29
 Update tenant-level queue configuration.
 
 ### Body (partial update)
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `queue_reset_time` | string(HH:MM) | No | Daily reset time |
+| `ticket_prefix` | string | No | Ticket prefix |
+| `numbering_strategy` | string | No | Queue numbering strategy |
+| `allow_forward` | bool | No | Enable forwarding |
+| `allow_skip` | bool | No | Enable skip action |
+| `allow_recall` | bool | No | Enable recall action |
+| `allow_cancel` | bool | No | Enable cancel action |
+| `auto_call_next` | bool | No | Auto-call next queue |
+| `default_estimated_duration` | int | No | Estimated duration in minutes |
+| `max_service_duration` | int | No | Maximum service duration in minutes |
+| `min_service_duration` | int | No | Minimum service duration in minutes |
+| `require_counter` | bool | No | Branch-service only |
+| `allow_forward_from` | bool | No | Branch-service only |
+| `allow_forward_to` | bool | No | Branch-service only |
+| `audio_id` | string | No | ID audio asset UUID |
+| `audio_en` | string | No | EN audio asset UUID |
+| `narrative_instruction_id` | string | No | ID instruction asset UUID |
+| `narrative_instruction_en` | string | No | EN instruction asset UUID |
+
+### Example Request Body
 ```json
 {
   "queue_reset_time": "04:00",
@@ -82,7 +148,14 @@ Update tenant-level queue configuration.
   "allow_skip": true,
   "allow_recall": true,
   "allow_cancel": true,
-  "default_estimated_duration": 5
+  "auto_call_next": false,
+  "default_estimated_duration": 5,
+  "max_service_duration": 30,
+  "min_service_duration": 1,
+  "audio_id": "audio-id-uuid",
+  "audio_en": "audio-en-uuid",
+  "narrative_instruction_id": "instruction-id-uuid",
+  "narrative_instruction_en": "instruction-en-uuid"
 }
 ```
 

@@ -18,6 +18,17 @@ Create branch under active tenant.
 | `code` | body | string | Yes | - | - | 2..50 chars, sanitized and uppercased |
 | `name` | body | string | Yes | - | - | 3..255 chars, sanitized |
 
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.id` | string | Yes | Branch UUID |
+| `data.tenant_id` | string | Yes | Tenant UUID |
+| `data.code` | string | Yes | Branch code |
+| `data.name` | string | Yes | Branch name |
+| `data.status` | string | Yes | Branch status |
+| `data.created_at` | int64 | Yes | Creation timestamp |
+| `data.updated_at` | int64 | Yes | Update timestamp |
+
 ### Example request body
 
 ```json
@@ -141,6 +152,9 @@ Update branch.
 | `code` | body | string | Optional | - | - | 2..50 chars |
 | `name` | body | string | Optional | - | - | 3..255 chars |
 | `status` | body | string | Optional | `active`, `inactive` | - | branch status |
+
+### Response Fields
+Same as create response fields.
 
 ### Example request body
 
