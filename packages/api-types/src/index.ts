@@ -49,19 +49,6 @@ export interface OrgMember {
 	user?: User;
 }
 
-export interface Project {
-	id: string;
-	name: string;
-	slug?: string; // Optional for legacy support
-	domain?: string; // Legacy support
-	user_id?: string; // Legacy support
-	description?: string;
-	status: string;
-	organization_id: string;
-	created_at?: number;
-	updated_at?: number;
-}
-
 export interface Resource {
 	id: string;
 	name: string;
@@ -490,17 +477,6 @@ export const orgMemberSchema = z.object({
 	status: z.string(),
 	joined_at: timestampSchema,
 	user: z.lazy(() => userSchema).optional(),
-});
-
-export const projectSchema = z.object({
-	id: z.string(),
-	name: z.string().trim().min(1).max(200),
-	slug: z.string(),
-	description: z.string().max(1000).optional(),
-	status: z.string(),
-	organization_id: z.string(),
-	created_at: timestampSchema,
-	updated_at: timestampSchema,
 });
 
 export const resourceSchema = z.object({
