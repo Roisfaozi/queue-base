@@ -23,12 +23,12 @@ pre-commit:
 
     # ─── FRONTEND & UI ───
     format:
-      glob: '**/*.{js,ts,jsx,tsx,json,css}'
+      glob: '{apps,packages}/**/*.{js,ts,jsx,tsx,json,css}'
       run: pnpm exec biome format --write {staged_files} && git add {staged_files}
 
     # ─── VALIDATION ───
     typecheck:
-      glob: '**/*.{js,ts,jsx,tsx,json,css}'
+      glob: '{apps,packages}/**/*.{js,ts,jsx,tsx,json,css}'
       run: >
         web=0; client=0; api_types=0; hooks=0; ui=0; utils=0;
         for file in {staged_files}; do
@@ -52,5 +52,5 @@ pre-commit:
 
     # Temporarily disabled lint in pre-commit due to existing baseline errors
     lint:
-      glob: '**/*.{js,ts,jsx,tsx,json,css}'
+      glob: '{apps,packages}/**/*.{js,ts,jsx,tsx,json,css}'
       run: pnpm exec biome lint --write {staged_files} && git add {staged_files}
