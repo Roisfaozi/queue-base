@@ -15,7 +15,6 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
-	"github.com/Roisfaozi/queue-base/internal/modules/project"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue"
 	queue_config "github.com/Roisfaozi/queue-base/internal/modules/queue_config"
@@ -48,7 +47,6 @@ func createTestRouter(cfg RouterConfig) *gin.Engine {
 		&organization.BranchModule{},
 		&audit.AuditModule{},
 		&stats.StatsModule{},
-		&project.ProjectModule{},
 		&service.ServiceModule{},
 		&counter.CounterModule{},
 		&queue_config.QueueConfigModule{},

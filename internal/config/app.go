@@ -20,7 +20,6 @@ import (
 	orgRepo "github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission/usecase"
-	"github.com/Roisfaozi/queue-base/internal/modules/project"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue_config"
@@ -217,7 +216,6 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 
 	statsModule := stats.NewStatsModule(dbConnection, logger)
 
-	projectModule := project.NewProjectModule(dbConnection, validate)
 	queueConfigModule := queue_config.NewQueueConfigModule(dbConnection, validate, logger, auditModule.AuditUseCase)
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL, auditModule.AuditUseCase)
@@ -384,7 +382,6 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 		branchModule,
 		auditModule,
 		statsModule,
-		projectModule,
 		serviceModule,
 		counterModule,
 		queueConfigModule,

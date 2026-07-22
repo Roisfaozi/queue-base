@@ -283,7 +283,7 @@ func TestCasbinMiddleware_StripsTrailingSlashBeforeEnforce(t *testing.T) {
 				gin.SetMode(gin.TestMode)
 				w := httptest.NewRecorder()
 				c, _ := gin.CreateTestContext(w)
-				req, _ := http.NewRequest(http.MethodGet, "/api/v1/projects/", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/api/v1/users/", nil)
 				c.Request = req
 
 				userID := "user-uuid-123"
@@ -293,7 +293,7 @@ func TestCasbinMiddleware_StripsTrailingSlashBeforeEnforce(t *testing.T) {
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
-				mockEnforcer.On("Enforce", userID, "global", "/api/v1/projects", "GET").Return(true, nil)
+				mockEnforcer.On("Enforce", userID, "global", "/api/v1/users", "GET").Return(true, nil)
 
 				casbinMiddleware := middleware.CasbinMiddleware(mockEnforcer, logger)
 

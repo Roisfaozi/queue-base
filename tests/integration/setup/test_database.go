@@ -11,7 +11,6 @@ import (
 	authEntity "github.com/Roisfaozi/queue-base/internal/modules/auth/entity"
 	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	orgEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
-	projectEntity "github.com/Roisfaozi/queue-base/internal/modules/project/entity"
 	qmsClientEntity "github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
 	queueEntity "github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
@@ -42,7 +41,6 @@ func RunMigrations(t *testing.T, db *gorm.DB) {
 		&counterEntity.Counter{},
 		&userEntity.UserSSOIdentity{},
 		&orgEntity.InvitationToken{},
-		&projectEntity.Project{},
 		&queueEntity.Queue{},
 		&queueEntity.QueueJourney{},
 		&queueEntity.VisitJourney{},
@@ -124,8 +122,6 @@ func SeedTestData(t *testing.T, db *gorm.DB) {
 		{"role:user", "global", "/api/v1/organizations/:id", "GET"},
 		{"role:user", "global", "/api/v1/organizations/slug/:slug", "GET"},
 		{"role:user", "global", "/api/v1/organizations/:id/presence", "GET"},
-		{"role:user", "global", "/api/v1/projects", "GET"},
-		{"role:user", "global", "/api/v1/projects/:id", "GET"},
 		{"role:admin", "global", "/api/v1/organizations/:id", "GET"},
 		{"role:admin", "global", "/api/v1/organizations/slug/:slug", "GET"},
 		{"role:admin", "global", "/api/v1/organizations/:id", "PUT"},
@@ -135,11 +131,6 @@ func SeedTestData(t *testing.T, db *gorm.DB) {
 		{"role:admin", "global", "/api/v1/organizations/:id/members/:userId", "PATCH"},
 		{"role:admin", "global", "/api/v1/organizations/:id/members/:userId", "DELETE"},
 		{"role:admin", "global", "/api/v1/organizations/:id/presence", "GET"},
-		{"role:admin", "global", "/api/v1/projects", "GET"},
-		{"role:admin", "global", "/api/v1/projects/:id", "GET"},
-		{"role:admin", "global", "/api/v1/projects", "POST"},
-		{"role:admin", "global", "/api/v1/projects/:id", "PUT"},
-		{"role:admin", "global", "/api/v1/projects/:id", "DELETE"},
 		// Superadmin permissions for E2E
 		{"role:superadmin", "global", "*", "*"},
 		{"role:superadmin", "global", "/api/v1/webhooks", "POST"},
@@ -170,7 +161,6 @@ func CleanupDatabase(t *testing.T, db *gorm.DB) {
 		"branch_services",
 		"services",
 		"branches",
-		"projects",
 		"organization_members",
 		"organizations",
 		"audit_logs",

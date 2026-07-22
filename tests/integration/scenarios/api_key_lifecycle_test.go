@@ -85,7 +85,7 @@ func TestApiKeyLifecycle_Integration(t *testing.T) {
 				// 3. Generate an API Key via UseCase
 				createReq := &apiKeyModel.CreateApiKeyRequest{
 					Name:   "My App Key",
-					Scopes: []string{"project:view"},
+					Scopes: []string{"user:view"},
 				}
 				createRes, err := akUC.Create(ctx, user.ID, org.ID, createReq)
 				require.NoError(t, err)
@@ -103,10 +103,10 @@ func TestApiKeyLifecycle_Integration(t *testing.T) {
 					}
 					c.JSON(http.StatusOK, gin.H{"user_id": uid})
 				})
-				r.GET("/scoped/projects", akMiddleware.RequireScopes("project:view"), func(c *gin.Context) {
+				r.GET("/scoped/users", akMiddleware.RequireScopes("user:view"), func(c *gin.Context) {
 					c.Status(http.StatusOK)
 				})
-				r.POST("/scoped/projects", akMiddleware.RequireScopes("project:manage"), func(c *gin.Context) {
+				r.POST("/scoped/users", akMiddleware.RequireScopes("user:manage"), func(c *gin.Context) {
 					c.Status(http.StatusCreated)
 				})
 				r.GET("/session-only", akMiddleware.RequireUserSession(), func(c *gin.Context) {
@@ -129,7 +129,7 @@ func TestApiKeyLifecycle_Integration(t *testing.T) {
 				})
 
 				t.Run("Read scoped API key passes scoped read route", func(t *testing.T) {
-					req, _ := http.NewRequest("GET", "/scoped/projects", nil)
+					req, _ := http.NewRequest("GET", "/scoped/users", nil)
 					req.Header.Set("X-API-Key", apiKey)
 					w := httptest.NewRecorder()
 					r.ServeHTTP(w, req)
@@ -138,7 +138,7 @@ func TestApiKeyLifecycle_Integration(t *testing.T) {
 				})
 
 				t.Run("Read scoped API key is blocked from scoped write route", func(t *testing.T) {
-					req, _ := http.NewRequest("POST", "/scoped/projects", nil)
+					req, _ := http.NewRequest("POST", "/scoped/users", nil)
 					req.Header.Set("X-API-Key", apiKey)
 					w := httptest.NewRecorder()
 					r.ServeHTTP(w, req)

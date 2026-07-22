@@ -48,7 +48,7 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 	// 4. Create API Keys with different scopes
 	createReq := apiKeyModel.CreateApiKeyRequest{
 		Name:   "E2E Read Key",
-		Scopes: []string{"project:view"},
+		Scopes: []string{"user:view"},
 	}
 	createResp := server.Client.POST("/api/v1/api-keys", createReq, func(r *http.Request) {
 		r.Header.Set("X-Organization-ID", "global")
@@ -65,7 +65,7 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 
 	createManageResp := server.Client.POST("/api/v1/api-keys", apiKeyModel.CreateApiKeyRequest{
 		Name:   "E2E Manage Key",
-		Scopes: []string{"project:manage"},
+		Scopes: []string{"user:manage"},
 	}, func(r *http.Request) {
 		r.Header.Set("X-Organization-ID", "global")
 	})
@@ -99,10 +99,10 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 			},
 		},
 		{
-			name:     "Success_ReadScopedApiKeyCanListProjects",
+			name:     "Success_ReadScopedApiKeyCanSearchUsers",
 			category: "positive",
 			run: func(t *testing.T) {
-				listResp := server.Client.GET("/api/v1/projects", func(r *http.Request) {
+				listResp := server.Client.POST("/api/v1/users/search", map[string]any{}, func(r *http.Request) {
 					r.Header.Set("X-API-Key", readOnlyAPIKey)
 					r.Header.Set("X-Organization-ID", "global")
 				})
@@ -111,33 +111,27 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 			},
 		},
 		{
-			name:     "Failure_ReadScopedApiKeyCannotCreateProject",
+			name:     "Failure_ReadScopedApiKeyCannotDeleteUser",
 			category: "negative",
 			run: func(t *testing.T) {
-				createProjectResp := server.Client.POST("/api/v1/projects", map[string]string{
-					"name":   "blocked-project",
-					"domain": "blocked.example.com",
-				}, func(r *http.Request) {
+				deleteResp := server.Client.DELETE("/api/v1/users/blocked-user", func(r *http.Request) {
 					r.Header.Set("X-API-Key", readOnlyAPIKey)
 					r.Header.Set("X-Organization-ID", "global")
 				})
 
-				require.Equal(t, http.StatusForbidden, createProjectResp.StatusCode)
+				require.Equal(t, http.StatusForbidden, deleteResp.StatusCode)
 			},
 		},
 		{
-			name:     "Success_ManageScopedApiKeyCanCreateProject",
+			name:     "Success_ManageScopedApiKeyCanDeleteUserRoute",
 			category: "positive",
 			run: func(t *testing.T) {
-				createProjectResp := server.Client.POST("/api/v1/projects", map[string]string{
-					"name":   "managed-project",
-					"domain": "managed.example.com",
-				}, func(r *http.Request) {
+				deleteResp := server.Client.DELETE("/api/v1/users/missing-user", func(r *http.Request) {
 					r.Header.Set("X-API-Key", manageAPIKey)
 					r.Header.Set("X-Organization-ID", "global")
 				})
 
-				require.Equal(t, http.StatusCreated, createProjectResp.StatusCode)
+				require.NotEqual(t, http.StatusForbidden, deleteResp.StatusCode)
 			},
 		},
 	}
@@ -161,7 +155,7 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 
 	// 7. Verify revoked API Key no longer works
 	server.Client.Token = ""
-	failResp := server.Client.GET("/api/v1/projects", func(r *http.Request) {
+	failResp := server.Client.POST("/api/v1/users/search", map[string]any{}, func(r *http.Request) {
 		r.Header.Set("X-API-Key", readOnlyAPIKey)
 		r.Header.Set("X-Organization-ID", "global")
 	})

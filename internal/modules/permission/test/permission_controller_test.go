@@ -289,7 +289,7 @@ func TestPermissionController_GetAllPermissions(t *testing.T) {
 
 				mockUC.On("GetAllPermissions", c.Request.Context()).Return([][]string{
 					{"role:admin", "global", "/api/v1/users", "GET"},
-					{"role:admin", "org-123", "/api/v1/projects", "GET"},
+					{"role:admin", "org-123", "/api/v1/users/me", "GET"},
 				}, nil).Once()
 
 				controller.GetAllPermissions(c)

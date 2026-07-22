@@ -83,7 +83,7 @@ func (m *APIKeyMiddleware) RequireUserSession() gin.HandlerFunc {
 }
 
 // RequireScopeAuto derives the required scope from the URL path and HTTP method.
-// Example: GET /api/v1/projects -> "project:view"
+// Example: GET /api/v1/users -> "user:view"
 // Example: POST /api/v1/users -> "user:create"
 func (m *APIKeyMiddleware) RequireScopeAuto() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -194,7 +194,7 @@ func (m *APIKeyMiddleware) RequireAllScopes(requiredScopes ...string) gin.Handle
 
 // ScopeFromMethod returns a standard scope action suffix based on the HTTP method.
 // GET/HEAD → "view", POST → "create", PUT/PATCH → "update", DELETE → "delete".
-// Usage: apiKeyMiddleware.RequireScopes("project:" + middleware.ScopeFromMethod(c))
+// Usage: apiKeyMiddleware.RequireScopes("user:" + middleware.ScopeFromMethod(c))
 func ScopeFromMethod(method string) string {
 	switch strings.ToUpper(method) {
 	case "GET", "HEAD":

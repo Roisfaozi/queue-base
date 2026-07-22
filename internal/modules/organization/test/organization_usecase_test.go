@@ -101,16 +101,16 @@ func TestOrganizationUseCase(t *testing.T) {
 				}), usecase.DefaultOwnerRoleID).Return(nil)
 				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{
-					{"role:admin", "global", "/api/v1/projects", "POST"},
+					{"role:admin", "global", "/api/v1/users", "POST"},
 				}, nil)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:user", "global"}).Return([][]string{
-					{"role:user", "global", "/api/v1/projects", "GET"},
+					{"role:user", "global", "/api/v1/users/me", "GET"},
 				}, nil)
 				deps.Enforcer.On("AddPolicy", mock.MatchedBy(func(params []interface{}) bool {
-					return len(params) == 4 && params[0] == "role:admin" && params[2] == "/api/v1/projects" && params[3] == "POST"
+					return len(params) == 4 && params[0] == "role:admin" && params[2] == "/api/v1/users" && params[3] == "POST"
 				})).Return(true, nil)
 				deps.Enforcer.On("AddPolicy", mock.MatchedBy(func(params []interface{}) bool {
-					return len(params) == 4 && params[0] == "role:user" && params[2] == "/api/v1/projects" && params[3] == "GET"
+					return len(params) == 4 && params[0] == "role:user" && params[2] == "/api/v1/users/me" && params[3] == "GET"
 				})).Return(true, nil)
 				deps.Enforcer.On("AddGroupingPolicy", mock.MatchedBy(func(params []interface{}) bool {
 					return len(params) == 3 && params[0] == usecase.DefaultOwnerRoleID && params[1] == "role:admin"
@@ -245,16 +245,16 @@ func TestOrganizationUseCase(t *testing.T) {
 				deps.OrgRepo.On("Create", ctx, mock.Anything, mock.Anything).Return(nil)
 				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{
-					{"role:admin", "global", "/api/v1/projects", "POST"},
+					{"role:admin", "global", "/api/v1/users", "POST"},
 				}, nil)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:user", "global"}).Return([][]string{
-					{"role:user", "global", "/api/v1/projects", "GET"},
+					{"role:user", "global", "/api/v1/users/me", "GET"},
 				}, nil)
 				deps.Enforcer.On("AddPolicy", mock.MatchedBy(func(params []interface{}) bool {
-					return len(params) == 4 && params[0] == "role:admin" && params[2] == "/api/v1/projects" && params[3] == "POST"
+					return len(params) == 4 && params[0] == "role:admin" && params[2] == "/api/v1/users" && params[3] == "POST"
 				})).Return(true, nil)
 				deps.Enforcer.On("AddPolicy", mock.MatchedBy(func(params []interface{}) bool {
-					return len(params) == 4 && params[0] == "role:user" && params[2] == "/api/v1/projects" && params[3] == "GET"
+					return len(params) == 4 && params[0] == "role:user" && params[2] == "/api/v1/users/me" && params[3] == "GET"
 				})).Return(true, nil)
 				deps.Enforcer.On("AddGroupingPolicy", mock.MatchedBy(func(params []interface{}) bool {
 					return len(params) == 3 && params[0] == usecase.DefaultOwnerRoleID && params[1] == "role:admin"
@@ -883,16 +883,16 @@ func TestOrganizationUseCase(t *testing.T) {
 
 				deps.Enforcer.On("WithContext", mock.Anything).Return(deps.Enforcer)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:admin", "global"}).Return([][]string{
-					{"role:admin", "global", "/api/v1/projects", "POST"},
+					{"role:admin", "global", "/api/v1/users", "POST"},
 				}, nil)
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{"role:user", "global"}).Return([][]string{
-					{"role:user", "global", "/api/v1/projects", "GET"},
+					{"role:user", "global", "/api/v1/users/me", "GET"},
 				}, nil)
 				deps.Enforcer.On("AddPolicy", mock.MatchedBy(func(params []interface{}) bool {
-					return len(params) == 4 && params[0] == "role:admin" && params[2] == "/api/v1/projects" && params[3] == "POST"
+					return len(params) == 4 && params[0] == "role:admin" && params[2] == "/api/v1/users" && params[3] == "POST"
 				})).Return(true, nil)
 				deps.Enforcer.On("AddPolicy", mock.MatchedBy(func(params []interface{}) bool {
-					return len(params) == 4 && params[0] == "role:user" && params[2] == "/api/v1/projects" && params[3] == "GET"
+					return len(params) == 4 && params[0] == "role:user" && params[2] == "/api/v1/users/me" && params[3] == "GET"
 				})).Return(true, nil)
 				deps.Enforcer.On("AddGroupingPolicy", mock.MatchedBy(func(params []interface{}) bool {
 					return len(params) == 3 && params[0] == usecase.DefaultOwnerRoleID && params[1] == "role:admin"

@@ -54,8 +54,8 @@ func main() {
 	// 4. Seed Access Rights, Endpoints, and Tiered Policies via API
 	seedAccessRightsAndPoliciesViaAPI(cfg, token)
 
-	// 5. Seed Default Organization, Users, and Projects via API
-	seedOrganizationsUsersAndProjects(cfg, token)
+	// 5. Seed Default Organization and Users via API
+	seedOrganizationsAndUsers(cfg, token)
 
 	log.Println("Seeding process completed successfully.")
 }
@@ -244,15 +244,6 @@ func seedAccessRightsAndPoliciesViaAPI(cfg *config.AppConfig, token string) {
 		"presence:view": {
 			{"Path": "/api/v1/organizations/:id/presence", "Method": "GET"},
 		},
-		"project:view": {
-			{"Path": "/api/v1/projects", "Method": "GET"},
-			{"Path": "/api/v1/projects/:id", "Method": "GET"},
-		},
-		"project:manage": {
-			{"Path": "/api/v1/projects", "Method": "POST"},
-			{"Path": "/api/v1/projects/:id", "Method": "PUT"},
-			{"Path": "/api/v1/projects/:id", "Method": "DELETE"},
-		},
 		"role:view": {
 			{"Path": "/api/v1/roles", "Method": "GET"},
 			{"Path": "/api/v1/roles/search", "Method": "POST"},
@@ -316,7 +307,6 @@ func seedAccessRightsAndPoliciesViaAPI(cfg *config.AppConfig, token string) {
 			"dashboard:view",
 			"user:view", "user:manage",
 			"role:view", "role:manage",
-			"project:view", "project:manage",
 			"org:view", "org:manage",
 			"member:manage", "presence:view",
 			"audit:view",
@@ -325,7 +315,7 @@ func seedAccessRightsAndPoliciesViaAPI(cfg *config.AppConfig, token string) {
 			"webhook:manage",
 		},
 		"role:user": {
-			"dashboard:view", "project:view", "org:view", "presence:view",
+			"dashboard:view", "org:view", "presence:view",
 		},
 	}
 
@@ -498,7 +488,7 @@ func ptrString(s string) *string {
 	return &s
 }
 
-func seedOrganizationsUsersAndProjects(cfg *config.AppConfig, token string) {
+func seedOrganizationsAndUsers(cfg *config.AppConfig, token string) {
 	apiBaseURL := fmt.Sprintf("http://localhost:%d/api/v1", cfg.Server.Port)
 
 	// 1. Create Default Organization
@@ -529,7 +519,7 @@ func seedOrganizationsUsersAndProjects(cfg *config.AppConfig, token string) {
 	}
 
 	if orgID == "" {
-		log.Println("Could not determine default organization ID. Skipping user and project seeding.")
+		log.Println("Could not determine default organization ID. Skipping user seeding.")
 		return
 	}
 	log.Printf("Default Organization seeded/found with ID: %s", orgID)
@@ -625,58 +615,4 @@ func seedOrganizationsUsersAndProjects(cfg *config.AppConfig, token string) {
 		}
 	}
 
-	// 3. Create Default Project
-	projectPayload := map[string]interface{}{
-		"name":   "Sample E-Commerce App",
-		"domain": "e-commerce",
-	}
-
-	// Create project requests typically go to /organizations/:id/projects if nested,
-	// but this boilerplate routes Projects at /api/v1/projects and relies on the user's Context (which includes the Active Organization if set).
-	// Because Superadmin is making the request, we need to ensure they are operating within an organization context.
-	// Since X-Organization-Id might be required by middleware, let's inject it into `doJSONRequest` if needed,
-	// or assume the generic `doJSONRequest` doesn't pass it and see if it falls back.
-	// For now, let's just trace the path.
-
-	// To reliably create a project for an org, we might need a modified request that passes the org ID header,
-	// but let's try the standard POST and see if the controller handles it.
-	doJSONRequestWithOrg(apiBaseURL, orgID, projectPayload, token)
-}
-
-func doJSONRequestWithOrg(apiBaseURL, orgID string, payload interface{}, token string) {
-	var bodyReader *bytes.Buffer
-	if payload != nil {
-		payloadBytes, _ := json.Marshal(payload)
-		bodyReader = bytes.NewBuffer(payloadBytes)
-	} else {
-		bodyReader = bytes.NewBuffer([]byte{})
-	}
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/projects", apiBaseURL), bodyReader)
-	if err != nil {
-		log.Printf("Failed to create project request: %v", err)
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	req.Header.Set("X-Organization-Id", orgID)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Failed to execute project creation request: %v", err)
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		var errResp map[string]interface{}
-		_ = json.NewDecoder(resp.Body).Decode(&errResp)
-		log.Printf("API request to create project failed with status %d: %v", resp.StatusCode, errResp)
-	} else {
-		log.Println("Default Project created successfully.")
-	}
 }

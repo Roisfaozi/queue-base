@@ -21,7 +21,6 @@ import (
 	organizationHttp "github.com/Roisfaozi/queue-base/internal/modules/organization/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/permission"
 	permissionHttp "github.com/Roisfaozi/queue-base/internal/modules/permission/delivery/http"
-	"github.com/Roisfaozi/queue-base/internal/modules/project"
 	qmsClientModulePkg "github.com/Roisfaozi/queue-base/internal/modules/qms_client"
 	qmsClientHttp "github.com/Roisfaozi/queue-base/internal/modules/qms_client/delivery/http"
 	queueModulePkg "github.com/Roisfaozi/queue-base/internal/modules/queue"
@@ -83,7 +82,6 @@ func SetupRouter(
 	branchModule *organization.BranchModule,
 	auditModule *audit.AuditModule,
 	statsModule *stats.StatsModule,
-	projectModule *project.ProjectModule,
 	serviceModule *serviceModulePkg.ServiceModule,
 	counterModule *counterModulePkg.CounterModule,
 	queueConfigModule *queueConfigModulePkg.QueueConfigModule,
@@ -256,16 +254,6 @@ func SetupRouter(
 		callerHttp.RegisterCallerRoutes(tenantAuthorized, callerModule.CallerController, qmsClientMiddleware)
 		signageHttp.RegisterSignageRoutes(tenantAuthorized, signageModule.SignageController, qmsClientMiddleware)
 		scannerHttp.RegisterScannerRoutes(tenantAuthorized, scannerModule.ScannerController)
-
-		// Project Routes
-		projectGroup := tenantAuthorized.Group("/projects")
-		{
-			projectGroup.POST("", apiKeyMiddleware.RequireScopes("project:manage"), projectModule.ProjectController.Create)
-			projectGroup.GET("", apiKeyMiddleware.RequireScopes("project:view", "project:manage"), projectModule.ProjectController.GetAll)
-			projectGroup.GET("/:id", apiKeyMiddleware.RequireScopes("project:view", "project:manage"), projectModule.ProjectController.GetByID)
-			projectGroup.PUT("/:id", apiKeyMiddleware.RequireScopes("project:manage"), projectModule.ProjectController.Update)
-			projectGroup.DELETE("/:id", apiKeyMiddleware.RequireScopes("project:manage"), projectModule.ProjectController.Delete)
-		}
 
 		webhookHttp.RegisterWebhookRoutes(tenantAuthorized, webhookModule.Controller, apiKeyMiddleware)
 	}
