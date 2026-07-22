@@ -158,7 +158,7 @@ export default function RegisterV3() {
 						</h1>
 						<p className="max-w-md text-lg opacity-60">
 							Create your free account and start managing teams, roles, and
-							projects with ease.
+							queues with ease.
 						</p>
 					</div>
 

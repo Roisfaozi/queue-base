@@ -179,7 +179,7 @@ export default function LoginV3() {
 					<div className="space-y-2">
 						<h2 className="text-3xl font-bold">Sign in</h2>
 						<p className="text-sm opacity-50">
-							Access your workspace and projects
+							Access your workspace and queue operations
 						</p>
 					</div>
 

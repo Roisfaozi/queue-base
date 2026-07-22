@@ -36,13 +36,6 @@ const mockData: AccessRight[] = [
 		created_at: 1700200000,
 	},
 	{
-		id: "4",
-		name: "Read Projects",
-		resource: "projects",
-		action: "read",
-		created_at: 1700300000,
-	},
-	{
 		id: "5",
 		name: "Manage Roles",
 		resource: "roles",
@@ -55,13 +48,6 @@ const mockData: AccessRight[] = [
 		resource: "organizations",
 		action: "read",
 		created_at: 1700500000,
-	},
-	{
-		id: "7",
-		name: "Write Projects",
-		resource: "projects",
-		action: "write",
-		created_at: 1700600000,
 	},
 ];
 
@@ -90,7 +76,6 @@ const columns: CrudColumnDef<AccessRight>[] = [
 		filterable: true,
 		filterOptions: [
 			{ label: "Users", value: "users" },
-			{ label: "Projects", value: "projects" },
 			{ label: "Roles", value: "roles" },
 			{ label: "Organizations", value: "organizations" },
 		],
@@ -133,7 +118,6 @@ const fields: FieldDef[] = [
 		required: true,
 		options: [
 			{ label: "Users", value: "users" },
-			{ label: "Projects", value: "projects" },
 			{ label: "Roles", value: "roles" },
 			{ label: "Organizations", value: "organizations" },
 		],

@@ -52,7 +52,6 @@ export default [
 		route("roles", "features/roles/rolePage.tsx"),
 		route("organizations", "features/organizations/organizationPage.tsx"),
 		route("workspace", "pages/WorkspacePage.tsx"),
-		route("projects", "features/projects/projectPage.tsx"),
 		route("permissions", "features/permissions/permissionPage.tsx"),
 		route("resources", "features/resources/resourcePage.tsx"),
 		route("endpoints", "features/endpoints/endpointPage.tsx"),

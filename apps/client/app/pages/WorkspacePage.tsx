@@ -6,11 +6,10 @@ import { MembersTableUI } from "@/features/organizations/members-table";
 import { InviteMemberModal } from "@/features/organizations/invite-member-modal";
 import { NexusCard } from "@casbin/ui";
 import { Badge } from "@casbin/ui";
-import { Users, FolderKanban, Shield } from "lucide-react";
+import { Users, Shield } from "lucide-react";
 
 const stats = [
 	{ label: "Members", value: "6", icon: Users, change: "+2 this month" },
-	{ label: "Projects", value: "4", icon: FolderKanban, change: "+1 this week" },
 	{ label: "Roles", value: "4", icon: Shield, change: "No change" },
 ];
 

@@ -87,7 +87,7 @@ const treeData: TreeNode[] = [
 const timelineItems: TimelineItem[] = [
 	{
 		id: "1",
-		title: "Project created",
+		title: "Branch created",
 		description: "NexusOS initialized",
 		time: "2 hours ago",
 		variant: "success",
@@ -118,7 +118,7 @@ const activityItems: ActivityItem[] = [
 	{
 		id: "1",
 		user: { name: "Alice" },
-		action: "created project",
+		action: "created branch",
 		target: "NexusOS",
 		time: "5 min ago",
 	},

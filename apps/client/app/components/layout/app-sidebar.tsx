@@ -6,7 +6,6 @@ import {
 	Users,
 	Shield,
 	Building2,
-	FolderKanban,
 	Settings,
 	ChevronLeft,
 	ChevronRight,
@@ -81,7 +80,6 @@ const navSections: NavSection[] = [
 			{ label: "Workspace", path: "/workspace", icon: Building2 },
 			{ label: "Organizations", path: "/organizations", icon: Building2 },
 			{ label: "Members", path: "/workspace", icon: UserCheck },
-			{ label: "Projects", path: "/projects", icon: FolderKanban },
 		],
 	},
 	{

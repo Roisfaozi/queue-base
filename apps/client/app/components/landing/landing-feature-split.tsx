@@ -1,7 +1,7 @@
 import {
 	CheckCircle2,
 	ShieldCheck,
-	FolderKanban,
+	Building2,
 	ScrollText,
 	Plug,
 } from "lucide-react";
@@ -22,17 +22,17 @@ const blocks = [
 		visual: "access",
 	},
 	{
-		icon: FolderKanban,
-		eyebrow: "Project & Workspace",
-		title: "Coordinate teams, projects, and execution across workspaces",
+		icon: Building2,
+		eyebrow: "Organization & Queue",
+		title: "Coordinate branches, services, and queue operations",
 		points: [
-			"Project overview & ownership",
+			"Branch and service overview",
 			"Membership & role mapping",
-			"Environment-aware structure",
+			"Tenant-aware structure",
 			"Operational drilldown",
 		],
 		tone: "secondary",
-		visual: "projects",
+		visual: "organizations",
 	},
 	{
 		icon: ScrollText,
@@ -94,13 +94,13 @@ function VisualMock({ kind, tone }: { kind: string; tone: string }) {
 							</div>
 						))}
 					</div>
-					{["Users", "Projects", "Billing", "Audit"].map((r) => (
+					{["Users", "Queues", "Branches", "Audit"].map((r) => (
 						<div
 							key={r}
 							className="border-border text-caption grid grid-cols-4 border-t"
 						>
 							<div className="text-foreground px-3 py-2 font-medium">{r}</div>
-							{[true, r !== "Billing", r === "Users" || r === "Projects"].map(
+							{[true, r !== "Branches", r === "Users" || r === "Queues"].map(
 								(on, i) => (
 									<div key={i} className="px-3 py-2">
 										<span
@@ -115,17 +115,17 @@ function VisualMock({ kind, tone }: { kind: string; tone: string }) {
 			</div>
 		);
 	}
-	if (kind === "projects") {
+	if (kind === "organizations") {
 		return (
 			<div className="border-border bg-card p-card-pad rounded-xl border shadow-lg">
 				<div className="text-caption text-foreground mb-3 font-medium">
-					Active projects
+					Active branches
 				</div>
 				<div className="space-y-2">
 					{[
-						{ n: "Atlas Migration", p: 78, m: 12 },
-						{ n: "Helio Onboarding", p: 45, m: 7 },
-						{ n: "Orion Insights v2", p: 92, m: 4 },
+						{ n: "Central Branch", p: 78, m: 12 },
+						{ n: "North Branch", p: 45, m: 7 },
+						{ n: "South Branch", p: 92, m: 4 },
 					].map((p) => (
 						<div
 							key={p.n}

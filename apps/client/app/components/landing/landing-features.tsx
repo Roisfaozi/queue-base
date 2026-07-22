@@ -12,7 +12,7 @@ const features = [
 		icon: LayoutGrid,
 		title: "Unified Workspace",
 		description:
-			"Kelola operasi, user, project, dan konfigurasi dari satu platform.",
+			"Kelola operasi, user, antrean, dan konfigurasi dari satu platform.",
 		tone: "primary",
 	},
 	{

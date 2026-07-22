@@ -46,7 +46,7 @@ const GoogleIcon = () => (
 );
 
 const features = [
-	"Unlimited projects & workspaces",
+	"Unlimited branches & workspaces",
 	"Role-based access control",
 	"Real-time collaboration",
 	"Advanced audit logging",
@@ -181,7 +181,7 @@ export default function RegisterPage() {
 						<div className="border-secondary-foreground/15 border-t pt-4">
 							<p className="text-xs opacity-60">
 								"NexusOS has transformed how we manage our team's permissions
-								and projects."
+								and queue operations."
 							</p>
 							<p className="mt-2 text-xs opacity-40">
 								— Engineering Lead, TechCorp

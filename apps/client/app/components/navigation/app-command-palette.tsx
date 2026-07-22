@@ -6,7 +6,6 @@ import {
 	Lock,
 	KeyRound,
 	Building2,
-	FolderKanban,
 	FileText,
 	Settings,
 	Palette,
@@ -73,13 +72,6 @@ export function AppCommandPalette() {
 			icon: Building2,
 			group: "Organization",
 			onSelect: () => navigate("/organizations"),
-		},
-		{
-			id: "projects",
-			label: "Projects",
-			icon: FolderKanban,
-			group: "Organization",
-			onSelect: () => navigate("/projects"),
 		},
 		{
 			id: "audit-logs",

@@ -12,7 +12,7 @@ const plans = [
 		features: [
 			"Core workspace",
 			"Basic roles",
-			"Project management",
+			"Queue management",
 			"Standard support",
 		],
 		highlight: false,

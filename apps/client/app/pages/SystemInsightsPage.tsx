@@ -111,12 +111,6 @@ const topEndpoints = [
 		status: "healthy",
 	},
 	{
-		endpoint: "GET /api/projects",
-		calls: "18.7K",
-		p99: "45ms",
-		status: "healthy",
-	},
-	{
 		endpoint: "PUT /api/roles/:id",
 		calls: "3.2K",
 		p99: "210ms",

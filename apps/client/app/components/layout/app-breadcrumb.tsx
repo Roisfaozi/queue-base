@@ -16,7 +16,6 @@ const routeLabels: Record<string, string> = {
 	permissions: "Permissions",
 	"access-rights": "Access Rights",
 	organizations: "Organizations",
-	projects: "Projects",
 	"audit-logs": "Audit Logs",
 	settings: "Settings",
 	"design-system": "Design System",

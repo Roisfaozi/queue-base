@@ -191,7 +191,7 @@ export const useActivityStore = create<ActivityState>((set) => ({
 			id: "a5",
 			user: "Eve",
 			action: "deleted",
-			target: "staging-old project",
+			target: "staging-old branch",
 			time: "25m ago",
 			type: "danger",
 		},

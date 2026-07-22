@@ -41,7 +41,7 @@ const products = [
 	{
 		icon: Building2,
 		title: "Multi-Workspace",
-		description: "Organizations, projects, and member roles built-in.",
+		description: "Organizations, branches, and member roles built-in.",
 		href: "/workspace",
 		accent: "warning",
 	},

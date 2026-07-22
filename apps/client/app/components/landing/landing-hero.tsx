@@ -26,13 +26,13 @@ export function LandingHero() {
 					<h1 className="text-foreground text-4xl font-bold tracking-tight md:text-5xl lg:text-[56px] lg:leading-[1.05]">
 						One platform to manage{" "}
 						<span className="from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent">
-							operations, access, projects
+							operations, access, queues
 						</span>{" "}
 						and growth
 					</h1>
 
 					<p className="text-body-lg text-muted-foreground mt-5 max-w-xl">
-						Bangun operasi bisnis, kontrol akses, manajemen project, integrasi
+						Bangun operasi antrean, kontrol akses, manajemen cabang, integrasi
 						API, dan observability dalam satu workspace yang konsisten dan
 						scalable.
 					</p>
@@ -85,7 +85,7 @@ export function LandingHero() {
 								{[
 									"Overview",
 									"Users",
-									"Projects",
+									"Queues",
 									"Access",
 									"Audit",
 									"Settings",

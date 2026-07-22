@@ -70,18 +70,6 @@ const _mockData: Endpoint[] = [
 		created_at: 1700300000,
 	},
 	{
-		id: "5",
-		name: "List Projects",
-		method: "GET",
-		path: "/api/v1/projects",
-		resource_id: "2",
-		resource_name: "Projects",
-		description: "Get all projects",
-		auth_required: true,
-		status: "active",
-		created_at: 1700400000,
-	},
-	{
 		id: "6",
 		name: "Health Check",
 		method: "GET",
