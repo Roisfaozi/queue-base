@@ -1,4 +1,4 @@
-# Organization & Project API Reference
+# Organization API Reference
 
 ## Organizations
 
@@ -102,43 +102,3 @@ Requires `X-Organization-ID` or `X-Organization-Slug`.
   }
 }
 ```
-
-## Projects
-
-Tenant-scoped CRUD.
-
-- `POST /api/v1/projects`
-  - request: `name` (yes), `domain` (yes)
-- `GET /api/v1/projects`
-- `GET /api/v1/projects/:id`
-- `PUT /api/v1/projects/:id`
-- `DELETE /api/v1/projects/:id`
-
-#### Example Request `POST /api/v1/projects`
-```json
-{
-  "name": "Landing Page",
-  "domain": "landing.acme.test"
-}
-```
-
-#### Example Request `PUT /api/v1/projects/:id`
-```json
-{
-  "name": "Landing Page Updated",
-  "domain": "landing-v2.acme.test",
-  "status": "active"
-}
-```
-
-### Response Fields (Project)
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `data.id` | string | Yes | project UUID |
-| `data.organization_id` | string | Yes | parent org |
-| `data.user_id` | string | Yes | creator |
-| `data.name` | string | Yes | project name |
-| `data.domain` | string | Yes | project domain |
-| `data.status` | string | Yes | active/inactive |
-| `data.created_at` | integer | Yes | unix ms |
-| `data.updated_at` | integer | Yes | unix ms |

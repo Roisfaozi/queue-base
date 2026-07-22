@@ -71,7 +71,6 @@ flowchart TD
     PermissionModule[Permission Module]
     RoleModule[Role Module]
     AccessModule[Access Module]
-    ProjectModule[Project Module]
     ApiKeyModule[API Key Module]
     WebhookModule[Webhook Module]
     StatsModule[Stats Module]
@@ -122,7 +121,6 @@ flowchart TD
     PermissionModule --> RoleModule
 
     DB --> StatsModule
-    DB --> ProjectModule
 
     AuthModule --> Router
     UserModule --> Router
@@ -130,7 +128,6 @@ flowchart TD
     PermissionModule --> Router
     RoleModule --> Router
     AccessModule --> Router
-    ProjectModule --> Router
     ApiKeyModule --> Router
     WebhookModule --> Router
     StatsModule --> Router
@@ -153,7 +150,6 @@ flowchart TB
         MemberUC[Organization Member UseCase]
         PermissionUC[Permission UseCase]
         RoleUC[Role UseCase]
-        ProjectUC[Project UseCase]
         ApiKeyUC[API Key UseCase]
         AuditUC[Audit UseCase]
         WebhookUC[Webhook UseCase]
@@ -166,7 +162,6 @@ flowchart TB
         TokenRepo[Token Repository]
         RoleRepo[Role Repository]
         AccessRepo[Access Repository]
-        ProjectRepo[Project Repository]
         AuditRepo[Audit Repository]
         ApiKeyRepo[API Key Repository]
         WebhookRepo[Webhook Repository]
@@ -204,7 +199,7 @@ flowchart LR
 
     Public -->|login register reset verify invite accept| API1[Public Endpoints]
     Authenticated -->|me logout ticket stats my orgs api keys| API2[User Session Endpoints]
-    TenantAuthorized -->|projects webhooks org detail members presence| API3[Tenant Scoped Endpoints]
+    TenantAuthorized -->|webhooks org detail members presence| API3[Tenant Scoped Endpoints]
     Authorized -->|permissions roles access-rights users audit| API4[Admin and RBAC Endpoints]
 ```
 

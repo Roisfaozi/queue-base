@@ -6,7 +6,7 @@
 - `AUTH_API.md` — authentication, session, refresh, password reset, SSO
 - `USER_API.md` — self profile and admin user management
 - `ROLE_PERMISSION_API.md` — roles, permissions, inheritance, access-rights
-- `ORG_PROJECT_API.md` — organizations, members, tenant profile, projects
+- `ORG_API.md` — organizations, members, tenant profile
 - `INTEGRATIONS_API.md` — API keys, audit logs, webhooks, realtime, stats
 
 ### QMS
@@ -33,7 +33,7 @@
 4. `AUTH_API.md`
 5. `USER_API.md`
 6. `ROLE_PERMISSION_API.md`
-7. `ORG_PROJECT_API.md`
+7. `ORG_API.md`
 8. `INTEGRATIONS_API.md`
 9. `QMS_API_REFERENCE.md`
 10. `../guides/TESTING.md`

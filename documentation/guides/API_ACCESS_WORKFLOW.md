@@ -121,7 +121,7 @@ We use **Casbin** with a RESTful model `(Subject, Object, Action)`.
 ### 5. Organization, Members, Projects, Integration
 
 See:
-- `documentation/api/ORG_PROJECT_API.md`
+- `documentation/api/ORG_API.md`
 - `documentation/api/INTEGRATIONS_API.md`
 
 ---

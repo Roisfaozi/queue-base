@@ -63,7 +63,6 @@ Fast routing by task type:
 - realtime change: read `llm/cache/realtime-system.md`, `llm/cache/stats-system.md`, `pkg/ws`, `pkg/sse`, `internal/router/router.go`.
 - user/profile/avatar/list change: read `llm/cache/user-system.md`, `llm/cache/querybuilder-security.md`, `pkg/tus`, `internal/modules/user`.
 - role/permission change: read `llm/cache/role-system.md`, `llm/cache/access-right-system.md`, `llm/cache/permission-system.md`, `llm/cache/casbin-permission-system.md`, `internal/modules/role`, `internal/modules/permission`.
-- project change: read `llm/cache/project-system.md`, `llm/cache/api-key-system.md`, `llm/cache/tenant-organization-system.md`, `internal/modules/project`, `internal/router/router.go`.
 - stats change: read `llm/cache/stats-system.md`, `internal/modules/stats`, `internal/config/app.go`.
 - security/auth/tenant/Casbin change: read `llm/cache/domain-rules.md`, the matching domain cache, `internal/middleware/*`, target usecase.
 

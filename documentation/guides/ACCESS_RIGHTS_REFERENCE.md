@@ -17,8 +17,6 @@ This document provides a detailed reference for the **Access Rights** (grouped p
 | **`org:manage`**        | Update/Delete organizations             | `PUT /api/v1/organizations/:id`<br>`DELETE /api/v1/organizations/:id`                                                                                                                                                                                                            |
 | **`member:manage`**     | Manage organization members             | `POST /api/v1/organizations/:id/members/invite`<br>`GET /api/v1/organizations/:id/members`<br>`PATCH /api/v1/organizations/:id/members/:userId`<br>`DELETE /api/v1/organizations/:id/members/:userId`                                                                            |
 | **`presence:view`**     | View member presence                    | `GET /api/v1/organizations/:id/presence`                                                                                                                                                                                                                                         |
-| **`project:view`**      | View projects                           | `GET /api/v1/projects`<br>`GET /api/v1/projects/:id`                                                                                                                                                                                                                             |
-| **`project:manage`**    | Create/Update/Delete projects           | `POST /api/v1/projects`<br>`PUT /api/v1/projects/:id`<br>`DELETE /api/v1/projects/:id`                                                                                                                                                                                           |
 | **`role:view`**         | View roles                              | `GET /api/v1/roles`<br>`POST /api/v1/roles/search`                                                                                                                                                                                                                               |
 | **`role:manage`**       | Create/Update/Delete roles              | `POST /api/v1/roles`<br>`PUT /api/v1/roles/:id`<br>`DELETE /api/v1/roles/:id`                                                                                                                                                                                                    |
 | **`permission:view`**   | View permissions and inheritance        | `GET /api/v1/permissions`<br>`GET /api/v1/permissions/:role`<br>`GET /api/v1/permissions/roles/:role/users`<br>`GET /api/v1/permissions/:role/parents`<br>`GET /api/v1/permissions/resources`<br>`GET /api/v1/permissions/inheritance-tree`                                      |
@@ -35,8 +33,8 @@ These are the default Access Rights assigned to the standard roles.
 | Role                  | Assigned Access Rights                                                                                                                                                                                  |
 | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **`role:superadmin`** | _All Permissions_ (via wildcard policy `*`, `*`)                                                                                                                                                        |
-| **`role:admin`**      | `dashboard:view`<br>`user:view`<br>`role:view`, `role:manage`<br>`project:view`, `project:manage`<br>`org:view`, `org:manage`<br>`member:manage`<br>`presence:view`<br>`audit:view`<br>`webhook:manage` |
-| **`role:user`**       | `dashboard:view`<br>`project:view`<br>`org:view`<br>`presence:view`                                                                                                                                     |
+| **`role:admin`**      | `dashboard:view`<br>`user:view`<br>`role:view`, `role:manage`<br>`org:view`, `org:manage`<br>`member:manage`<br>`presence:view`<br>`audit:view`<br>`webhook:manage` |
+| **`role:user`**       | `dashboard:view`<br>`org:view`<br>`presence:view`                                                                                                                                     |
 
 ## 3. Excluded Endpoints
 
@@ -81,12 +79,10 @@ Tenant-scoped API keys are allowed only on endpoints that explicitly support mac
 | `org:manage`     | `PUT /api/v1/organizations/:id`                                                                                                                                                                       |
 | `member:manage`  | `POST /api/v1/organizations/:id/members/invite`<br>`GET /api/v1/organizations/:id/members`<br>`PATCH /api/v1/organizations/:id/members/:userId`<br>`DELETE /api/v1/organizations/:id/members/:userId` |
 | `presence:view`  | `GET /api/v1/organizations/:id/presence`                                                                                                                                                              |
-| `project:view`   | `GET /api/v1/projects`<br>`GET /api/v1/projects/:id`                                                                                                                                                  |
-| `project:manage` | `POST /api/v1/projects`<br>`PUT /api/v1/projects/:id`<br>`DELETE /api/v1/projects/:id`                                                                                                                |
 | `webhook:manage` | `POST /api/v1/webhooks`<br>`GET /api/v1/webhooks`<br>`GET /api/v1/webhooks/:id`<br>`PUT /api/v1/webhooks/:id`<br>`DELETE /api/v1/webhooks/:id`<br>`GET /api/v1/webhooks/:id/logs`                     |
 
 Additional rules:
 
 - `*` grants all API key scopes.
-- `<resource>:*` grants all scopes with that resource prefix, for example `project:*`.
+- `<resource>:*` grants all scopes with that resource prefix, for example `user:*`.
 - API keys are rejected on session-only endpoints even if they carry a matching Casbin role.

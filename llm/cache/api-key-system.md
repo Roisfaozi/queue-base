@@ -19,7 +19,6 @@ Use this file before changing `internal/modules/api_key`, route protection, scop
 3. `internal/modules/api_key/usecase/api_key_usecase.go`
 4. `internal/modules/api_key/delivery/http/api_key_routes.go`
 5. `internal/modules/api_key/repository/*`
-6. `llm/cache/project-system.md` for project route coupling
 7. `llm/cache/authentication-system.md` and `llm/cache/tenant-organization-system.md`
 
 ## Runtime ownership
@@ -28,7 +27,6 @@ Use this file before changing `internal/modules/api_key`, route protection, scop
 
 - API-key management routes are registered by `api_keyHttp.RegisterApiKeyRoutes(authenticated, ...)`.
 - this means API-key CRUD itself is not public and not pure machine-auth; caller still enters authenticated route group.
-- project routes under `tenantAuthorized` add explicit API-key scopes like `project:view` and `project:manage` on top of auto scope middleware.
 - admin route group `authorized` requires explicit `admin:manage` API-key scope before optional org context and Casbin middleware.
 
 ### Middleware layering
@@ -103,7 +101,6 @@ This means API-key auth changes can affect downstream repository scoping even wh
 
 Examples from code behavior:
 
-- `GET /api/v1/projects` -> `project:view`
 - `POST /api/v1/users` -> `user:create`
 
 Auto scope skips only when:
@@ -127,7 +124,6 @@ Audit any future use carefully; current route wiring should prove when AND seman
 
 Tests in `internal/middleware/api_key_middleware_test.go` prove wildcard behavior exists:
 
-- `project:*` can satisfy `project:manage`
 - `*` can satisfy arbitrary scopes
 
 Treat wildcard changes as security-critical.
@@ -159,7 +155,6 @@ API-key changes can break:
 
 Read with:
 
-- `llm/cache/project-system.md`
 - `llm/cache/casbin-permission-system.md`
 - `llm/cache/tenant-organization-system.md`
 

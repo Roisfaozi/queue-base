@@ -45,9 +45,6 @@ Backend boundary untuk dashboard:
 - `internal/modules/service`
 
 Backend exclusion for QMS note:
-- `internal/modules/project` bukan fitur yang perlu dibawa dalam implementasi QMS aktif
-- jangan masukkan backend `project` sebagai dependency wajib untuk dashboard QMS
-- jangan buat note AI yang mengarahkan pengembangan fitur `project` untuk QMS kecuali user minta eksplisit
 
 Frontend boundary:
 - `apps/web/src/app/[locale]/dashboard`
@@ -64,7 +61,6 @@ Frontend boundary:
 
 Observed routes:
 - `/dashboard`
-- `/dashboard/projects`
 - `/dashboard/users`
 - `/dashboard/organization/members`
 - `/dashboard/organization/settings`
@@ -94,7 +90,6 @@ High-signal consumers:
 
 Observed dashboard/admin surfaces:
 - `app/features/organizations/*`
-- `app/features/projects/*`
 - `app/features/users/*`
 - route wiring in `app/routes.ts`
 - backend pass-through in `app/routes/api-proxy.ts`

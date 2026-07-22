@@ -127,7 +127,7 @@ Menghubungkan **Role** dengan **Resource** dan **Action** di domain tertentu.
   ```json
   {
     "role": "role:editor",
-    "path": "/api/v1/projects",
+    "path": "/api/v1/users",
     "method": "POST",
     "domain": "acme-corp"
   }
@@ -143,7 +143,7 @@ Sangat berguna untuk Frontend (misal: menentukan tombol mana yang harus muncul).
   {
     "items": [
       { "resource": "/api/v1/users", "action": "GET", "domain": "global" },
-      { "resource": "/api/v1/projects", "action": "POST", "domain": "acme-corp" },
+      { "resource": "/api/v1/users", "action": "POST", "domain": "acme-corp" },
       { "resource": "/api/v1/billing", "action": "READ", "domain": "finance-dept" }
     ]
   }
@@ -154,7 +154,7 @@ Sangat berguna untuk Frontend (misal: menentukan tombol mana yang harus muncul).
     "data": {
       "results": {
         "/api/v1/users:GET": true,
-        "/api/v1/projects:POST": true,
+        "/api/v1/users:POST": true,
         "/api/v1/billing:READ": false
       }
     }

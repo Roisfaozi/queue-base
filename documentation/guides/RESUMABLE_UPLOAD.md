@@ -31,7 +31,7 @@ The upload service is designed to be **feature-agnostic**. It doesn't know about
 To handle a new type of upload, you must implement the `tus.UploadHook` interface in your module's `usecase` or `delivery` layer.
 
 ```go
-// Example: internal/modules/project/usecase/doc_hook.go
+// Example: internal/modules/user/usecase/avatar_hook.go
 package usecase
 
 import (
@@ -39,16 +39,16 @@ import (
     "github.com/Roisfaozi/queue-base/pkg/tus"
 )
 
-type ProjectDocHook struct {
-    UseCase ProjectUseCase
+type AvatarHook struct {
+    UseCase UserUseCase
 }
 
-func (h *ProjectDocHook) HandleUpload(ctx context.Context, event tus.UploadEvent) error {
+func (h *AvatarHook) HandleUpload(ctx context.Context, event tus.UploadEvent) error {
     // 1. Extract metadata sent by the frontend
-    projectID := event.Metadata["project_id"]
+    userID := event.Metadata["user_id"]
 
     // 2. Perform business logic (e.g., save URL to DB)
-    return h.UseCase.SaveDocumentURL(ctx, projectID, event.FileURL)
+    return h.UseCase.SaveAvatarURL(ctx, userID, event.FileURL)
 }
 ```
 
@@ -60,12 +60,12 @@ Register your hook in `internal/config/app.go` during application initialization
 // internal/config/app.go
 
 // 1. Initialize your hook
-docHook := &projectUseCase.ProjectDocHook{UseCase: projectModule.ProjectUseCase}
+avatarHook := &userUseCase.AvatarHook{UseCase: userModule.UserUseCase}
 
 // 2. Register it with a unique key (e.g., "project_doc")
 sseManager := sse.NewManager() // Existing
 tusRegistry := tus.NewRegistry()
-tusRegistry.Register("project_doc", docHook)
+tusRegistry.Register("avatar", avatarHook)
 ```
 
 ---
@@ -90,8 +90,8 @@ const upload = new tus.Upload(file, {
   metadata: {
     filename: file.name,
     filetype: file.type,
-    type: "project_doc", // MANDATORY: Must match backend registration
-    project_id: "12345", // Custom metadata for your Hook
+    type: "avatar", // MANDATORY: Must match backend registration
+    user_id: "12345", // Custom metadata for your Hook
   },
   onError: (error) => console.log("Failed:", error),
   onProgress: (bytesUploaded, bytesTotal) => {

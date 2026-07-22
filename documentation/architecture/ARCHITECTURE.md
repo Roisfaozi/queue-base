@@ -371,7 +371,7 @@ Authentication is not just JWT parsing. The backend validates active session sta
 
 ### API Keys
 
-API-key requests pass through API-key middleware before route handlers. Scope checks can be automatic or explicit route-level checks such as `project:manage`.
+API-key requests pass through API-key middleware before route handlers. Scope checks can be automatic or explicit route-level checks.
 
 ### Tenant Context
 

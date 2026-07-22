@@ -51,7 +51,7 @@ curl 'http://127.0.0.1:8080/api/v1/roles' \
 ```json
 {
   "role": "role:manager",
-  "path": "/api/v1/projects",
+  "path": "/api/v1/users",
   "method": "POST"
 }
 ```
@@ -103,7 +103,7 @@ curl 'http://127.0.0.1:8080/api/v1/roles' \
   "data": {
     "results": {
       "/api/v1/users:GET": true,
-      "/api/v1/projects:POST": false
+      "/api/v1/users:POST": false
     }
   }
 }
@@ -141,7 +141,7 @@ Create access right.
 ```json
 {
   "name": "manage_projects",
-  "resource": "/api/v1/projects",
+  "resource": "/api/v1/users",
   "action": "POST"
 }
 ```

@@ -32,7 +32,6 @@ The architecture distinguishes between a user's identity (who they are) and thei
 erDiagram
     User ||--o{ Member : has
     Organization ||--o{ Member : has
-    Organization ||--o{ Project : owns
 
     User {
         uuid id PK
@@ -54,11 +53,6 @@ erDiagram
         string role_id FK
     }
 
-    Project {
-        uuid id PK
-        uuid organization_id FK
-        string name
-    }
 ```
 
 ## 2. Security & Isolation Strategy
