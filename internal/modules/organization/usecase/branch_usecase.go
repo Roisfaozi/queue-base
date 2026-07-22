@@ -108,11 +108,13 @@ func (u *branchUseCase) ListBranches(ctx context.Context) ([]model.BranchRespons
 func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *model.UpdateBranchRequest) (*model.BranchResponse, error) {
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || branchID == "" {
+		u.tryAudit(ctx, "BRANCH_UPDATE_FAILED", branchID, map[string]string{"tenant_id": tenantID, "reason": "missing tenant ID or branch ID"})
 		return nil, exception.ErrBadRequest
 	}
 	req.Sanitize()
 	branch, err := u.repo.FindByID(ctx, tenantID, branchID)
 	if err != nil {
+		u.tryAudit(ctx, "BRANCH_UPDATE_FAILED", branchID, map[string]string{"tenant_id": tenantID, "reason": "branch not found"})
 		return nil, exception.ErrNotFound
 	}
 	newStatus := branch.Status
@@ -121,6 +123,7 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 	}
 	if newStatus == entity.BranchStatusActive && branch.Status != entity.BranchStatusActive {
 		if u.missingRequiredFields(ctx, tenantID, branch, req) {
+			u.tryAudit(ctx, "BRANCH_UPDATE_FAILED", branchID, map[string]string{"tenant_id": tenantID, "reason": "missing required fields"})
 			return nil, exception.ErrBadRequest
 		}
 	}
@@ -162,6 +165,7 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 	}
 	branch.UpdatedAt = time.Now().UnixMilli()
 	if err := u.repo.Update(ctx, branch); err != nil {
+		u.tryAudit(ctx, "BRANCH_UPDATE_FAILED", branch.ID, map[string]string{"tenant_id": branch.TenantID, "reason": "failed to update branch"})
 		return nil, err
 	}
 	u.tryAudit(ctx, "BRANCH_UPDATE", branch.ID, map[string]string{"tenant_id": branch.TenantID, "code": branch.Code, "status": branch.Status})
@@ -171,9 +175,11 @@ func (u *branchUseCase) UpdateBranch(ctx context.Context, branchID string, req *
 func (u *branchUseCase) DeleteBranch(ctx context.Context, branchID string) error {
 	tenantID := database.GetTenantID(ctx)
 	if tenantID == "" || branchID == "" {
+		u.tryAudit(ctx, "BRANCH_DELETE_FAILED", branchID, map[string]string{"tenant_id": tenantID, "reason": "missing tenant ID or branch ID"})
 		return exception.ErrBadRequest
 	}
 	if err := u.repo.Delete(ctx, tenantID, branchID); err != nil {
+		u.tryAudit(ctx, "BRANCH_DELETE_FAILED", branchID, map[string]string{"tenant_id": tenantID, "reason": "failed to delete branch"})
 		return err
 	}
 	u.tryAudit(ctx, "BRANCH_DELETE", branchID, map[string]string{"tenant_id": tenantID})
