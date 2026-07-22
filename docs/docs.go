@@ -4173,362 +4173,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/projects": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns a list of all projects belonging to the active organization.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Get all projects",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Projects retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_project_model.ProjectResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Missing organization ID",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Creates a new project within the active organization context.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Create project",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Create Project Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_project_model.CreateProjectRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Project created successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_project_model.ProjectResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body or missing organization ID",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            }
-        },
-        "/projects/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns detailed information about a specific project.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Get project by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Project retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_project_model.ProjectResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "404": {
-                        "description": "Project not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates an existing project's details.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Update project",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Update Project Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_project_model.UpdateProjectRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Project updated successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_internal_modules_project_model.ProjectResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "404": {
-                        "description": "Project not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Soft deletes a project from the active organization.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Delete project",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Project deleted successfully",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerGeneralResponseWrapper"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "404": {
-                        "description": "Project not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
-                        }
-                    }
-                }
-            }
-        },
         "/queues": {
             "get": {
                 "security": [
@@ -7382,15 +7026,39 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "legal_name": {
+                    "type": "string"
+                },
+                "logo_asset_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 3
                 },
+                "phone": {
+                    "type": "string"
+                },
+                "province": {
+                    "type": "string"
+                },
                 "slug": {
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 3
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
@@ -7442,16 +7110,37 @@ const docTemplate = `{
         "github_com_Roisfaozi_queue-base_internal_modules_organization_model.OrganizationResponse": {
             "type": "object",
             "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "integer"
                 },
+                "email": {
+                    "type": "string"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "legal_name": {
+                    "type": "string"
+                },
+                "logo_asset_id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
                 },
                 "owner_id": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "province": {
                     "type": "string"
                 },
                 "settings": {
@@ -7462,6 +7151,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                },
+                "timezone": {
                     "type": "string"
                 },
                 "updated_at": {
@@ -7536,10 +7228,31 @@ const docTemplate = `{
         "github_com_Roisfaozi_queue-base_internal_modules_organization_model.UpdateOrganizationRequest": {
             "type": "object",
             "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "legal_name": {
+                    "type": "string"
+                },
+                "logo_asset_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 3
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "province": {
+                    "type": "string"
                 },
                 "settings": {
                     "type": "object",
@@ -7549,8 +7262,12 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "active",
-                        "suspended"
+                        "suspended",
+                        "draft"
                     ]
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
@@ -7848,73 +7565,6 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
-                }
-            }
-        },
-        "github_com_Roisfaozi_queue-base_internal_modules_project_model.CreateProjectRequest": {
-            "type": "object",
-            "required": [
-                "domain",
-                "name"
-            ],
-            "properties": {
-                "domain": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1
-                }
-            }
-        },
-        "github_com_Roisfaozi_queue-base_internal_modules_project_model.ProjectResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "integer"
-                },
-                "domain": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "organization_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_Roisfaozi_queue-base_internal_modules_project_model.UpdateProjectRequest": {
-            "type": "object",
-            "properties": {
-                "domain": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1
-                },
-                "status": {
-                    "type": "string",
-                    "maxLength": 100
                 }
             }
         },
