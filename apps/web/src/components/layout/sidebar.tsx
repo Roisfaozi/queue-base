@@ -193,11 +193,6 @@ const navItems: NavEntry[] = [
 		iconName: "LayoutDashboard",
 	},
 	{
-		title: "Projects",
-		href: "/dashboard/projects",
-		iconName: "Folder",
-	},
-	{
 		title: "Users",
 		href: "/dashboard/users",
 		iconName: "UserSearch",
