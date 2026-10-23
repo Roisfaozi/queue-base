@@ -96,9 +96,12 @@ func readTypedBranch(db *gorm.DB, tenantID, branchID, key string) (*string, erro
 	return typedFieldNullable(&row, key), nil
 }
 
-func readTypedBranchService(db *gorm.DB, tenantID, branchID, branchServiceID, key string) (*string, error) {
+func readTypedBranchService(db *gorm.DB, tenantID, branchID, serviceID, key string) (*string, error) {
 	var row entity.BranchServiceQueueSetting
-	if err := db.Where("tenant_id = ? AND branch_id = ? AND branch_service_id = ?", tenantID, branchID, branchServiceID).First(&row).Error; err != nil {
+	if err := db.Model(&entity.BranchServiceQueueSetting{}).
+		Joins("JOIN branch_services ON branch_services.id = branch_service_queue_settings.branch_service_id AND branch_services.tenant_id = branch_service_queue_settings.tenant_id AND branch_services.branch_id = branch_service_queue_settings.branch_id").
+		Where("branch_service_queue_settings.tenant_id = ? AND branch_service_queue_settings.branch_id = ? AND branch_services.service_id = ?", tenantID, branchID, serviceID).
+		First(&row).Error; err != nil {
 		return nil, err
 	}
 	return typedFieldNullable(&row, key), nil

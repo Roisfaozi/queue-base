@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/queue_config/entity"
+	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,7 @@ func newResolverTestDB(t *testing.T) *gorm.DB {
 		&entity.BranchQueueSetting{},
 		&entity.BranchServiceQueueSetting{},
 		&entity.CounterQueueSetting{},
+		&serviceEntity.BranchService{},
 	))
 	return db
 }
@@ -35,6 +37,7 @@ func TestQueueConfigResolver_Resolve(t *testing.T) {
 	autoCallNext := true
 	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", QueueResetTime: &val0500}).Error)
 	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-2", TenantID: "t-1", BranchID: "b-2", TicketPrefix: valPrefixNil}).Error)
+	require.NoError(t, db.Create(&serviceEntity.BranchService{ID: "bsvc-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", IsActive: true}).Error)
 	require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{ID: "bss-1", TenantID: "t-1", BranchID: "b-1", BranchServiceID: "bsvc-1", DefaultEstimatedDuration: &[]int{20}[0], AutoCallNext: &autoCallNext}).Error)
 	require.NoError(t, db.Create(&entity.CounterQueueSetting{ID: "cs-1", TenantID: "t-1", CounterID: "c-1", TicketPrefix: &valPrefixC}).Error)
 
@@ -53,8 +56,8 @@ func TestQueueConfigResolver_Resolve(t *testing.T) {
 		{name: "Edge_NullBranchOverrideInheritsTenantDefault", key: "ticket_prefix", branchID: "b-2", want: "A"},
 		{name: "Positive_ResolvesBranchOverride", key: "queue_reset_time", branchID: "b-1", want: "05:00"},
 		{name: "Positive_ResolvesCounterOverride", key: "ticket_prefix", branchID: "b-1", counterID: "c-1", want: "C"},
-		{name: "Positive_ResolvesBranchServiceOverride", key: "default_estimated_duration", branchID: "b-1", serviceID: "bsvc-1", want: "20"},
-		{name: "Positive_ResolvesAutoCallNextFromTypedTable", key: "auto_call_next", branchID: "b-1", serviceID: "bsvc-1", want: "true"},
+		{name: "Positive_ResolvesBranchServiceOverride", key: "default_estimated_duration", branchID: "b-1", serviceID: "svc-1", want: "20"},
+		{name: "Positive_ResolvesAutoCallNextFromTypedTable", key: "auto_call_next", branchID: "b-1", serviceID: "svc-1", want: "true"},
 		{name: "Negative_NoGenericFallback", key: "custom_theme_color", branchID: "b-1", want: ""},
 		{name: "Negative_LogoFallbackMiss", key: "logo_url", branchID: "b-1", want: ""},
 	}
@@ -70,4 +73,13 @@ func TestQueueConfigResolver_Resolve(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+
+	t.Run("Vulnerability_DoesNotResolveOtherTenantBranchServiceOverride", func(t *testing.T) {
+		otherService := &serviceEntity.BranchService{ID: "bsvc-other", TenantID: "t-2", BranchID: "b-1", ServiceID: "svc-other", IsActive: true}
+		require.NoError(t, db.Create(otherService).Error)
+		require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{ID: "bss-other", TenantID: "t-2", BranchID: "b-1", BranchServiceID: otherService.ID, DefaultEstimatedDuration: &[]int{99}[0]}).Error)
+
+		_, err := resolver.Resolve(ctx, "default_estimated_duration", "b-1", "svc-other", "")
+		require.Error(t, err)
+	})
 }

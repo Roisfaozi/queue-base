@@ -125,7 +125,7 @@ func (r *queueRepository) CreateRegistration(ctx context.Context, queue *entity.
 }
 
 func (r *queueRepository) CreateRegistrationWithNumber(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney, date time.Time, prefix string) error {
-	queueDate := date.Format("2006-01-02")
+	queueDate := queue.QueueDate
 	nowMs := date.UnixMilli()
 	return r.getDB(ctx).Transaction(func(tx *gorm.DB) error {
 		row := &queueCounterRow{}

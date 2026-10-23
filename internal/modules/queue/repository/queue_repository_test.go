@@ -187,6 +187,30 @@ func TestQueueRepository(t *testing.T) {
 	})
 
 	t.Run("Positive_CreateRegistrationWithNumber", func(t *testing.T) {
+		t.Run("Edge_UsesBusinessDateForCounterBeforeReset", func(t *testing.T) {
+			db := newQueueTestDB(t)
+			repo := NewQueueRepository(db)
+			loc, err := time.LoadLocation("Asia/Jakarta")
+			require.NoError(t, err)
+			now := time.Date(2026, 6, 24, 3, 59, 0, 0, loc)
+
+			for i, want := range []int{1, 2} {
+				queue := &entity.Queue{ID: fmt.Sprintf("q-%d", i), TenantID: "tenant-1", BranchID: "branch-1", QueueDate: "2026-06-23", Status: entity.QueueStatusWaiting}
+				journey := &entity.QueueJourney{ID: fmt.Sprintf("j-%d", i), QueueID: queue.ID, TenantID: queue.TenantID, BranchID: queue.BranchID, ServiceID: "svc-1", SeqNo: 1, Status: entity.JourneyStatusPending}
+				visit := &entity.VisitJourney{ID: fmt.Sprintf("v-%d", i), QueueID: queue.ID, TenantID: queue.TenantID, BranchID: queue.BranchID, EventType: "registration"}
+
+				require.NoError(t, repo.CreateRegistrationWithNumber(ctx, queue, journey, visit, now, "A"))
+				assert.Equal(t, want, queue.QueueNo)
+				assert.Equal(t, "2026-06-23", queue.QueueDate)
+			}
+
+			var counters []queueCounterRow
+			require.NoError(t, db.Find(&counters).Error)
+			require.Len(t, counters, 1)
+			assert.Equal(t, "2026-06-23", counters[0].QueueDate)
+			assert.Equal(t, 2, counters[0].LastValue)
+		})
+
 		t.Run("Negative_RollsBackCounterAndChildrenOnQueueInsertFailure", func(t *testing.T) {
 			db := newQueueTestDB(t)
 			repo := NewQueueRepository(db)
