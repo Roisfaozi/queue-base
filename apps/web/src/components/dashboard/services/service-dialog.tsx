@@ -1,9 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { z } from "zod";
+import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
 import {
 	Dialog,
@@ -16,14 +18,13 @@ import {
 import {
 	Form,
 	FormControl,
+	FormDescription,
 	FormField,
 	FormItem,
 	FormLabel,
 	FormMessage,
-	FormDescription,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { Switch } from "~/components/ui/switch";
 import {
 	Select,
 	SelectContent,
@@ -31,8 +32,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import { toast } from "sonner";
-import { Icon } from "~/components/shared/icon";
+import { Switch } from "~/components/ui/switch";
 import { servicesApi, type Service } from "~/lib/api/qms";
 
 const serviceSchema = z.object({
@@ -146,7 +146,7 @@ export function ServiceDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-[425px]">
+			<DialogContent className="sm:max-w-fit">
 				<DialogHeader>
 					<DialogTitle>{isEdit ? "Edit Service" : "Add Service"}</DialogTitle>
 					<DialogDescription>
@@ -158,144 +158,151 @@ export function ServiceDialog({
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 						<div className="grid grid-cols-2 gap-4">
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="code"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Service Code</FormLabel>
+											<FormControl>
+												<Input placeholder="e.g. A" {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								{isEdit && (
+									<FormField
+										control={form.control}
+										name="status"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Status</FormLabel>
+												<Select
+													onValueChange={field.onChange}
+													defaultValue={field.value}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue placeholder="Select status" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														<SelectItem value="active">Active</SelectItem>
+														<SelectItem value="inactive">Inactive</SelectItem>
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								)}
+							</div>
+
 							<FormField
 								control={form.control}
-								name="code"
+								name="name"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Service Code</FormLabel>
+										<FormLabel>Service Name</FormLabel>
 										<FormControl>
-											<Input placeholder="e.g. A" {...field} />
+											<Input placeholder="e.g. General Checkup" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
-							{isEdit && (
-								<FormField
-									control={form.control}
-									name="status"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Status</FormLabel>
-											<Select
-												onValueChange={field.onChange}
-												defaultValue={field.value}
-											>
-												<FormControl>
-													<SelectTrigger>
-														<SelectValue placeholder="Select status" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													<SelectItem value="active">Active</SelectItem>
-													<SelectItem value="inactive">Inactive</SelectItem>
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							)}
+
+							<FormField
+								control={form.control}
+								name="type"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Service Type</FormLabel>
+										<FormControl>
+											<Input placeholder="e.g. primary" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="default_estimated_duration"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Default Estimated Duration</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min={0}
+												placeholder="15"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="audio_id"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Audio ID</FormLabel>
+										<FormControl>
+											<Input placeholder="audio-id" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="audio_en"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Audio EN</FormLabel>
+										<FormControl>
+											<Input placeholder="audio-en" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="narrative_instruction_id"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Narrative ID</FormLabel>
+										<FormControl>
+											<Input placeholder="narrative-id" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="narrative_instruction_en"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Narrative EN</FormLabel>
+										<FormControl>
+											<Input placeholder="narrative-en" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 						</div>
-
-						<FormField
-							control={form.control}
-							name="name"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Service Name</FormLabel>
-									<FormControl>
-										<Input placeholder="e.g. General Checkup" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="type"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Service Type</FormLabel>
-									<FormControl>
-										<Input placeholder="e.g. primary" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="default_estimated_duration"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Default Estimated Duration</FormLabel>
-									<FormControl>
-										<Input type="number" min={0} placeholder="15" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="audio_id"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Audio ID</FormLabel>
-									<FormControl>
-										<Input placeholder="audio-id" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="audio_en"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Audio EN</FormLabel>
-									<FormControl>
-										<Input placeholder="audio-en" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="narrative_instruction_id"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Narrative ID</FormLabel>
-									<FormControl>
-										<Input placeholder="narrative-id" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="narrative_instruction_en"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Narrative EN</FormLabel>
-									<FormControl>
-										<Input placeholder="narrative-en" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
 
 						<div className="space-y-4 rounded-lg border p-4">
 							<h4 className="text-sm font-medium leading-none">
@@ -321,6 +328,7 @@ export function ServiceDialog({
 									</FormItem>
 								)}
 							/>
+
 							<FormField
 								control={form.control}
 								name="is_pharmacy_reception"
