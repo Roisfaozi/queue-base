@@ -1,336 +1,81 @@
-# AGENTS — Guide for automated coding agents
-
-This document is the repository entrypoint for coding agents. Use it together with the `llm/` starter-pack files that were concretized from live code in this repo.
-
-## 1. What this repo is
-
-- Hybrid monorepo.
-- Go backend is the operational core.
-- Active frontend apps exist in `apps/web` and `apps/client`.
-- Root workspace tooling uses `pnpm` and `turbo`.
-
-Primary source-of-truth order for agents:
-
-1. live code
-2. config / entrypoint / wiring
-3. tests
-4. supporting docs
-5. older prompts/workflows only as fallback context
-
-## 2. Read order for agents
-
-Start here in this order:
-
-1. `llm/cache/project-overview.md`
-2. `llm/cache/environment.md`
-3. `llm/cache/architecture.md`
-4. `llm/cache/backend-map.md`
-5. `llm/cache/frontend-map.md` if frontend is relevant
-6. `llm/cache/api-contracts.md` if API/frontend boundary is relevant
-7. `llm/cache/module-map.md`
-8. `llm/cache/domain-rules.md`
-9. relevant files under `llm/conventions/`
-10. relevant files under `llm/workflows/`
-
-If task is queue-management rebuild from this starter, read these immediately after step 3 and before changing code:
-
-- `llm/research/queue-management-rebuild-brief.md`
-- `llm/plans/roadmap/queue-management-rebuild.md`
-- `documentation/task-overview.md`
-- `code_context.txt` only as legacy evidence source, not runtime truth for this repo
-
-Then verify against live code before changing anything.
-
-Fast routing by task type:
-
-- queue-management rebuild / legacy porting: read `llm/research/queue-management-rebuild-brief.md`, `llm/plans/roadmap/queue-management-rebuild.md`, `documentation/task-overview.md`, then verify against `internal/config/app.go`, `internal/router/router.go`, and target module paths.
-- backend feature: read `llm/workflows/go-service.md`, `llm/cache/backend-map.md`, `llm/cache/module-map.md`.
-- benchmarking/refactor/improve before code change: read `llm/workflows/benchmarking.md`, `llm/conventions/testing.md`, then target package tests.
-- API route change: read `llm/workflows/api-endpoint.md`, `llm/cache/api-contracts.md`, `internal/router/router.go`.
-- frontend change: read `llm/cache/frontend-map.md`, `llm/cache/frontend-proxy-system.md`, `llm/conventions/typescript.md`, then the target app package.
-- frontend design/new UI flow: read `llm/workflows/frontend-design.md`, `llm/references/frontend-skill-map.md`, then target app package.
-- frontend redesign flow: read `llm/workflows/frontend-redesign.md`, `llm/references/frontend-skill-map.md`, then target existing app surface.
-- image-led frontend implementation: read `llm/workflows/image-to-frontend.md`, `llm/references/frontend-skill-map.md`, then target app package.
-- cross-stack change: read `llm/workflows/cross-stack-change.md`, `llm/cache/api-contracts.md`, `llm/cache/frontend-proxy-system.md`, both frontend proxy files.
-- DB/schema change: read `llm/workflows/database-migration.md`, `llm/conventions/database.md`, `db/migrations`.
-- auth/session change: read `llm/cache/authentication-system.md`, `llm/cache/domain-rules.md`, `internal/middleware/auth_middleware.go`.
-- tenant/organization change: read `llm/cache/tenant-organization-system.md`, `llm/cache/user-system.md`, `internal/middleware/tenant_middleware.go`, target organization usecase.
-- Casbin/permission change: read `llm/cache/casbin-permission-system.md`, `llm/cache/permission-system.md`, `llm/cache/role-system.md`, `llm/cache/access-right-system.md`, `internal/middleware/casbin_middleware.go`, `internal/modules/permission`.
-- API-key change: read `llm/cache/api-key-system.md`, `internal/middleware/api_key_middleware.go`, `internal/modules/api_key`.
-- upload/storage change: read `llm/cache/tus-upload-system.md`, `pkg/tus`, `pkg/storage`.
-- worker/audit/webhook change: read `llm/cache/worker-audit-webhook-system.md`, `llm/cache/audit-system.md`, `llm/cache/webhook-system.md`, `internal/worker`, target audit/webhook module.
-- query/filter/sort change: read `llm/cache/querybuilder-security.md`, `llm/cache/user-system.md`, `pkg/querybuilder`.
-- realtime change: read `llm/cache/realtime-system.md`, `llm/cache/stats-system.md`, `pkg/ws`, `pkg/sse`, `internal/router/router.go`.
-- user/profile/avatar/list change: read `llm/cache/user-system.md`, `llm/cache/querybuilder-security.md`, `pkg/tus`, `internal/modules/user`.
-- role/permission change: read `llm/cache/role-system.md`, `llm/cache/access-right-system.md`, `llm/cache/permission-system.md`, `llm/cache/casbin-permission-system.md`, `internal/modules/role`, `internal/modules/permission`.
-- stats change: read `llm/cache/stats-system.md`, `internal/modules/stats`, `internal/config/app.go`.
-- security/auth/tenant/Casbin change: read `llm/cache/domain-rules.md`, the matching domain cache, `internal/middleware/*`, target usecase.
-
-## 3. Core runtime truth
-
-Primary runtime files:
-
-- `cmd/api/main.go`
-- `internal/config/app.go`
-- `internal/router/router.go`
-- `internal/config/config.go`
-
-These files define startup, dependency wiring, route strata, middleware layering, env mapping, and service composition.
-
-## 4. Main repository areas
-
-- `cmd/api/` — API binary entrypoint.
-- `cmd/gen/` — module scaffolding generator.
-- `internal/config/` — app wiring, config, DB, Redis, Casbin, storage.
-- `internal/modules/*` — business modules using repository/usecase/controller boundaries.
-- `internal/middleware/` — auth, tenant, API key, Casbin, rate-limit, logging, recovery, metrics.
-- `internal/worker/` — Asynq distributor, processor, scheduler, task handlers.
-- `pkg/` — shared infra/helpers such as JWT, SSE, WS, TUS, storage, tx, query builder.
-- `db/migrations/` — SQL schema migrations.
-- `db/seeds/` — seed scripts.
-- `tests/` — integration and E2E test suites.
-- `apps/web/` — Next.js frontend.
-- `apps/client/` — React Router frontend.
-- `packages/*` — shared workspace packages used by frontend apps.
-
-## 5. Hard repo rules
-
-- Do not pass full app config into usecases; pass only required values/dependencies.
-- Keep context propagation intact, especially around storage and request-scoped operations.
-- Casbin changes that share DB transaction semantics must use transactional enforcer patterns.
-- Treat organization/tenant handling as a first-class boundary, not an optional add-on.
-- Keep auth/session checks in middleware/usecase boundaries, not duplicated ad hoc in handlers.
-- Do not weaken query-builder field restrictions for sensitive fields.
-- Do not move route protection from router/middleware into frontend-only checks.
-- Do not assume JWT validity is enough; Redis-backed session validation matters.
-- Do not bypass API-key scope checks when adding protected endpoints.
-- Do not add migrations without paired up/down SQL files.
-
-High-risk areas that need extra review:
-
-- auth token/cookie/session changes
-- tenant organization resolution and membership cache changes
-- Casbin policy writes and route matcher changes
-- API key auth/scope behavior
-- TUS upload metadata and hook dispatch
-- WebSocket origin/ticket/presence behavior
-- query builder field allow/deny behavior
-- worker side effects that affect audit, webhook, email, or cleanup behavior
-
-## 6. Confirmed command surfaces
-
-Root workspace:
-
-- `pnpm build`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm typecheck`
-- `pnpm go:run`
-- `pnpm go:test`
-- `pnpm go:test-integration`
-- `pnpm go:test-e2e`
-- `pnpm go:docs`
-
-Backend / Makefile:
-
-- `make run`
-- `make build`
-- `make test`
-- `make test-unit`
-- `make test-integration`
-- `make test-e2e`
-- `make test-all`
-- `make test-coverage`
-- `make bench`
-- `make docs`
-- `make mocks`
-- `make docker-dev`
-- `make migrate-up`
-- `make migrate-down`
-- `make seed-up`
-- `make gen-module`
-
-Frontend packages:
-
-- `apps/web`: `dev`, `build`, `start`, `lint`, `typecheck`, `format`
-- `apps/client`: `dev`, `build`, `start`, `typecheck`, `test:e2e`
-
-Note:
-
-- `apps/client` lint script is currently placeholder-only and should not be treated as strong verification.
-
-## 7. Testing expectations
-
-- Unit tests live close to packages under `internal` and `pkg`.
-- Integration tests live under `tests/integration` and require Docker.
-- E2E tests live under `tests/e2e` and require Docker.
-- Frontend client has Playwright E2E under `apps/client/tests/e2e`.
-- Regenerate mocks with `make mocks` when interfaces change.
-
-Verification strategy:
-
-- Start with the narrowest package or app check that covers the change.
-- Use integration tests when a change crosses DB, Redis, Casbin, worker, tenant, or upload boundaries.
-- Use E2E tests when route behavior, cookies/tokens, frontend proxies, or full request lifecycle changes.
-- If Docker or Snap Go blocks validation locally, report the exact blocker and the best narrower check that still ran.
-
-## 8. Workflow routing
-
-Use these workflow files instead of improvising:
-
-- `llm/workflows/feature.md`
-- `llm/workflows/bugfix.md`
-- `llm/workflows/benchmarking.md`
-- `llm/workflows/api-endpoint.md`
-- `llm/workflows/go-service.md`
-- `llm/workflows/cross-stack-change.md`
-- `llm/workflows/database-migration.md`
-- `llm/workflows/frontend-design.md`
-- `llm/workflows/frontend-redesign.md`
-- `llm/workflows/image-to-frontend.md`
-
-Frontend skill routing note:
-
-- use `llm/references/frontend-skill-map.md` to avoid loading conflicting frontend taste/style/reference skills all at once.
-
-## 9. Knowledge lifecycle folders
-
-Use each folder intentionally:
-
-- `llm/cache/` — verified stable repo facts only; do not put active plans or uncommitted assumptions here.
-- `llm/tasks/` — active work state, phase tracking, parity audits, lessons, and current task notes.
-- `llm/research/` — durable investigations with evidence and explicit separation between facts and recommendations.
-- `llm/recommendations/` — non-urgent improvement ideas backed by evidence.
-- `llm/test-playbooks/` — reusable manual/API/browser/E2E verification flows.
-- `llm/plans/` — large staged plans that should outlive one active task; use `improve/` and `roadmap/` for durable plan categories.
-
-Memory/update rule:
-
-- only move information into `llm/cache/` after it is verified against committed live code or committed docs generated from live code.
-- if a finding is useful but not yet stable, keep it in `llm/tasks/`, `llm/research/`, or `llm/recommendations/` instead.
-
-## 10. Agent behavior for this repo
-
-Before making claims in docs or patches:
-
-- verify commands against `package.json`, `Makefile`, package scripts, or CI
-- verify paths exist in filesystem
-- verify route/auth/tenant behavior against `internal/router/router.go` and middleware/usecase code
-- prefer live code over README when they differ
-
-When task is non-trivial or multi-step:
-
-- always create or update an active plan with `update_plan`
-- always send short progress updates before large or latency-heavy work
-- keep plan current as steps complete or shift
-- do not finish without a final plan state that matches work done
-
-When task touches architecture-heavy areas:
-
-- inspect `internal/config/app.go` first
-- inspect `internal/router/router.go` second
-- inspect target module constructor and usecase/repository/controller flow third
-
-For QMS development and new backend feature work:
-
-- every new feature or module slice must include application logging at each active layer that owns the behavior
-- every transactional side effect must include audit log emission or an explicit documented reason why it cannot
-- prefer `tryAudit`-style non-blocking audit helper inside usecases when audit failure must not fail business transaction
-- do not ship new feature work without checking whether controller, usecase, and transaction path all have logging/audit coverage
-
-When editing docs or AI context:
-
-- keep claims concrete and tied to live paths
-- prefer `needs confirmation` only when the fact cannot be verified locally
-- update `llm/tasks/lessons.md` when a durable repo-specific lesson is discovered
-- update `llm/tasks/phase-compliance.md` if starter-pack coverage changes
-- write long-form evidence gathering into `llm/research/`, not `llm/cache/`, until findings are stable
-- write non-urgent future work into `llm/recommendations/` or `llm/plans/`, not `llm/tasks/todo.md`
-
-When editing frontend:
-
-- remember `apps/web` and `apps/client` are both active surfaces
-- check which app owns the route/component before changing shared packages
-- do not treat `apps/client` lint as strong verification while its lint script is placeholder-only
-
-## 11. If you need more context
-
-Use the concretized starter-pack files under `llm/`. They were filled from live repo evidence and are the preferred durable handoff layer for future agent work.
-
-## QMS Rebuild Addendum
-
-For queue-management rebuild work, keep this repo's existing starter workflow and conventions intact. Do **not** replace the repo-standard flow; layer the QMS architecture on top of it.
-
-Additional read order for QMS work:
-
-- `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md`
-- `documentation/task-overview.md`
-- `code_context.txt` only as legacy evidence, never as runtime truth
-- `llm/research/queue-management-rebuild-brief.md`
-- `llm/research/queue-management-domain-map.md`
-- `llm/research/queue-management-implementation-design.md`
-- `llm/plans/roadmap/queue-management-rebuild.md`
-- `llm/plans/roadmap/queue-management-feature-map.md`
-
-QMS rebuild rules that override older queue assumptions:
-
-- tenant is first-class boundary for all business data
-- branch is child of tenant
-- `queues` is master ticket row
-- forwarding uses `queue_journeys`, not a second queue master row
-- `visit_journeys` is internal readable history/projection
-- no Medifrans/Bithealth integration scope unless user explicitly reintroduces it
-
-IMPORTANT!!
-NEVER GENERATE WITH PYTHON OR ANY SCRIPT like .sh or etc TO UPDATE CODEBASE AND/OR FILE.
-
-### QMS TDD Rule
-
-For every new feature or feature update in QMS rebuild work, use TDD by default:
-
-- write failing test first when feasible
-- implement smallest code to make test pass
-- refactor after behavior is protected
-- do not declare feature complete without test coverage for positive, negative, edge, and vulnerability cases
-
-Minimum expected test categories for each queue-domain change:
-
-- positive case
-- negative case
-- edge case
-- vulnerability/security case
-
-Examples:
-
-- positive: valid tenant/branch queue creation succeeds
-- negative: invalid scanner credential fails
-- edge: queue_date before reset_time uses previous business date
-- vulnerability: cross-tenant branch access is rejected
-
-Ponytail, lazy senior dev mode
-You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.
-
-Before writing any code, stop at the first rung that holds:
-
-Does this need to be built at all? (YAGNI)
-Does it already exist in this codebase? Reuse the helper, util, or pattern that's already here, don't re-write it.
-Does the standard library already do this? Use it.
-Does a native platform feature cover it? Use it.
-Does an already-installed dependency solve it? Use it.
-Can this be one line? Make it one line.
-Only then: write the minimum code that works.
-The ladder runs after you understand the problem, not instead of it: read the task and the code it touches, trace the real flow end to end, then climb.
-
-Bug fix = root cause, not symptom: a report names a symptom. Grep every caller of the function you touch and fix the shared function once — one guard there is a smaller diff than one per caller, and patching only the path the ticket names leaves a sibling caller still broken.
-
-Rules:
-
-No abstractions that weren't explicitly requested.
-No new dependency if it can be avoided.
-No boilerplate nobody asked for.
-Deletion over addition. Boring over clever. Fewest files possible.
-Shortest working diff wins, but only once you understand the problem. The smallest change in the wrong place isn't lazy, it's a second bug.
-Question complex requests: "Do you actually need X, or does Y cover it?"
-Pick the edge-case-correct option when two stdlib approaches are the same size, lazy means less code, not the flimsier algorithm.
-Mark intentional simplifications with a ponytail: comment. If the shortcut has a known ceiling (global lock, O(n²) scan, naive heuristic), the comment names the ceiling and the upgrade path.
-Not lazy about: understanding the problem (read it fully and trace the real flow before picking a rung, a small diff you don't understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs (the platform is never the spec ideal, a clock drifts, a sensor reads off), anything explicitly requested. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind, the smallest thing that fails if the logic breaks (an assert-based demo/self-check or one small test file; no frameworks, no fixtures). Trivial one-liners need no test.
+# AGENTS.md
+
+Repository operational guide for AI coding agents.
+
+## 1. System Overview
+
+- Hybrid monorepo: Go backend operational core, TypeScript frontends (`apps/web` Next.js, `apps/client` React Router v7), root workspace managed via `pnpm` and `turbo`.
+- Execution lifecycle: `cmd/api/main.go` -> `internal/config/app.go` (dependency injection & module wiring) -> `internal/router/router.go` (middleware layering: public, auth, tenant+Casbin, admin, upload).
+- Module pattern (`internal/modules/<name>/`):
+  - `entity/`: GORM models
+  - `model/`: Request/Response DTOs
+  - `repository/`: Data access, every query scoped by tenant ID
+  - `usecase/`: Business logic, DB transactions, audit logging
+  - `delivery/http/`: Thin Gin handlers and route registration
+  - `module.go`: Constructor returning `*Module` consumed by `app.go`
+- Cross-module dependencies: Wired exclusively in `module.go` (e.g. `RelationValidator`), never imported directly across usecase packages.
+- Shared infrastructure: `pkg/` (tx manager, querybuilder, jwt, sse, ws, tus, storage, exception).
+- Background jobs: Asynq workers in `internal/worker`.
+- Active QMS modules: `queue`, `queue_config`, `service`, `counter`, `caller`, `scanner`, `signage`, `operator_assignment`, `qms_client` (live alongside starter modules `auth`, `organization`, `user`, `role`, `permission`, `access`, `api_key`, `audit`, `webhook`, `stats`).
+
+## 2. Developer Commands
+
+### Backend (Go)
+- Run unit tests: `make test` (serial `-p 1 -parallel 1 -count=1`, output filtered to PASS or FAIL detail).
+- Single unit test: `make test-custom RUN='<TestName>' PKG=./internal/modules/<pkg>/usecase/...`
+- Unfiltered verbose test run: `make test-local TEST_PKG=./internal/modules/<pkg>/...`
+- Integration tests (requires Docker): `make test-integration`
+- Single integration test: `make test-integration-custom RUN='<TestName>' PKG=./tests/integration/...` (tag `integration`).
+- E2E tests (requires Docker): `make test-e2e`
+- Single E2E test: `make test-e2e-custom RUN='<TestName>' PKG=./tests/e2e/...` (tag `e2e`).
+- All tests: `make test-all`
+- Lint: `make lint` (`golangci-lint`)
+- Interface mocks: `make mocks` (mockery with `.mockery.yml`; run after interface changes).
+- Swagger docs: `make docs` (regenerates `docs/swagger.*`; note `make run` auto-runs `make docs`).
+- Scaffold module: `make gen-module` (uses `cmd/gen`).
+- Environment readiness: `make doctor`
+- CI workflow (`.github/workflows/ci.yml`): Runs `golangci-lint`, `make test-coverage`, `make test-integration`, `make test-e2e`, `make bench`, and `go build ./cmd/api/main.go`.
+
+### Database & Migrations
+- Migration files: `db/migrations/<timestamp>_<name>.up.sql` and `.down.sql` (always paired).
+- Worktree local migrations: `make migrate-up-local`, `make migrate-down-local` (reads from `.env.local`).
+
+### Frontend (pnpm + turbo)
+- Typecheck: `pnpm typecheck`
+- Lint: `pnpm lint` (runs `biome lint --write`, modifies files in-place).
+- Build: `pnpm build`
+- Format: `pnpm format` (`biome format --write .`)
+- Dev servers: `pnpm dev:web` (`apps/web`), `pnpm dev:client` (`apps/client`).
+- Note: `apps/client` lint script is placeholder-only; verify via `pnpm typecheck` or `pnpm --filter casbin-client typecheck`.
+
+### Worktree Isolated Dev
+- Create worktree: `make wt-new <branch> [base]` (creates `.worktrees/<slug>` with isolated port offsets in `.env.local`).
+- Inside worktree: `make dev-up`, `make dev-down`, `make dev-reset`, `make migrate-up-local`.
+
+## 3. Hard Architectural & Safety Invariants
+
+- Tenant isolation: Multi-tenancy is first-class. Every repository query must scope by tenant ID (`org_id` / `tenant_id`). Cross-tenant data access is strictly forbidden (`exception.ErrForbidden`).
+- Redis-backed sessions: Auth requires valid Redis session verification in middleware/usecase. JWT cryptographic signature validity alone is insufficient.
+- Casbin transactions: Policy mutations inside DB transactions must use transactional enforcer patterns (`txEnforcer`).
+- QueryBuilder security: Field allowlists are strict; never permit dynamic filtering or sorting on sensitive fields (passwords, tokens, internal keys).
+- Logging & Audit: Every controller, usecase, and transaction path must log. Transactional side effects must emit audit logs via non-blocking `tryAudit` pattern.
+- Tool usage restriction: NEVER generate Python or shell scripts (`.py`, `.sh`, etc.) to edit codebase files or apply schema changes. Always use standard agent editing tools directly.
+
+## 4. QMS Domain Specifics
+
+- Master ticket: `queues` table is the sole master ticket record.
+- Ticket forwarding: Uses `queue_journeys`, NEVER creates a second queue master ticket row.
+- Visit history: `visit_journeys` is internal readable history/projection.
+- Configuration hierarchy: Tenant -> Branch -> Service -> Counter resolved via `SettingsResolver`.
+- TDD Requirement: Queue feature/fix changes require table-driven tests covering four mandatory cases:
+  1. Positive (happy path)
+  2. Negative (invalid inputs / state transitions)
+  3. Edge (e.g. queue date before daily reset time mapped to previous business date)
+  4. Vulnerability / Security (e.g. cross-tenant or mismatched branch/service access rejected)
+
+## 5. Deeper Context References
+
+- Architecture details: `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md`
+- Verified system cache: `llm/cache/` (`architecture.md`, `backend-map.md`, `domain-rules.md`, `api-contracts.md`)
+- Queue domain & rebuild plans: `llm/research/queue-management-rebuild-brief.md`, `llm/plans/roadmap/queue-management-rebuild.md`
+- Coding conventions: `llm/conventions/golang.md`, `llm/conventions/testing.md`, `llm/conventions/database.md`
