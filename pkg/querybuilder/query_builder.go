@@ -15,7 +15,7 @@ func GenerateDynamicQuery(db *gorm.DB, model interface{}, filter *DynamicFilter)
 	}
 
 	tType := reflect.TypeOf(model)
-	if tType.Kind() == reflect.Ptr {
+	if tType.Kind() == reflect.Pointer {
 		tType = tType.Elem()
 	}
 
@@ -63,7 +63,7 @@ func GenerateDynamicSort(db *gorm.DB, model interface{}, filter *DynamicFilter) 
 	}
 
 	tType := reflect.TypeOf(model)
-	if tType.Kind() == reflect.Ptr {
+	if tType.Kind() == reflect.Pointer {
 		tType = tType.Elem()
 	}
 
