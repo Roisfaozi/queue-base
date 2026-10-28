@@ -54,6 +54,8 @@ Before implementation, define:
 
 First slice must be as small as possible while still end-to-end meaningful.
 
+For queue lifecycle, reset/settings, or device behavior, load [qms-domain](../../.agents/skills/qms-domain/SKILL.md). Preserve the master ticket and journey model; require table-driven positive, negative, edge, and security/vulnerability cases. Current QMS consumers live in `apps/web`; inspect client/shared consumers without automatically duplicating the feature.
+
 ### Step 3 — Choose Narrower Workflow
 
 Use the more specific workflow when feature shape is known:
@@ -107,6 +109,8 @@ For multi-step work:
 ### Minimum
 
 - narrowest package/app checks covering changed slice
+- verify the production wiring, not only an isolated implementation; follow [verification anti-patterns](../conventions/verification-anti-patterns.md)
+- distinguish passed, skipped, and unrun checks; use individual suite targets rather than `make test-all` as an exit-code gate
 
 ### Add When Needed
 

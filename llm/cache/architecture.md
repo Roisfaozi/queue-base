@@ -1,114 +1,37 @@
 # Architecture Snapshot
 
-## Important split
+Verified against the working tree on 2026-10-28. Approved specifications describe intended changes; the sources below describe current runtime.
 
-For this repo, architecture understanding now has two layers:
+## Composition and ownership
 
-1. current starter runtime architecture from live code
-2. target queue-management architecture from rebuild docs
+[cmd/api/main.go](../../cmd/api/main.go) starts the API. [internal/config/app.go](../../internal/config/app.go) constructs infrastructure and modules; [internal/router/router.go](../../internal/router/router.go) installs middleware and routes. There is no separate QMS binary in this repository.
 
-Do not collapse them into one story.
+Module ownership remains: thin HTTP delivery and validation, usecase business orchestration/transaction decisions, repository persistence and scoped queries, `module.go` cross-module adapters. Preserve existing transaction manager and transactional Casbin patterns. Do not import another module's usecase directly to bypass its constructor seam.
 
-## Current starter runtime architecture
+App wiring includes platform IAM/audit/webhook/stats and live QMS modules: queue, queue_config, service, counter, operator_assignment, qms_client, caller, signage, scanner, and organization branches. Queue receives its configuration resolver and realtime broadcasters through constructor wiring.
 
-Primary runtime composition lives in:
+## Route strata
 
-- `cmd/api/main.go`
-- `internal/config/app.go`
-- `internal/router/router.go`
-- `internal/config/config.go`
+The router builds independent groups under `/api/v1`, not a single inheritance chain:
 
-Current composition root wires:
+- `public`: public registration/auth/invitation flows and applicable rate limits.
+- `authenticated`: API-key authentication, token validation, automatic API-key scope, `RequireUserSession`, user status, and applicable rate limit.
+- `tenantAuthorized`: independently installs API-key authentication, token validation, automatic scope, user status, required organization, Casbin, and applicable rate limit. It does not inherit the authenticated group's explicit `RequireUserSession` call. Trace token/session behavior in middleware before claiming protection; valid JWT parsing alone is not authentication proof.
+- `authorized`: explicit `admin:manage`, token/authentication, user status, optional organization, Casbin, and applicable rate limit.
+- upload: separate TUS path with its own token/user-status handling.
 
-- logger
-- validator
-- GORM database connection
-- Redis client
-- Asynq distributor, processor, and scheduler
-- JWT manager
-- SSE manager
-- WebSocket manager, presence manager, and ticket manager
-- Casbin enforcer
-- storage provider
-- TUS handler and hook registry
-- SSO providers
-- generic starter modules: auth, user, organization, permission, role, access, project, stats, audit, webhook, api_key
+QMS module route helpers mount under `tenantAuthorized`. Caller and signage additionally install [QMS client middleware](../../internal/middleware/qms_client_middleware.go) and client-type restrictions. Scanner check-in also mounts under the central tenant-authorized group. Device identity is not evidence that an endpoint is public.
 
-Current route strata are:
+## QMS aggregate and persistence
 
-- public auth/public user/public organization flows
-- authenticated flows with API-key + token + session + user status
-- tenant-authorized flows with organization + Casbin
-- admin/authorized flows with `admin:manage`
-- upload flow with token + user status only
+[Queue entities](../../internal/modules/queue/entity/queue_entity.go) define the master `queues`, progression `queue_journeys`, and internal readable `visit_journeys` history. Forwarding preserves master ticket identity and appends a journey.
 
-## Target queue-management architecture from docs
+[Queue repository](../../internal/modules/queue/repository/queue_repository.go) owns the registration transaction: scoped counter lock, number allocation, queue, initial journey, and visit persistence. [Queue usecase](../../internal/modules/queue/usecase/queue_usecase.go) owns lifecycle decisions, business date, configuration consumption, and side-effect decisions. [Queue module](../../internal/modules/queue/module.go) supplies cross-module relation validation.
 
-Rebuild docs describe a different business architecture:
+[QueueConfigResolver](../../internal/modules/queue_config/queue_config_resolver.go) implements the queue's `SettingsResolver` interface. It checks counter, branch-service, branch, then tenant. Service-level configuration is tied to `branch_services`; do not invent an independent global service override.
 
-- queue registration service
-- queue forward service
-- scanner check-in service
-- pharmacy validation service
-- queue state machine
-- queue/customer repositories
-- queue counter repository
-- internal notification boundary after forward commit
+## Consumers and verification
 
-Core product rule from docs: handlers must stay thin while queue, forward, scanner, pharmacy, and transition logic move into service/usecase layer.
+`apps/web` currently owns QMS pages. `apps/client` remains active but has no QMS routes. Both use app-specific proxies and shared `packages/*` where actual reuse exists. A changed shared contract requires consumer inspection, not automatic feature duplication.
 
-## Architecture consequences for rebuild
-
-### Reuse from starter
-
-Keep using starter infra where it already solves cross-cutting concerns:
-
-- middleware layering
-- transaction manager
-- background workers
-- realtime channels
-- storage and upload infra
-- config loading and env handling
-- validation, logging, and telemetry
-
-### Add for target
-
-Need new queue-domain bounded contexts with clear ownership for:
-
-- queue registration and numbering
-- forward transaction orchestration
-- scanner auth/check-in
-- service-point metadata such as branch/menu/station/device
-- patient/customer + appointment lookup inputs
-
-## High-risk architectural boundaries
-
-For queue rebuild, treat these as hard boundaries:
-
-- queue number generation under concurrency
-- source/destination queue state transitions
-- post-commit notification timing
-- scanner credential validation
-- pharmacy-rule source of truth
-- business-day calculation around `04:00 Asia/Jakarta`
-- external integration adapters vs internal domain rules
-
-## Truth order for future sessions
-
-When rebuilding queue app:
-
-1. live starter code for current capabilities and extension points
-2. `documentation/task-overview.md` for target product rules
-3. `code_context.txt` for legacy evidence only when naming or old behavior matters
-
-## QMS Rebuild Addendum
-
-When task is QMS rebuild, add these architecture constraints to the existing starter architecture:
-
-- tenant resolves before business logic
-- branch always validated under tenant
-- queue creation generates one `queues` master row and first `queue_journey`
-- forwarding appends `queue_journeys` and preserves `ticket_no` / `queue_no`
-- `visit_journeys` is internal readable event stream
-- queue counters are scoped by tenant + branch + queue_date + prefix/menu strategy
-- settings flow follows tenant -> branch -> service -> counter inheritance
+High-risk seams: concurrent numbering, duplicate guard, state transitions, cross-tenant/branch/service/counter relations, reset boundary, device credentials, and post-transaction side effects. Follow [qms-domain](../../.agents/skills/qms-domain/SKILL.md) and [verification guidance](../conventions/verification-anti-patterns.md). Static inspection identifies wiring; it does not prove runtime authentication or transaction correctness.

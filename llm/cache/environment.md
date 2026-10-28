@@ -1,163 +1,45 @@
 # Environment and Execution Context
 
-## Environment files confirmed
+Verified against the working tree on 2026-10-28. Read live scripts before running commands; local credentials and personal tool permissions do not belong in this cache.
 
-- `.env.example` exists at repo root.
-- Repo guidance instructs copying `.env.example` to `.env` before local run.
+## Configuration ownership
 
-## Confirmed backend environment categories
+[internal/config/config.go](../../internal/config/config.go) loads environment-backed server, database, Redis, JWT, Casbin, CORS, rate-limit, SMTP, realtime, telemetry, storage/TUS, and SSO settings. [app.go](../../internal/config/app.go) wires their consumers. Use `.env.example` as the key template; do not print or commit secret values.
 
-From `README.md` and `.env.example`, this repo uses environment-driven toggles and secrets for:
+Root `.env` and `.env.local` are ignored. `make run` regenerates Swagger before starting the API. Worktree development uses the existing Makefile targets; do not guess ports or copy another project's database/search_path configuration.
 
-- server port, timeouts, app env, app name, trusted proxies, and frontend base URL
-- database credentials and pooling
-- Redis credentials and pooling
-- JWT secrets and token durations
-- Casbin enablement, model, default role/domain, and watcher behavior
-- CORS origins and trusted proxy config
-- rate limit enablement, burst, RPS, and storage mode
-- SMTP sender/host/port/credentials for worker email delivery
-- websocket write/pong/ping/max message settings and distributed mode
-- OpenTelemetry enablement, service name, and collector URL
-- storage driver plus local/S3 configuration
-- TUS base path
-- pprof enablement and port
-- circuit breaker enablement and thresholds
-- seeding/admin bootstrap password
+## Backend commands
 
-These categories come from `internal/config/config.go`, `internal/config/app.go`, and `.env.example`.
+Source: [Makefile](../../Makefile), [root package scripts](../../package.json).
 
-Defaults matter here: `internal/config/config.go` sets many defaults via Viper, so env files can override runtime behavior without changing code.
+- Unit: `make test` / `make test-unit`, serial execution with `-p 1 -parallel 1 -count=1`.
+- Focused unit: `make test-custom RUN='<TestName>' PKG=./internal/modules/<module>/...`.
+- Verbose focused diagnostic: `make test-local TEST_PKG=./internal/modules/<module>/...`; output is unfiltered, so prefer focused tests.
+- Integration: `make test-integration` or `make test-integration-custom RUN='<TestName>' PKG=./tests/integration/...`.
+- E2E: `make test-e2e` or `make test-e2e-custom RUN='<TestName>' PKG=./tests/e2e/...`.
+- `make test-all` prints a summary but currently always exits 0. Run constituent targets separately as acceptance gates.
+- `make lint`, `make mocks`, `make docs`, `make build`, `make doctor` remain the existing lint, generation, build, and readiness surfaces. Generation changes files; do not treat it as read-only validation.
 
-## Local run expectations confirmed
+Integration/E2E use Docker-backed MySQL and Redis through Testcontainers. Docker unavailability can skip tests; exit 0 alone does not prove scenarios executed. Shared cleanup explains serial defaults. See [integration setup](../../tests/integration/setup/test_container.go).
 
-Backend local run path:
+## Frontend commands and side effects
 
-- copy `.env.example` to `.env`
-- fill required secrets and connection values
-- use `make run` or `pnpm go:run`
+Sources: [web package](../../apps/web/package.json), [client package](../../apps/client/package.json), [workspace package](../../package.json).
 
-Recommended local infra path:
+- Dev: `pnpm dev:web`, `pnpm dev:client`.
+- Web typecheck: `pnpm --filter casbin-web typecheck` (`tsc --noEmit`).
+- Client typecheck: `pnpm --filter casbin-client typecheck` (`react-router typegen && tsc`), which generates router types.
+- Both apps run `biome lint --write .`. `pnpm lint` therefore modifies files and is not a read-only check or a substitute for typecheck.
+- Root `pnpm format` writes formatting. For a read-only focused formatting check, use the installed Biome CLI without `--write`.
+- Build: `pnpm --filter casbin-web build` / `pnpm --filter casbin-client build`, or `pnpm build`.
+- Browser E2E: `pnpm --filter casbin-client test:e2e` when that app owns the flow. Root `pnpm test` only runs workspace scripts that exist; it is not proof of tests for every app.
 
-- `docker compose -f docker-compose.dev.yml up --build`
-- or `make docker-dev`
+QMS currently belongs to `apps/web`; inspect actual consumers before choosing the app to run. App environment settings remain owned by their respective app/proxy code, not interchangeable with backend environment variables.
 
-## Build and verification commands confirmed
+## Harness and existing automation
 
-Workspace commands from `package.json`:
+`pnpm harness:check` runs the dependency-free Node integrity checker and its regression tests. The dedicated harness workflow needs Node 24, no package install, database, Redis, or Docker.
 
-- `pnpm build`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm typecheck`
+[lefthook.yml](../../lefthook.yml) already installs Git-hook checks through `pnpm prepare`. Some hooks format and restage files; some suppress failures. Hook execution is not proof that every quality check passed. This harness setup does not change those policies or install Claude hooks, plugins, MCP servers, or shared permissions.
 
-Backend commands from `package.json` and `Makefile`:
-
-- `pnpm go:run`
-- `pnpm go:test`
-- `pnpm go:test-integration`
-- `pnpm go:test-e2e`
-- `pnpm go:docs`
-- `make run`
-- `make build`
-- `make test`
-- `make test-integration`
-- `make test-e2e`
-
-The Makefile is confirmed active and should be treated as a current source for backend workflow commands.
-
-Frontend package commands confirmed
-
-`apps/web`:
-
-- `next dev --turbo`
-- `next build`
-- `next start`
-- `eslint src`
-- `tsc --noEmit`
-
-`apps/client`:
-
-- `react-router dev`
-- `react-router build`
-- `react-router-serve ./build/server/index.js`
-- `react-router typegen && tsc`
-- `playwright test`
-
-Active command caveat:
-
-- `apps/client` lint runs Biome; `pnpm typecheck` remains the TypeScript validation gate.
-- `make docker-dev` is an active repo command; it is the preferred wrapper for dev infra if the user wants one command.
-
-## Local infra files confirmed
-
-- `docker-compose.yml`
-- `docker-compose.dev.yml`
-- `docker-compose.prod.yml`
-
-## CI verification surface confirmed
-
-Primary CI workflow `.github/workflows/ci.yml` runs:
-
-- Go lint via `golangci-lint`
-- unit tests via `make test-coverage`
-- integration tests via `make test-integration`
-- E2E tests via `make test-e2e`
-- benchmarks via `make bench`
-- build check via `go build -v -o /dev/null ./cmd/api/main.go`
-
-## Env ownership by module
-
-### Backend config root
-
-`internal/config/config.go` is the main backend env source of truth. It loads app configuration through Viper/automatic env binding and maps env-backed settings for:
-
-- `server.*`
-- `mysql.*`
-- `redis.*`
-- `jwt.*`
-- `casbin.*`
-- `casbin.watcher.*`
-- `cors.allowed_origins`
-- `metrics.*`
-- `security.*`
-- `storage.*`
-- `tus.*`
-- `pprof.*`
-- `websocket.*`
-- `sso.google.*`, `sso.microsoft.*`, `sso.github.*`
-- `rate_limit.*`
-- `smtp.*`
-- `circuit_breaker.*`
-
-Module-level ownership note:
-
-- `internal/config/app.go` consumes the config root to wire runtime-specific values into workers, storage, websockets, SSO, and auth modules.
-- `internal/modules/auth` depends on JWT, SSO, Redis session storage, and ticket manager values from config.
-- `internal/modules/organization` depends on `frontend_base_url` for invite/member flows.
-- `internal/worker` depends on SMTP and rate-limit related config carried through app wiring.
-- `apps/web` and `apps/client` use `process.env` values local to each app and should not be conflated with backend config.
-
-### `apps/web`
-
-`apps/web` uses `process.env` / `NEXT_PUBLIC_*` for client-visible and server-side app settings:
-
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_APP_URL`
-- `NEXT_PUBLIC_WS_URL`
-- `NEXT_PUBLIC_COOKIE_SECURE`
-- `NEXT_PUBLIC_ACCESS_TOKEN_MAX_AGE`
-- `NEXT_PUBLIC_REFRESH_TOKEN_MAX_AGE`
-
-### `apps/client`
-
-`apps/client` uses `process.env` / `import.meta.env` for browser/runtime settings:
-
-- `CI`
-- `VITE_NEWSLETTER_PROVIDER`
-- `VITE_NEWSLETTER_ENDPOINT`
-- `NODE_ENV`
-
-### Scope note
-
-This is module ownership only for Phase 1. It does not yet claim which env vars are required in every deployment path, only where they are consumed in code.
+Claude reads [CLAUDE.md](../../CLAUDE.md), which imports [AGENTS.md](../../AGENTS.md). `.claude/skills` links to the canonical `.agents/skills`; settings, worktrees, and session artifacts remain local. Newly discovered skills may require a fresh session; static link validation does not itself prove runtime discovery.

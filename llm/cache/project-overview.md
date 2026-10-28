@@ -1,130 +1,25 @@
 # Project Overview
 
-## Current repo state
+Verified against the working tree on 2026-10-28. This is a QMS product built on a multi-tenant starter, not an empty starter awaiting queue modules.
 
-This repository is currently a hybrid starter monorepo with a Go API backend as the operational core and multiple JavaScript/TypeScript workspace packages for web clients and shared frontend libraries.
+## Runtime topology
 
-## Rebuild target context
+- One product API entrypoint: [cmd/api/main.go](../../cmd/api/main.go). [cmd/gen/main.go](../../cmd/gen/main.go) is a development scaffolder, not another product API.
+- Go module: `github.com/Roisfaozi/queue-base`. Gin, GORM, Casbin, Redis sessions, Asynq workers, SSE/WebSocket, TUS/storage, and OpenTelemetry are wired in [app.go](../../internal/config/app.go).
+- [package.json](../../package.json) defines `casbin-monorepo`, pnpm 10.8.0, Turbo, Biome, and Lefthook. Shared frontend packages retain `@casbin/*` names.
+- [apps/web](../../apps/web/) (`casbin-web`) uses Next.js App Router and currently owns QMS dashboard/operational pages.
+- [apps/client](../../apps/client/) (`casbin-client`) uses React Router v7 and remains an active IAM/admin/showcase surface. Its [route registry](../../apps/client/app/routes.ts) does not currently expose QMS routes. Do not add a second QMS frontend without a requirement.
 
-Current product goal is not generic starter maintenance. Current goal is rebuilding a hospital/clinic queue-management application using:
+## Backend ownership
 
-- `documentation/task-overview.md`
-- `code_context.txt` as legacy evidence only
+Platform modules include auth, organization/branches, user, role, permission, access, API keys, audit, webhooks, and stats. QMS modules include queue, queue_config, service/branch-service, counter, caller, scanner, signage, operator_assignment, and qms_client. Actual constructor and route registration, not a historical module list, determine what is active.
 
-Important distinction:
+[Queue domain skill](../../.agents/skills/qms-domain/SKILL.md) covers master ticket/journey semantics, atomic numbering, typed inherited settings, scoped relations, device identity, and required tests. [Architecture](architecture.md) records runtime boundaries; [domain rules](domain-rules.md) records QMS invariants.
 
-- live code describes what starter repo can do today
-- rebuild docs describe what queue product must do next
-- `code_context.txt` describes old implementation shape and bugs, not current runtime truth here
+## Scope and historical evidence
 
-## Repository shape today
+[QMS architecture document](../../documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md) supplies product intent. [Rebuild brief](../research/queue-management-rebuild-brief.md) and [roadmap](../plans/roadmap/queue-management-rebuild.md) retain design history. Their existence or completed labels do not prove current integration coverage.
 
-- Root workspace package name: `casbin-monorepo` from `package.json`.
-- Root package manager: `pnpm@10.8.0` from `package.json`.
-- Root build orchestrator: `turbo` from root scripts in `package.json`.
-- Primary backend module: Go module `github.com/Roisfaozi/queue-base` from `go.mod`.
-- Backend entrypoint: `cmd/api/main.go`.
-- Secondary Go entrypoint: `cmd/gen/main.go` for module scaffolding.
-- Frontend app packages present:
-  - `apps/web` with `next dev --turbo` / `next build`
-  - `apps/client` with `react-router dev` / `react-router build`
+`code_context.txt` is legacy evidence only. Do not reintroduce legacy destination-ticket duplication, menu/station naming, or external integration assumptions without comparing current entities and contracts.
 
-## Confirmed backend stack today
-
-- HTTP framework: Gin.
-- ORM / database access: GORM.
-- Database drivers present: MySQL, Postgres, SQLite.
-- Authorization library: Casbin.
-- Cache / session / worker backend: Redis.
-- Background jobs: Asynq.
-- Upload protocol: TUS (`tusd`).
-- Observability: OpenTelemetry.
-- API documentation: Swagger (`swag`).
-
-These are confirmed from `go.mod`, `package.json`, and runtime wiring.
-
-## Confirmed queue-target needs from rebuild docs
-
-Target product must eventually cover:
-
-- patient/customer queue registration
-- queue forward orchestration
-- scanner check-in and credential validation
-- branch/menu/station/device relations
-- pharmacy flow validation
-- transaction-safe queue number allocation
-- business-day handling around `04:00 Asia/Jakarta`
-- external integration-oriented flows
-
-Those target capabilities are now partially represented as first-class QMS modules, but product completeness and contract polish are still in progress.
-
-## Current module gap
-
-Current starter modules still include platform-oriented slices:
-
-- `access`
-- `api_key`
-- `audit`
-- `auth`
-- `organization`
-- `permission`
-- `project`
-- `role`
-- `stats`
-- `user`
-- `webhook`
-
-Queue-domain modules now exist in live code:
-
-- `queue`
-- `caller`
-- `signage`
-- `scanner`
-- `qms_client`
-- `operator_assignment`
-- `counter`
-- `service`
-- `settings` for effective typed config resolution
-
-Remaining gap is not module absence; it is design-completeness, contract shape, legacy cleanup, and full integration proof.
-
-## Canonical development commands confirmed
-
-Root workspace:
-
-- `pnpm build`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm typecheck`
-- `pnpm go:run`
-- `pnpm go:test`
-- `pnpm go:test-integration`
-- `pnpm go:test-e2e`
-
-Backend via Makefile:
-
-- `make run`
-- `make build`
-- `make test`
-- `make test-unit`
-- `make test-integration`
-- `make test-e2e`
-- `make test-all`
-- `make docs`
-
-## Scope boundary
-
-For queue rebuild work, use `llm/research/queue-management-rebuild-brief.md` and `llm/plans/roadmap/queue-management-rebuild.md` together with live code.
-
-## QMS Rebuild Addendum
-
-For current QMS rebuild task, apply these additional target rules on top of existing starter overview:
-
-- tenant-first queue platform
-- branch under tenant
-- one queue master row per ticket/day
-- forwarding through `queue_journeys`
-- `visit_journeys` as readable internal history
-- settings inheritance: tenant -> branch -> service -> counter
-
-Use `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md` as target-product truth and keep this file's existing starter facts as runtime truth.
+For command details and side effects, read [environment](environment.md) and the live package scripts/Makefile. For task routing, read [project memory](../README.md).

@@ -28,7 +28,7 @@ Repository operational guide for AI coding agents.
 - Single integration test: `make test-integration-custom RUN='<TestName>' PKG=./tests/integration/...` (tag `integration`).
 - E2E tests (requires Docker): `make test-e2e`
 - Single E2E test: `make test-e2e-custom RUN='<TestName>' PKG=./tests/e2e/...` (tag `e2e`).
-- All tests: `make test-all`
+- All tests: `make test-all` is an informational summary; it currently exits 0 even when a constituent suite fails. Run unit/integration/E2E targets separately for a reliable gate.
 - Lint: `make lint` (`golangci-lint`)
 - Interface mocks: `make mocks` (mockery with `.mockery.yml`; run after interface changes).
 - Swagger docs: `make docs` (regenerates `docs/swagger.*`; note `make run` auto-runs `make docs`).
@@ -46,7 +46,7 @@ Repository operational guide for AI coding agents.
 - Build: `pnpm build`
 - Format: `pnpm format` (`biome format --write .`)
 - Dev servers: `pnpm dev:web` (`apps/web`), `pnpm dev:client` (`apps/client`).
-- Note: `apps/client` lint script is placeholder-only; verify via `pnpm typecheck` or `pnpm --filter casbin-client typecheck`.
+- Both apps use `biome lint --write .`; lint is not read-only and does not replace typecheck. `pnpm --filter casbin-client typecheck` generates React Router types before running TypeScript.
 
 ### Worktree Isolated Dev
 - Create worktree: `make wt-new <branch> [base]` (creates `.worktrees/<slug>` with isolated port offsets in `.env.local`).
@@ -66,16 +66,28 @@ Repository operational guide for AI coding agents.
 - Master ticket: `queues` table is the sole master ticket record.
 - Ticket forwarding: Uses `queue_journeys`, NEVER creates a second queue master ticket row.
 - Visit history: `visit_journeys` is internal readable history/projection.
-- Configuration hierarchy: Tenant -> Branch -> Service -> Counter resolved via `SettingsResolver`.
+- Configuration hierarchy: tenant, branch, branch-service, counter. `QueueConfigResolver` implements the queue's `SettingsResolver` interface and resolves the most specific override first; service overrides belong to `branch_services`.
 - TDD Requirement: Queue feature/fix changes require table-driven tests covering four mandatory cases:
   1. Positive (happy path)
   2. Negative (invalid inputs / state transitions)
   3. Edge (e.g. queue date before daily reset time mapped to previous business date)
   4. Vulnerability / Security (e.g. cross-tenant or mismatched branch/service access rejected)
 
-## 5. Deeper Context References
+## 5. Harness & Task Routing
 
-- Architecture details: `documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md`
-- Verified system cache: `llm/cache/` (`architecture.md`, `backend-map.md`, `domain-rules.md`, `api-contracts.md`)
-- Queue domain & rebuild plans: `llm/research/queue-management-rebuild-brief.md`, `llm/plans/roadmap/queue-management-rebuild.md`
-- Coding conventions: `llm/conventions/golang.md`, `llm/conventions/testing.md`, `llm/conventions/database.md`
+- `CLAUDE.md` imports this file. Canonical skills live in `.agents/skills/`; `.claude/skills` is a relative symlink, not another copy. Personal settings and worktrees remain ignored. Shared Claude hooks, permissions, and plugins are not required.
+- Start with [project memory routing](llm/README.md), then load only the skill/workflow matching the task. Runtime facts come from live code, wiring/config, then tests; approved requirements define intended changes. Historical plans are evidence, not current execution authority.
+- Queue registration, forwarding, reset/settings, caller, scanner, signage, or device identity: [qms-domain](.agents/skills/qms-domain/SKILL.md).
+- Go module logic: [go-service](.agents/skills/go-service/SKILL.md). Endpoints: [api-endpoint](.agents/skills/api-endpoint/SKILL.md). Auth/session/tenant/Casbin: [auth-tenant-casbin](.agents/skills/auth-tenant-casbin/SKILL.md).
+- Frontend ownership: [frontend-surface](.agents/skills/frontend-surface/SKILL.md). Producer/consumer contracts: [cross-stack-change](.agents/skills/cross-stack-change/SKILL.md). Current QMS pages belong to `apps/web`; `apps/client` remains active but has no QMS routes. Check actual consumers instead of automatically mirroring features.
+- Bug diagnosis: [systematic-debugging](.agents/skills/systematic-debugging/SKILL.md). Feature/fix tests: [test-driven-development](.agents/skills/test-driven-development/SKILL.md).
+- Review findings: [review-findings](.agents/skills/review-findings/SKILL.md). Delegation: [dispatch-prompt](.agents/skills/dispatch-prompt/SKILL.md). A recommendation is not owner approval. Preserve existing work; hiding a feature or unmounting a route does not authorize deleting its implementation.
+- Before claiming completion: [verification-before-completion](.agents/skills/verification-before-completion/SKILL.md). Harness-only checks: `pnpm harness:check`; no Docker or application build required.
+- Route groups are mounted independently in `internal/router/router.go`. `tenantAuthorized` is not a child of `authenticated`; inspect exact middleware and token/session validation before changing protection. Caller/signage add QMS-client authentication beneath tenant-authorized routes.
+
+## 6. Deeper Context References
+
+- Architecture intent: [QMS architecture](documentation/QMS_Rebuild_Multi_Tenant_Queue_Architecture_Document.md). Verify implementation against live code before treating design as runtime fact.
+- Runtime facts: [architecture](llm/cache/architecture.md), [backend map](llm/cache/backend-map.md), [domain rules](llm/cache/domain-rules.md), [API contracts](llm/cache/api-contracts.md).
+- Historical rebuild context: [brief](llm/research/queue-management-rebuild-brief.md), [roadmap](llm/plans/roadmap/queue-management-rebuild.md).
+- Conventions: [Go](llm/conventions/golang.md), [testing](llm/conventions/testing.md), [database](llm/conventions/database.md).

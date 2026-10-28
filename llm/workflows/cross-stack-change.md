@@ -51,7 +51,7 @@ State explicitly:
 - `apps/client` consumer or proxy owner
 - shared type owner if any
 
-Do not assume one app is inactive just because current page is not open.
+Do not assume one app is inactive just because current page is not open. Inspect real route/consumer ownership, then record unaffected surfaces with evidence. QMS currently belongs to `apps/web`; the absence of QMS routes in `apps/client` does not require building them. Use [qms-domain](../../.agents/skills/qms-domain/SKILL.md) for queue/settings/device contracts.
 
 ### Step 2 — Define Contract Delta
 
@@ -98,7 +98,8 @@ For contract changes, verify:
 ### Minimum
 
 - narrow backend package test or route verification
-- owner app typecheck
+- owner app typecheck; client typecheck generates router types and both app lint scripts write files
+- production-path evidence and skipped-check disclosure per [verification anti-patterns](../conventions/verification-anti-patterns.md)
 
 ### Add When Needed
 
@@ -111,7 +112,7 @@ For contract changes, verify:
 
 Stop and mark `needs confirmation` if:
 
-- one consumer path cannot be identified
+- a claimed active consumer path cannot be identified; a source-verified absent consumer is not a blocker
 - producer and consumer disagree on source of truth
 - contract delta affects both apps but one owner path is unverified
 

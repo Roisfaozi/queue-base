@@ -43,7 +43,7 @@ Collect one of:
 - log/error text
 - source-backed docs/runtime contradiction
 
-No bugfix should start from vague hunch alone.
+No bugfix should start from vague hunch alone. Add a failing regression check at the responsible seam before fixing behavior where feasible. For QMS load [qms-domain](../../.agents/skills/qms-domain/SKILL.md) and cover positive, negative, edge, and security/vulnerability cases.
 
 ### Step 2 — Find Root Layer
 
@@ -60,7 +60,7 @@ Classify bug location:
 
 If bugfix includes refactor or logic rewrite on a measurable hot path, perform benchmark audit before changing code.
 
-Patch smallest root owner that explains failure.
+Patch smallest root owner that explains failure. State behavior and user-owned changes to preserve. A request to hide a feature or close a route does not authorize deleting its implementation; use [review-findings](../../.agents/skills/review-findings/SKILL.md) when proposing that change.
 
 Avoid:
 
@@ -88,7 +88,9 @@ Before finalizing, ask:
 
 ### Minimum
 
-- narrowest failing test or package check
+- narrowest failing test or package check, rerun after the fix
+- production route/constructor reaches the changed implementation; see [verification anti-patterns](../conventions/verification-anti-patterns.md)
+- actual result and skipped checks reported separately; `make test-all` exit 0 alone is not evidence
 
 ### Add When Needed
 

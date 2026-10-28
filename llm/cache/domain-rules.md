@@ -1,88 +1,39 @@
 # Domain Rules
 
-## Current baseline
+Verified against the working tree on 2026-10-28. Preserve these QMS boundaries; compare any new requirement with live implementation before editing.
 
-Live starter still enforces generic platform rules around auth, organization, Casbin, API keys, uploads, realtime, workers, and query safety.
+## Ticket identity and progression
 
-Those rules still matter during rebuild because queue features will run inside this same infrastructure.
+- `queues` is the sole master ticket record. Registration creates the master and initial journey together. Forwarding appends `queue_journeys` and preserves master ticket identity; it never creates a second master ticket for the destination.
+- `visit_journeys` is internal readable history/projection, not an external integration authority.
+- Validate the current queue and journey state before transitions. Keep related writes atomic and preserve the production duplicate/idempotency checks.
+- Number allocation locks the counter within the registration transaction. Scope counters by tenant, branch, business date, and prefix according to the current repository strategy; do not generate numbers in a handler or assume additional numbering strategies are implemented.
 
-## Queue-management target rules from rebuild docs
+Sources: [entities](../../internal/modules/queue/entity/queue_entity.go), [repository](../../internal/modules/queue/repository/queue_repository.go), [usecase](../../internal/modules/queue/usecase/queue_usecase.go).
 
-### Queue registration
+## Scope and trusted identity
 
-- registering queue must be idempotent for same active patient/appointment/menu/business-day combination
-- active duplicate should return existing queue instead of blindly creating new row
-- next queue number must be generated inside DB transaction with queue-counter row lock
-- business day is not plain calendar day; it rolls around `04:00 Asia/Jakarta`
+- Every business query and mutation carries tenant context. A branch ID is valid only under its tenant; service/counter IDs also require their branch relationships.
+- Forwarding validates destination branch, branch-service relation, and counter ownership through [module adapters](../../internal/modules/queue/module.go), not ID existence alone.
+- Actors and device scope come from verified identity/context. Caller/signage add QMS-client authentication beneath tenant-authorized routes; scanner credentials must be validated through the actual mounted path. Headers alone are not authentication.
+- Keep Redis session verification, user status, API-key scope, and Casbin boundaries intact. Route groups are independently mounted; see [architecture](architecture.md).
 
-### Forward queue
+Sources: [router](../../internal/router/router.go), [device middleware](../../internal/middleware/qms_client_middleware.go).
 
-- source queue must be locked before validation and mutation
-- source state transition must be explicit and valid
-- destination branch/menu/device relation must be validated before creation
-- destination duplicate queue must be checked before creating new queue
-- source queue completion/continued flags must update in same transaction as destination queue
-- notification or integration side effects must happen only after commit or via safe outbox/worker path
+## Typed settings and business date
 
-### Scanner auth and check-in
+- `QueueConfigResolver` implements `SettingsResolver`. Resolve overrides from counter, branch-service, branch, then tenant. Nullable overrides and fallback are meaningful; service settings join `branch_services` under tenant/branch scope.
+- Business date is not necessarily calendar date. Current queue usecase defaults to a `04:00` reset in `Asia/Jakarta`; inspect effective settings and fallback before changing behavior. Test times immediately before, at, and after reset.
+- Preserve explicit pharmacy policy and journey-history checks where implemented. Do not replace business semantics with display-name regex matching or import clinical stock/billing rules.
 
-- `x-client-id` and `x-api-key` presence alone is insufficient
-- credential pair must be validated against persisted scanner/client record
-- scanner request must be tied to correct branch/station/menu/device relation
-- scanner handler should only classify flow, then call queue or forward usecase
+Sources: [resolver](../../internal/modules/queue_config/queue_config_resolver.go), [queue usecase](../../internal/modules/queue/usecase/queue_usecase.go).
 
-### Pharmacy rule
+## Platform seams
 
-- pharmacy flow cannot rely on regex like `(?i)resep`
-- pharmacy semantics should come from explicit code such as `PENERIMAAN_RESEP` or explicit flag field
-- source-to-target pharmacy transition rules must be centralized in one validator/service
+Keep strict query/filter allowlists, contextual logging, existing audit/worker ownership, transactional enforcer use, and retry-safe side effects. Preserve `tryAudit` behavior where present. Do not substitute an audit API or durability policy from a different product. Trace notifications, SSE/WebSocket broadcasts, and queued work relative to commit before changing transaction behavior.
 
-### State machine rule
+## Required QMS proof
 
-- queue status transitions should be centralized, not scattered through handlers
-- invalid transitions should fail closed with explicit error path
+Feature/fix changes require table-driven positive, negative, edge, and vulnerability/security cases. Include cross-tenant or mismatched branch/service/counter access, invalid transitions, and reset-boundary cases where relevant. Concurrent number allocation needs persistence-level proof, not only a mocked usecase test.
 
-## Repo-level rules still inherited from starter
-
-- keep auth/session checks in middleware or usecase boundary
-- keep tenant/org context first-class if queue app stays multi-tenant
-- keep query/filter fields explicit and fail closed
-- keep worker side effects retry-safe
-- keep upload/realtime changes isolated from queue core unless requirement proves need
-
-## Build-order rule
-
-For queue rebuild, build in this dependency order:
-
-1. domain names and schema
-2. queue registration
-3. forward transaction flow
-4. scanner auth and check-in
-5. external integration and consumer sync
-
-Do not start from scanner or frontend first because they depend on queue core semantics.
-
-## QMS Rebuild Addendum
-
-Additional QMS domain rules:
-
-- every business query and mutation carries `tenant_id`
-- `branch_id` is never valid without tenant ownership validation
-- one queue record must keep one `ticket_no` and one `queue_no` per day
-- forward must append `queue_journeys`, not duplicate master queue rows
-- `visit_journeys` is internal history, not external integration logic
-- pharmacy validation may consult `queue_journeys` history
-- queue reset time may inherit from tenant and be overridden by branch
-
-## QMS TDD Addendum
-
-For QMS rebuild features, TDD is mandatory by default.
-
-Every new feature or update should add tests covering:
-
-- positive behavior
-- negative behavior
-- edge behavior
-- vulnerability/security behavior
-
-Do not treat handler smoke tests alone as enough for queue domain work. At minimum, protect usecase/domain logic and add route/repository tests where boundary risk exists.
+Use [qms-domain](../../.agents/skills/qms-domain/SKILL.md), [testing conventions](../conventions/testing.md), and the actual unit/integration/E2E targets. A handler smoke test alone does not prove the domain or transaction boundary.
