@@ -79,6 +79,7 @@ type QueueJourneyResponse struct {
 type VisitJourneyResponse struct {
 	ID        string `json:"id"`
 	QueueID   string `json:"queue_id"`
+	TicketNo  string `json:"ticket_no"`
 	TenantID  string `json:"tenant_id"`
 	BranchID  string `json:"branch_id"`
 	EventType string `json:"event_type"`

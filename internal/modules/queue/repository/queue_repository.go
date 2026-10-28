@@ -313,9 +313,17 @@ func (r *queueRepository) UpdateQueueState(ctx context.Context, queue *entity.Qu
 
 func (r *queueRepository) FindVisitJourneysByQueueID(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error) {
 	var visits []*entity.VisitJourney
-	if err := r.getDB(ctx).Where("tenant_id = ? AND branch_id = ? AND queue_id = ?", tenantID, branchID, queueID).Order("created_at ASC").Find(&visits).Error; err != nil {
+
+	query := r.getDB(ctx).Table("visit_journeys as vj").
+		Select("vj.id, vj.queue_id, q.ticket_no, vj.tenant_id, vj.branch_id, vj.event_type, vj.payload, vj.created_at").
+		Where("vj.tenant_id = ? AND vj.branch_id = ? AND vj.queue_id = ?", tenantID, branchID, queueID).Order("created_at ASC")
+
+	query.Joins("JOIN queues as q ON q.id = vj.queue_id")
+
+	if err := query.Find(&visits).Error; err != nil {
 		return nil, err
 	}
+
 	return visits, nil
 }
 

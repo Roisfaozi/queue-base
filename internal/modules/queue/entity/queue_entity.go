@@ -51,6 +51,7 @@ type QueueJourney struct {
 type VisitJourney struct {
 	ID        string `gorm:"column:id;primaryKey;type:varchar(36)"`
 	QueueID   string `gorm:"column:queue_id;type:varchar(36);not null"`
+	TicketNo  string `gorm:"column:ticket_no;type:varchar(50);not null"`
 	TenantID  string `gorm:"column:tenant_id;type:varchar(36);not null"`
 	BranchID  string `gorm:"column:branch_id;type:varchar(36);not null"`
 	EventType string `gorm:"column:event_type;type:varchar(100);not null"`

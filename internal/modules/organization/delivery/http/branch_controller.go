@@ -91,6 +91,8 @@ func (h *BranchController) Create(c *gin.Context) {
 func (h *BranchController) GetAll(c *gin.Context) {
 	res, err := h.useCase.ListBranches(c.Request.Context())
 	if err != nil {
+		h.Log.WithContext(c.Request.Context()).WithError(err).Error("Failed to get branch")
+
 		response.HandleError(c, err, "failed to get branches")
 		return
 	}
@@ -125,6 +127,7 @@ func (h *BranchController) Update(c *gin.Context) {
 	}
 	res, err := h.useCase.UpdateBranch(c.Request.Context(), c.Param("id"), &req)
 	if err != nil {
+		h.Log.WithContext(c.Request.Context()).WithError(err).Error("Failed to update branch")
 		response.HandleError(c, err, "failed to update branch")
 		return
 	}

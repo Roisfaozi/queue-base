@@ -171,6 +171,7 @@ func (u *queueUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]
 		return nil, exception.ErrNotFound
 	}
 	visits, err := u.repo.FindVisitJourneysByQueueID(ctx, tenantID, branchID, queueID)
+
 	if err != nil {
 		return nil, err
 	}
@@ -179,6 +180,7 @@ func (u *queueUseCase) GetVisitJourneys(ctx context.Context, queueID string) ([]
 		res[i] = model.VisitJourneyResponse{
 			ID:        v.ID,
 			QueueID:   v.QueueID,
+			TicketNo:  v.TicketNo,
 			TenantID:  v.TenantID,
 			BranchID:  v.BranchID,
 			EventType: v.EventType,
