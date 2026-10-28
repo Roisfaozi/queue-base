@@ -28,6 +28,10 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 
 	_, err := server.Enforcer.AddGroupingPolicy(admin.ID, "role:superadmin", "global")
 	require.NoError(t, err)
+	_, err = server.Enforcer.AddPolicy("role:superadmin", "global", "*", "*")
+	require.NoError(t, err)
+	err = server.Enforcer.SavePolicy()
+	require.NoError(t, err)
 	_ = server.Enforcer.LoadPolicy()
 
 	// 3. Login
@@ -45,10 +49,10 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 	_ = loginResp.JSON(&loginData)
 	server.Client.Token = loginData.Data.AccessToken
 
-	// 4. Create API Keys with different scopes
+	// 4. Create API Keys with different scopes (services module is tenant-scoped with explicit scopes)
 	createReq := apiKeyModel.CreateApiKeyRequest{
 		Name:   "E2E Read Key",
-		Scopes: []string{"user:view"},
+		Scopes: []string{"service:view"},
 	}
 	createResp := server.Client.POST("/api/v1/api-keys", createReq, func(r *http.Request) {
 		r.Header.Set("X-Organization-ID", "global")
@@ -65,7 +69,7 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 
 	createManageResp := server.Client.POST("/api/v1/api-keys", apiKeyModel.CreateApiKeyRequest{
 		Name:   "E2E Manage Key",
-		Scopes: []string{"user:manage"},
+		Scopes: []string{"service:manage"},
 	}, func(r *http.Request) {
 		r.Header.Set("X-Organization-ID", "global")
 	})
@@ -99,10 +103,10 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 			},
 		},
 		{
-			name:     "Success_ReadScopedApiKeyCanSearchUsers",
+			name:     "Success_ReadScopedApiKeyCanListServices",
 			category: "positive",
 			run: func(t *testing.T) {
-				listResp := server.Client.POST("/api/v1/users/search", map[string]any{}, func(r *http.Request) {
+				listResp := server.Client.GET("/api/v1/services", func(r *http.Request) {
 					r.Header.Set("X-API-Key", readOnlyAPIKey)
 					r.Header.Set("X-Organization-ID", "global")
 				})
@@ -111,27 +115,33 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 			},
 		},
 		{
-			name:     "Failure_ReadScopedApiKeyCannotDeleteUser",
+			name:     "Failure_ReadScopedApiKeyCannotCreateService",
 			category: "negative",
 			run: func(t *testing.T) {
-				deleteResp := server.Client.DELETE("/api/v1/users/blocked-user", func(r *http.Request) {
+				createResp := server.Client.POST("/api/v1/services", map[string]any{
+					"code": "BLOCKED",
+					"name": "Blocked Service",
+				}, func(r *http.Request) {
 					r.Header.Set("X-API-Key", readOnlyAPIKey)
 					r.Header.Set("X-Organization-ID", "global")
 				})
 
-				require.Equal(t, http.StatusForbidden, deleteResp.StatusCode)
+				require.Equal(t, http.StatusForbidden, createResp.StatusCode)
 			},
 		},
 		{
-			name:     "Success_ManageScopedApiKeyCanDeleteUserRoute",
+			name:     "Success_ManageScopedApiKeyCanCreateService",
 			category: "positive",
 			run: func(t *testing.T) {
-				deleteResp := server.Client.DELETE("/api/v1/users/missing-user", func(r *http.Request) {
+				createResp := server.Client.POST("/api/v1/services", map[string]any{
+					"code": "MANAGED",
+					"name": "Managed Service",
+				}, func(r *http.Request) {
 					r.Header.Set("X-API-Key", manageAPIKey)
 					r.Header.Set("X-Organization-ID", "global")
 				})
 
-				require.NotEqual(t, http.StatusForbidden, deleteResp.StatusCode)
+				require.Equal(t, http.StatusCreated, createResp.StatusCode)
 			},
 		},
 	}
@@ -155,7 +165,7 @@ func TestApiKeyE2E_LifecycleAndAccess(t *testing.T) {
 
 	// 7. Verify revoked API Key no longer works
 	server.Client.Token = ""
-	failResp := server.Client.POST("/api/v1/users/search", map[string]any{}, func(r *http.Request) {
+	failResp := server.Client.GET("/api/v1/services", func(r *http.Request) {
 		r.Header.Set("X-API-Key", readOnlyAPIKey)
 		r.Header.Set("X-Organization-ID", "global")
 	})
