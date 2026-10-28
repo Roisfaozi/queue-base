@@ -20,7 +20,7 @@ WORKTREE_ROOT_SIBLING ?= $(abspath $(REPO_ROOT)/../$(REPO_NAME)-worktrees)
 WORKTREE_BRANCH_ARG ?= $(word 1,$(filter-out $@,$(MAKECMDGOALS)))
 WORKTREE_BASE_ARG ?= $(word 2,$(filter-out $@,$(MAKECMDGOALS)))
 ENV_LOCAL_FILE ?= .env.local
-GO_VERIFY_PREFIX ?= PATH=/home/user/sdk/go/bin:$$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache
+# GO_VERIFY_PREFIX ?= PATH=/home/user/sdk/go/bin:$$PATH GOCACHE=/tmp/gocache GOLANGCI_LINT_CACHE=/tmp/golangci-lint-cache
 TEST_PKG ?= ./internal/... ./pkg/...
 
 # Database
@@ -476,6 +476,34 @@ front-status:
 		echo "apps/client/.env.local missing"; \
 	fi
 
+
+# --- TESTING ---
+# One filter for all test targets: only FAIL blocks + build errors.
+# No -v, so go test prints FAIL detail only; grep drops app noise lines
+# (GIN-debug routes, logrus JSON/text, tusd INFO, testcontainers emoji, GORM logs).
+GO_TEST_ENV = GIN_MODE=release LOG_LEVEL=error
+GO_TEST_NOISE = grep -vE '^\{|^\[GIN|^[0-9]{4}/[0-9]{2}/[0-9]{2}|^time="|^level=|^[A-Z]{4,5}:|^GORM:|^🐳|^✅|^⏳|^🔔|^🚫'
+GO_TEST_FILTER = awk 'BEGIN{fail=0} /--- FAIL:/{fail=1; print; next} fail{if($$0~/^(FAIL[[:space:]]|\? |ok )/){fail=0; print; next} print; next} /^FAIL([[:space:]]|$$)|^panic:/{print; next} /\[build failed\]/||/^[a-zA-Z0-9_./-]+\.go:[0-9]+:/{print; next}'
+
+define run_go_test
+	@set -o pipefail; \
+	output=$$(mktemp); filtered=$$(mktemp); \
+	$(GO_TEST_ENV) $(GO_VERIFY_PREFIX) $(GOTEST) $(1) >$$output 2>&1; \
+	status=$$?; \
+	if [ $$status -eq 0 ]; then \
+		echo "PASS"; \
+	else \
+		echo "FAIL"; \
+		echo ""; \
+		$(if $(GO_TEST_NOISE)$(GO_TEST_FILTER),$(GO_TEST_NOISE) "$$output" | $(GO_TEST_FILTER),cat "$$output") > "$$filtered"; \
+		cat "$$filtered"; \
+		echo ""; \
+		echo "rerun gagal saja: $(GOTEST) -run TestNama -v <paket>"; \
+	fi; \
+	rm -f "$$output" "$$filtered"; \
+	exit $$status
+endef
+
 # Generate docs and run the application
 .PHONY: run
 run: docs
@@ -494,51 +522,113 @@ build:
 .PHONY: test
 test:
 	@echo "Running unit tests (internal and pkg)..."
-	$(GO_VERIFY_PREFIX) $(GOTEST) -v ./internal/... ./pkg/...
+	$(call run_go_test,-p 1 -parallel 1 -count=1 ./internal/... ./pkg/...)
 
 .PHONY: test-unit
 test-unit: test
+
+# Run specific unit tests
+.PHONY: test-custom
+test-custom:
+	@echo "Running custom unit tests ($(if $(RUN),RUN='$(RUN)',all) in $(if $(PKG),$(PKG),./internal/... ./pkg/...))..."
+	$(call run_go_test,-p 1 -parallel 1 -count=1 $(if $(RUN),-run '$(RUN)',) $(if $(PKG),$(PKG),./internal/... ./pkg/...))
 
 # Run integration tests (requires Docker)
 .PHONY: test-integration
 test-integration:
 	@echo "Running integration tests..."
-	$(GOTEST) -v ./tests/integration/... -tags=integration -p 1 -timeout=10m
+	$(call run_go_test,-p 1 -parallel 1 -count=1 ./tests/integration/... -tags=integration -timeout=10m)
+
+# Run specific integration tests
+.PHONY: test-integration-custom
+test-integration-custom:
+	@echo "Running custom integration tests ($(if $(RUN),RUN='$(RUN)',all) in $(if $(PKG),$(PKG),./tests/integration/...))..."
+	$(call run_go_test,-p 1 -parallel 1 -count=1 -tags=integration -timeout=10m $(if $(RUN),-run '$(RUN)',) $(if $(PKG),$(PKG),./tests/integration/...))
 
 # Run E2E tests (requires Docker)
 .PHONY: test-e2e
 test-e2e:
 	@echo "Running E2E tests..."
-	$(GOTEST) -v ./tests/e2e/... -tags=e2e -p 1 -timeout=15m
+	$(call run_go_test,-p 1 -parallel 1 -count=1 ./tests/e2e/... -tags=e2e -timeout=15m)
+
+# Run specific E2E tests
+.PHONY: test-e2e-custom
+test-e2e-custom:
+	@echo "Running custom E2E tests ($(if $(RUN),RUN='$(RUN)',all) in $(if $(PKG),$(PKG),./tests/e2e/...))..."
+	$(call run_go_test,-p 1 -parallel 1 -count=1 -tags=e2e -timeout=15m $(if $(RUN),-run '$(RUN)',) $(if $(PKG),$(PKG),./tests/e2e/...))
 
 # Run all tests (unit + integration + e2e)
 .PHONY: test-all
-test-all: test test-integration test-e2e
+test-all:
+	@set +e; \
+	$(MAKE) test; status1=$$?; \
+	$(MAKE) test-integration; status2=$$?; \
+	$(MAKE) test-e2e; status3=$$?; \
+	if [ $$status1 -eq 0 ] && [ $$status2 -eq 0 ] && [ $$status3 -eq 0 ]; then \
+		echo "OVERALL: PASS"; \
+	else \
+		echo "OVERALL: FAIL"; \
+	fi; \
+	exit 0
 
 # Run unit tests with coverage
 .PHONY: test-coverage
 test-coverage:
 	@echo "Running unit tests coverage..."
-	$(GOTEST) -coverprofile=coverage_unit.out -covermode=atomic -v ./internal/... ./pkg/...
-	$(GOCMD) tool cover -html=coverage_unit.out -o coverage_unit.html
-	@echo "Unit test coverage report: coverage_unit.html"
+	@set -o pipefail; \
+	output=$$(mktemp); filtered=$$(mktemp); \
+	$(GO_TEST_ENV) $(GO_VERIFY_PREFIX) $(GOTEST) -p 1 -parallel 1 -count=1 -coverprofile=coverage_unit.out -covermode=atomic ./internal/... ./pkg/... >$$output 2>&1; \
+	status=$$?; \
+	if [ $$status -eq 0 ]; then \
+		$(GOCMD) tool cover -html=coverage_unit.out -o coverage_unit.html; \
+		echo "PASS"; \
+		echo "Unit test coverage report: coverage_unit.html"; \
+	else \
+		echo "FAIL"; \
+		echo ""; \
+		$(if $(GO_TEST_NOISE)$(GO_TEST_FILTER),$(GO_TEST_NOISE) "$$output" | $(GO_TEST_FILTER),cat "$$output") > "$$filtered"; \
+		cat "$$filtered"; \
+		echo ""; \
+	fi; \
+	rm -f "$$output" "$$filtered"; \
+	exit $$status
 
 # Run all tests with coverage (Sequential to avoid singleton DB race conditions)
 .PHONY: test-coverage-all
 test-coverage-all:
 	@echo "Running all tests coverage..."
-	$(GOTEST) -p 1 -coverprofile=coverage_all.out -covermode=atomic -v ./... -tags=integration,e2e -timeout=20m
-	$(GOCMD) tool cover -html=coverage_all.out -o coverage_all.html
-	@echo "Full coverage report: coverage_all.html"
+	@set -o pipefail; \
+	output=$$(mktemp); filtered=$$(mktemp); \
+	$(GO_TEST_ENV) $(GO_VERIFY_PREFIX) $(GOTEST) -p 1 -parallel 1 -count=1 -coverprofile=coverage_all.out -covermode=atomic ./... -tags=integration,e2e -timeout=20m >$$output 2>&1; \
+	status=$$?; \
+	if [ $$status -eq 0 ]; then \
+		$(GOCMD) tool cover -html=coverage_all.out -o coverage_all.html; \
+		echo "PASS"; \
+		echo "Full coverage report: coverage_all.html"; \
+	else \
+		echo "FAIL"; \
+		echo ""; \
+		$(if $(GO_TEST_NOISE)$(GO_TEST_FILTER),$(GO_TEST_NOISE) "$$output" | $(GO_TEST_FILTER),cat "$$output") > "$$filtered"; \
+		cat "$$filtered"; \
+		echo ""; \
+	fi; \
+	rm -f "$$output" "$$filtered"; \
+	exit $$status
 
 # Run tests with race detector
 .PHONY: test-race
 test-race:
-	$(GOTEST) -race -v ./...
+	$(call run_go_test,-race $(TEST_PKG))
 
-# Clean test cache
+# Clean test cache and test-generated files
 .PHONY: test-clean
 test-clean:
+	@echo "Cleaning test cache and test generated files..."
+	@rm -f coverage.out coverage.html profile.out *.pprof coverage_*.out
+	@rm -f integration_test_results.log e2e_test_results.log test.log
+	@rm -rf tmp/ test-results/ exports/ test_uploads/
+	@find tests/ -type d \( -name "test_uploads" -o -name "exports" \) -exec rm -rf {} + 2>/dev/null || true
+	@find . -maxdepth 3 -type f -name "*.test" -delete
 	$(GOCLEAN) -testcache
 
 # --- BENCHMARKING ---
