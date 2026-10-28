@@ -316,7 +316,7 @@ func (r *queueRepository) FindVisitJourneysByQueueID(ctx context.Context, tenant
 
 	query := r.getDB(ctx).Table("visit_journeys as vj").
 		Select("vj.id, vj.queue_id, q.ticket_no, vj.tenant_id, vj.branch_id, vj.event_type, vj.payload, vj.created_at").
-		Where("vj.tenant_id = ? AND vj.branch_id = ? AND vj.queue_id = ?", tenantID, branchID, queueID).Order("created_at ASC")
+		Where("vj.tenant_id = ? AND vj.branch_id = ? AND vj.queue_id = ?", tenantID, branchID, queueID).Order("vj.created_at ASC")
 
 	query.Joins("JOIN queues as q ON q.id = vj.queue_id")
 
