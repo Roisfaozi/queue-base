@@ -55,9 +55,9 @@ Choose intentionally:
   - user session requirement
   - user status middleware
 - `tenantAuthorized`
-  - authenticated base
-  - required organization context
-  - Casbin enforcement
+  - independently mounts API-key authenticate, token validation, auto scope, and user status
+  - required organization context and Casbin enforcement
+  - does not inherit `authenticated` or its explicit `RequireUserSession` call; trace actual token/session validation
 - `authorized`
   - admin-style explicit `admin:manage`
   - optional organization context
@@ -68,7 +68,7 @@ Choose intentionally:
 ## Runtime Truth To Preserve
 
 - route strata and middleware layering are defined centrally in `internal/router/router.go`
-- some module routes are registered via module route helpers, while some protected groups like project routes are declared directly in router
+- QMS route helpers mount under `tenantAuthorized`; caller/signage add QMS-client authentication and client-type restrictions. Use [qms-domain](../qms-domain/SKILL.md) for queue, settings, or operational/device contracts.
 - frontend consumers may depend on backend endpoints through `apps/web` proxy, `apps/client` proxy, and `packages/api-types`
 - Swagger-visible public API changes can require docs regeneration through `pnpm go:docs`
 

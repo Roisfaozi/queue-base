@@ -34,6 +34,8 @@ State:
 - `apps/client` consumer or proxy path
 - shared type owner if any
 
+Inspect both active surfaces, then list actual consumers or source-backed reasons they are unaffected. Current QMS lives in `apps/web`; absence from the client route registry is not a requirement to build it there. Load [qms-domain](../qms-domain/SKILL.md) for queue/settings/device contracts.
+
 ### Step 2 — Define Contract Delta
 
 Write exact change in:
@@ -66,7 +68,7 @@ Prefer order:
 
 ## Stop Conditions
 
-- stop if one consumer path cannot be identified
+- stop if a claimed active consumer cannot be identified; a verified absent consumer is not a blocker or permission to invent that feature
 - stop if contract changed but producer/consumer verification pair is missing
 
 ## Completion Output

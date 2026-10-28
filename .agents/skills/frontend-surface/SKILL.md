@@ -7,7 +7,7 @@ description: Use when deciding whether a frontend change belongs in `apps/web`, 
 
 ## Overview
 
-This repo has two active frontend apps plus shared packages.
+This repo has two active frontend apps plus shared packages. Current QMS dashboard/operational pages belong to `apps/web`; `apps/client` exposes IAM/admin/showcase routes, not QMS. Confirm actual routes before changing that ownership; do not automatically mirror a QMS feature into both apps.
 
 Wrong ownership choice causes duplicated logic, broken proxies, or types drifting between apps.
 
@@ -79,7 +79,8 @@ For UI changes, preserve:
 
 - `apps/web`: typecheck/build/lint as relevant
 - `apps/client`: typecheck/build/E2E as relevant
-- remember `apps/client` lint is placeholder-only
+- both app lint scripts run `biome lint --write .`; client typecheck generates router types. Do not describe either command as read-only or lint as typecheck.
+- use [qms-domain](../qms-domain/SKILL.md) when rendering or submitting queue/configuration/device state affects domain behavior
 
 ## Common Mistakes
 

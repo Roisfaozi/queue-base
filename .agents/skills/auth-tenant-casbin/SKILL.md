@@ -45,9 +45,10 @@ Use this skill when:
 ## Runtime Truth To Preserve
 
 - `authenticated` routes use API-key authenticate, token validation, auto scope, user-session requirement, and user-status middleware
-- `tenantAuthorized` adds required organization context and Casbin enforcement
+- `tenantAuthorized` is independently mounted with API-key authenticate, token validation, auto scope, user status, required organization, and Casbin. It does not inherit the authenticated group's explicit `RequireUserSession`; trace session validation through the actual middleware path rather than assuming inheritance.
 - `authorized` uses explicit `admin:manage`, optional organization context, and Casbin enforcement
 - route protection belongs in router plus middleware layering, not frontend checks and not ad hoc handler logic
+- caller/signage also apply QMS-client identity/type checks beneath tenant-authorized routes; use [qms-domain](../qms-domain/SKILL.md) and inspect device middleware before changing that boundary
 
 ## Boundary Checklist
 

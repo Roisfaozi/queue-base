@@ -45,7 +45,7 @@ Before final response, answer:
 - frontend client
   - `pnpm --filter casbin-client typecheck`
   - build or E2E as relevant
-  - do not overstate placeholder lint script
+  - lint uses `biome lint --write .`; client typecheck generates router types. Neither is a read-only command.
 - Swagger-visible API
   - `pnpm go:docs` when docs artifacts should change
 
@@ -65,7 +65,11 @@ State whether change touched:
 
 ### Step 2 — Pick Narrowest Real Check
 
-Start smallest check that proves changed behavior.
+Read [verification anti-patterns](../../../llm/conventions/verification-anti-patterns.md). Trace the mounted route and constructor to the changed implementation; distinguish mocked proof from real persistence/request proof. For QMS use [qms-domain](../qms-domain/SKILL.md) and account for positive, negative, edge, and security cases.
+
+Start smallest check that proves changed behavior. Use individual test targets: `make test-all` currently always exits 0. Check for skipped Docker tests before claiming integration success.
+
+For harness-only changes run `pnpm harness:check`. This proves static integrity and checker regressions, not application behavior or automatic skill selection. Both app lint scripts write files; report that side effect if used.
 
 If smallest check is blocked, state blocker and choose best available fallback.
 

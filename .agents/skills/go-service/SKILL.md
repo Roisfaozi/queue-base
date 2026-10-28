@@ -5,7 +5,7 @@ description: Use when changing Go backend module logic, usecases, repositories, 
 
 # Go Service: Backend Module Change
 
-**Announce at start:** "I'm using the go-service skill to preserve Casbin repo backend boundaries."
+For queue lifecycle, numbering, inherited settings, or device flows, also load [qms-domain](../qms-domain/SKILL.md); preserve its four-category test gate.
 
 ## When To Use
 
