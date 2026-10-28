@@ -3,6 +3,7 @@ import { api } from "./client";
 export interface AuditLog {
 	id: string;
 	user_id: string;
+	actor?: string;
 	username?: string; // Optional if joined in backend
 	action: string;
 	entity: string;

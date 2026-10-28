@@ -140,10 +140,16 @@ func (uc *auditUseCase) GetLogsDynamic(ctx context.Context, filter *querybuilder
 		_ = json.Unmarshal([]byte(log.OldValues), &oldVal)
 		_ = json.Unmarshal([]byte(log.NewValues), &newVal)
 
+		actor := log.UserName
+		if actor == "" {
+			actor = log.UserID
+		}
+
 		response = append(response, model.AuditLogResponse{
 			ID:             log.ID,
 			OrganizationID: log.OrganizationID,
 			UserID:         log.UserID,
+			Actor:          actor,
 			Action:         log.Action,
 			Entity:         log.Entity,
 			EntityID:       log.EntityID,

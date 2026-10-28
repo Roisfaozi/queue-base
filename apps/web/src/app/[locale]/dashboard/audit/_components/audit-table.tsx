@@ -16,6 +16,49 @@ import type { AuditLog } from "~/lib/api/audit";
 import { memo } from "react";
 import { EmptyState } from "~/components/shared/empty-state";
 
+const idMonths = [
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"Mei",
+	"Jun",
+	"Jul",
+	"Agu",
+	"Sep",
+	"Okt",
+	"Nov",
+	"Des",
+];
+
+function formatAuditTimestamp(timestamp: number): string {
+	if (!timestamp) return "-";
+	const date = new Date(timestamp);
+	if (Number.isNaN(date.getTime())) return "-";
+
+	const day = date.getDate();
+	const month = idMonths[date.getMonth()];
+	const year = date.getFullYear();
+	const hours = String(date.getHours()).padStart(2, "0");
+	const minutes = String(date.getMinutes()).padStart(2, "0");
+
+	return `${day} ${month} ${year}, ${hours}.${minutes}`;
+}
+
+function normalizeAction(action: string): string {
+	if (!action) return "-";
+	const upper = action.toUpperCase();
+	if (
+		upper === "UPDATE" ||
+		upper === "EDIT" ||
+		upper.includes("UPDATE") ||
+		upper.includes("EDIT")
+	) {
+		return "UBAH";
+	}
+	return upper;
+}
+
 export function AuditTable() {
 	const {
 		logs,
@@ -50,11 +93,21 @@ export function AuditTable() {
 				<Table>
 					<TableHeader>
 						<TableRow className="bg-muted/50">
-							<TableHead className="w-[180px]">Timestamp</TableHead>
-							<TableHead>Action</TableHead>
-							<TableHead>Entity</TableHead>
-							<TableHead>Entity ID</TableHead>
-							<TableHead>IP Address</TableHead>
+							<TableHead className="w-[180px] uppercase text-xs font-semibold">
+								Timestamp
+							</TableHead>
+							<TableHead className="uppercase text-xs font-semibold">
+								Pelaku
+							</TableHead>
+							<TableHead className="uppercase text-xs font-semibold">
+								Action
+							</TableHead>
+							<TableHead className="uppercase text-xs font-semibold">
+								Entity
+							</TableHead>
+							<TableHead className="uppercase text-xs font-semibold">
+								IP Address
+							</TableHead>
 							<TableHead className="w-[50px]"></TableHead>
 						</TableRow>
 					</TableHeader>
@@ -97,33 +150,38 @@ const MemoizedAuditRow = memo(function AuditRow({
 	log: AuditLog;
 	onClick: () => void;
 }) {
+	const actor = log.actor || log.username || log.user_id || "-";
+	const actionDisplay = normalizeAction(log.action);
+
 	return (
 		<TableRow
 			className="hover:bg-muted/50 group cursor-pointer transition-colors"
 			onClick={onClick}
 		>
 			<TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-				{new Date(log.created_at).toLocaleString()}
+				{formatAuditTimestamp(log.created_at)}
+			</TableCell>
+			<TableCell className="text-xs font-semibold text-foreground">
+				{actor}
 			</TableCell>
 			<TableCell>
 				<Badge
 					variant="outline"
-					className="bg-primary/5 text-primary border-primary/10 font-mono text-[10px] uppercase"
+					className="bg-primary/10 text-primary border-primary/20 font-mono text-[10px] font-semibold uppercase px-2 py-0.5"
 				>
-					{log.action}
+					{actionDisplay}
 				</Badge>
 			</TableCell>
-			<TableCell className="text-xs font-medium">{log.entity}</TableCell>
-			<TableCell className="text-muted-foreground max-w-[120px] truncate font-mono text-[10px]">
-				{log.entity_id}
+			<TableCell className="text-xs font-medium text-foreground">
+				{log.entity}
 			</TableCell>
-			<TableCell className="text-muted-foreground text-xs">
-				{log.ip_address}
+			<TableCell className="text-muted-foreground text-xs font-mono">
+				{log.ip_address || ""}
 			</TableCell>
-			<TableCell>
+			<TableCell className="text-right pr-4">
 				<Icon
 					name="ChevronRight"
-					className="text-muted-foreground h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+					className="text-muted-foreground h-4 w-4 opacity-70 group-hover:opacity-100 transition-opacity"
 				/>
 			</TableCell>
 		</TableRow>

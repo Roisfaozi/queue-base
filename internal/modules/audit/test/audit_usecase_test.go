@@ -156,7 +156,7 @@ func TestAuditUseCase(t *testing.T) {
 				deps, uc := setupAuditTest()
 				now := time.Now().UnixMilli()
 				entities := []*entity.AuditLog{
-					{ID: "1", UserID: "u1", OldValues: `{"a":1}`, NewValues: `{"a":2}`, CreatedAt: now},
+					{ID: "1", UserID: "u1", UserName: "Super Admin", OldValues: `{"a":1}`, NewValues: `{"a":2}`, CreatedAt: now},
 				}
 
 				filter := &querybuilder.DynamicFilter{}
@@ -167,9 +167,29 @@ func TestAuditUseCase(t *testing.T) {
 				assert.Len(t, res, 1)
 				assert.Equal(t, int64(1), total)
 				assert.Equal(t, "u1", res[0].UserID)
+				assert.Equal(t, "Super Admin", res[0].Actor)
 
 				oldVal := res[0].OldValues.(map[string]interface{})
 				assert.Equal(t, float64(1), oldVal["a"])
+			},
+		},
+		{
+			name:     "Positive_GetLogsDynamic_FallbackToUserID",
+			category: "positive",
+			run: func(t *testing.T) {
+				deps, uc := setupAuditTest()
+				now := time.Now().UnixMilli()
+				entities := []*entity.AuditLog{
+					{ID: "1", UserID: "u1", Action: "LOGIN", Entity: "Auth", CreatedAt: now},
+				}
+				filter := &querybuilder.DynamicFilter{}
+				deps.Repo.On("FindAllDynamic", mock.Anything, filter).Return(entities, int64(1), nil)
+
+				res, total, err := uc.GetLogsDynamic(context.Background(), filter)
+				assert.NoError(t, err)
+				assert.Len(t, res, 1)
+				assert.Equal(t, int64(1), total)
+				assert.Equal(t, "u1", res[0].Actor)
 			},
 		},
 		{

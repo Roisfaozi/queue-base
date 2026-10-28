@@ -48,7 +48,9 @@ func (r *auditRepository) FindAllDynamic(ctx context.Context, filter *querybuild
 	var total int64
 	query := r.getDB(ctx).
 		Scopes(database.OrganizationScope(ctx), database.OrganizationVisibilityScope(ctx, "audit_logs.organization_id")).
-		Model(&entity.AuditLog{})
+		Table("audit_logs").
+		Select("audit_logs.*, COALESCE(NULLIF(users.name, ''), users.username, audit_logs.user_id) AS user_name").
+		Joins("LEFT JOIN users ON users.id = audit_logs.user_id AND users.deleted_at = 0")
 
 	query, err := querybuilder.GenerateDynamicQuery(query, &entity.AuditLog{}, filter)
 	if err != nil {
