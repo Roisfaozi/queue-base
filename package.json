@@ -15,6 +15,7 @@
     "go:test-e2e": "make test-e2e",
     "go:docs": "make docs",
     "format": "biome format --write .",
+    "harness:check": "node --test scripts/check-harness.test.mjs && node scripts/check-harness.mjs",
     "prepare": "lefthook install"
   },
   "devDependencies": {

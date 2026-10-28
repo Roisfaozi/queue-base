@@ -1,0 +1,42 @@
+name: Agent Harness
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".gitignore"
+      - ".agents/skills/**"
+      - ".claude/skills"
+      - "llm/**"
+      - "scripts/check-harness*.mjs"
+      - "package.json"
+      - ".github/workflows/harness.yml"
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".gitignore"
+      - ".agents/skills/**"
+      - ".claude/skills"
+      - "llm/**"
+      - "scripts/check-harness*.mjs"
+      - "package.json"
+      - ".github/workflows/harness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Test harness validator
+        run: node --test scripts/check-harness.test.mjs
+      - name: Check harness integrity
+        run: node scripts/check-harness.mjs
