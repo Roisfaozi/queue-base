@@ -177,7 +177,8 @@ casbin.json
 
 # End of https://www.toptal.com/developers/gitignore/api/go,goland,visualstudiocode,nodechakratimetraveldebug
 _bmad
-.claude
+.claude/*
+!.claude/skills
 .gemini
 _bmad-Output
 
