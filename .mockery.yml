@@ -1,16 +1,9 @@
-all: true
-dir: "{{.InterfaceDir}}"
-force-file-write: true
-formatter: goimports
-generate: true
+all: false
 include-auto-generated: false
 log-level: info
-structname: "Mock{{.InterfaceName}}"
-pkgname: mocks
+mockname: "Mock{{.InterfaceName}}"
+outpkg: mocks
 recursive: false
-require-template-schema-exists: true
-template: testify
-template-schema: "{{.Template}}.schema.json"
 packages:
   github.com/Roisfaozi/queue-base/internal/modules/access/repository:
     config:
@@ -33,29 +26,83 @@ packages:
       dir: internal/modules/role/test/mocks
       filename: mock_role_repository.go
   github.com/Roisfaozi/queue-base/internal/modules/role/usecase:
-    config:
-      dir: internal/modules/role/test/mocks
-      filename: mock_role_usecase.go
+    interfaces:
+      RoleUseCase:
+        config:
+          dir: internal/modules/role/test/mocks
+          filename: mock_role_usecase.go
   github.com/Roisfaozi/queue-base/internal/modules/permission/usecase:
-    config:
-      dir: internal/modules/permission/test/mocks
-      filename: mock_permission_usecase.go
+    interfaces:
+      IPermissionUseCase:
+        config:
+          dir: internal/modules/permission/test/mocks
+          filename: mock_permission_usecase.go
   github.com/Roisfaozi/queue-base/internal/modules/auth/repository:
-    config:
-      dir: internal/modules/auth/test/mocks
-      filename: mock_auth_repository.go
+    interfaces:
+      TokenRepository:
+        config:
+          dir: internal/modules/auth/test/mocks
+          filename: mock_auth_repository.go
+      NotificationPublisher:
+        config:
+          dir: internal/modules/auth/test/mocks
+          filename: mock_notification_publisher.go
+      AuthzManager:
+        config:
+          dir: internal/modules/auth/test/mocks
+          filename: mock_authz_manager.go
   github.com/Roisfaozi/queue-base/internal/modules/auth/usecase:
     config:
       dir: internal/modules/auth/test/mocks
       filename: mock_auth_usecase.go
   github.com/Roisfaozi/queue-base/internal/modules/organization/repository:
-    config:
-      dir: internal/modules/organization/test/mocks
-      filename: mock_organization_repository.go
+    interfaces:
+      OrganizationRepository:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_organization_repository.go
+      BranchRepository:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_branch_repository.go
+      OrganizationMemberRepository:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_organization_member_repository.go
+      InvitationRepository:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_invitation_repository.go
   github.com/Roisfaozi/queue-base/internal/modules/organization/usecase:
-    config:
-      dir: internal/modules/organization/test/mocks
-      filename: mock_organization_usecase.go
+    interfaces:
+      OrganizationUseCase:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_organization_usecase.go
+      OrganizationMemberUseCase:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_organization_member_usecase.go
+      BranchUseCase:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_branch_usecase.go
+      AuditLogger:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_audit_logger.go
+      IOrganizationReader:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_organization_reader.go
+      PresenceReader:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_presence_reader.go
+      BranchLogoRepository:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_branch_logo_repository.go
   github.com/Roisfaozi/queue-base/internal/modules/audit/repository:
     config:
       dir: internal/modules/audit/test/mocks
@@ -84,18 +131,215 @@ packages:
     config:
       dir: pkg/storage/mocks
       filename: mock_storage_provider.go
+  github.com/Roisfaozi/queue-base/pkg/storage/s3:
+    interfaces:
+      S3ClientAPI:
+        config:
+          dir: pkg/storage/s3/mocks
+          filename: mock_s3_client.go
+      S3PresignerAPI:
+        config:
+          dir: pkg/storage/s3/mocks
+          filename: mock_s3_presigner.go
+  github.com/Roisfaozi/queue-base/internal/middleware:
+    interfaces:
+      CasbinEnforcer:
+        config:
+          dir: internal/middleware/test/mocks
+          filename: mock_casbin_enforcer.go
   github.com/Roisfaozi/queue-base/internal/worker:
-    config:
-      dir: internal/mocking
-      filename: mock_task_distributor.go
-      pkgname: mocking
+    interfaces:
+      TaskDistributor:
+        config:
+          dir: internal/mocking
+          filename: mock_task_distributor.go
+          outpkg: mocking
+      TaskProcessor:
+        config:
+          dir: internal/mocking
+          filename: mock_task_processor.go
+          outpkg: mocking
   github.com/Roisfaozi/queue-base/pkg/tx:
     config:
       dir: internal/mocking
       filename: mock_transaction_manager.go
-      pkgname: mocking
+      outpkg: mocking
   github.com/Roisfaozi/queue-base/pkg/ws:
-    config:
-      dir: internal/mocking
-      filename: mock_websocket_manager.go
-      pkgname: mocking
+    interfaces:
+      Manager:
+        config:
+          dir: pkg/ws
+          inpackage: true
+          filename: mock_manager_test.go
+      TicketManager:
+        config:
+          dir: pkg/ws
+          inpackage: true
+          filename: mock_ticket_manager_test.go
+      PresenceManager:
+        config:
+          dir: pkg/ws
+          inpackage: true
+          filename: mock_presence_manager_test.go
+  github.com/Roisfaozi/queue-base/internal/modules/queue/repository:
+    interfaces:
+      QueueRepository:
+        config:
+          dir: internal/modules/queue/test/mocks
+          filename: mock_queue_repository.go
+  github.com/Roisfaozi/queue-base/internal/modules/queue/usecase:
+    interfaces:
+      QueueUseCase:
+        config:
+          dir: internal/modules/queue/test/mocks
+          filename: mock_queue_usecase.go
+      SettingsResolver:
+        config:
+          dir: internal/modules/queue/test/mocks
+          filename: mock_settings_resolver.go
+      RelationValidator:
+        config:
+          dir: internal/modules/queue/test/mocks
+          filename: mock_relation_validator.go
+      AuditLogger:
+        config:
+          dir: internal/modules/queue/test/mocks
+          filename: mock_audit_logger.go
+      EventBroadcaster:
+        config:
+          dir: internal/modules/queue/test/mocks
+          filename: mock_event_broadcaster.go
+      WSBroadcaster:
+        config:
+          dir: internal/modules/queue/test/mocks
+          filename: mock_ws_broadcaster.go
+  github.com/Roisfaozi/queue-base/internal/modules/counter/repository:
+    interfaces:
+      CounterRepository:
+        config:
+          dir: internal/modules/counter/test/mocks
+          filename: mock_counter_repository.go
+  github.com/Roisfaozi/queue-base/internal/modules/counter/usecase:
+    interfaces:
+      CounterUseCase:
+        config:
+          dir: internal/modules/counter/test/mocks
+          filename: mock_counter_usecase.go
+      AuditLogger:
+        config:
+          dir: internal/modules/counter/test/mocks
+          filename: mock_audit_logger.go
+  github.com/Roisfaozi/queue-base/internal/modules/service/repository:
+    interfaces:
+      ServiceRepository:
+        config:
+          dir: internal/modules/service/test/mocks
+          filename: mock_service_repository.go
+      BranchServiceRepository:
+        config:
+          dir: internal/modules/service/test/mocks
+          filename: mock_branch_service_repository.go
+  github.com/Roisfaozi/queue-base/internal/modules/service/usecase:
+    interfaces:
+      ServiceUseCase:
+        config:
+          dir: internal/modules/service/test/mocks
+          filename: mock_service_usecase.go
+      BranchServiceUseCase:
+        config:
+          dir: internal/modules/service/test/mocks
+          filename: mock_branch_service_usecase.go
+      AuditLogger:
+        config:
+          dir: internal/modules/service/test/mocks
+          filename: mock_audit_logger.go
+  github.com/Roisfaozi/queue-base/internal/modules/caller/usecase:
+    interfaces:
+      CallerUseCase:
+        config:
+          dir: internal/modules/caller/test/mocks
+          filename: mock_caller_usecase.go
+  github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase:
+    interfaces:
+      ScannerUseCase:
+        config:
+          dir: internal/modules/scanner/test/mocks
+          filename: mock_scanner_usecase.go
+      QueueHandler:
+        config:
+          dir: internal/modules/scanner/test/mocks
+          filename: mock_queue_handler.go
+      Authenticator:
+        config:
+          dir: internal/modules/scanner/test/mocks
+          filename: mock_authenticator.go
+      RelationValidator:
+        config:
+          dir: internal/modules/scanner/test/mocks
+          filename: mock_relation_validator.go
+      AuditLogger:
+        config:
+          dir: internal/modules/scanner/test/mocks
+          filename: mock_audit_logger.go
+      SettingsResolver:
+        config:
+          dir: internal/modules/scanner/test/mocks
+          filename: mock_settings_resolver.go
+  github.com/Roisfaozi/queue-base/internal/modules/signage/usecase:
+    interfaces:
+      SignageUseCase:
+        config:
+          dir: internal/modules/signage/test/mocks
+          filename: mock_signage_usecase.go
+  github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/usecase:
+    interfaces:
+      OperatorAssignmentUseCase:
+        config:
+          dir: internal/modules/operator_assignment/test/mocks
+          filename: mock_operator_assignment_usecase.go
+      AuditLogger:
+        config:
+          dir: internal/modules/operator_assignment/test/mocks
+          filename: mock_audit_logger.go
+  github.com/Roisfaozi/queue-base/internal/modules/qms_client/repository:
+    interfaces:
+      QmsClientRepository:
+        config:
+          dir: internal/modules/qms_client/test/mocks
+          filename: mock_qms_client_repository.go
+  github.com/Roisfaozi/queue-base/internal/modules/qms_client/usecase:
+    interfaces:
+      QMSClientAuthenticator:
+        config:
+          dir: internal/modules/qms_client/test/mocks
+          filename: mock_qms_client_authenticator.go
+      QMSClientAdminUseCase:
+        config:
+          dir: internal/modules/qms_client/test/mocks
+          filename: mock_qms_client_admin_usecase.go
+      AdminAuditLogger:
+        config:
+          dir: internal/modules/qms_client/test/mocks
+          filename: mock_admin_audit_logger.go
+  github.com/Roisfaozi/queue-base/internal/modules/queue_config/repository:
+    interfaces:
+      QueueConfigRepository:
+        config:
+          dir: internal/modules/queue_config/test/mocks
+          filename: mock_queue_config_repository.go
+  github.com/Roisfaozi/queue-base/internal/modules/queue_config/usecase:
+    interfaces:
+      QueueConfigUseCase:
+        config:
+          dir: internal/modules/queue_config/test/mocks
+          filename: mock_queue_config_usecase.go
+  github.com/Roisfaozi/queue-base/internal/modules/queue_config/delivery/http:
+    interfaces:
+      QueueSettingResolver:
+        config:
+          dir: internal/modules/queue_config/test/mocks
+          filename: mock_queue_setting_resolver.go
+      AuditLogger:
+        config:
+          dir: internal/modules/queue_config/test/mocks
+          filename: mock_audit_logger.go
