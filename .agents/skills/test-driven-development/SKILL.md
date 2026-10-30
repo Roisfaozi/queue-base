@@ -61,6 +61,7 @@ Do not force TDD when:
 
 - test one behavior per failing case when possible
 - use repo-adjacent test style from same package
+- all interface mocks MUST be generated using Mockery via `.mockery.yml` and `make mocks` (see [mockery-testing](../mockery-testing/SKILL.md)); handwritten stubs (`type stub... struct`) are prohibited
 - prefer boundary-relevant assertions over implementation-detail assertions
 - when security boundary changes, include negative-path tests too
 
@@ -74,6 +75,7 @@ If no practical test seam exists, document:
 
 ## Common Mistakes
 
+- writing handwritten stub structs or fake implementations instead of generating mocks with mockery via `make mocks`
 - writing too-broad failing test that obscures root cause
 - treating compile/setup failure as RED success
 - adding implementation before proving test expresses desired behavior
