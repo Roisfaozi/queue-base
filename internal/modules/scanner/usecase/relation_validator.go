@@ -18,7 +18,7 @@ const (
 	queueConfigKeyRequireCounterForService = "require_counter_for_service"
 )
 
-type settingsResolver interface {
+type SettingsResolver interface {
 	Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error)
 }
 
@@ -27,10 +27,10 @@ type relationValidator struct {
 	serviceRepo       serviceRepository.ServiceRepository
 	branchServiceRepo serviceRepository.BranchServiceRepository
 	counterRepo       counterRepository.CounterRepository
-	settings          settingsResolver
+	settings          SettingsResolver
 }
 
-func NewRelationValidator(branchRepo branchRepository.BranchRepository, serviceRepo serviceRepository.ServiceRepository, branchServiceRepo serviceRepository.BranchServiceRepository, counterRepo counterRepository.CounterRepository, settingsResolver settingsResolver) RelationValidator {
+func NewRelationValidator(branchRepo branchRepository.BranchRepository, serviceRepo serviceRepository.ServiceRepository, branchServiceRepo serviceRepository.BranchServiceRepository, counterRepo counterRepository.CounterRepository, settingsResolver SettingsResolver) RelationValidator {
 	return &relationValidator{branchRepo: branchRepo, serviceRepo: serviceRepo, branchServiceRepo: branchServiceRepo, counterRepo: counterRepo, settings: settingsResolver}
 }
 

@@ -30,8 +30,13 @@ type branchUseCase struct {
 	audit AuditLogger
 }
 
-type tenantLogoReader interface {
+type TenantLogoReader interface {
 	TenantLogoAssetID(ctx context.Context, tenantID string) (string, error)
+}
+
+type BranchLogoRepository interface {
+	repository.BranchRepository
+	TenantLogoReader
 }
 
 func NewBranchUseCase(repo repository.BranchRepository, auditUC ...AuditLogger) BranchUseCase {
@@ -236,7 +241,7 @@ func (u *branchUseCase) missingRequiredFields(ctx context.Context, tenantID stri
 }
 
 func (u *branchUseCase) hasTenantLogo(ctx context.Context, tenantID string) bool {
-	reader, ok := u.repo.(tenantLogoReader)
+	reader, ok := u.repo.(TenantLogoReader)
 	if !ok {
 		return true
 	}

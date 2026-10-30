@@ -312,6 +312,17 @@ func (u *queueUseCase) RegisterQueue(ctx context.Context, req *model.RegisterQue
 	return &res, nil
 }
 
+func AttachQueueEstimate(ctx context.Context, uc QueueUseCase, res *model.QueueResponse) error {
+	if q, ok := uc.(*queueUseCase); ok {
+		return q.attachQueueEstimate(ctx, res)
+	}
+	return nil
+}
+
+func ComputeBusinessQueueDate(now time.Time, resetTime string) string {
+	return computeBusinessQueueDate(now, resetTime)
+}
+
 func (u *queueUseCase) attachQueueEstimate(ctx context.Context, res *model.QueueResponse) error {
 	if res == nil || u.settingsResolver == nil || u.repo == nil || res.TenantID == "" || res.BranchID == "" || res.QueueDate == "" || res.QueueNo == 0 {
 		return nil
