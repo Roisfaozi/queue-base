@@ -60,6 +60,7 @@ Repository operational guide for AI coding agents.
 - QueryBuilder security: Field allowlists are strict; never permit dynamic filtering or sorting on sensitive fields (passwords, tokens, internal keys).
 - Logging & Audit: Every controller, usecase, and transaction path must log. Transactional side effects must emit audit logs via non-blocking `tryAudit` pattern.
 - Mocking standard: All Go unit test mocks MUST be generated using Mockery (`make mocks` via `.mockery.yml`). Handwritten mock/stub structs (e.g. `type stub... struct`) or ad-hoc fake implementations in `*_test.go` are strictly forbidden. When an interface is required for unit tests, register it in `.mockery.yml` and run `make mocks`. Follow [mockery-testing](.agents/skills/mockery-testing/SKILL.md).
+- Mandatory verification standard: Every code change or new feature MUST be strictly verified before claiming completion by executing `make lint`, `make test`, `make test-integration`, and `make test-e2e`. For bug fixes, narrow debugging, or specific targeted tests during development, use `make test-custom RUN='<TestName>' PKG=...` (or `make test-integration-custom` / `make test-e2e-custom`). Never claim success or hand off unverified code; all canonical targets are defined in `Makefile`.
 - Tool usage restriction: NEVER generate Python or shell scripts (`.py`, `.sh`, etc.) to edit codebase files or apply schema changes. Always use standard agent editing tools directly.
 
 ## 4. QMS Domain Specifics
@@ -83,7 +84,7 @@ Repository operational guide for AI coding agents.
 - Frontend ownership: [frontend-surface](.agents/skills/frontend-surface/SKILL.md). Producer/consumer contracts: [cross-stack-change](.agents/skills/cross-stack-change/SKILL.md). Current QMS pages belong to `apps/web`; `apps/client` remains active but has no QMS routes. Check actual consumers instead of automatically mirroring features.
 - Bug diagnosis: [systematic-debugging](.agents/skills/systematic-debugging/SKILL.md). Feature/fix tests: [test-driven-development](.agents/skills/test-driven-development/SKILL.md). Interface mocking: [mockery-testing](.agents/skills/mockery-testing/SKILL.md).
 - Review findings: [review-findings](.agents/skills/review-findings/SKILL.md). Delegation: [dispatch-prompt](.agents/skills/dispatch-prompt/SKILL.md). A recommendation is not owner approval. Preserve existing work; hiding a feature or unmounting a route does not authorize deleting its implementation.
-- Before claiming completion: [verification-before-completion](.agents/skills/verification-before-completion/SKILL.md). Harness-only checks: `pnpm harness:check`; no Docker or application build required.
+- Before claiming completion: [verification-before-completion](.agents/skills/verification-before-completion/SKILL.md). Code changes/features must pass `make lint`, `make test`, `make test-integration`, and `make test-e2e` (use `make test-custom` for targeted fixing/debugging). Harness-only checks: `pnpm harness:check`; no Docker or application build required.
 - Route groups are mounted independently in `internal/router/router.go`. `tenantAuthorized` is not a child of `authenticated`; inspect exact middleware and token/session validation before changing protection. Caller/signage add QMS-client authentication beneath tenant-authorized routes.
 
 ## 6. Deeper Context References
