@@ -34,12 +34,22 @@ const (
 //
 //	db.WithContext(ctx).Scopes(database.OrganizationScope(ctx)).Find(&roles)
 //
+// Pass a qualified column when the query joins another table that also has
+// organization_id, otherwise the WHERE clause is ambiguous:
+//
+//	db.WithContext(ctx).Scopes(database.OrganizationScope(ctx, "audit_logs.organization_id")).Find(&logs)
+//
 // The scope will:
 //   - Add WHERE organization_id = ? when valid org_id is in context
 //   - Skip filtering when context is empty (Super Admin bypass mode)
 //   - Skip filtering when org_id is empty string (fail-safe)
 //   - Skip filtering when org_id is wrong type (fail-safe)
-func OrganizationScope(ctx context.Context) func(db *gorm.DB) *gorm.DB {
+func OrganizationScope(ctx context.Context, orgColumn ...string) func(db *gorm.DB) *gorm.DB {
+	column := "organization_id"
+	if len(orgColumn) > 0 && orgColumn[0] != "" {
+		column = orgColumn[0]
+	}
+
 	return func(db *gorm.DB) *gorm.DB {
 		// Extract organization_id from context
 		orgIDValue := ctx.Value(OrganizationIDKey)
@@ -61,7 +71,7 @@ func OrganizationScope(ctx context.Context) func(db *gorm.DB) *gorm.DB {
 		// Parent organization soft-delete visibility is handled separately by
 		// OrganizationVisibilityScope so legacy rows without a backing
 		// organizations record remain queryable.
-		return db.Where("organization_id = ? OR organization_id IS NULL", orgID)
+		return db.Where(column+" = ? OR "+column+" IS NULL", orgID)
 	}
 }
 

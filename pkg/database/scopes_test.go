@@ -131,6 +131,43 @@ func ptrInt64(v int64) *int64 {
 	return &v
 }
 
+type scopeTestJoinedUser struct {
+	ID             string `gorm:"column:id;primaryKey"`
+	OrganizationID string `gorm:"column:organization_id"`
+}
+
+func (scopeTestJoinedUser) TableName() string {
+	return "scope_test_users"
+}
+
+// TestOrganizationScope_QualifiedColumnAvoidsJoinAmbiguity proves that a join to
+// another table carrying organization_id needs the qualified column form.
+func TestOrganizationScope_QualifiedColumnAvoidsJoinAmbiguity(t *testing.T) {
+	uid, _ := uuid.NewV7()
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", uid.String())), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&scopeTestResource{}, &scopeTestJoinedUser{}))
+
+	require.NoError(t, db.Create(&scopeTestResource{ID: "res-in", OrganizationID: "org-1"}).Error)
+	require.NoError(t, db.Create(&scopeTestResource{ID: "res-out", OrganizationID: "org-2"}).Error)
+	require.NoError(t, db.Create(&scopeTestJoinedUser{ID: "res-in", OrganizationID: "org-2"}).Error)
+	require.NoError(t, db.Create(&scopeTestJoinedUser{ID: "res-out", OrganizationID: "org-1"}).Error)
+
+	ctx := SetOrganizationContext(context.Background(), "org-1")
+
+	var filtered []scopeTestResource
+	err = db.WithContext(ctx).
+		Table("scope_test_resources").
+		Select("scope_test_resources.*").
+		Joins("JOIN scope_test_users ON scope_test_users.id = scope_test_resources.id").
+		Scopes(OrganizationScope(ctx, "scope_test_resources.organization_id")).
+		Order("scope_test_resources.id ASC").
+		Find(&filtered).Error
+	require.NoError(t, err)
+	require.Len(t, filtered, 1)
+	assert.Equal(t, "res-in", filtered[0].ID)
+}
+
 // NOTE: Full GORM integration tests for OrganizationScope are in:
 // tests/integration/modules/organization_integration_test.go
 // These tests use real MySQL via testcontainers to verify:
