@@ -47,7 +47,7 @@ func (r *auditRepository) FindAllDynamic(ctx context.Context, filter *querybuild
 	var logs []*entity.AuditLog
 	var total int64
 	query := r.getDB(ctx).
-		Scopes(database.OrganizationScope(ctx), database.OrganizationVisibilityScope(ctx, "audit_logs.organization_id")).
+		Scopes(database.OrganizationScope(ctx, "audit_logs.organization_id"), database.OrganizationVisibilityScope(ctx, "audit_logs.organization_id")).
 		Table("audit_logs").
 		Select("audit_logs.*, COALESCE(NULLIF(users.name, ''), users.username, audit_logs.user_id) AS user_name").
 		Joins("LEFT JOIN users ON users.id = audit_logs.user_id AND users.deleted_at = 0")
@@ -105,7 +105,7 @@ func (r *auditRepository) DeleteLogsOlderThan(ctx context.Context, cutoffTime in
 func (r *auditRepository) FindAllInBatches(ctx context.Context, startTime, endTime int64, batchSize int, process func([]*entity.AuditLog) error) error {
 	var logs []*entity.AuditLog
 	query := r.getDB(ctx).
-		Scopes(database.OrganizationScope(ctx), database.OrganizationVisibilityScope(ctx, "audit_logs.organization_id")).
+		Scopes(database.OrganizationScope(ctx, "audit_logs.organization_id"), database.OrganizationVisibilityScope(ctx, "audit_logs.organization_id")).
 		Model(&entity.AuditLog{})
 
 	if startTime > 0 {
