@@ -40,7 +40,7 @@ func TestRepro(t *testing.T) {
 					new(mock_auth.MockNotificationPublisher),
 					new(mock_auth.MockAuthzManager),
 					new(mocking.MockTaskDistributor),
-					new(mock_auth.MockTicketManager),
+					new(mocking.MockTicketManager),
 					nil,
 				)
 			},

@@ -7,11 +7,11 @@ import (
 	"io"
 	"testing"
 
+	auditMocks "github.com/Roisfaozi/queue-base/internal/modules/audit/test/mocks"
 	authMocks "github.com/Roisfaozi/queue-base/internal/modules/auth/test/mocks"
 	userMocks "github.com/Roisfaozi/queue-base/internal/modules/user/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/worker/handlers"
 	"github.com/Roisfaozi/queue-base/internal/worker/tasks"
-	"github.com/Roisfaozi/queue-base/internal/worker/test/mocks"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -21,14 +21,14 @@ import (
 type cleanupTestDeps struct {
 	AuthRepo  *authMocks.MockTokenRepository
 	UserRepo  *userMocks.MockUserRepository
-	AuditRepo *mocks.MockAuditRepository
+	AuditRepo *auditMocks.MockAuditRepository
 	Handler   *handlers.CleanupTaskHandler
 }
 
 func setupCleanupHandlerTest() *cleanupTestDeps {
 	authRepo := new(authMocks.MockTokenRepository)
 	userRepo := new(userMocks.MockUserRepository)
-	auditRepo := new(mocks.MockAuditRepository)
+	auditRepo := new(auditMocks.MockAuditRepository)
 	logger := logrus.New()
 	logger.SetOutput(io.Discard)
 

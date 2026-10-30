@@ -1,132 +1,22 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
 	"testing"
 
 	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
+	counterMocks "github.com/Roisfaozi/queue-base/internal/modules/counter/test/mocks"
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	orgMocks "github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
+	scannerMocks "github.com/Roisfaozi/queue-base/internal/modules/scanner/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/scanner/usecase"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
+	serviceMocks "github.com/Roisfaozi/queue-base/internal/modules/service/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
-
-type stubBranchRepo struct {
-	err    error
-	status string
-}
-
-func (s stubBranchRepo) Create(ctx context.Context, branch *branchEntity.Branch) error { return nil }
-func (s stubBranchRepo) FindByID(ctx context.Context, tenantID, branchID string) (*branchEntity.Branch, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	status := s.status
-	if status == "" {
-		status = branchEntity.BranchStatusActive
-	}
-	return &branchEntity.Branch{ID: branchID, TenantID: tenantID, Status: status}, nil
-}
-func (s stubBranchRepo) FindAll(ctx context.Context, tenantID string) ([]*branchEntity.Branch, error) {
-	return nil, nil
-}
-func (s stubBranchRepo) Update(ctx context.Context, branch *branchEntity.Branch) error { return nil }
-func (s stubBranchRepo) Delete(ctx context.Context, tenantID, branchID string) error   { return nil }
-
-type stubServiceRepo struct {
-	err     error
-	service *serviceEntity.Service
-}
-
-func (s stubServiceRepo) Create(ctx context.Context, service *serviceEntity.Service) error {
-	return nil
-}
-func (s stubServiceRepo) FindByID(ctx context.Context, tenantID, serviceID string) (*serviceEntity.Service, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	if s.service != nil {
-		return s.service, nil
-	}
-	return &serviceEntity.Service{ID: serviceID, TenantID: tenantID, Status: serviceEntity.ServiceStatusActive}, nil
-}
-func (s stubServiceRepo) FindAll(ctx context.Context, tenantID string) ([]*serviceEntity.Service, error) {
-	return nil, nil
-}
-func (s stubServiceRepo) Update(ctx context.Context, service *serviceEntity.Service) error {
-	return nil
-}
-func (s stubServiceRepo) Delete(ctx context.Context, tenantID, serviceID string) error { return nil }
-
-type stubBranchServiceRepo struct {
-	err      error
-	isActive *bool
-}
-
-func (s stubBranchServiceRepo) Create(ctx context.Context, branchService *serviceEntity.BranchService) error {
-	return nil
-}
-func (s stubBranchServiceRepo) FindByID(ctx context.Context, tenantID, branchID, id string) (*serviceEntity.BranchService, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	isActive := true
-	if s.isActive != nil {
-		isActive = *s.isActive
-	}
-	return &serviceEntity.BranchService{ID: id, TenantID: tenantID, BranchID: branchID, IsActive: isActive}, nil
-}
-func (s stubBranchServiceRepo) FindByService(ctx context.Context, tenantID, branchID, serviceID string) (*serviceEntity.BranchService, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	isActive := true
-	if s.isActive != nil {
-		isActive = *s.isActive
-	}
-	return &serviceEntity.BranchService{TenantID: tenantID, BranchID: branchID, ServiceID: serviceID, IsActive: isActive}, nil
-}
-func (s stubBranchServiceRepo) FindAll(ctx context.Context, tenantID, branchID string) ([]*serviceEntity.BranchService, error) {
-	return nil, nil
-}
-func (s stubBranchServiceRepo) Update(ctx context.Context, branchService *serviceEntity.BranchService) error {
-	return nil
-}
-func (s stubBranchServiceRepo) Delete(ctx context.Context, tenantID, branchID, id string) error {
-	return nil
-}
-
-type stubCounterRepo struct {
-	err      error
-	branchID string
-}
-
-type stubSettingsResolver struct {
-	value string
-	err   error
-}
-
-func (s stubSettingsResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
-	return s.value, s.err
-}
-
-func (s stubCounterRepo) Create(ctx context.Context, counter *counterEntity.Counter) error {
-	return nil
-}
-func (s stubCounterRepo) FindByID(ctx context.Context, tenantID, counterID string) (*counterEntity.Counter, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	return &counterEntity.Counter{ID: counterID, TenantID: tenantID, BranchID: s.branchID, Status: counterEntity.CounterStatusActive}, nil
-}
-func (s stubCounterRepo) FindAll(ctx context.Context, tenantID string) ([]*counterEntity.Counter, error) {
-	return nil, nil
-}
-func (s stubCounterRepo) Update(ctx context.Context, counter *counterEntity.Counter) error {
-	return nil
-}
-func (s stubCounterRepo) Delete(ctx context.Context, tenantID, counterID string) error { return nil }
 
 func TestRelationValidator_Validate(t *testing.T) {
 	tests := []struct {
@@ -136,7 +26,7 @@ func TestRelationValidator_Validate(t *testing.T) {
 		branchID  string
 		serviceID string
 		counterID string
-		validator RelationValidator
+		setup     func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver)
 		wantErr   error
 	}{
 		{
@@ -146,8 +36,13 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
-			wantErr:   nil,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive}, nil).Once()
+				bsRepo.On("FindByService", mock.Anything, "t-1", "b-1", "s-1").Return(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}, nil).Once()
+				counterRepo.On("FindByID", mock.Anything, "t-1", "c-1").Return(&counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1", Status: counterEntity.CounterStatusActive}, nil).Once()
+			},
+			wantErr: nil,
 		},
 		{
 			name:      "Negative_ValidateMissingBranch",
@@ -156,8 +51,10 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{err: exception.ErrNotFound}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(nil, exception.ErrNotFound).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Negative_RejectsInactiveBranch",
@@ -166,8 +63,10 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{status: branchEntity.BranchStatusInactive}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusInactive}, nil).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Negative_RejectsInactiveService",
@@ -176,8 +75,11 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusInactive}}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusInactive}, nil).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Security_ValidateServiceLookupFailureMapsToForbidden",
@@ -186,8 +88,11 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{err: exception.ErrNotFound}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(nil, exception.ErrNotFound).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Security_ValidateCounterLookupFailureMapsToForbidden",
@@ -196,8 +101,13 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{err: exception.ErrNotFound}, nil),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive}, nil).Once()
+				bsRepo.On("FindByService", mock.Anything, "t-1", "b-1", "s-1").Return(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}, nil).Once()
+				counterRepo.On("FindByID", mock.Anything, "t-1", "c-1").Return(nil, exception.ErrNotFound).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Edge_ValidateNoCounter",
@@ -206,8 +116,12 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, nil),
-			wantErr:   nil,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive}, nil).Once()
+				bsRepo.On("FindByService", mock.Anything, "t-1", "b-1", "s-1").Return(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}, nil).Once()
+			},
+			wantErr: nil,
 		},
 		{
 			name:      "Security_ValidateCrossBranchCounter",
@@ -216,8 +130,13 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "other-branch"}, nil),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive}, nil).Once()
+				bsRepo.On("FindByService", mock.Anything, "t-1", "b-1", "s-1").Return(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}, nil).Once()
+				counterRepo.On("FindByID", mock.Anything, "t-1", "c-1").Return(&counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "other-branch", Status: counterEntity.CounterStatusActive}, nil).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Negative_ValidateRequireCounterSetting",
@@ -226,8 +145,14 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive}, nil).Once()
+				bsRepo.On("FindByService", mock.Anything, "t-1", "b-1", "s-1").Return(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}, nil).Once()
+				settings.On("Resolve", mock.Anything, "pharmacy_flow_enabled", "b-1", "s-1", "").Return("true", nil).Maybe()
+				settings.On("Resolve", mock.Anything, "require_counter_for_service", "b-1", "s-1", "").Return("true", nil).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Negative_ValidatePharmacyFlowDisabledForForward",
@@ -236,8 +161,14 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive, IsPharmacy: true}}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "false"}),
-			wantErr:   exception.ErrForbidden,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive, IsPharmacy: true}, nil).Once()
+				bsRepo.On("FindByService", mock.Anything, "t-1", "b-1", "s-1").Return(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}, nil).Once()
+				settings.On("Resolve", mock.Anything, "require_counter_for_service", "b-1", "s-1", "c-1").Return("false", nil).Maybe()
+				settings.On("Resolve", mock.Anything, "pharmacy_flow_enabled", "b-1", "s-1", "c-1").Return("false", nil).Once()
+			},
+			wantErr: exception.ErrForbidden,
 		},
 		{
 			name:      "Positive_ValidatePharmacyFlowEnabledAllowsForward",
@@ -246,15 +177,41 @@ func TestRelationValidator_Validate(t *testing.T) {
 			branchID:  "b-1",
 			serviceID: "s-1",
 			counterID: "c-1",
-			validator: NewRelationValidator(stubBranchRepo{}, stubServiceRepo{service: &serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive, IsPharmacy: true}}, stubBranchServiceRepo{}, stubCounterRepo{branchID: "b-1"}, stubSettingsResolver{value: "true"}),
-			wantErr:   nil,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, serviceRepo *serviceMocks.MockServiceRepository, bsRepo *serviceMocks.MockBranchServiceRepository, counterRepo *counterMocks.MockCounterRepository, settings *scannerMocks.MockSettingsResolver) {
+				branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Status: branchEntity.BranchStatusActive}, nil).Once()
+				serviceRepo.On("FindByID", mock.Anything, "t-1", "s-1").Return(&serviceEntity.Service{ID: "s-1", TenantID: "t-1", Status: serviceEntity.ServiceStatusActive, IsPharmacy: true}, nil).Once()
+				bsRepo.On("FindByService", mock.Anything, "t-1", "b-1", "s-1").Return(&serviceEntity.BranchService{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", IsActive: true}, nil).Once()
+				settings.On("Resolve", mock.Anything, "require_counter_for_service", "b-1", "s-1", "c-1").Return("false", nil).Maybe()
+				settings.On("Resolve", mock.Anything, "pharmacy_flow_enabled", "b-1", "s-1", "c-1").Return("true", nil).Once()
+				counterRepo.On("FindByID", mock.Anything, "t-1", "c-1").Return(&counterEntity.Counter{ID: "c-1", TenantID: "t-1", BranchID: "b-1", Status: counterEntity.CounterStatusActive}, nil).Once()
+			},
+			wantErr: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			branchRepo := orgMocks.NewMockBranchRepository(t)
+			serviceRepo := serviceMocks.NewMockServiceRepository(t)
+			bsRepo := serviceMocks.NewMockBranchServiceRepository(t)
+			counterRepo := counterMocks.NewMockCounterRepository(t)
+			settings := scannerMocks.NewMockSettingsResolver(t)
+
+			var settingsResolver usecase.SettingsResolver
+			if tt.name == "Negative_ValidateRequireCounterSetting" ||
+				tt.name == "Negative_ValidatePharmacyFlowDisabledForForward" ||
+				tt.name == "Positive_ValidatePharmacyFlowEnabledAllowsForward" {
+				settingsResolver = settings
+			}
+
+			if tt.setup != nil {
+				tt.setup(t, branchRepo, serviceRepo, bsRepo, counterRepo, settings)
+			}
+
+			v := usecase.NewRelationValidator(branchRepo, serviceRepo, bsRepo, counterRepo, settingsResolver)
+
 			ctx := database.SetOrganizationContext(context.Background(), tt.tenantID)
-			err := tt.validator.Validate(ctx, tt.tenantID, tt.branchID, tt.serviceID, tt.counterID)
+			err := v.Validate(ctx, tt.tenantID, tt.branchID, tt.serviceID, tt.counterID)
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
 			} else {

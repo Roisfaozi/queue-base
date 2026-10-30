@@ -1,4 +1,4 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
@@ -6,39 +6,15 @@ import (
 	"time"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/usecase"
 	"github.com/Roisfaozi/queue-base/pkg"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
-
-// Fake repo for standalone unit testing without db scaffold
-type stubRepo struct {
-	client *entity.QMSClient
-	cred   *entity.QMSClientCredential
-	err    error
-}
-
-func (r *stubRepo) FindByID(ctx context.Context, id string) (*entity.QMSClient, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	if r.client == nil {
-		return nil, gorm.ErrRecordNotFound
-	}
-	return r.client, nil
-}
-
-func (r *stubRepo) FindCredentialByClientID(ctx context.Context, clientID string) (*entity.QMSClientCredential, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	if r.cred == nil {
-		return nil, gorm.ErrRecordNotFound
-	}
-	return r.cred, nil
-}
 
 func TestQMSClientAuthenticator(t *testing.T) {
 	hash, _ := pkg.HashPassword("secret123")
@@ -49,63 +25,81 @@ func TestQMSClientAuthenticator(t *testing.T) {
 
 	tests := []struct {
 		name        string
+		category    string
 		clientID    string
 		apiKey      string
-		repo        *stubRepo
+		setup       func(t *testing.T) *mocks.MockQmsClientRepository
 		expectedErr error
-		expectedID  *QMSClientIdentity
+		expectedID  *usecase.QMSClientIdentity
 	}{
 		{
-			name:        "returns unauthorized when client not found",
-			clientID:    "c-1",
-			apiKey:      "secret123",
-			repo:        &stubRepo{err: gorm.ErrRecordNotFound},
-			expectedErr: exception.ErrUnauthorized,
-		},
-		{
-			name:     "returns unauthorized when credential not found",
+			name:     "Negative_ClientNotFound",
+			category: "negative",
 			clientID: "c-1",
 			apiKey:   "secret123",
-			repo: &stubRepo{
-				client: &entity.QMSClient{ID: "c-1"},
-				cred:   nil,
+			setup: func(t *testing.T) *mocks.MockQmsClientRepository {
+				m := mocks.NewMockQmsClientRepository(t)
+				m.On("FindByID", mock.Anything, "c-1").Return(nil, gorm.ErrRecordNotFound).Once()
+				return m
 			},
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
-			name:     "returns unauthorized when secret mismatch",
+			name:     "Negative_CredentialNotFound",
+			category: "negative",
+			clientID: "c-1",
+			apiKey:   "secret123",
+			setup: func(t *testing.T) *mocks.MockQmsClientRepository {
+				m := mocks.NewMockQmsClientRepository(t)
+				m.On("FindByID", mock.Anything, "c-1").Return(&entity.QMSClient{ID: "c-1"}, nil).Once()
+				m.On("FindCredentialByClientID", mock.Anything, "c-1").Return(nil, gorm.ErrRecordNotFound).Once()
+				return m
+			},
+			expectedErr: exception.ErrUnauthorized,
+		},
+		{
+			name:     "Vulnerability_SecretMismatch",
+			category: "vulnerability",
 			clientID: "c-1",
 			apiKey:   "wrongsecret",
-			repo: &stubRepo{
-				client: &entity.QMSClient{ID: "c-1"},
-				cred:   &entity.QMSClientCredential{ClientSecretHash: hash},
+			setup: func(t *testing.T) *mocks.MockQmsClientRepository {
+				m := mocks.NewMockQmsClientRepository(t)
+				m.On("FindByID", mock.Anything, "c-1").Return(&entity.QMSClient{ID: "c-1"}, nil).Once()
+				m.On("FindCredentialByClientID", mock.Anything, "c-1").Return(&entity.QMSClientCredential{ClientSecretHash: hash}, nil).Once()
+				return m
 			},
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
-			name:     "returns unauthorized when credential expired",
+			name:     "Edge_CredentialExpired",
+			category: "edge",
 			clientID: "c-1",
 			apiKey:   "secret123",
-			repo: &stubRepo{
-				client: &entity.QMSClient{ID: "c-1"},
-				cred:   &entity.QMSClientCredential{ClientSecretHash: hash, ExpiresAt: &past},
+			setup: func(t *testing.T) *mocks.MockQmsClientRepository {
+				m := mocks.NewMockQmsClientRepository(t)
+				m.On("FindByID", mock.Anything, "c-1").Return(&entity.QMSClient{ID: "c-1"}, nil).Once()
+				m.On("FindCredentialByClientID", mock.Anything, "c-1").Return(&entity.QMSClientCredential{ClientSecretHash: hash, ExpiresAt: &past}, nil).Once()
+				return m
 			},
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
-			name:     "returns full identity when valid and no expiry",
+			name:     "Positive_ValidWithoutExpiry",
+			category: "positive",
 			clientID: "c-1",
 			apiKey:   "secret123",
-			repo: &stubRepo{
-				client: &entity.QMSClient{
+			setup: func(t *testing.T) *mocks.MockQmsClientRepository {
+				m := mocks.NewMockQmsClientRepository(t)
+				m.On("FindByID", mock.Anything, "c-1").Return(&entity.QMSClient{
 					ID:         "c-1",
 					TenantID:   "t-1",
 					BranchID:   "b-1",
 					ClientType: "signage",
-				},
-				cred: &entity.QMSClientCredential{ClientSecretHash: hash},
+				}, nil).Once()
+				m.On("FindCredentialByClientID", mock.Anything, "c-1").Return(&entity.QMSClientCredential{ClientSecretHash: hash}, nil).Once()
+				return m
 			},
-			expectedID: &QMSClientIdentity{
+			expectedID: &usecase.QMSClientIdentity{
 				ClientID:   "c-1",
 				TenantID:   "t-1",
 				BranchID:   "b-1",
@@ -113,19 +107,22 @@ func TestQMSClientAuthenticator(t *testing.T) {
 			},
 		},
 		{
-			name:     "returns full identity when valid and expiry in future",
+			name:     "Positive_ValidWithFutureExpiry",
+			category: "positive",
 			clientID: "c-1",
 			apiKey:   "secret123",
-			repo: &stubRepo{
-				client: &entity.QMSClient{
+			setup: func(t *testing.T) *mocks.MockQmsClientRepository {
+				m := mocks.NewMockQmsClientRepository(t)
+				m.On("FindByID", mock.Anything, "c-1").Return(&entity.QMSClient{
 					ID:         "c-1",
 					TenantID:   "t-1",
 					BranchID:   "b-1",
 					ClientType: "signage",
-				},
-				cred: &entity.QMSClientCredential{ClientSecretHash: hash, ExpiresAt: &future},
+				}, nil).Once()
+				m.On("FindCredentialByClientID", mock.Anything, "c-1").Return(&entity.QMSClientCredential{ClientSecretHash: hash, ExpiresAt: &future}, nil).Once()
+				return m
 			},
-			expectedID: &QMSClientIdentity{
+			expectedID: &usecase.QMSClientIdentity{
 				ClientID:   "c-1",
 				TenantID:   "t-1",
 				BranchID:   "b-1",
@@ -137,7 +134,8 @@ func TestQMSClientAuthenticator(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			auth := NewQMSClientAuthenticator(tt.repo)
+			repo := tt.setup(t)
+			auth := usecase.NewQMSClientAuthenticator(repo)
 			res, err := auth.Authenticate(context.Background(), tt.clientID, tt.apiKey)
 
 			if tt.expectedErr != nil {
@@ -149,6 +147,7 @@ func TestQMSClientAuthenticator(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, res)
 			assert.Equal(t, tt.expectedID, res)
+			repo.AssertExpectations(t)
 		})
 	}
 }

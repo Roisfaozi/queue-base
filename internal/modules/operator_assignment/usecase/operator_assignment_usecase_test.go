@@ -8,24 +8,17 @@ import (
 	counterEntity "github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/operator_assignment/test/mocks"
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
-
-type stubAudit struct {
-	reqs []auditModel.CreateAuditLogRequest
-}
-
-func (s *stubAudit) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
-	s.reqs = append(s.reqs, req)
-	return nil
-}
 
 func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
@@ -37,8 +30,14 @@ func newTestDB(t *testing.T) *gorm.DB {
 
 func TestOperatorAssignmentUseCase(t *testing.T) {
 	db := newTestDB(t)
-	audit := &stubAudit{}
-	uc := NewOperatorAssignmentUseCase(db, nil, audit)
+	var capturedAuditReqs []auditModel.CreateAuditLogRequest
+	mockAudit := mocks.NewMockAuditLogger(t)
+	mockAudit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+		capturedAuditReqs = append(capturedAuditReqs, req)
+		return true
+	})).Return(nil).Maybe()
+
+	uc := NewOperatorAssignmentUseCase(db, nil, mockAudit)
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "tenant-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-2", TenantID: "tenant-2", Code: "B2", Name: "Branch 2", Status: branchEntity.BranchStatusActive}).Error)
@@ -51,11 +50,13 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 	require.NoError(t, db.Create(&userEntity.User{ID: "u-3", OrganizationID: &tenant2, Email: "u3@example.com", Username: "u3", Status: userEntity.UserStatusActive}).Error)
 
 	tests := []struct {
-		name string
-		fn   func(t *testing.T)
+		name     string
+		category string
+		fn       func(t *testing.T)
 	}{
 		{
-			name: "Positive_Create_List_Delete",
+			name:     "Positive_Create_List_Delete",
+			category: "positive",
 			fn: func(t *testing.T) {
 				res, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-1", CounterID: "c-1"})
 				require.NoError(t, err)
@@ -74,14 +75,16 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_MissingTenant",
+			name:     "Negative_MissingTenant",
+			category: "negative",
 			fn: func(t *testing.T) {
 				_, err := uc.Create(context.Background(), &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-1", CounterID: "c-1"})
 				require.ErrorIs(t, err, exception.ErrBadRequest)
 			},
 		},
 		{
-			name: "Negative_InvalidOrMissingRequestFields",
+			name:     "Negative_InvalidOrMissingRequestFields",
+			category: "negative",
 			fn: func(t *testing.T) {
 				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "", UserID: "u-1", CounterID: "c-1"})
 				require.ErrorIs(t, err, exception.ErrBadRequest)
@@ -92,7 +95,8 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 			},
 		},
 		{
-			name: "Edge_UnassignAlreadyUnassigned",
+			name:     "Edge_UnassignAlreadyUnassigned",
+			category: "edge",
 			fn: func(t *testing.T) {
 				now := int64(123456789)
 				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-unassigned", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-2", CounterID: "c-1", AssignedAt: now, UnassignedAt: &now}).Error)
@@ -102,7 +106,8 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 			},
 		},
 		{
-			name: "Vulnerability_CrossTenantDeleteRejected",
+			name:     "Vulnerability_CrossTenantDeleteRejected",
+			category: "vulnerability",
 			fn: func(t *testing.T) {
 				otherCtx := database.SetOrganizationContext(context.Background(), "tenant-2")
 				require.NoError(t, db.Create(&entity.OperatorCounterAssignment{ID: "assign-cross", TenantID: "tenant-1", BranchID: "b-1", UserID: "u-1", CounterID: "c-1", AssignedAt: int64(123456789)}).Error)
@@ -112,14 +117,16 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 			},
 		},
 		{
-			name: "Vulnerability_CrossTenantCreateRejected",
+			name:     "Vulnerability_CrossTenantCreateRejected",
+			category: "vulnerability",
 			fn: func(t *testing.T) {
 				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-3", CounterID: "c-1"})
 				require.ErrorIs(t, err, exception.ErrNotFound)
 			},
 		},
 		{
-			name: "Negative_InactiveBranchRejected",
+			name:     "Negative_InactiveBranchRejected",
+			category: "negative",
 			fn: func(t *testing.T) {
 				require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-inactive", TenantID: "tenant-1", Code: "B3", Name: "Branch Inactive", Status: branchEntity.BranchStatusInactive}).Error)
 				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-inactive", UserID: "u-1", CounterID: "c-1"})
@@ -127,27 +134,32 @@ func TestOperatorAssignmentUseCase(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative_CounterBranchMismatchRejected",
+			name:     "Negative_CounterBranchMismatchRejected",
+			category: "negative",
 			fn: func(t *testing.T) {
 				_, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-1", CounterID: "c-2"})
 				require.ErrorIs(t, err, exception.ErrNotFound)
 			},
 		},
 		{
-			name: "Audit_CreateDeleteEmitEvents",
+			name:     "Positive_Audit_CreateDeleteEmitEvents",
+			category: "positive",
 			fn: func(t *testing.T) {
-				audit.reqs = nil
+				capturedAuditReqs = nil
 				res, err := uc.Create(ctx, &model.OperatorAssignmentRequest{BranchID: "b-1", UserID: "u-2", CounterID: "c-1"})
 				require.NoError(t, err)
 				require.NoError(t, uc.Delete(ctx, res.ID))
-				require.Len(t, audit.reqs, 2)
-				assert.Equal(t, "OPERATOR_ASSIGNMENT_CREATE", audit.reqs[0].Action)
-				assert.Equal(t, "OPERATOR_ASSIGNMENT_UNASSIGN", audit.reqs[1].Action)
+				require.Len(t, capturedAuditReqs, 2)
+				assert.Equal(t, "OPERATOR_ASSIGNMENT_CREATE", capturedAuditReqs[0].Action)
+				assert.Equal(t, "OPERATOR_ASSIGNMENT_UNASSIGN", capturedAuditReqs[1].Action)
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, tt.fn)
+		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEmpty(t, tt.category)
+			tt.fn(t)
+		})
 	}
 }

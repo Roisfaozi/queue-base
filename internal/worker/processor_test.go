@@ -8,7 +8,6 @@ import (
 	auditMocks "github.com/Roisfaozi/queue-base/internal/modules/audit/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/worker"
 	"github.com/Roisfaozi/queue-base/internal/worker/handlers"
-	workerMocks "github.com/Roisfaozi/queue-base/internal/worker/test/mocks"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/hibiken/asynq"
 	"github.com/sirupsen/logrus"
@@ -20,7 +19,7 @@ type processorTestDeps struct {
 	processor worker.TaskProcessor
 	mockRedis *miniredis.Miniredis
 	auditUC   *auditMocks.MockAuditUseCase
-	auditRepo *workerMocks.MockAuditRepository
+	auditRepo *auditMocks.MockAuditRepository
 }
 
 func setupProcessorTest(t *testing.T) (*processorTestDeps, func()) {
@@ -38,7 +37,7 @@ func setupProcessorTest(t *testing.T) (*processorTestDeps, func()) {
 	logger.SetOutput(new(mockWriter))
 
 	auditUC := new(auditMocks.MockAuditUseCase)
-	auditRepo := new(workerMocks.MockAuditRepository)
+	auditRepo := new(auditMocks.MockAuditRepository)
 
 	cfg := worker.WorkerConfig{
 		SMTP: worker.SMTPConfig{

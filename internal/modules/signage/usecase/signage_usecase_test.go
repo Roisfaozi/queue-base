@@ -131,22 +131,26 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 
 	tests := []struct {
 		name          string
+		category      string
 		clientID      string
 		expectedErr   error
 		expectedModel *model.SignageMeResponse
 	}{
 		{
 			name:        "Negative_UnauthorizedWhenClientMissing",
+			category:    "negative",
 			clientID:    "",
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
 			name:        "Negative_NotFoundWhenClientInactiveOrAbsent",
+			category:    "negative",
 			clientID:    "missing",
 			expectedErr: exception.ErrNotFound,
 		},
 		{
 			name:     "Positive_ReturnsFullBoundSignageProfile",
+			category: "positive",
 			clientID: "signage-1",
 			expectedModel: &model.SignageMeResponse{
 				ClientID:               "signage-1",
@@ -169,6 +173,7 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 		},
 		{
 			name:     "Edge_FallsBackToTenantBrandingWhenBranchEmpty",
+			category: "edge",
 			clientID: "signage-4",
 			expectedModel: &model.SignageMeResponse{
 				ClientID:    "signage-4",
@@ -186,6 +191,7 @@ func TestSignageUseCase_GetMe(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEmpty(t, tt.category)
 			res, err := uc.GetMe(context.Background(), tt.clientID)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
@@ -205,6 +211,7 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 
 	tests := []struct {
 		name         string
+		category     string
 		ctx          context.Context
 		clientID     string
 		expectedErr  error
@@ -212,24 +219,28 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 	}{
 		{
 			name:        "Negative_UnauthorizedWhenClientMissing",
+			category:    "negative",
 			ctx:         newSignageCtx(),
 			clientID:    "",
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
 			name:        "Negative_BadRequestWhenTenantOrBranchMissing",
+			category:    "negative",
 			ctx:         context.Background(),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrBadRequest,
 		},
 		{
 			name:        "Vulnerability_ForbiddenWhenContextCrossesClientBinding",
+			category:    "vulnerability",
 			ctx:         newSignageCtxFor("t-1", "b-2"),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrForbidden,
 		},
 		{
 			name:     "Positive_FiltersByBranchServiceAndCounterBinding",
+			category: "positive",
 			ctx:      newSignageCtx(),
 			clientID: "signage-1",
 			expectedRows: []model.SignageCurrentCallResponse{
@@ -249,6 +260,7 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 		},
 		{
 			name:     "Edge_FiltersOnlyByBranchServiceWhenCounterAbsent",
+			category: "edge",
 			ctx:      newSignageCtx(),
 			clientID: "signage-2",
 			expectedRows: []model.SignageCurrentCallResponse{
@@ -264,6 +276,7 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 		},
 		{
 			name:     "Edge_ReturnsAllCurrentCallsWhenNoServiceBinding",
+			category: "edge",
 			ctx:      newSignageCtx(),
 			clientID: "signage-3",
 			expectedRows: []model.SignageCurrentCallResponse{
@@ -294,6 +307,7 @@ func TestSignageUseCase_GetCurrentCalls(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEmpty(t, tt.category)
 			res, err := uc.GetCurrentCalls(tt.ctx, tt.clientID)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
@@ -312,6 +326,7 @@ func TestSignageUseCase_GetQueues(t *testing.T) {
 
 	tests := []struct {
 		name         string
+		category     string
 		ctx          context.Context
 		clientID     string
 		expectedErr  error
@@ -319,24 +334,28 @@ func TestSignageUseCase_GetQueues(t *testing.T) {
 	}{
 		{
 			name:        "Negative_UnauthorizedWhenClientMissing",
+			category:    "negative",
 			ctx:         newSignageCtx(),
 			clientID:    "",
 			expectedErr: exception.ErrUnauthorized,
 		},
 		{
 			name:        "Negative_BadRequestWhenTenantOrBranchMissing",
+			category:    "negative",
 			ctx:         context.Background(),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrBadRequest,
 		},
 		{
 			name:        "Vulnerability_ForbiddenWhenContextCrossesClientBinding",
+			category:    "vulnerability",
 			ctx:         newSignageCtxFor("t-1", "b-2"),
 			clientID:    "signage-1",
 			expectedErr: exception.ErrForbidden,
 		},
 		{
 			name:     "Positive_FiltersPendingQueuesByBranchService",
+			category: "positive",
 			ctx:      newSignageCtx(),
 			clientID: "signage-1",
 			expectedRows: []queueModel.QueueResponse{
@@ -355,6 +374,7 @@ func TestSignageUseCase_GetQueues(t *testing.T) {
 		},
 		{
 			name:         "Edge_ReturnsEmptyWhenNoPendingQueuesForServiceBinding",
+			category:     "edge",
 			ctx:          newSignageCtx(),
 			clientID:     "signage-2",
 			expectedRows: []queueModel.QueueResponse{},
@@ -364,6 +384,7 @@ func TestSignageUseCase_GetQueues(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEmpty(t, tt.category)
 			res, err := uc.GetQueues(tt.ctx, tt.clientID)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)

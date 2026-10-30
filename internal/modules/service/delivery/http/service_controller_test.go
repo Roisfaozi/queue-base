@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,11 +10,13 @@ import (
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/service/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,37 +34,6 @@ func newTestValidator(t *testing.T) *validator.Validate {
 	return v
 }
 
-type stubServiceControllerUseCase struct {
-	createReq *model.CreateServiceRequest
-	updateReq *model.UpdateServiceRequest
-	createRes *model.ServiceResponse
-	updateRes *model.ServiceResponse
-	getRes    *model.ServiceResponse
-	listRes   []model.ServiceResponse
-}
-
-func (s *stubServiceControllerUseCase) CreateService(ctx context.Context, req *model.CreateServiceRequest) (*model.ServiceResponse, error) {
-	s.createReq = req
-	return s.createRes, nil
-}
-
-func (s *stubServiceControllerUseCase) GetService(ctx context.Context, serviceID string) (*model.ServiceResponse, error) {
-	return s.getRes, nil
-}
-
-func (s *stubServiceControllerUseCase) ListServices(ctx context.Context) ([]model.ServiceResponse, error) {
-	return s.listRes, nil
-}
-
-func (s *stubServiceControllerUseCase) UpdateService(ctx context.Context, serviceID string, req *model.UpdateServiceRequest) (*model.ServiceResponse, error) {
-	s.updateReq = req
-	return s.updateRes, nil
-}
-
-func (s *stubServiceControllerUseCase) DeleteService(ctx context.Context, serviceID string) error {
-	return nil
-}
-
 func TestServiceController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -71,28 +41,26 @@ func TestServiceController(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
-			setup    func() *stubServiceControllerUseCase
+			setup    func(t *testing.T) *mocks.MockServiceUseCase
 			wantCode int
-			assert   func(t *testing.T, uc *stubServiceControllerUseCase)
 		}{
 			{
 				name:    "Positive_CreateIncludesPharmacyFlags",
 				reqBody: model.CreateServiceRequest{Code: "pha", Name: "Pharmacy", IsPharmacy: true, IsPharmacyReception: true},
-				setup: func() *stubServiceControllerUseCase {
-					return &stubServiceControllerUseCase{createRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}}
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("CreateService", mock.Anything, mock.MatchedBy(func(req *model.CreateServiceRequest) bool {
+						return req != nil && req.IsPharmacy && req.IsPharmacyReception
+					})).Return(&model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusCreated,
-				assert: func(t *testing.T, uc *stubServiceControllerUseCase) {
-					require.NotNil(t, uc.createReq)
-					assert.True(t, uc.createReq.IsPharmacy)
-					assert.True(t, uc.createReq.IsPharmacyReception)
-				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -109,9 +77,7 @@ func TestServiceController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
-				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -121,28 +87,26 @@ func TestServiceController(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
-			setup    func() *stubServiceControllerUseCase
+			setup    func(t *testing.T) *mocks.MockServiceUseCase
 			wantCode int
-			assert   func(t *testing.T, uc *stubServiceControllerUseCase)
 		}{
 			{
 				name:    "Positive_UpdateCanTogglePharmacyFlags",
 				reqBody: model.UpdateServiceRequest{IsPharmacyReception: &flag},
-				setup: func() *stubServiceControllerUseCase {
-					return &stubServiceControllerUseCase{updateRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("UpdateService", mock.Anything, "svc-1", mock.MatchedBy(func(req *model.UpdateServiceRequest) bool {
+						return req != nil && req.IsPharmacyReception != nil && !*req.IsPharmacyReception
+					})).Return(&model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
-				assert: func(t *testing.T, uc *stubServiceControllerUseCase) {
-					require.NotNil(t, uc.updateReq)
-					require.NotNil(t, uc.updateReq.IsPharmacyReception)
-					assert.False(t, *uc.updateReq.IsPharmacyReception)
-				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -159,9 +123,7 @@ func TestServiceController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
-				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -169,14 +131,16 @@ func TestServiceController(t *testing.T) {
 	t.Run("Positive_GetByID", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubServiceControllerUseCase
+			setup    func(t *testing.T) *mocks.MockServiceUseCase
 			wantCode int
 			assert   func(t *testing.T, body string)
 		}{
 			{
 				name: "Positive_GetByIDReturnsPharmacyFlags",
-				setup: func() *stubServiceControllerUseCase {
-					return &stubServiceControllerUseCase{getRes: &model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}}
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("GetService", mock.Anything, "svc-1").Return(&model.ServiceResponse{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: true}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
 				assert: func(t *testing.T, body string) {
@@ -188,7 +152,7 @@ func TestServiceController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -206,6 +170,7 @@ func TestServiceController(t *testing.T) {
 				if tt.assert != nil {
 					tt.assert(t, w.Body.String())
 				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -213,15 +178,17 @@ func TestServiceController(t *testing.T) {
 	t.Run("Positive_GetAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubServiceControllerUseCase
+			setup    func(t *testing.T) *mocks.MockServiceUseCase
 			tenantID string
 			wantCode int
 			assert   func(t *testing.T, body string)
 		}{
 			{
 				name: "Positive_GetAllReturnsPharmacyFlags",
-				setup: func() *stubServiceControllerUseCase {
-					return &stubServiceControllerUseCase{listRes: []model.ServiceResponse{{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}}
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("ListServices", mock.Anything).Return([]model.ServiceResponse{{ID: "svc-1", IsPharmacy: true, IsPharmacyReception: false}}, nil).Once()
+					return m
 				},
 				tenantID: "tenant-1",
 				wantCode: http.StatusOK,
@@ -232,8 +199,8 @@ func TestServiceController(t *testing.T) {
 			},
 			{
 				name: "Negative_GetAllRejectsMissingTenantContext",
-				setup: func() *stubServiceControllerUseCase {
-					return &stubServiceControllerUseCase{}
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					return mocks.NewMockServiceUseCase(t)
 				},
 				tenantID: "",
 				wantCode: http.StatusBadRequest,
@@ -243,7 +210,7 @@ func TestServiceController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				if tt.tenantID != "" {
@@ -263,6 +230,7 @@ func TestServiceController(t *testing.T) {
 				if tt.assert != nil {
 					tt.assert(t, w.Body.String())
 				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -270,13 +238,15 @@ func TestServiceController(t *testing.T) {
 	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubServiceControllerUseCase
+			setup    func(t *testing.T) *mocks.MockServiceUseCase
 			wantCode int
 		}{
 			{
 				name: "Positive_DeleteReturnsNoContent",
-				setup: func() *stubServiceControllerUseCase {
-					return &stubServiceControllerUseCase{}
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("DeleteService", mock.Anything, "svc-1").Return(nil).Once()
+					return m
 				},
 				wantCode: http.StatusNoContent,
 			},
@@ -284,7 +254,7 @@ func TestServiceController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.DELETE("/services/:id", controller.Delete)
@@ -294,6 +264,7 @@ func TestServiceController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -309,7 +280,12 @@ func TestServiceController(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := &stubServiceControllerUseCase{updateRes: &model.ServiceResponse{ID: "svc-1", Status: tt.wantStatus}}
+				uc := mocks.NewMockServiceUseCase(t)
+				status := tt.wantStatus
+				uc.On("UpdateService", mock.Anything, "svc-1", mock.MatchedBy(func(req *model.UpdateServiceRequest) bool {
+					return req != nil && req.Status != nil && *req.Status == tt.wantStatus
+				})).Return(&model.ServiceResponse{ID: "svc-1", Status: status}, nil).Once()
+
 				controller := NewServiceController(uc, newTestValidator(t), nil)
 				router := gin.New()
 				router.POST("/services/:id/enable", controller.Enable)
@@ -320,9 +296,7 @@ func TestServiceController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, http.StatusOK, w.Code)
-				require.NotNil(t, uc.updateReq)
-				require.NotNil(t, uc.updateReq.Status)
-				assert.Equal(t, tt.wantStatus, *uc.updateReq.Status)
+				uc.AssertExpectations(t)
 			})
 		}
 	})

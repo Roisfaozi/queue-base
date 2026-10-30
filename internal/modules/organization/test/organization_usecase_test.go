@@ -8,58 +8,38 @@ import (
 
 	mocking "github.com/Roisfaozi/queue-base/internal/mocking"
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
+	auditMocks "github.com/Roisfaozi/queue-base/internal/modules/audit/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
 	permissionMocks "github.com/Roisfaozi/queue-base/internal/modules/permission/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
-	"github.com/Roisfaozi/queue-base/pkg/querybuilder"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 type organizationTestDeps struct {
-	OrgRepo    *mocks.MockOrganizationRepository
-	MemberRepo *mocks.MockOrganizationMemberRepository
-	OrgReader  *mocks.MockIOrganizationReader
-	TM         *mocking.MockWithTransactionManager
-	Enforcer   *permissionMocks.MockIEnforcer
-	AuditStub  *stubAuditUsecase
-}
-
-type stubAuditUsecase struct {
-	requests []auditModel.CreateAuditLogRequest
-}
-
-func (s *stubAuditUsecase) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
-	s.requests = append(s.requests, req)
-	return nil
-}
-
-func (s *stubAuditUsecase) GetLogsDynamic(ctx context.Context, filter *querybuilder.DynamicFilter) ([]auditModel.AuditLogResponse, int64, error) {
-	return nil, 0, nil
-}
-
-func (s *stubAuditUsecase) ExportLogs(ctx context.Context, fromDate, toDate string, process func([]auditModel.AuditLogResponse) error) error {
-	return nil
-}
-
-func (s *stubAuditUsecase) ExportLogsAsync(ctx context.Context, userID, orgID, fromDate, toDate, format string) error {
-	return nil
+	OrgRepo       *mocks.MockOrganizationRepository
+	MemberRepo    *mocks.MockOrganizationMemberRepository
+	OrgReader     *mocks.MockIOrganizationReader
+	TM            *mocking.MockWithTransactionManager
+	Enforcer      *permissionMocks.MockIEnforcer
+	AuditUC       *auditMocks.MockAuditUseCase
+	AuditRequests []auditModel.CreateAuditLogRequest
 }
 
 func setupOrganizationTest() (*organizationTestDeps, usecase.OrganizationUseCase) {
 	mockEnforcer := new(permissionMocks.MockIEnforcer)
-	auditStub := &stubAuditUsecase{}
+	mockAudit := new(auditMocks.MockAuditUseCase)
 	deps := &organizationTestDeps{
 		OrgRepo:    new(mocks.MockOrganizationRepository),
 		MemberRepo: new(mocks.MockOrganizationMemberRepository),
 		OrgReader:  new(mocks.MockIOrganizationReader),
 		TM:         new(mocking.MockWithTransactionManager),
 		Enforcer:   mockEnforcer,
-		AuditStub:  auditStub,
+		AuditUC:    mockAudit,
 	}
 
 	log := logrus.New()
@@ -69,8 +49,13 @@ func setupOrganizationTest() (*organizationTestDeps, usecase.OrganizationUseCase
 	mockEnforcer.On("WithContext", mock.Anything).Maybe().Return(mockEnforcer)
 	mockEnforcer.On("LoadPolicy").Maybe().Return(nil)
 	deps.OrgReader.On("InvalidateOrganizationCache", mock.Anything, mock.Anything).Maybe().Return(nil)
+	mockAudit.On("LogActivity", mock.Anything, mock.Anything).Maybe().Run(func(args mock.Arguments) {
+		if req, ok := args.Get(1).(auditModel.CreateAuditLogRequest); ok {
+			deps.AuditRequests = append(deps.AuditRequests, req)
+		}
+	}).Return(nil)
 
-	uc := usecase.NewOrganizationUseCase(log, deps.TM, deps.OrgRepo, deps.MemberRepo, deps.OrgReader, deps.Enforcer, auditStub)
+	uc := usecase.NewOrganizationUseCase(log, deps.TM, deps.OrgRepo, deps.MemberRepo, deps.OrgReader, deps.Enforcer, mockAudit)
 
 	return deps, uc
 }
@@ -503,9 +488,9 @@ func TestOrganizationUseCase(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify audit log captured the setting change specifically
-				assert.Len(t, deps.AuditStub.requests, 1)
-				assert.Equal(t, "ORGANIZATION_UPDATE", deps.AuditStub.requests[0].Action)
-				assert.Equal(t, "organization", deps.AuditStub.requests[0].Entity)
+				assert.Len(t, deps.AuditRequests, 1)
+				assert.Equal(t, "ORGANIZATION_UPDATE", deps.AuditRequests[0].Action)
+				assert.Equal(t, "organization", deps.AuditRequests[0].Entity)
 			},
 		},
 		{

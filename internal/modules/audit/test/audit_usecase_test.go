@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/Roisfaozi/queue-base/internal/mocking"
 	"github.com/Roisfaozi/queue-base/internal/modules/audit/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/audit/test/mocks"
@@ -24,14 +25,14 @@ import (
 
 type auditTestDeps struct {
 	Repo        *mocks.MockAuditRepository
-	MockWS      *mocks.MockWebSocketManager
+	MockWS      *mocking.MockManager
 	Distributor *mocks.MockTaskDistributor
 }
 
 func setupAuditTest() (*auditTestDeps, usecase.AuditUseCase) {
 	deps := &auditTestDeps{
 		Repo:        new(mocks.MockAuditRepository),
-		MockWS:      new(mocks.MockWebSocketManager),
+		MockWS:      new(mocking.MockManager),
 		Distributor: new(mocks.MockTaskDistributor),
 	}
 	logger := logrus.New()

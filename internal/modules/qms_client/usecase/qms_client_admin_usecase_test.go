@@ -1,4 +1,4 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
@@ -9,24 +9,18 @@ import (
 	branchEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/qms_client/usecase"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
 	"github.com/Roisfaozi/queue-base/pkg"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
-
-type stubAuditLogger struct {
-	requests []auditModel.CreateAuditLogRequest
-}
-
-func (l *stubAuditLogger) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
-	l.requests = append(l.requests, req)
-	return nil
-}
 
 func newAdminTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
@@ -44,8 +38,14 @@ func newAdminTestDB(t *testing.T) *gorm.DB {
 
 func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 	db := newAdminTestDB(t)
-	audit := &stubAuditLogger{}
-	uc := NewQMSClientAdminUseCase(db, nil, audit)
+	var capturedAuditReqs []auditModel.CreateAuditLogRequest
+	mockAudit := mocks.NewMockAdminAuditLogger(t)
+	mockAudit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+		capturedAuditReqs = append(capturedAuditReqs, req)
+		return true
+	})).Return(nil).Maybe()
+
+	uc := usecase.NewQMSClientAdminUseCase(db, nil, mockAudit)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
@@ -80,7 +80,7 @@ func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			audit.requests = nil
+			capturedAuditReqs = nil
 			testCtx := ctx
 			if tt.tenantID == "" {
 				testCtx = context.Background()
@@ -97,9 +97,9 @@ func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 			assert.Equal(t, tt.req.Name, res.Name)
 
 			if tt.wantAudit != "" {
-				require.Len(t, audit.requests, 1)
-				assert.Equal(t, tt.wantAudit, audit.requests[0].Action)
-				assert.Equal(t, res.ID, audit.requests[0].EntityID)
+				require.Len(t, capturedAuditReqs, 1)
+				assert.Equal(t, tt.wantAudit, capturedAuditReqs[0].Action)
+				assert.Equal(t, res.ID, capturedAuditReqs[0].EntityID)
 			}
 		})
 	}
@@ -107,8 +107,14 @@ func TestQMSClientAdminUseCase_CreateClient(t *testing.T) {
 
 func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 	db := newAdminTestDB(t)
-	audit := &stubAuditLogger{}
-	uc := NewQMSClientAdminUseCase(db, nil, audit)
+	var capturedAuditReqs []auditModel.CreateAuditLogRequest
+	mockAudit := mocks.NewMockAdminAuditLogger(t)
+	mockAudit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+		capturedAuditReqs = append(capturedAuditReqs, req)
+		return true
+	})).Return(nil).Maybe()
+
+	uc := usecase.NewQMSClientAdminUseCase(db, nil, mockAudit)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
@@ -138,7 +144,7 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			audit.requests = nil
+			capturedAuditReqs = nil
 			testCtx := ctx
 			if tt.tenantID == "" {
 				testCtx = context.Background()
@@ -159,9 +165,9 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 			assert.True(t, pkg.CheckPasswordHash(tt.req.APIKey, cred.ClientSecretHash))
 
 			if tt.wantAudit != "" {
-				require.Len(t, audit.requests, 1)
-				assert.Equal(t, tt.wantAudit, audit.requests[0].Action)
-				if newVals, ok := audit.requests[0].NewValues.(map[string]string); ok {
+				require.Len(t, capturedAuditReqs, 1)
+				assert.Equal(t, tt.wantAudit, capturedAuditReqs[0].Action)
+				if newVals, ok := capturedAuditReqs[0].NewValues.(map[string]string); ok {
 					assert.NotContains(t, newVals, "client_secret_hash")
 					assert.NotContains(t, newVals, "api_key")
 				}
@@ -172,8 +178,14 @@ func TestQMSClientAdminUseCase_CreateCredential(t *testing.T) {
 
 func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
 	db := newAdminTestDB(t)
-	audit := &stubAuditLogger{}
-	uc := NewQMSClientAdminUseCase(db, nil, audit)
+	var capturedAuditReqs []auditModel.CreateAuditLogRequest
+	mockAudit := mocks.NewMockAdminAuditLogger(t)
+	mockAudit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+		capturedAuditReqs = append(capturedAuditReqs, req)
+		return true
+	})).Return(nil).Maybe()
+
+	uc := usecase.NewQMSClientAdminUseCase(db, nil, mockAudit)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	otherCtx := database.SetOrganizationContext(context.Background(), "t-2")
 	require.NoError(t, db.Create(&branchEntity.Branch{ID: "b-1", TenantID: "t-1", Code: "B1", Name: "Branch 1", Status: branchEntity.BranchStatusActive}).Error)
@@ -241,13 +253,13 @@ func TestQMSClientAdminUseCase_UpdateAndDelete(t *testing.T) {
 			name: "Audit_UpdateAndDeactivateEmitEvents",
 			run: func(t *testing.T) {
 				require.NoError(t, db.Create(&entity.QMSClient{ID: "c-audit", TenantID: "t-1", BranchID: "b-1", ClientType: entity.ClientTypeCaller, Name: "Audit", IsActive: true}).Error)
-				audit.requests = nil
+				capturedAuditReqs = nil
 				_, err := uc.Update(ctx, "c-audit", &model.QMSClientUpdateRequest{Name: "Audit Name", BranchServiceID: ptr("bs-1"), CounterID: ptr("ctr-1")})
 				require.NoError(t, err)
 				require.NoError(t, uc.Delete(ctx, "c-audit"))
-				require.Len(t, audit.requests, 2)
-				assert.Equal(t, "QMS_CLIENT_UPDATE", audit.requests[0].Action)
-				assert.Equal(t, "QMS_CLIENT_DEACTIVATE", audit.requests[1].Action)
+				require.Len(t, capturedAuditReqs, 2)
+				assert.Equal(t, "QMS_CLIENT_UPDATE", capturedAuditReqs[0].Action)
+				assert.Equal(t, "QMS_CLIENT_DEACTIVATE", capturedAuditReqs[1].Action)
 			},
 		},
 	}

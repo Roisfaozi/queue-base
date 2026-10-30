@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,45 +10,16 @@ import (
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type stubBranchControllerUseCase struct {
-	createReq *model.CreateBranchRequest
-	updateReq *model.UpdateBranchRequest
-	createRes *model.BranchResponse
-	updateRes *model.BranchResponse
-	getRes    *model.BranchResponse
-	listRes   []model.BranchResponse
-}
-
-func (s *stubBranchControllerUseCase) CreateBranch(ctx context.Context, req *model.CreateBranchRequest) (*model.BranchResponse, error) {
-	s.createReq = req
-	return s.createRes, nil
-}
-
-func (s *stubBranchControllerUseCase) ResolveBranch(ctx context.Context, branchID string) (*model.BranchResponse, error) {
-	return s.getRes, nil
-}
-
-func (s *stubBranchControllerUseCase) ListBranches(ctx context.Context) ([]model.BranchResponse, error) {
-	return s.listRes, nil
-}
-
-func (s *stubBranchControllerUseCase) UpdateBranch(ctx context.Context, branchID string, req *model.UpdateBranchRequest) (*model.BranchResponse, error) {
-	s.updateReq = req
-	return s.updateRes, nil
-}
-
-func (s *stubBranchControllerUseCase) DeleteBranch(ctx context.Context, branchID string) error {
-	return nil
-}
 
 func newBranchTestValidator(t *testing.T) *validator.Validate {
 	t.Helper()
@@ -72,38 +42,34 @@ func TestBranchController(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
-			setup    func() *stubBranchControllerUseCase
+			setup    func(t *testing.T) *mocks.MockBranchUseCase
 			wantCode int
-			assert   func(t *testing.T, uc *stubBranchControllerUseCase)
 		}{
 			{
 				name:    "Positive_CreateUsesTenantContext",
 				reqBody: model.CreateBranchRequest{Code: "main", Name: "Main Branch"},
-				setup: func() *stubBranchControllerUseCase {
-					return &stubBranchControllerUseCase{createRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1"}}
+				setup: func(t *testing.T) *mocks.MockBranchUseCase {
+					m := mocks.NewMockBranchUseCase(t)
+					m.On("CreateBranch", mock.Anything, mock.MatchedBy(func(req *model.CreateBranchRequest) bool {
+						return req != nil && req.Code == "main"
+					})).Return(&model.BranchResponse{ID: "branch-1", TenantID: "tenant-1"}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusCreated,
-				assert: func(t *testing.T, uc *stubBranchControllerUseCase) {
-					require.NotNil(t, uc.createReq)
-					assert.Equal(t, "main", uc.createReq.Code)
-				},
 			},
 			{
 				name:    "Negative_CreateRejectsInvalidBody",
 				reqBody: map[string]interface{}{"code": "", "name": ""},
-				setup: func() *stubBranchControllerUseCase {
-					return &stubBranchControllerUseCase{}
+				setup: func(t *testing.T) *mocks.MockBranchUseCase {
+					return mocks.NewMockBranchUseCase(t)
 				},
 				wantCode: http.StatusUnprocessableEntity,
-				assert: func(t *testing.T, uc *stubBranchControllerUseCase) {
-					assert.Nil(t, uc.createReq)
-				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				log := logrus.New()
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
@@ -121,9 +87,6 @@ func TestBranchController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
-				}
 			})
 		}
 	})
@@ -131,14 +94,17 @@ func TestBranchController(t *testing.T) {
 	t.Run("Positive_GetByID", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubBranchControllerUseCase
+			setup    func(t *testing.T) *mocks.MockBranchUseCase
 			wantCode int
 			assert   func(t *testing.T, body string)
 		}{
 			{
 				name: "Positive_GetByIDReturnsBranch",
-				setup: func() *stubBranchControllerUseCase {
-					return &stubBranchControllerUseCase{getRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
+				setup: func(t *testing.T) *mocks.MockBranchUseCase {
+					m := mocks.NewMockBranchUseCase(t)
+					m.On("ResolveBranch", mock.Anything, "branch-1").
+						Return(&model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
 				assert: func(t *testing.T, body string) {
@@ -150,7 +116,7 @@ func TestBranchController(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				log := logrus.New()
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
 				router := gin.New()
 				router.GET("/branches/:id", controller.GetByID)
@@ -172,28 +138,26 @@ func TestBranchController(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
-			setup    func() *stubBranchControllerUseCase
+			setup    func(t *testing.T) *mocks.MockBranchUseCase
 			wantCode int
-			assert   func(t *testing.T, uc *stubBranchControllerUseCase)
 		}{
 			{
 				name:    "Positive_UpdateSanitizesFields",
 				reqBody: model.UpdateBranchRequest{Name: &name},
-				setup: func() *stubBranchControllerUseCase {
-					return &stubBranchControllerUseCase{updateRes: &model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}
+				setup: func(t *testing.T) *mocks.MockBranchUseCase {
+					m := mocks.NewMockBranchUseCase(t)
+					m.On("UpdateBranch", mock.Anything, "branch-1", mock.MatchedBy(func(req *model.UpdateBranchRequest) bool {
+						return req != nil && req.Name != nil && *req.Name == " Main Office "
+					})).Return(&model.BranchResponse{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
-				assert: func(t *testing.T, uc *stubBranchControllerUseCase) {
-					require.NotNil(t, uc.updateReq)
-					require.NotNil(t, uc.updateReq.Name)
-					assert.Equal(t, " Main Office ", *uc.updateReq.Name)
-				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				log := logrus.New()
 
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
@@ -207,9 +171,6 @@ func TestBranchController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
-				}
 			})
 		}
 	})
@@ -217,14 +178,17 @@ func TestBranchController(t *testing.T) {
 	t.Run("Positive_GetAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubBranchControllerUseCase
+			setup    func(t *testing.T) *mocks.MockBranchUseCase
 			wantCode int
 			assert   func(t *testing.T, body string)
 		}{
 			{
 				name: "Positive_GetAllReturnsBranches",
-				setup: func() *stubBranchControllerUseCase {
-					return &stubBranchControllerUseCase{listRes: []model.BranchResponse{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}}
+				setup: func(t *testing.T) *mocks.MockBranchUseCase {
+					m := mocks.NewMockBranchUseCase(t)
+					m.On("ListBranches", mock.Anything).
+						Return([]model.BranchResponse{{ID: "branch-1", TenantID: "tenant-1", Code: "MAIN"}}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
 				assert: func(t *testing.T, body string) {
@@ -235,7 +199,7 @@ func TestBranchController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				log := logrus.New()
 
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)
@@ -257,13 +221,15 @@ func TestBranchController(t *testing.T) {
 	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubBranchControllerUseCase
+			setup    func(t *testing.T) *mocks.MockBranchUseCase
 			wantCode int
 		}{
 			{
 				name: "Positive_DeleteReturnsNoContent",
-				setup: func() *stubBranchControllerUseCase {
-					return &stubBranchControllerUseCase{}
+				setup: func(t *testing.T) *mocks.MockBranchUseCase {
+					m := mocks.NewMockBranchUseCase(t)
+					m.On("DeleteBranch", mock.Anything, "branch-1").Return(nil).Once()
+					return m
 				},
 				wantCode: http.StatusNoContent,
 			},
@@ -271,7 +237,7 @@ func TestBranchController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				log := logrus.New()
 
 				controller := NewBranchController(uc, newBranchTestValidator(t), log)

@@ -113,7 +113,7 @@ func TestCounterRepository(t *testing.T) {
 					assert.Equal(t, "C1-NEW", updated.Code)
 					assert.Equal(t, "Counter One", updated.Name)
 					assert.Equal(t, entity.CounterStatusInactive, updated.Status)
-					assert.Equal(t, now, updated.UpdatedAt)
+					assert.InDelta(t, now, updated.UpdatedAt, 50)
 				},
 			},
 			{

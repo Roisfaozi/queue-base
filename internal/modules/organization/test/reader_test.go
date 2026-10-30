@@ -6,61 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	"github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
 	"github.com/go-redis/redismock/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
-
-// MockMemberRepository is a simple mock for IOrganizationMemberRepository
-type MockMemberRepository struct {
-	CheckMembershipFunc func(ctx context.Context, orgID, userID string) (bool, error)
-	GetMemberStatusFunc func(ctx context.Context, orgID, userID string) (string, error)
-	GetMemberRoleFunc   func(ctx context.Context, orgID, userID string) (string, error)
-}
-
-func (m *MockMemberRepository) CheckMembership(ctx context.Context, orgID, userID string) (bool, error) {
-	if m.CheckMembershipFunc != nil {
-		return m.CheckMembershipFunc(ctx, orgID, userID)
-	}
-	return false, nil
-}
-
-func (m *MockMemberRepository) GetMemberStatus(ctx context.Context, orgID, userID string) (string, error) {
-	if m.GetMemberStatusFunc != nil {
-		return m.GetMemberStatusFunc(ctx, orgID, userID)
-	}
-	return "", nil
-}
-
-func (m *MockMemberRepository) GetMemberRole(ctx context.Context, orgID, userID string) (string, error) {
-	if m.GetMemberRoleFunc != nil {
-		return m.GetMemberRoleFunc(ctx, orgID, userID)
-	}
-	return "", nil
-}
-
-// Methods required by interface but not used in these tests
-func (m *MockMemberRepository) AddMember(ctx context.Context, member *entity.OrganizationMember) error {
-	return nil
-}
-
-func (m *MockMemberRepository) RemoveMember(ctx context.Context, orgID, userID string) error {
-	return nil
-}
-
-func (m *MockMemberRepository) UpdateMemberRole(ctx context.Context, orgID, userID, roleID string) error {
-	return nil
-}
-
-func (m *MockMemberRepository) UpdateMemberStatus(ctx context.Context, orgID, userID, status string) error {
-	return nil
-}
-
-func (m *MockMemberRepository) FindMembers(ctx context.Context, orgID string) ([]*entity.OrganizationMember, error) {
-	return nil, nil
-}
 
 func newTestLogger() *logrus.Logger {
 	log := logrus.New()
@@ -80,7 +31,7 @@ func TestCachedOrgReader_ValidateMembership_CacheHit(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-				mockRepo := &MockMemberRepository{}
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
 				log := newTestLogger()
 
 				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
@@ -122,7 +73,7 @@ func TestCachedOrgReader_ValidateMembership_CacheHit_NotMember(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-				mockRepo := &MockMemberRepository{}
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
 				log := newTestLogger()
 
 				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
@@ -164,20 +115,16 @@ func TestCachedOrgReader_ValidateMembership_CacheMiss_IsMember(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-
-				mockRepo := &MockMemberRepository{
-					CheckMembershipFunc: func(ctx context.Context, orgID, userID string) (bool, error) {
-						return true, nil
-					},
-				}
-				log := newTestLogger()
-
-				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
-
 				ctx := context.Background()
 				orgID := "org-123"
 				userID := "user-456"
 				membershipKey := "org:member:org-123:user-456"
+
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
+				mockRepo.On("CheckMembership", ctx, orgID, userID).Return(true, nil)
+				log := newTestLogger()
+
+				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
 
 				// Mock Redis cache miss, then SET calls
 				mock.ExpectGet(membershipKey).RedisNil()
@@ -212,20 +159,16 @@ func TestCachedOrgReader_ValidateMembership_CacheMiss_NotMember(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-
-				mockRepo := &MockMemberRepository{
-					CheckMembershipFunc: func(ctx context.Context, orgID, userID string) (bool, error) {
-						return false, nil
-					},
-				}
-				log := newTestLogger()
-
-				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
-
 				ctx := context.Background()
 				orgID := "org-123"
 				userID := "user-456"
 				membershipKey := "org:member:org-123:user-456"
+
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
+				mockRepo.On("CheckMembership", ctx, orgID, userID).Return(false, nil)
+				log := newTestLogger()
+
+				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
 
 				// Mock Redis cache miss, then SET for negative result
 				mock.ExpectGet(membershipKey).RedisNil()
@@ -260,21 +203,17 @@ func TestCachedOrgReader_ValidateMembership_DBError(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-
-				dbErr := errors.New("database connection error")
-				mockRepo := &MockMemberRepository{
-					CheckMembershipFunc: func(ctx context.Context, orgID, userID string) (bool, error) {
-						return false, dbErr
-					},
-				}
-				log := newTestLogger()
-
-				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
-
 				ctx := context.Background()
 				orgID := "org-123"
 				userID := "user-456"
 				membershipKey := "org:member:org-123:user-456"
+
+				dbErr := errors.New("database connection error")
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
+				mockRepo.On("CheckMembership", ctx, orgID, userID).Return(false, dbErr)
+				log := newTestLogger()
+
+				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
 
 				// Mock Redis cache miss
 				mock.ExpectGet(membershipKey).RedisNil()
@@ -308,7 +247,7 @@ func TestCachedOrgReader_GetMemberRole_CacheHit(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-				mockRepo := &MockMemberRepository{}
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
 				log := newTestLogger()
 
 				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
@@ -350,19 +289,16 @@ func TestCachedOrgReader_GetMemberRole_CacheMiss(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-				mockRepo := &MockMemberRepository{
-					GetMemberRoleFunc: func(ctx context.Context, orgID, userID string) (string, error) {
-						return "member", nil
-					},
-				}
-				log := newTestLogger()
-
-				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
-
 				ctx := context.Background()
 				orgID := "org-123"
 				userID := "user-456"
 				roleKey := "org:role:org-123:user-456"
+
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
+				mockRepo.On("GetMemberRole", ctx, orgID, userID).Return("member", nil)
+				log := newTestLogger()
+
+				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
 
 				// Mock Redis cache miss, then SET
 				mock.ExpectGet(roleKey).RedisNil()
@@ -397,7 +333,7 @@ func TestCachedOrgReader_InvalidateMembershipCache(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-				mockRepo := &MockMemberRepository{}
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
 				log := newTestLogger()
 
 				reader := usecase.NewCachedOrgReader(mockRepo, db, log)
@@ -440,7 +376,7 @@ func TestCachedOrgReader_InvalidateOrganizationCache(t *testing.T) {
 			run: func(t *testing.T) {
 				// Arrange
 				db, mock := redismock.NewClientMock()
-				mockRepo := &MockMemberRepository{}
+				mockRepo := new(mocks.MockOrganizationMemberRepository)
 				log := newTestLogger()
 
 				reader := usecase.NewCachedOrgReader(mockRepo, db, log)

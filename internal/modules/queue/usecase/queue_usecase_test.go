@@ -1,4 +1,4 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
@@ -9,18 +9,21 @@ import (
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 // =============================================================================
-// Stubs
+// Mock Helpers
 // =============================================================================
 
-type stubQueueRepo struct {
+type mockQueueRepoConfig struct {
 	FindQueueByTenantIDFunc func(ctx context.Context, tenantID, queueID string) (*entity.Queue, error)
 	FindCurrentJourneyFunc  func(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error)
 	q                       *entity.Queue
@@ -30,72 +33,278 @@ type stubQueueRepo struct {
 	err                     error
 	seenNum                 int
 	exists                  bool
-	listReq                 model.ListQueuesRequest
-	journeyReq              model.QueueJourneyListRequest
-	journeyTenantID         string
-	journeyBranchID         string
 	journeyList             []*entity.QueueJourney
-	lastPrefix              string
 	visits                  []*entity.VisitJourney
 	statsRes                model.QueueStatsResponse
 	nextWaiting             *entity.Queue
 	waitingLeft             int
 }
 
-type stubSettingsResolver struct {
-	values map[string]string
-	Calls  []string
+type mockRepoTracker struct {
+	Queue           *entity.Queue
+	Journey         *entity.QueueJourney
+	Visit           *entity.VisitJourney
+	SeenNum         int
+	LastPrefix      string
+	ListReq         model.ListQueuesRequest
+	JourneyReq      model.QueueJourneyListRequest
+	JourneyTenantID string
+	JourneyBranchID string
 }
 
-func (s *stubSettingsResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
-	s.Calls = append(s.Calls, key)
-	if value, ok := s.values[key]; ok {
-		return value, nil
+func newMockQueueRepo(t *testing.T, cfg mockQueueRepoConfig) (*mocks.MockQueueRepository, *mockRepoTracker) {
+	mockRepo := mocks.NewMockQueueRepository(t)
+	tracker := &mockRepoTracker{
+		Queue:   cfg.q,
+		Journey: cfg.j,
+		Visit:   cfg.visit,
+		SeenNum: cfg.seenNum,
 	}
-	return "", exception.ErrNotFound
+
+	mockRepo.On("NextQueueNumber", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
+			tracker.SeenNum++
+			tracker.LastPrefix = prefix
+			if cfg.err != nil {
+				return 0, cfg.err
+			}
+			return tracker.SeenNum, nil
+		},
+	)
+
+	mockRepo.On("ExistsRegistration", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueDate, patientID, patientName string) (bool, error) {
+			if cfg.err != nil {
+				return false, cfg.err
+			}
+			return cfg.exists, nil
+		},
+	)
+
+	mockRepo.On("CreateRegistration", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error {
+			tracker.Queue = queue
+			tracker.Journey = journey
+			tracker.Visit = visit
+			return cfg.err
+		},
+	)
+
+	mockRepo.On("CreateRegistrationWithNumber", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney, date time.Time, prefix string) error {
+			tracker.SeenNum++
+			tracker.LastPrefix = prefix
+			queue.QueueNo = tracker.SeenNum
+			queue.TicketNo = fmt.Sprintf("%s%03d", prefix, queue.QueueNo)
+			tracker.Queue = queue
+			tracker.Journey = journey
+			tracker.Visit = visit
+			return cfg.err
+		},
+	)
+
+	mockRepo.On("ListQueues", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error) {
+			tracker.ListReq = req
+			if cfg.err != nil {
+				return nil, cfg.err
+			}
+			if req.Status == "" && req.QueueDate == "" && req.ServiceID == "" {
+				return cfg.queues, nil
+			}
+			filtered := make([]*entity.Queue, 0)
+			for _, queue := range cfg.queues {
+				if req.Status != "" && queue.Status != req.Status {
+					continue
+				}
+				if req.QueueDate != "" && queue.QueueDate != req.QueueDate {
+					continue
+				}
+				if req.ServiceID != "" && queue.CurrentJourneyID != req.ServiceID {
+					continue
+				}
+				filtered = append(filtered, queue)
+			}
+			return filtered, nil
+		},
+	)
+
+	mockRepo.On("ListActiveJourneys", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID string, req model.QueueJourneyListRequest) ([]*entity.QueueJourney, error) {
+			if cfg.err != nil {
+				return nil, cfg.err
+			}
+			tracker.JourneyReq = req
+			tracker.JourneyTenantID = tenantID
+			tracker.JourneyBranchID = branchID
+			if cfg.journeyList != nil {
+				return cfg.journeyList, nil
+			}
+			return []*entity.QueueJourney{{ID: "j-1", QueueID: "q-1", TenantID: tenantID, ServiceID: req.ServiceID, CounterID: req.CounterID, SeqNo: 1, Status: entity.JourneyStatusCalling}}, nil
+		},
+	)
+
+	mockRepo.On("FindVisitJourneysByQueueID", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error) {
+			if cfg.err != nil {
+				return nil, cfg.err
+			}
+			return cfg.visits, nil
+		},
+	)
+
+	mockRepo.On("GetQueueStats", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error) {
+			if cfg.err != nil {
+				return cfg.statsRes, cfg.err
+			}
+			return cfg.statsRes, nil
+		},
+	)
+
+	mockRepo.On("CountWaitingQueueLeft", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueDate, serviceID string, queueNo int) (int, error) {
+			if cfg.err != nil {
+				return 0, cfg.err
+			}
+			return cfg.waitingLeft, nil
+		},
+	)
+
+	mockRepo.On("FindQueueByTenantID", mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
+			if cfg.FindQueueByTenantIDFunc != nil {
+				return cfg.FindQueueByTenantIDFunc(ctx, tenantID, queueID)
+			}
+			return nil, nil
+		},
+	)
+
+	mockRepo.On("FindQueueByID", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error) {
+			if cfg.err != nil {
+				return nil, cfg.err
+			}
+			return tracker.Queue, nil
+		},
+	)
+
+	mockRepo.On("FindCurrentJourney", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error) {
+			if cfg.FindCurrentJourneyFunc != nil {
+				return cfg.FindCurrentJourneyFunc(ctx, tenantID, branchID, queueID, journeyID)
+			}
+			if cfg.err != nil {
+				return nil, cfg.err
+			}
+			return tracker.Journey, nil
+		},
+	)
+
+	mockRepo.On("FindNextWaitingQueue", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueDate, afterQueueID string) (*entity.Queue, error) {
+			if cfg.err != nil {
+				return nil, cfg.err
+			}
+			if cfg.nextWaiting == nil {
+				return nil, exception.ErrNotFound
+			}
+			return cfg.nextWaiting, nil
+		},
+	)
+
+	mockRepo.On("NextJourneySequence", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, tenantID, branchID, queueID string) (int, error) {
+			if cfg.err != nil {
+				return 0, cfg.err
+			}
+			if tracker.Journey == nil {
+				return 1, nil
+			}
+			return tracker.Journey.SeqNo + 1, nil
+		},
+	)
+
+	mockRepo.On("CreateForwarding", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
+			tracker.Queue = queue
+			tracker.Journey = nextJourney
+			tracker.Visit = visit
+			return cfg.err
+		},
+	)
+
+	mockRepo.On("UpdateQueueState", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
+			tracker.Queue = queue
+			tracker.Journey = currentJourney
+			tracker.Visit = visit
+			return cfg.err
+		},
+	)
+
+	return mockRepo, tracker
 }
 
-type stubRelationValidator struct {
-	err error
+func newMockSettingsResolver(t *testing.T, values map[string]string) (*mocks.MockSettingsResolver, *[]string) {
+	mockResolver := mocks.NewMockSettingsResolver(t)
+	calls := &[]string{}
+	mockResolver.On("Resolve", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(
+		func(ctx context.Context, key, branchID, serviceID, counterID string) (string, error) {
+			*calls = append(*calls, key)
+			if val, ok := values[key]; ok {
+				return val, nil
+			}
+			return "", exception.ErrNotFound
+		},
+	)
+	return mockResolver, calls
 }
 
-type stubAuditLogger struct {
-	entries []auditModel.CreateAuditLogRequest
-	err     error
+func newMockRelationValidator(t *testing.T, err error) *mocks.MockRelationValidator {
+	mockVal := mocks.NewMockRelationValidator(t)
+	mockVal.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe().Return(err)
+	return mockVal
 }
 
-type stubBroadcaster struct {
-	events []string
+func newMockAuditLogger(t *testing.T, err error) (*mocks.MockAuditLogger, *[]auditModel.CreateAuditLogRequest) {
+	mockAudit := mocks.NewMockAuditLogger(t)
+	entries := &[]auditModel.CreateAuditLogRequest{}
+	mockAudit.On("LogActivity", mock.Anything, mock.Anything).Maybe().Run(func(args mock.Arguments) {
+		req := args.Get(1).(auditModel.CreateAuditLogRequest)
+		*entries = append(*entries, req)
+	}).Return(err)
+	return mockAudit, entries
 }
 
-func (s *stubBroadcaster) Broadcast(name string, data interface{}) {
-	s.events = append(s.events, name)
+func newMockBroadcaster(t *testing.T) (*mocks.MockEventBroadcaster, *[]string) {
+	mockB := mocks.NewMockEventBroadcaster(t)
+	events := &[]string{}
+	mockB.On("Broadcast", mock.Anything, mock.Anything).Maybe().Run(func(args mock.Arguments) {
+		name := args.String(0)
+		*events = append(*events, name)
+	}).Return()
+	return mockB, events
 }
 
-type stubWSBroadcaster struct {
-	channels []string
-}
-
-func (s *stubWSBroadcaster) BroadcastToChannel(channel string, message []byte) {
-	s.channels = append(s.channels, channel)
-}
-
-func (s *stubAuditLogger) LogActivity(ctx context.Context, req auditModel.CreateAuditLogRequest) error {
-	s.entries = append(s.entries, req)
-	return s.err
-}
-
-func (s *stubRelationValidator) Validate(ctx context.Context, tenantID, branchID, serviceID, counterID string) error {
-	return s.err
+func newMockWSBroadcaster(t *testing.T) (*mocks.MockWSBroadcaster, *[]string) {
+	mockWS := mocks.NewMockWSBroadcaster(t)
+	channels := &[]string{}
+	mockWS.On("BroadcastToChannel", mock.Anything, mock.Anything).Maybe().Run(func(args mock.Arguments) {
+		channel := args.String(0)
+		*channels = append(*channels, channel)
+	}).Return()
+	return mockWS, channels
 }
 
 func TestQueueAuditLogging(t *testing.T) {
 	t.Run("Edge_Register_EmitsAuditAndSurvivesAuditFailure", func(t *testing.T) {
-		repo := &stubQueueRepo{}
-		audit := &stubAuditLogger{err: assert.AnError}
-		broadcast := &stubBroadcaster{}
-		wsBroadcast := &stubWSBroadcaster{}
-		uc := NewQueueUseCase(repo, &stubSettingsResolver{}, nil, audit)
+		mockRepo, _ := newMockQueueRepo(t, mockQueueRepoConfig{})
+		audit, entries := newMockAuditLogger(t, assert.AnError)
+		broadcast, events := newMockBroadcaster(t)
+		wsBroadcast, channels := newMockWSBroadcaster(t)
+		mockResolver, _ := newMockSettingsResolver(t, nil)
+		uc := usecase.NewQueueUseCase(mockRepo, mockResolver, nil, audit)
 		uc.SetEventBroadcaster(broadcast)
 		uc.SetWSBroadcaster(wsBroadcast)
 
@@ -106,30 +315,31 @@ func TestQueueAuditLogging(t *testing.T) {
 		res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John"})
 		require.NoError(t, err)
 		require.NotNil(t, res)
-		require.Len(t, audit.entries, 1)
-		require.Len(t, broadcast.events, 1)
-		require.Len(t, wsBroadcast.channels, 1)
-		assert.Equal(t, "queue_registered", broadcast.events[0])
-		assert.Equal(t, "queue:t-1:b-1", wsBroadcast.channels[0])
-		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.Len(t, *entries, 1)
+		require.Len(t, *events, 1)
+		require.Len(t, *channels, 1)
+		assert.Equal(t, "queue_registered", (*events)[0])
+		assert.Equal(t, "queue:t-1:b-1", (*channels)[0])
+		values, ok := (*entries)[0].NewValues.(map[string]string)
 		require.True(t, ok)
-		assert.Equal(t, "QUEUE_REGISTER", audit.entries[0].Action)
-		assert.Equal(t, "queue", audit.entries[0].Entity)
-		assert.Equal(t, "t-1", audit.entries[0].OrganizationID)
-		assert.Equal(t, "u-1", audit.entries[0].UserID)
+		assert.Equal(t, "QUEUE_REGISTER", (*entries)[0].Action)
+		assert.Equal(t, "queue", (*entries)[0].Entity)
+		assert.Equal(t, "t-1", (*entries)[0].OrganizationID)
+		assert.Equal(t, "u-1", (*entries)[0].UserID)
 		assert.Equal(t, "b-1", values["branch_id"])
 		assert.Equal(t, res.TicketNo, values["ticket_no"])
 	})
 
 	t.Run("Edge_Forward_EmitsAudit", func(t *testing.T) {
-		repo := &stubQueueRepo{
+		mockRepo, _ := newMockQueueRepo(t, mockQueueRepoConfig{
 			q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
-		}
-		audit := &stubAuditLogger{}
-		broadcast := &stubBroadcaster{}
-		wsBroadcast := &stubWSBroadcaster{}
-		uc := NewQueueUseCase(repo, nil, &stubRelationValidator{}, audit)
+		})
+		audit, entries := newMockAuditLogger(t, nil)
+		broadcast, events := newMockBroadcaster(t)
+		wsBroadcast, _ := newMockWSBroadcaster(t)
+		validator := newMockRelationValidator(t, nil)
+		uc := usecase.NewQueueUseCase(mockRepo, nil, validator, audit)
 		uc.SetEventBroadcaster(broadcast)
 		uc.SetWSBroadcaster(wsBroadcast)
 
@@ -139,26 +349,26 @@ func TestQueueAuditLogging(t *testing.T) {
 		res, err := uc.ForwardQueue(ctx, "q-1", &model.ForwardQueueRequest{DestinationServiceID: "svc-2", DestinationCounterID: "ctr-2"})
 		require.NoError(t, err)
 		require.NotNil(t, res)
-		require.Len(t, audit.entries, 1)
-		require.Len(t, broadcast.events, 1)
-		assert.Equal(t, "queue_forwarded", broadcast.events[0])
-		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.Len(t, *entries, 1)
+		require.Len(t, *events, 1)
+		assert.Equal(t, "queue_forwarded", (*events)[0])
+		values, ok := (*entries)[0].NewValues.(map[string]string)
 		require.True(t, ok)
-		assert.Equal(t, "QUEUE_FORWARD", audit.entries[0].Action)
-		assert.Equal(t, "system", audit.entries[0].UserID)
-		assert.Equal(t, "q-1", audit.entries[0].EntityID)
+		assert.Equal(t, "QUEUE_FORWARD", (*entries)[0].Action)
+		assert.Equal(t, "system", (*entries)[0].UserID)
+		assert.Equal(t, "q-1", (*entries)[0].EntityID)
 		assert.Equal(t, "j-1", values["from_journey_id"])
 		assert.Equal(t, "svc-2", values["to_service_id"])
 	})
 
 	t.Run("Edge_Transition_EmitsAudit", func(t *testing.T) {
-		repo := &stubQueueRepo{
+		mockRepo, _ := newMockQueueRepo(t, mockQueueRepoConfig{
 			q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 			j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
-		}
-		audit := &stubAuditLogger{}
-		broadcast := &stubBroadcaster{}
-		uc := NewQueueUseCase(repo, nil, nil, audit)
+		})
+		audit, entries := newMockAuditLogger(t, nil)
+		broadcast, events := newMockBroadcaster(t)
+		uc := usecase.NewQueueUseCase(mockRepo, nil, nil, audit)
 		uc.SetEventBroadcaster(broadcast)
 
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
@@ -167,20 +377,21 @@ func TestQueueAuditLogging(t *testing.T) {
 		res, err := uc.TransitionQueue(ctx, "q-1", &model.QueueTransitionRequest{Action: model.QueueActionCall})
 		require.NoError(t, err)
 		require.NotNil(t, res)
-		require.Len(t, audit.entries, 1)
-		require.Len(t, broadcast.events, 1)
-		assert.Equal(t, "queue_transitioned", broadcast.events[0])
-		values, ok := audit.entries[0].NewValues.(map[string]string)
+		require.Len(t, *entries, 1)
+		require.Len(t, *events, 1)
+		assert.Equal(t, "queue_transitioned", (*events)[0])
+		values, ok := (*entries)[0].NewValues.(map[string]string)
 		require.True(t, ok)
-		assert.Equal(t, "QUEUE_CALL", audit.entries[0].Action)
+		assert.Equal(t, "QUEUE_CALL", (*entries)[0].Action)
 		assert.Equal(t, "j-1", values["journey_id"])
 		assert.Equal(t, entity.QueueStatusCalling, values["status"])
 	})
 
 	t.Run("Edge_Register_AuditFailureDoesNotFailBusinessFlow", func(t *testing.T) {
-		repo := &stubQueueRepo{}
-		audit := &stubAuditLogger{err: assert.AnError}
-		uc := NewQueueUseCase(repo, &stubSettingsResolver{}, nil, audit)
+		mockRepo, _ := newMockQueueRepo(t, mockQueueRepoConfig{})
+		audit, entries := newMockAuditLogger(t, assert.AnError)
+		mockResolver, _ := newMockSettingsResolver(t, nil)
+		uc := usecase.NewQueueUseCase(mockRepo, mockResolver, nil, audit)
 
 		ctx := database.SetOrganizationContext(context.Background(), "t-1")
 		ctx = database.SetBranchContext(ctx, "b-1")
@@ -188,153 +399,8 @@ func TestQueueAuditLogging(t *testing.T) {
 		res, err := uc.RegisterQueue(ctx, &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John"})
 		require.NoError(t, err)
 		require.NotNil(t, res)
-		require.Len(t, audit.entries, 1)
+		require.Len(t, *entries, 1)
 	})
-}
-
-func (s *stubQueueRepo) NextQueueNumber(ctx context.Context, tenantID, branchID string, date time.Time, prefix string) (int, error) {
-	s.seenNum++
-	s.lastPrefix = prefix
-	if s.err != nil {
-		return 0, s.err
-	}
-	return s.seenNum, nil
-}
-func (s *stubQueueRepo) ExistsRegistration(ctx context.Context, tenantID, branchID, queueDate, patientID, patientName string) (bool, error) {
-	if s.err != nil {
-		return false, s.err
-	}
-	return s.exists, nil
-}
-func (s *stubQueueRepo) CreateRegistration(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney) error {
-	s.q = queue
-	s.j = journey
-	s.visit = visit
-	return s.err
-}
-
-func (s *stubQueueRepo) CreateRegistrationWithNumber(ctx context.Context, queue *entity.Queue, journey *entity.QueueJourney, visit *entity.VisitJourney, date time.Time, prefix string) error {
-	s.seenNum++
-	s.lastPrefix = prefix
-	queue.QueueNo = s.seenNum
-	queue.TicketNo = fmt.Sprintf("%s%03d", prefix, queue.QueueNo)
-	return s.CreateRegistration(ctx, queue, journey, visit)
-}
-
-func (s *stubQueueRepo) ListQueues(ctx context.Context, tenantID, branchID string, req model.ListQueuesRequest) ([]*entity.Queue, error) {
-	s.listReq = req
-	if s.err != nil {
-		return nil, s.err
-	}
-	if req.Status == "" && req.QueueDate == "" && req.ServiceID == "" {
-		return s.queues, nil
-	}
-	filtered := make([]*entity.Queue, 0)
-	for _, queue := range s.queues {
-		if req.Status != "" && queue.Status != req.Status {
-			continue
-		}
-		if req.QueueDate != "" && queue.QueueDate != req.QueueDate {
-			continue
-		}
-		if req.ServiceID != "" && queue.CurrentJourneyID != req.ServiceID {
-			continue
-		}
-		filtered = append(filtered, queue)
-	}
-	return filtered, nil
-}
-
-func (s *stubQueueRepo) ListActiveJourneys(ctx context.Context, tenantID, branchID string, req model.QueueJourneyListRequest) ([]*entity.QueueJourney, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	s.journeyReq = req
-	s.journeyTenantID = tenantID
-	s.journeyBranchID = branchID
-	if s.journeyList != nil {
-		return s.journeyList, nil
-	}
-	return []*entity.QueueJourney{{ID: "j-1", QueueID: "q-1", TenantID: tenantID, ServiceID: req.ServiceID, CounterID: req.CounterID, SeqNo: 1, Status: entity.JourneyStatusCalling}}, nil
-}
-
-func (s *stubQueueRepo) FindVisitJourneysByQueueID(ctx context.Context, tenantID, branchID, queueID string) ([]*entity.VisitJourney, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.visits, nil
-}
-
-func (s *stubQueueRepo) GetQueueStats(ctx context.Context, tenantID, branchID, queueDate string) (model.QueueStatsResponse, error) {
-	if s.err != nil {
-		return s.statsRes, s.err
-	}
-	return s.statsRes, nil
-}
-
-func (s *stubQueueRepo) CountWaitingQueueLeft(ctx context.Context, tenantID, branchID, queueDate, serviceID string, queueNo int) (int, error) {
-	if s.err != nil {
-		return 0, s.err
-	}
-	return s.waitingLeft, nil
-}
-
-func (s *stubQueueRepo) FindQueueByTenantID(ctx context.Context, tenantID, queueID string) (*entity.Queue, error) {
-	if s.FindQueueByTenantIDFunc != nil {
-		return s.FindQueueByTenantIDFunc(ctx, tenantID, queueID)
-	}
-	return nil, nil
-}
-
-func (s *stubQueueRepo) FindQueueByID(ctx context.Context, tenantID, branchID, queueID string) (*entity.Queue, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.q, nil
-}
-
-func (s *stubQueueRepo) FindCurrentJourney(ctx context.Context, tenantID, branchID, queueID, journeyID string) (*entity.QueueJourney, error) {
-	if s.FindCurrentJourneyFunc != nil {
-		return s.FindCurrentJourneyFunc(ctx, tenantID, branchID, queueID, journeyID)
-	}
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.j, nil
-}
-
-func (s *stubQueueRepo) FindNextWaitingQueue(ctx context.Context, tenantID, branchID, queueDate, afterQueueID string) (*entity.Queue, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	if s.nextWaiting == nil {
-		return nil, exception.ErrNotFound
-	}
-	return s.nextWaiting, nil
-}
-
-func (s *stubQueueRepo) NextJourneySequence(ctx context.Context, tenantID, branchID, queueID string) (int, error) {
-	if s.err != nil {
-		return 0, s.err
-	}
-	if s.j == nil {
-		return 1, nil
-	}
-	return s.j.SeqNo + 1, nil
-}
-
-func (s *stubQueueRepo) CreateForwarding(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, nextJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
-	s.q = queue
-	s.j = nextJourney
-	s.visit = visit
-	return s.err
-}
-
-func (s *stubQueueRepo) UpdateQueueState(ctx context.Context, queue *entity.Queue, currentJourney *entity.QueueJourney, visit *entity.VisitJourney) error {
-	s.q = queue
-	s.j = currentJourney
-	s.visit = visit
-	return s.err
 }
 
 // =============================================================================
@@ -346,12 +412,12 @@ func TestRegisterQueue(t *testing.T) {
 		name     string
 		category string
 		req      *model.RegisterQueueRequest
-		repo     *stubQueueRepo
+		repoCfg  mockQueueRepoConfig
 		settings map[string]string
 		tenantID string
 		branchID string
 		wantErr  error
-		wantRes  func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse)
+		wantRes  func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse)
 	}{
 		{
 			name:     "Positive_Success",
@@ -359,7 +425,7 @@ func TestRegisterQueue(t *testing.T) {
 			req:      &model.RegisterQueueRequest{ServiceID: "s-1", PatientName: "John Doe"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
 				assert.Equal(t, "t-1", res.TenantID)
 				assert.Equal(t, "b-1", res.BranchID)
 				assert.Equal(t, 1, res.QueueNo)
@@ -373,8 +439,8 @@ func TestRegisterQueue(t *testing.T) {
 			settings: map[string]string{"queue_reset_time": "05:00"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.Equal(t, "queue_reset_time", resolver.Calls[0])
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
+				assert.Equal(t, "queue_reset_time", resolverCalls[0])
 			},
 		},
 		{
@@ -384,8 +450,8 @@ func TestRegisterQueue(t *testing.T) {
 			settings: map[string]string{"reset_time": "05:00"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.Equal(t, "queue_reset_time", resolver.Calls[0])
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
+				assert.Equal(t, "queue_reset_time", resolverCalls[0])
 			},
 		},
 		{
@@ -395,10 +461,10 @@ func TestRegisterQueue(t *testing.T) {
 			settings: map[string]string{"ticket_prefix": "JS"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.Equal(t, "JS", repo.lastPrefix)
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
+				assert.Equal(t, "JS", tracker.LastPrefix)
 				assert.Equal(t, "JS001", res.TicketNo)
-				assert.Contains(t, resolver.Calls, "ticket_prefix")
+				assert.Contains(t, resolverCalls, "ticket_prefix")
 			},
 		},
 		{
@@ -407,8 +473,8 @@ func TestRegisterQueue(t *testing.T) {
 			req:      &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.Equal(t, "A", repo.lastPrefix)
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
+				assert.Equal(t, "A", tracker.LastPrefix)
 				assert.Equal(t, "A001", res.TicketNo)
 			},
 		},
@@ -419,9 +485,9 @@ func TestRegisterQueue(t *testing.T) {
 			settings: map[string]string{"numbering_strategy": "sequential"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
 				assert.Equal(t, 1, res.QueueNo)
-				assert.Contains(t, resolver.Calls, "numbering_strategy")
+				assert.Contains(t, resolverCalls, "numbering_strategy")
 			},
 		},
 		{
@@ -431,7 +497,7 @@ func TestRegisterQueue(t *testing.T) {
 			settings: map[string]string{"numbering_strategy": "random"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
 				assert.Equal(t, 1, res.QueueNo)
 				assert.Equal(t, "A001", res.TicketNo)
 			},
@@ -447,7 +513,7 @@ func TestRegisterQueue(t *testing.T) {
 			name:     "Negative_DuplicateReturnsConflict",
 			category: "negative",
 			req:      &model.RegisterQueueRequest{ServiceID: "s-1", PatientName: "John Doe"},
-			repo:     &stubQueueRepo{exists: true},
+			repoCfg:  mockQueueRepoConfig{exists: true},
 			tenantID: "t-1",
 			branchID: "b-1",
 			wantErr:  exception.ErrConflict,
@@ -472,7 +538,7 @@ func TestRegisterQueue(t *testing.T) {
 			req:      &model.RegisterQueueRequest{ServiceID: "s-1", PatientName: "John'; DROP TABLE queues;--"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
 				assert.Equal(t, "John&#39;; DROP TABLE queues;--", res.PatientName)
 			},
 		},
@@ -483,22 +549,22 @@ func TestRegisterQueue(t *testing.T) {
 			settings: map[string]string{"queue_reset_time": "04:00", "ticket_prefix": "P"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
-				assert.NotEmpty(t, repo.q)
-				assert.NotEmpty(t, repo.j)
-				assert.NotEmpty(t, repo.visit)
-				assert.Equal(t, "P", repo.lastPrefix)
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
+				assert.NotEmpty(t, tracker.Queue)
+				assert.NotEmpty(t, tracker.Journey)
+				assert.NotEmpty(t, tracker.Visit)
+				assert.Equal(t, "P", tracker.LastPrefix)
 			},
 		},
 		{
 			name:     "Positive_EstimateUsesQueueLeftTimesEffectiveDuration",
 			category: "positive",
-			repo:     &stubQueueRepo{waitingLeft: 4},
+			repoCfg:  mockQueueRepoConfig{waitingLeft: 4},
 			req:      &model.RegisterQueueRequest{ServiceID: "svc-1", PatientName: "John Doe"},
 			settings: map[string]string{"default_estimated_duration": "5"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, resolver *stubSettingsResolver, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, resolverCalls []string, res *model.QueueResponse) {
 				require.NotNil(t, res.QueueLeft)
 				require.NotNil(t, res.EstimateMinutes)
 				assert.Equal(t, 4, *res.QueueLeft)
@@ -509,19 +575,13 @@ func TestRegisterQueue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
-			}
-			resolver := &stubSettingsResolver{values: tt.settings}
-			uc := NewQueueUseCase(repo, resolver, nil)
+			mockRepo, tracker := newMockQueueRepo(t, tt.repoCfg)
+			resolver, calls := newMockSettingsResolver(t, tt.settings)
+			uc := usecase.NewQueueUseCase(mockRepo, resolver, nil)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
-			}
-			if tt.branchID != "" {
-				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
@@ -536,7 +596,7 @@ func TestRegisterQueue(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, res)
 			if tt.wantRes != nil {
-				tt.wantRes(t, repo, resolver, res)
+				tt.wantRes(t, tracker, *calls, res)
 			}
 		})
 	}
@@ -546,7 +606,7 @@ func TestAttachQueueEstimate(t *testing.T) {
 	tests := []struct {
 		name         string
 		category     string
-		repo         *stubQueueRepo
+		repoCfg      mockQueueRepoConfig
 		settings     map[string]string
 		res          model.QueueResponse
 		wantLeft     int
@@ -555,7 +615,7 @@ func TestAttachQueueEstimate(t *testing.T) {
 		{
 			name:     "Positive_WaitingUsesQueueLeftTimesEffectiveDuration",
 			category: "positive",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				j:           &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", Status: entity.JourneyStatusPending},
 				waitingLeft: 4,
 			},
@@ -567,7 +627,7 @@ func TestAttachQueueEstimate(t *testing.T) {
 		{
 			name:         "Edge_ServingReturnsZeroQueueLeftAndEstimate",
 			category:     "edge",
-			repo:         &stubQueueRepo{waitingLeft: 4},
+			repoCfg:      mockQueueRepoConfig{waitingLeft: 4},
 			settings:     map[string]string{"default_estimated_duration": "5"},
 			res:          model.QueueResponse{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1", QueueDate: "2026-07-07", QueueNo: 5, Status: entity.QueueStatusServing},
 			wantLeft:     0,
@@ -576,7 +636,7 @@ func TestAttachQueueEstimate(t *testing.T) {
 		{
 			name:     "Edge_InvalidDurationReturnsZeroEstimate",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				j:           &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", Status: entity.JourneyStatusPending},
 				waitingLeft: 4,
 			},
@@ -589,10 +649,12 @@ func TestAttachQueueEstimate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := NewQueueUseCase(tt.repo, &stubSettingsResolver{values: tt.settings}, nil).(*queueUseCase)
+			mockRepo, _ := newMockQueueRepo(t, tt.repoCfg)
+			resolver, _ := newMockSettingsResolver(t, tt.settings)
+			uc := usecase.NewQueueUseCase(mockRepo, resolver, nil)
 			res := tt.res
 
-			err := uc.attachQueueEstimate(context.Background(), &res)
+			err := usecase.AttachQueueEstimate(context.Background(), uc, &res)
 
 			require.NoError(t, err)
 			require.NotNil(t, res.QueueLeft)
@@ -609,21 +671,22 @@ func TestAttachQueueEstimate(t *testing.T) {
 
 func TestForwardQueue(t *testing.T) {
 	tests := []struct {
-		name      string
-		category  string
-		repo      *stubQueueRepo
-		validator *stubRelationValidator
-		queueID   string
-		req       *model.ForwardQueueRequest
-		tenantID  string
-		branchID  string
-		wantErr   error
-		wantRes   func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse)
+		name         string
+		category     string
+		repoCfg      mockQueueRepoConfig
+		validatorErr error
+		hasValidator bool
+		queueID      string
+		req          *model.ForwardQueueRequest
+		tenantID     string
+		branchID     string
+		wantErr      error
+		wantRes      func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse)
 	}{
 		{
 			name:     "Positive_Success",
 			category: "positive",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", TicketNo: "A001", QueueNo: 1, Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
 			},
@@ -631,7 +694,7 @@ func TestForwardQueue(t *testing.T) {
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "s-2"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, "q-1", res.ID)
 				assert.NotEqual(t, "j-1", res.CurrentJourneyID)
 			},
@@ -646,7 +709,7 @@ func TestForwardQueue(t *testing.T) {
 		{
 			name:     "Edge_SameServiceStillCreatesJourney",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "s-1", SeqNo: 1, Status: entity.JourneyStatusPending},
 			},
@@ -654,14 +717,14 @@ func TestForwardQueue(t *testing.T) {
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "s-1"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.NotEmpty(t, res.CurrentJourneyID)
 			},
 		},
 		{
 			name:     "Edge_MissingActiveJourneyRejected",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", CurrentJourneyID: "j-missing"},
 			},
 			queueID:  "q-1",
@@ -673,7 +736,7 @@ func TestForwardQueue(t *testing.T) {
 		{
 			name:     "Vulnerability_CrossTenantRejected",
 			category: "vulnerability",
-			repo:     &stubQueueRepo{err: exception.ErrNotFound},
+			repoCfg:  mockQueueRepoConfig{err: exception.ErrNotFound},
 			queueID:  "q-1",
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "s-2"},
 			tenantID: "other-tenant",
@@ -683,21 +746,22 @@ func TestForwardQueue(t *testing.T) {
 		{
 			name:     "Negative_InvalidDestinationRelationRejected",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
-			validator: &stubRelationValidator{err: exception.ErrForbidden},
-			queueID:   "q-1",
-			req:       &model.ForwardQueueRequest{DestinationServiceID: "s-2", DestinationCounterID: "c-2"},
-			tenantID:  "t-1",
-			branchID:  "b-1",
-			wantErr:   exception.ErrForbidden,
+			hasValidator: true,
+			validatorErr: exception.ErrForbidden,
+			queueID:      "q-1",
+			req:          &model.ForwardQueueRequest{DestinationServiceID: "s-2", DestinationCounterID: "c-2"},
+			tenantID:     "t-1",
+			branchID:     "b-1",
+			wantErr:      exception.ErrForbidden,
 		},
 		{
 			name:     "Positive_PharmacyFlowKeepsSingleQueueRecord",
 			category: "positive",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -705,33 +769,27 @@ func TestForwardQueue(t *testing.T) {
 			req:      &model.ForwardQueueRequest{DestinationServiceID: "pharmacy-svc"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, "q-1", res.ID)
-				assert.NotEmpty(t, repo.q)
-				assert.NotEqual(t, "j-1", repo.j.ID)
-				assert.NotEmpty(t, repo.visit)
+				assert.NotEmpty(t, tracker.Queue)
+				assert.NotEqual(t, "j-1", tracker.Journey.ID)
+				assert.NotEmpty(t, tracker.Visit)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
+			mockRepo, tracker := newMockQueueRepo(t, tt.repoCfg)
+			var val usecase.RelationValidator
+			if tt.hasValidator {
+				val = newMockRelationValidator(t, tt.validatorErr)
 			}
-			var val RelationValidator
-			if tt.validator != nil {
-				val = tt.validator
-			}
-			uc := NewQueueUseCase(repo, nil, val)
+			uc := usecase.NewQueueUseCase(mockRepo, nil, val)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
-			}
-			if tt.branchID != "" {
-				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
@@ -745,7 +803,7 @@ func TestForwardQueue(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, repo, res)
+				tt.wantRes(t, tracker, res)
 			}
 		})
 	}
@@ -759,19 +817,19 @@ func TestTransitionQueue(t *testing.T) {
 	tests := []struct {
 		name     string
 		category string
-		repo     *stubQueueRepo
+		repoCfg  mockQueueRepoConfig
 		settings map[string]string
 		queueID  string
 		req      *model.QueueTransitionRequest
 		tenantID string
 		branchID string
 		wantErr  error
-		wantRes  func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse)
+		wantRes  func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse)
 	}{
 		{
 			name:     "Positive_SuccessCalling",
 			category: "positive",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -779,16 +837,16 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCalling, res.Status)
-				assert.Equal(t, entity.JourneyStatusCalling, repo.j.Status)
-				assert.Equal(t, "call", repo.visit.EventType)
+				assert.Equal(t, entity.JourneyStatusCalling, tracker.Journey.Status)
+				assert.Equal(t, "call", tracker.Visit.EventType)
 			},
 		},
 		{
 			name:     "Positive_SuccessCancel",
 			category: "positive",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
 			},
@@ -796,14 +854,14 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCanceled, res.Status)
 			},
 		},
 		{
 			name:     "Edge_RecallWhenAllowRecallTrue",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
 			},
@@ -812,15 +870,15 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCall},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCalling, res.Status)
-				assert.Equal(t, "recall", repo.visit.EventType)
+				assert.Equal(t, "recall", tracker.Visit.EventType)
 			},
 		},
 		{
 			name:     "Negative_RecallWhenAllowRecallFalse",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
 			},
@@ -834,7 +892,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Vulnerability_RecallRejectsMismatchedJourneyState",
 			category: "vulnerability",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -848,7 +906,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Negative_SkipWhenAllowSkipFalse",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -862,7 +920,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Negative_CancelWhenAllowCancelFalse",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -876,7 +934,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Positive_SuccessSkip",
 			category: "positive",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -884,14 +942,14 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionSkip},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusSkipped, res.Status)
 			},
 		},
 		{
 			name:     "Edge_ServingFromCalling",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
 			},
@@ -899,14 +957,14 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionServe},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusServing, res.Status)
 			},
 		},
 		{
 			name:     "Edge_SkipFromCalling",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCalling},
 			},
@@ -914,16 +972,16 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionSkip},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusSkipped, res.Status)
-				assert.Equal(t, entity.JourneyStatusSkipped, repo.j.Status)
-				assert.Equal(t, "skip", repo.visit.EventType)
+				assert.Equal(t, entity.JourneyStatusSkipped, tracker.Journey.Status)
+				assert.Equal(t, "skip", tracker.Visit.EventType)
 			},
 		},
 		{
 			name:     "Edge_CancelFromWaiting",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -931,16 +989,16 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCanceled, res.Status)
-				assert.Equal(t, entity.JourneyStatusCanceled, repo.j.Status)
-				assert.Equal(t, "cancel", repo.visit.EventType)
+				assert.Equal(t, entity.JourneyStatusCanceled, tracker.Journey.Status)
+				assert.Equal(t, "cancel", tracker.Visit.EventType)
 			},
 		},
 		{
 			name:     "Edge_CompleteAfterServing",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusServing, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusServing},
 			},
@@ -948,14 +1006,14 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionComplete},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCompleted, res.Status)
 			},
 		},
 		{
 			name:     "Edge_AutoCallNextAfterComplete",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q:           &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusServing, CurrentJourneyID: "j-1", QueueDate: "2026-07-03"},
 				j:           &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusServing, ServiceID: "svc-1"},
 				nextWaiting: &entity.Queue{ID: "q-2", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-2", QueueDate: "2026-07-03"},
@@ -971,15 +1029,15 @@ func TestTransitionQueue(t *testing.T) {
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionComplete},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res *model.QueueResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res *model.QueueResponse) {
 				assert.Equal(t, entity.QueueStatusCompleted, res.Status)
-				assert.Equal(t, "call", repo.visit.EventType)
+				assert.Equal(t, "call", tracker.Visit.EventType)
 			},
 		},
 		{
 			name:     "Negative_InvalidStateChange",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCompleted},
 			},
@@ -992,7 +1050,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Negative_ServeFromSkippedRejected",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusSkipped, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusSkipped},
 			},
@@ -1005,7 +1063,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Vulnerability_ServeRejectsMismatchedJourneyState",
 			category: "vulnerability",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCalling, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -1018,7 +1076,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Negative_CompleteFromWaitingRejected",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -1031,7 +1089,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Edge_CancelTerminalStateRejected",
 			category: "edge",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCanceled, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusCanceled},
 			},
@@ -1044,7 +1102,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Negative_EmptyAction",
 			category: "negative",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 				j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.JourneyStatusPending},
 			},
@@ -1057,7 +1115,7 @@ func TestTransitionQueue(t *testing.T) {
 		{
 			name:     "Vulnerability_CrossTenantRejected",
 			category: "vulnerability",
-			repo:     &stubQueueRepo{err: exception.ErrNotFound},
+			repoCfg:  mockQueueRepoConfig{err: exception.ErrNotFound},
 			queueID:  "q-1",
 			req:      &model.QueueTransitionRequest{Action: model.QueueActionCancel},
 			tenantID: "other-tenant",
@@ -1068,15 +1126,12 @@ func TestTransitionQueue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
-			}
-			var settings SettingsResolver
+			mockRepo, tracker := newMockQueueRepo(t, tt.repoCfg)
+			var settings usecase.SettingsResolver
 			if tt.settings != nil {
-				settings = &stubSettingsResolver{values: tt.settings}
+				settings, _ = newMockSettingsResolver(t, tt.settings)
 			}
-			uc := NewQueueUseCase(repo, settings, nil)
+			uc := usecase.NewQueueUseCase(mockRepo, settings, nil)
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
@@ -1093,18 +1148,19 @@ func TestTransitionQueue(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, repo, res)
+				tt.wantRes(t, tracker, res)
 			}
 		})
 	}
 }
 
 func TestQueueJourneyLifecycle(t *testing.T) {
-	repo := &stubQueueRepo{
+	mockRepo, tracker := newMockQueueRepo(t, mockQueueRepoConfig{
 		q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, CurrentJourneyID: "j-1"},
 		j: &entity.QueueJourney{ID: "j-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", Status: entity.JourneyStatusPending},
-	}
-	uc := NewQueueUseCase(repo, &stubSettingsResolver{values: map[string]string{"allow_recall": "true", "allow_skip": "true"}}, nil)
+	})
+	mockSettings, _ := newMockSettingsResolver(t, map[string]string{"allow_recall": "true", "allow_skip": "true"})
+	uc := usecase.NewQueueUseCase(mockRepo, mockSettings, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
 	ctx = database.SetBranchContext(ctx, "b-1")
 
@@ -1126,7 +1182,7 @@ func TestQueueJourneyLifecycle(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, step.wantStatus, res.Status)
-			assert.Equal(t, step.wantEvent, repo.visit.EventType)
+			assert.Equal(t, step.wantEvent, tracker.Visit.EventType)
 		})
 	}
 }
@@ -1139,7 +1195,7 @@ func TestListQueues(t *testing.T) {
 	tests := []struct {
 		name     string
 		category string
-		repo     *stubQueueRepo
+		repoCfg  mockQueueRepoConfig
 		req      model.ListQueuesRequest
 		tenantID string
 		branchID string
@@ -1150,7 +1206,7 @@ func TestListQueues(t *testing.T) {
 		{
 			name:     "Positive_Success",
 			category: "positive",
-			repo:     &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}},
+			repoCfg:  mockQueueRepoConfig{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}}},
 			req:      model.ListQueuesRequest{},
 			tenantID: "t-1",
 			branchID: "b-1",
@@ -1160,14 +1216,14 @@ func TestListQueues(t *testing.T) {
 		{
 			name:     "Negative_MissingTenantOrBranch",
 			category: "negative",
-			repo:     &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1"}}},
+			repoCfg:  mockQueueRepoConfig{queues: []*entity.Queue{{ID: "q-1"}}},
 			req:      model.ListQueuesRequest{},
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
 			name:     "Edge_StatusFilter",
 			category: "edge",
-			repo:     &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted}}},
+			repoCfg:  mockQueueRepoConfig{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusCompleted}}},
 			req:      model.ListQueuesRequest{Status: entity.QueueStatusCompleted},
 			tenantID: "t-1",
 			branchID: "b-1",
@@ -1177,7 +1233,7 @@ func TestListQueues(t *testing.T) {
 		{
 			name:     "Positive_QueueDateFilter",
 			category: "positive",
-			repo:     &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-23", Status: entity.QueueStatusWaiting}}},
+			repoCfg:  mockQueueRepoConfig{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-24", Status: entity.QueueStatusWaiting}, {ID: "q-2", TenantID: "t-1", BranchID: "b-1", QueueDate: "2026-06-23", Status: entity.QueueStatusWaiting}}},
 			req:      model.ListQueuesRequest{QueueDate: "2026-06-24"},
 			tenantID: "t-1",
 			branchID: "b-1",
@@ -1187,7 +1243,7 @@ func TestListQueues(t *testing.T) {
 		{
 			name:     "Vulnerability_PassesScopedFiltersOnly",
 			category: "vulnerability",
-			repo:     &stubQueueRepo{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, QueueDate: "2026-06-24", CurrentJourneyID: "svc-1"}}},
+			repoCfg:  mockQueueRepoConfig{queues: []*entity.Queue{{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting, QueueDate: "2026-06-24", CurrentJourneyID: "svc-1"}}},
 			req:      model.ListQueuesRequest{Status: entity.QueueStatusWaiting, QueueDate: "2026-06-24", ServiceID: "svc-1"},
 			tenantID: "tenant-safe",
 			branchID: "branch-safe",
@@ -1197,21 +1253,12 @@ func TestListQueues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
-			}
-			uc := NewQueueUseCase(repo, nil, nil)
+			mockRepo, tracker := newMockQueueRepo(t, tt.repoCfg)
+			uc := usecase.NewQueueUseCase(mockRepo, nil, nil)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
-			}
-			if tt.branchID != "" {
-				ctx = database.SetBranchContext(ctx, tt.branchID)
-			}
-			if tt.branchID != "" {
-				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
@@ -1229,7 +1276,7 @@ func TestListQueues(t *testing.T) {
 				assert.Equal(t, tt.wantID, res[0].ID)
 			}
 			if tt.name == "Vulnerability_PassesScopedFiltersOnly" {
-				assert.Equal(t, tt.req, repo.listReq)
+				assert.Equal(t, tt.req, tracker.ListReq)
 			}
 		})
 	}
@@ -1241,15 +1288,16 @@ func TestListQueues(t *testing.T) {
 
 func TestListActiveJourneys(t *testing.T) {
 	tests := []struct {
-		name      string
-		category  string
-		repo      *stubQueueRepo
-		validator *stubRelationValidator
-		req       model.QueueJourneyListRequest
-		tenantID  string
-		branchID  string
-		wantErr   error
-		wantRes   func(t *testing.T, repo *stubQueueRepo, res []model.QueueJourneyResponse)
+		name         string
+		category     string
+		repoCfg      mockQueueRepoConfig
+		validatorErr error
+		hasValidator bool
+		req          model.QueueJourneyListRequest
+		tenantID     string
+		branchID     string
+		wantErr      error
+		wantRes      func(t *testing.T, tracker *mockRepoTracker, res []model.QueueJourneyResponse)
 	}{
 		{
 			name:     "Positive_Success",
@@ -1257,7 +1305,7 @@ func TestListActiveJourneys(t *testing.T) {
 			req:      model.QueueJourneyListRequest{ServiceID: "svc-1", QueueDate: "2026-06-24"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res []model.QueueJourneyResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res []model.QueueJourneyResponse) {
 				require.Len(t, res, 1)
 				assert.Equal(t, "svc-1", res[0].ServiceID)
 				assert.Equal(t, entity.JourneyStatusCalling, res[0].Status)
@@ -1270,13 +1318,14 @@ func TestListActiveJourneys(t *testing.T) {
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
-			name:      "Negative_InvalidServiceRelationRejected",
-			category:  "negative",
-			validator: &stubRelationValidator{err: exception.ErrForbidden},
-			req:       model.QueueJourneyListRequest{ServiceID: "svc-foreign"},
-			tenantID:  "t-1",
-			branchID:  "b-1",
-			wantErr:   exception.ErrForbidden,
+			name:         "Negative_InvalidServiceRelationRejected",
+			category:     "negative",
+			hasValidator: true,
+			validatorErr: exception.ErrForbidden,
+			req:          model.QueueJourneyListRequest{ServiceID: "svc-foreign"},
+			tenantID:     "t-1",
+			branchID:     "b-1",
+			wantErr:      exception.ErrForbidden,
 		},
 		{
 			name:     "Edge_CounterFilter",
@@ -1284,7 +1333,7 @@ func TestListActiveJourneys(t *testing.T) {
 			req:      model.QueueJourneyListRequest{CounterID: "counter-1"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res []model.QueueJourneyResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res []model.QueueJourneyResponse) {
 				require.Len(t, res, 1)
 				assert.Equal(t, "counter-1", res[0].CounterID)
 			},
@@ -1292,22 +1341,23 @@ func TestListActiveJourneys(t *testing.T) {
 		{
 			name:     "Edge_EmptyList",
 			category: "edge",
-			repo:     &stubQueueRepo{journeyList: []*entity.QueueJourney{}},
+			repoCfg:  mockQueueRepoConfig{journeyList: []*entity.QueueJourney{}},
 			req:      model.QueueJourneyListRequest{ServiceID: "svc-1"},
 			tenantID: "t-1",
 			branchID: "b-1",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res []model.QueueJourneyResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res []model.QueueJourneyResponse) {
 				assert.Empty(t, res)
 			},
 		},
 		{
-			name:      "Negative_InvalidCounterRelationRejected",
-			category:  "negative",
-			validator: &stubRelationValidator{err: exception.ErrForbidden},
-			req:       model.QueueJourneyListRequest{CounterID: "counter-foreign"},
-			tenantID:  "t-1",
-			branchID:  "b-1",
-			wantErr:   exception.ErrForbidden,
+			name:         "Negative_InvalidCounterRelationRejected",
+			category:     "negative",
+			hasValidator: true,
+			validatorErr: exception.ErrForbidden,
+			req:          model.QueueJourneyListRequest{CounterID: "counter-foreign"},
+			tenantID:     "t-1",
+			branchID:     "b-1",
+			wantErr:      exception.ErrForbidden,
 		},
 		{
 			name:     "Vulnerability_ScopedTenantPassThrough",
@@ -1315,33 +1365,27 @@ func TestListActiveJourneys(t *testing.T) {
 			req:      model.QueueJourneyListRequest{ServiceID: "svc-1"},
 			tenantID: "tenant-safe",
 			branchID: "branch-safe",
-			wantRes: func(t *testing.T, repo *stubQueueRepo, res []model.QueueJourneyResponse) {
+			wantRes: func(t *testing.T, tracker *mockRepoTracker, res []model.QueueJourneyResponse) {
 				require.Len(t, res, 1)
-				assert.Equal(t, "tenant-safe", repo.journeyTenantID)
-				assert.Equal(t, "branch-safe", repo.journeyBranchID)
-				assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1"}, repo.journeyReq)
+				assert.Equal(t, "tenant-safe", tracker.JourneyTenantID)
+				assert.Equal(t, "branch-safe", tracker.JourneyBranchID)
+				assert.Equal(t, model.QueueJourneyListRequest{ServiceID: "svc-1"}, tracker.JourneyReq)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
+			mockRepo, tracker := newMockQueueRepo(t, tt.repoCfg)
+			var val usecase.RelationValidator
+			if tt.hasValidator {
+				val = newMockRelationValidator(t, tt.validatorErr)
 			}
-			var val RelationValidator
-			if tt.validator != nil {
-				val = tt.validator
-			}
-			uc := NewQueueUseCase(repo, nil, val)
+			uc := usecase.NewQueueUseCase(mockRepo, nil, val)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
-			}
-			if tt.branchID != "" {
-				ctx = database.SetBranchContext(ctx, tt.branchID)
 			}
 			if tt.branchID != "" {
 				ctx = database.SetBranchContext(ctx, tt.branchID)
@@ -1355,7 +1399,7 @@ func TestListActiveJourneys(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if tt.wantRes != nil {
-				tt.wantRes(t, repo, res)
+				tt.wantRes(t, tracker, res)
 			}
 		})
 	}
@@ -1369,7 +1413,7 @@ func TestGetVisitJourneys(t *testing.T) {
 	tests := []struct {
 		name     string
 		category string
-		repo     *stubQueueRepo
+		repoCfg  mockQueueRepoConfig
 		queueID  string
 		tenantID string
 		branchID string
@@ -1379,7 +1423,7 @@ func TestGetVisitJourneys(t *testing.T) {
 		{
 			name:     "Positive_Success",
 			category: "positive",
-			repo: &stubQueueRepo{
+			repoCfg: mockQueueRepoConfig{
 				q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1"},
 				visits: []*entity.VisitJourney{
 					{ID: "v-1", QueueID: "q-1", TenantID: "t-1", BranchID: "b-1", EventType: "registration", CreatedAt: 100},
@@ -1411,7 +1455,7 @@ func TestGetVisitJourneys(t *testing.T) {
 		{
 			name:     "Edge_EmptyList",
 			category: "edge",
-			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1"}},
+			repoCfg:  mockQueueRepoConfig{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1"}},
 			queueID:  "q-1",
 			tenantID: "t-1",
 			branchID: "b-1",
@@ -1422,7 +1466,7 @@ func TestGetVisitJourneys(t *testing.T) {
 		{
 			name:     "Negative_QueueLookupFailureStopsVisitsRead",
 			category: "negative",
-			repo:     &stubQueueRepo{err: exception.ErrNotFound, visits: []*entity.VisitJourney{{ID: "v-1"}}},
+			repoCfg:  mockQueueRepoConfig{err: exception.ErrNotFound, visits: []*entity.VisitJourney{{ID: "v-1"}}},
 			queueID:  "q-1",
 			tenantID: "t-1",
 			branchID: "b-1",
@@ -1431,7 +1475,7 @@ func TestGetVisitJourneys(t *testing.T) {
 		{
 			name:     "Vulnerability_CrossTenantRejected",
 			category: "vulnerability",
-			repo:     &stubQueueRepo{err: exception.ErrNotFound},
+			repoCfg:  mockQueueRepoConfig{err: exception.ErrNotFound},
 			queueID:  "q-1",
 			tenantID: "other-tenant",
 			branchID: "b-1",
@@ -1440,7 +1484,7 @@ func TestGetVisitJourneys(t *testing.T) {
 		{
 			name:     "Negative_QueueLookupFailureStopsVisitsRead",
 			category: "negative",
-			repo:     &stubQueueRepo{err: exception.ErrNotFound, visits: []*entity.VisitJourney{{ID: "v-1"}}},
+			repoCfg:  mockQueueRepoConfig{err: exception.ErrNotFound, visits: []*entity.VisitJourney{{ID: "v-1"}}},
 			queueID:  "q-1",
 			tenantID: "t-1",
 			branchID: "b-1",
@@ -1450,11 +1494,8 @@ func TestGetVisitJourneys(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
-			}
-			uc := NewQueueUseCase(repo, nil, nil)
+			mockRepo, _ := newMockQueueRepo(t, tt.repoCfg)
+			uc := usecase.NewQueueUseCase(mockRepo, nil, nil)
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
@@ -1485,7 +1526,7 @@ func TestGetQueueByID(t *testing.T) {
 	tests := []struct {
 		name     string
 		category string
-		repo     *stubQueueRepo
+		repoCfg  mockQueueRepoConfig
 		tenantID string
 		branchID string
 		wantErr  error
@@ -1494,7 +1535,7 @@ func TestGetQueueByID(t *testing.T) {
 		{
 			name:     "Positive_Success",
 			category: "positive",
-			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
+			repoCfg:  mockQueueRepoConfig{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
 			tenantID: "t-1",
 			branchID: "b-1",
 			wantID:   "q-1",
@@ -1502,14 +1543,14 @@ func TestGetQueueByID(t *testing.T) {
 		{
 			name:     "Negative_MissingBranch",
 			category: "negative",
-			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
+			repoCfg:  mockQueueRepoConfig{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
 			tenantID: "t-1",
 			wantErr:  exception.ErrBadRequest,
 		},
 		{
 			name:     "Negative_EmptyQueueID",
 			category: "negative",
-			repo:     &stubQueueRepo{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
+			repoCfg:  mockQueueRepoConfig{q: &entity.Queue{ID: "q-1", TenantID: "t-1", BranchID: "b-1", Status: entity.QueueStatusWaiting}},
 			tenantID: "t-1",
 			branchID: "b-1",
 			wantErr:  exception.ErrBadRequest,
@@ -1518,7 +1559,7 @@ func TestGetQueueByID(t *testing.T) {
 		{
 			name:     "Vulnerability_CrossTenantRejected",
 			category: "vulnerability",
-			repo:     &stubQueueRepo{err: exception.ErrNotFound},
+			repoCfg:  mockQueueRepoConfig{err: exception.ErrNotFound},
 			tenantID: "other-tenant",
 			branchID: "b-1",
 			wantErr:  exception.ErrNotFound,
@@ -1527,11 +1568,8 @@ func TestGetQueueByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
-			}
-			uc := NewQueueUseCase(repo, nil, nil)
+			mockRepo, _ := newMockQueueRepo(t, tt.repoCfg)
+			uc := usecase.NewQueueUseCase(mockRepo, nil, nil)
 			ctx := context.Background()
 			if tt.tenantID != "" {
 				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
@@ -1563,19 +1601,20 @@ func TestGetQueueByID(t *testing.T) {
 
 func TestGetQueueStats(t *testing.T) {
 	tests := []struct {
-		name      string
-		category  string
-		repo      *stubQueueRepo
-		validator *stubRelationValidator
-		tenantID  string
-		branchID  string
-		wantErr   error
-		wantRes   func(t *testing.T, res *model.QueueStatsResponse)
+		name         string
+		category     string
+		repoCfg      mockQueueRepoConfig
+		validatorErr error
+		hasValidator bool
+		tenantID     string
+		branchID     string
+		wantErr      error
+		wantRes      func(t *testing.T, res *model.QueueStatsResponse)
 	}{
 		{
 			name:     "Positive_Success",
 			category: "positive",
-			repo:     &stubQueueRepo{statsRes: model.QueueStatsResponse{TotalQueuesToday: 5, TotalActiveJourneys: 3}},
+			repoCfg:  mockQueueRepoConfig{statsRes: model.QueueStatsResponse{TotalQueuesToday: 5, TotalActiveJourneys: 3}},
 			tenantID: "t-1",
 			branchID: "b-1",
 			wantRes: func(t *testing.T, res *model.QueueStatsResponse) {
@@ -1584,17 +1623,18 @@ func TestGetQueueStats(t *testing.T) {
 			},
 		},
 		{
-			name:      "Negative_InvalidBranchRelationRejected",
-			category:  "negative",
-			validator: &stubRelationValidator{err: exception.ErrForbidden},
-			tenantID:  "t-1",
-			branchID:  "branch-foreign",
-			wantErr:   exception.ErrForbidden,
+			name:         "Negative_InvalidBranchRelationRejected",
+			category:     "negative",
+			hasValidator: true,
+			validatorErr: exception.ErrForbidden,
+			tenantID:     "t-1",
+			branchID:     "branch-foreign",
+			wantErr:      exception.ErrForbidden,
 		},
 		{
 			name:     "Edge_ZeroStatsAllowed",
 			category: "edge",
-			repo:     &stubQueueRepo{statsRes: model.QueueStatsResponse{}},
+			repoCfg:  mockQueueRepoConfig{statsRes: model.QueueStatsResponse{}},
 			tenantID: "t-1",
 			branchID: "b-1",
 			wantRes: func(t *testing.T, res *model.QueueStatsResponse) {
@@ -1612,15 +1652,12 @@ func TestGetQueueStats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := tt.repo
-			if repo == nil {
-				repo = &stubQueueRepo{}
+			mockRepo, _ := newMockQueueRepo(t, tt.repoCfg)
+			var val usecase.RelationValidator
+			if tt.hasValidator {
+				val = newMockRelationValidator(t, tt.validatorErr)
 			}
-			var val RelationValidator
-			if tt.validator != nil {
-				val = tt.validator
-			}
-			uc := NewQueueUseCase(repo, nil, val)
+			uc := usecase.NewQueueUseCase(mockRepo, nil, val)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -1680,7 +1717,7 @@ func TestComputeBusinessQueueDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := computeBusinessQueueDate(tt.time, tt.resetTime)
+			got := usecase.ComputeBusinessQueueDate(tt.time, tt.resetTime)
 			assert.Equal(t, tt.want, got)
 		})
 	}

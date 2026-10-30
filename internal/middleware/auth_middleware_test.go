@@ -1,13 +1,13 @@
 package middleware_test
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/middleware"
+	"github.com/Roisfaozi/queue-base/internal/mocking"
 	"github.com/Roisfaozi/queue-base/internal/modules/auth/model"
 	authMocks "github.com/Roisfaozi/queue-base/internal/modules/auth/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/jwt"
@@ -26,23 +26,6 @@ func (w *NoOpWriter) Write([]byte) (int, error) {
 
 func (w *NoOpWriter) Levels() []logrus.Level {
 	return logrus.AllLevels
-}
-
-type MockTicketManager struct {
-	mock.Mock
-}
-
-func (m *MockTicketManager) CreateTicket(ctx context.Context, userID, orgID, sessionID, role, username string) (string, error) {
-	args := m.Called(ctx, userID, orgID, sessionID, role, username)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockTicketManager) ValidateTicket(ctx context.Context, ticket string) (*ws.UserContext, error) {
-	args := m.Called(ctx, ticket)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*ws.UserContext), args.Error(1)
 }
 
 func TestAuthMiddleware_ValidToken(t *testing.T) {
@@ -76,7 +59,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
 				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(&model.Auth{ID: claims.SessionID}, nil)
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				authMiddleware.ValidateToken()(c)
@@ -117,7 +100,7 @@ func TestAuthMiddleware_NoToken(t *testing.T) {
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				authMiddleware.ValidateToken()(c)
@@ -157,7 +140,7 @@ func TestAuthMiddleware_InvalidTokenFormat(t *testing.T) {
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				authMiddleware.ValidateToken()(c)
@@ -199,7 +182,7 @@ func TestAuthMiddleware_InvalidTokenSignature(t *testing.T) {
 
 				mockAuthUseCase.On("ValidateAccessToken", "invalid.signature.token").Return(nil, errors.New("invalid signature"))
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				authMiddleware.ValidateToken()(c)
@@ -241,7 +224,7 @@ func TestAuthMiddleware_ExpiredToken(t *testing.T) {
 
 				mockAuthUseCase.On("ValidateAccessToken", "expired_token").Return(nil, errors.New("token is expired"))
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				authMiddleware.ValidateToken()(c)
@@ -291,7 +274,7 @@ func TestAuthMiddleware_SessionRevoked(t *testing.T) {
 				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
 				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(nil, nil) // Return nil session = revoked
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				authMiddleware.ValidateToken()(c)
@@ -340,7 +323,7 @@ func TestAuthMiddleware_SessionVerifyError(t *testing.T) {
 				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
 				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(nil, errors.New("database error"))
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				authMiddleware.ValidateToken()(c)
@@ -384,7 +367,7 @@ func TestAuthMiddleware_ContextSet(t *testing.T) {
 				mockAuthUseCase.On("ValidateAccessToken", "valid_token").Return(claims, nil)
 				mockAuthUseCase.On("Verify", mock.Anything, claims.UserID, claims.SessionID).Return(&model.Auth{ID: claims.SessionID}, nil)
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				r := gin.New()
@@ -431,7 +414,7 @@ func TestAuthMiddleware_SkipsJWTValidationForAPIKeyAuth(t *testing.T) {
 				mockAuthUseCase := new(authMocks.MockAuthUseCase)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(mockAuthUseCase, logger, mockTicketManager)
 
 				r := gin.New()
@@ -491,7 +474,7 @@ func TestAuthMiddleware_ValidateWebSocketToken_Success(t *testing.T) {
 					OrganizationID: "org789",
 				}
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				mockTicketManager.On("ValidateTicket", mock.Anything, "valid_ticket").Return(userCtx, nil)
 
 				authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
@@ -533,7 +516,7 @@ func TestAuthMiddleware_ValidateWebSocketToken_NoTicket(t *testing.T) {
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)
 				authMiddleware.ValidateWebSocketToken()(c)
 
@@ -568,7 +551,7 @@ func TestAuthMiddleware_ValidateWebSocketToken_InvalidTicket(t *testing.T) {
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
-				mockTicketManager := new(MockTicketManager)
+				mockTicketManager := new(mocking.MockTicketManager)
 				mockTicketManager.On("ValidateTicket", mock.Anything, "invalid_ticket").Return(nil, errors.New("invalid ticket"))
 
 				authMiddleware := middleware.NewAuthMiddleware(nil, logger, mockTicketManager)

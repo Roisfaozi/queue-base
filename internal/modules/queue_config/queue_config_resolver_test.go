@@ -46,24 +46,26 @@ func TestQueueConfigResolver_Resolve(t *testing.T) {
 
 	tests := []struct {
 		name      string
+		category  string
 		key       string
 		branchID  string
 		serviceID string
 		counterID string
 		want      string
 	}{
-		{name: "Positive_InheritsTenantDefault", key: "ticket_prefix", branchID: "b-1", want: "A"},
-		{name: "Edge_NullBranchOverrideInheritsTenantDefault", key: "ticket_prefix", branchID: "b-2", want: "A"},
-		{name: "Positive_ResolvesBranchOverride", key: "queue_reset_time", branchID: "b-1", want: "05:00"},
-		{name: "Positive_ResolvesCounterOverride", key: "ticket_prefix", branchID: "b-1", counterID: "c-1", want: "C"},
-		{name: "Positive_ResolvesBranchServiceOverride", key: "default_estimated_duration", branchID: "b-1", serviceID: "svc-1", want: "20"},
-		{name: "Positive_ResolvesAutoCallNextFromTypedTable", key: "auto_call_next", branchID: "b-1", serviceID: "svc-1", want: "true"},
-		{name: "Negative_NoGenericFallback", key: "custom_theme_color", branchID: "b-1", want: ""},
-		{name: "Negative_LogoFallbackMiss", key: "logo_url", branchID: "b-1", want: ""},
+		{name: "Positive_InheritsTenantDefault", category: "positive", key: "ticket_prefix", branchID: "b-1", want: "A"},
+		{name: "Edge_NullBranchOverrideInheritsTenantDefault", category: "edge", key: "ticket_prefix", branchID: "b-2", want: "A"},
+		{name: "Positive_ResolvesBranchOverride", category: "positive", key: "queue_reset_time", branchID: "b-1", want: "05:00"},
+		{name: "Positive_ResolvesCounterOverride", category: "positive", key: "ticket_prefix", branchID: "b-1", counterID: "c-1", want: "C"},
+		{name: "Positive_ResolvesBranchServiceOverride", category: "positive", key: "default_estimated_duration", branchID: "b-1", serviceID: "svc-1", want: "20"},
+		{name: "Positive_ResolvesAutoCallNextFromTypedTable", category: "positive", key: "auto_call_next", branchID: "b-1", serviceID: "svc-1", want: "true"},
+		{name: "Negative_NoGenericFallback", category: "negative", key: "custom_theme_color", branchID: "b-1", want: ""},
+		{name: "Negative_LogoFallbackMiss", category: "negative", key: "logo_url", branchID: "b-1", want: ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEmpty(t, tt.category)
 			got, err := resolver.Resolve(ctx, tt.key, tt.branchID, tt.serviceID, tt.counterID)
 			if tt.name == "Negative_NoGenericFallback" || tt.name == "Negative_LogoFallbackMiss" {
 				require.Error(t, err)

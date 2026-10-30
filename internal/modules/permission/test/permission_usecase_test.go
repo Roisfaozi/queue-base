@@ -441,6 +441,7 @@ func TestGetPermissionsForRole(t *testing.T) {
 				role := "admin"
 				expectedPolicies := [][]string{{"admin", "path", "GET"}}
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{role}).Return(expectedPolicies, nil).Once()
+				deps.Enforcer.On("GetFilteredPolicy", 0, role).Return(expectedPolicies, nil).Once()
 
 				policies, err := uc.GetPermissionsForRole(context.Background(), role)
 				assert.NoError(t, err)
@@ -454,6 +455,7 @@ func TestGetPermissionsForRole(t *testing.T) {
 				deps, uc := setupPermissionTest()
 				role := "admin"
 				deps.Enforcer.On("GetFilteredPolicy", 0, []string{role}).Return(nil, errors.New("casbin error")).Once()
+				deps.Enforcer.On("GetFilteredPolicy", 0, role).Return(nil, errors.New("casbin error")).Once()
 
 				policies, err := uc.GetPermissionsForRole(context.Background(), role)
 				assert.Error(t, err)

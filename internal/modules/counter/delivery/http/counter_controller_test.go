@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,11 +10,13 @@ import (
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/counter/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,37 +34,6 @@ func newCounterTestValidator(t *testing.T) *validator.Validate {
 	return v
 }
 
-type stubCounterControllerUseCase struct {
-	createReq *model.CreateCounterRequest
-	updateReq *model.UpdateCounterRequest
-	createRes *model.CounterResponse
-	updateRes *model.CounterResponse
-	getRes    *model.CounterResponse
-	listRes   []model.CounterResponse
-}
-
-func (s *stubCounterControllerUseCase) CreateCounter(ctx context.Context, req *model.CreateCounterRequest) (*model.CounterResponse, error) {
-	s.createReq = req
-	return s.createRes, nil
-}
-
-func (s *stubCounterControllerUseCase) GetCounter(ctx context.Context, counterID string) (*model.CounterResponse, error) {
-	return s.getRes, nil
-}
-
-func (s *stubCounterControllerUseCase) ListCounters(ctx context.Context) ([]model.CounterResponse, error) {
-	return s.listRes, nil
-}
-
-func (s *stubCounterControllerUseCase) UpdateCounter(ctx context.Context, counterID string, req *model.UpdateCounterRequest) (*model.CounterResponse, error) {
-	s.updateReq = req
-	return s.updateRes, nil
-}
-
-func (s *stubCounterControllerUseCase) DeleteCounter(ctx context.Context, counterID string) error {
-	return nil
-}
-
 func TestCounterController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -71,38 +41,34 @@ func TestCounterController(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
-			setup    func() *stubCounterControllerUseCase
+			setup    func(t *testing.T) *mocks.MockCounterUseCase
 			wantCode int
-			assert   func(t *testing.T, uc *stubCounterControllerUseCase)
 		}{
 			{
 				name:    "Positive_CreateIncludesBranchID",
 				reqBody: model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Front Desk"},
-				setup: func() *stubCounterControllerUseCase {
-					return &stubCounterControllerUseCase{createRes: &model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}}
+				setup: func(t *testing.T) *mocks.MockCounterUseCase {
+					m := mocks.NewMockCounterUseCase(t)
+					m.On("CreateCounter", mock.Anything, mock.MatchedBy(func(req *model.CreateCounterRequest) bool {
+						return req != nil && req.BranchID == "550e8400-e29b-41d4-a716-446655440000"
+					})).Return(&model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusCreated,
-				assert: func(t *testing.T, uc *stubCounterControllerUseCase) {
-					require.NotNil(t, uc.createReq)
-					assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", uc.createReq.BranchID)
-				},
 			},
 			{
 				name:    "Negative_CreateRejectsInvalidBranchID",
 				reqBody: map[string]interface{}{"branch_id": "bad-id", "code": "A1", "name": "Front Desk"},
-				setup: func() *stubCounterControllerUseCase {
-					return &stubCounterControllerUseCase{}
+				setup: func(t *testing.T) *mocks.MockCounterUseCase {
+					return mocks.NewMockCounterUseCase(t)
 				},
 				wantCode: http.StatusUnprocessableEntity,
-				assert: func(t *testing.T, uc *stubCounterControllerUseCase) {
-					assert.Nil(t, uc.createReq)
-				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.Use(func(c *gin.Context) {
@@ -119,9 +85,7 @@ func TestCounterController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
-				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -129,14 +93,16 @@ func TestCounterController(t *testing.T) {
 	t.Run("Positive_GetByID", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubCounterControllerUseCase
+			setup    func(t *testing.T) *mocks.MockCounterUseCase
 			wantCode int
 			assert   func(t *testing.T, body string)
 		}{
 			{
 				name: "Positive_GetByIDReturnsBranchID",
-				setup: func() *stubCounterControllerUseCase {
-					return &stubCounterControllerUseCase{getRes: &model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}}
+				setup: func(t *testing.T) *mocks.MockCounterUseCase {
+					m := mocks.NewMockCounterUseCase(t)
+					m.On("GetCounter", mock.Anything, "counter-1").Return(&model.CounterResponse{ID: "counter-1", BranchID: "550e8400-e29b-41d4-a716-446655440000"}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
 				assert: func(t *testing.T, body string) {
@@ -147,7 +113,7 @@ func TestCounterController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.GET("/counters/:id", controller.GetByID)
@@ -160,6 +126,7 @@ func TestCounterController(t *testing.T) {
 				if tt.assert != nil {
 					tt.assert(t, w.Body.String())
 				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -169,28 +136,26 @@ func TestCounterController(t *testing.T) {
 		tests := []struct {
 			name     string
 			reqBody  interface{}
-			setup    func() *stubCounterControllerUseCase
+			setup    func(t *testing.T) *mocks.MockCounterUseCase
 			wantCode int
-			assert   func(t *testing.T, uc *stubCounterControllerUseCase)
 		}{
 			{
 				name:    "Positive_UpdateCanToggleStatus",
 				reqBody: model.UpdateCounterRequest{Status: &status},
-				setup: func() *stubCounterControllerUseCase {
-					return &stubCounterControllerUseCase{updateRes: &model.CounterResponse{ID: "counter-1", Status: status}}
+				setup: func(t *testing.T) *mocks.MockCounterUseCase {
+					m := mocks.NewMockCounterUseCase(t)
+					m.On("UpdateCounter", mock.Anything, "counter-1", mock.MatchedBy(func(req *model.UpdateCounterRequest) bool {
+						return req != nil && req.Status != nil && *req.Status == "inactive"
+					})).Return(&model.CounterResponse{ID: "counter-1", Status: status}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
-				assert: func(t *testing.T, uc *stubCounterControllerUseCase) {
-					require.NotNil(t, uc.updateReq)
-					require.NotNil(t, uc.updateReq.Status)
-					assert.Equal(t, "inactive", *uc.updateReq.Status)
-				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.PUT("/counters/:id", controller.Update)
@@ -202,9 +167,7 @@ func TestCounterController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
-				if tt.assert != nil {
-					tt.assert(t, uc)
-				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -212,14 +175,16 @@ func TestCounterController(t *testing.T) {
 	t.Run("Positive_GetAll", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubCounterControllerUseCase
+			setup    func(t *testing.T) *mocks.MockCounterUseCase
 			wantCode int
 			assert   func(t *testing.T, body string)
 		}{
 			{
 				name: "Positive_GetAllReturnsCounters",
-				setup: func() *stubCounterControllerUseCase {
-					return &stubCounterControllerUseCase{listRes: []model.CounterResponse{{ID: "counter-1", BranchID: "b-1", Code: "A1"}}}
+				setup: func(t *testing.T) *mocks.MockCounterUseCase {
+					m := mocks.NewMockCounterUseCase(t)
+					m.On("ListCounters", mock.Anything).Return([]model.CounterResponse{{ID: "counter-1", BranchID: "b-1", Code: "A1"}}, nil).Once()
+					return m
 				},
 				wantCode: http.StatusOK,
 				assert: func(t *testing.T, body string) {
@@ -230,7 +195,7 @@ func TestCounterController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.GET("/counters", controller.GetAll)
@@ -243,6 +208,7 @@ func TestCounterController(t *testing.T) {
 				if tt.assert != nil {
 					tt.assert(t, w.Body.String())
 				}
+				uc.AssertExpectations(t)
 			})
 		}
 	})
@@ -250,13 +216,15 @@ func TestCounterController(t *testing.T) {
 	t.Run("Positive_Delete", func(t *testing.T) {
 		tests := []struct {
 			name     string
-			setup    func() *stubCounterControllerUseCase
+			setup    func(t *testing.T) *mocks.MockCounterUseCase
 			wantCode int
 		}{
 			{
 				name: "Positive_DeleteReturnsNoContent",
-				setup: func() *stubCounterControllerUseCase {
-					return &stubCounterControllerUseCase{}
+				setup: func(t *testing.T) *mocks.MockCounterUseCase {
+					m := mocks.NewMockCounterUseCase(t)
+					m.On("DeleteCounter", mock.Anything, "counter-1").Return(nil).Once()
+					return m
 				},
 				wantCode: http.StatusNoContent,
 			},
@@ -264,7 +232,7 @@ func TestCounterController(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				uc := tt.setup()
+				uc := tt.setup(t)
 				controller := NewCounterController(uc, newCounterTestValidator(t), nil)
 				router := gin.New()
 				router.DELETE("/counters/:id", controller.Delete)
@@ -274,6 +242,7 @@ func TestCounterController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, tt.wantCode, w.Code)
+				uc.AssertExpectations(t)
 			})
 		}
 	})

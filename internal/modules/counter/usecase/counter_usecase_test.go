@@ -1,4 +1,4 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
@@ -7,184 +7,108 @@ import (
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/counter/model"
+	counterMocks "github.com/Roisfaozi/queue-base/internal/modules/counter/test/mocks"
+	"github.com/Roisfaozi/queue-base/internal/modules/counter/usecase"
 	organizationEntity "github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	orgMocks "github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	serviceEntity "github.com/Roisfaozi/queue-base/internal/modules/service/entity"
+	serviceMocks "github.com/Roisfaozi/queue-base/internal/modules/service/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type stubCounterAuditLogger struct {
-	entries []auditModel.CreateAuditLogRequest
-}
-
-func (s *stubCounterAuditLogger) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
-	s.entries = append(s.entries, req)
-	return nil
-}
-
-type stubCounterRepo struct {
-	counter *entity.Counter
-	list    []*entity.Counter
-	err     error
-	seen    struct {
-		tenantID  string
-		counterID string
-	}
-}
-
-func (s *stubCounterRepo) Create(_ context.Context, counter *entity.Counter) error {
-	s.counter = counter
-	return s.err
-}
-
-func (s *stubCounterRepo) FindByID(_ context.Context, tenantID, counterID string) (*entity.Counter, error) {
-	s.seen.tenantID = tenantID
-	s.seen.counterID = counterID
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.counter, nil
-}
-
-func (s *stubCounterRepo) FindAll(_ context.Context, tenantID string) ([]*entity.Counter, error) {
-	s.seen.tenantID = tenantID
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.list, nil
-}
-
-func (s *stubCounterRepo) Update(_ context.Context, counter *entity.Counter) error {
-	s.counter = counter
-	return s.err
-}
-
-func (s *stubCounterRepo) Delete(_ context.Context, tenantID, counterID string) error {
-	s.seen.tenantID = tenantID
-	s.seen.counterID = counterID
-	return s.err
-}
-
-type stubCounterBranchRepo struct {
-	branch *organizationEntity.Branch
-	err    error
-	seen   struct {
-		tenantID string
-		branchID string
-	}
-}
-
-func (s *stubCounterBranchRepo) Create(_ context.Context, branch *organizationEntity.Branch) error {
-	s.branch = branch
-	return s.err
-}
-
-func (s *stubCounterBranchRepo) FindByID(_ context.Context, tenantID, branchID string) (*organizationEntity.Branch, error) {
-	s.seen.tenantID = tenantID
-	s.seen.branchID = branchID
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.branch, nil
-}
-
-func (s *stubCounterBranchRepo) FindAll(_ context.Context, tenantID string) ([]*organizationEntity.Branch, error) {
-	s.seen.tenantID = tenantID
-	if s.err != nil {
-		return nil, s.err
-	}
-	return nil, nil
-}
-
-func (s *stubCounterBranchRepo) Update(_ context.Context, branch *organizationEntity.Branch) error {
-	s.branch = branch
-	return s.err
-}
-
-func (s *stubCounterBranchRepo) Delete(_ context.Context, tenantID, branchID string) error {
-	s.seen.tenantID = tenantID
-	s.seen.branchID = branchID
-	return s.err
-}
 
 func TestCreateCounter(t *testing.T) {
 	tests := []struct {
 		name     string
+		category string
 		req      model.CreateCounterRequest
-		stubRepo struct {
-			counter *entity.Counter
-			err     error
-		}
-		stubBranchRepo struct {
-			branch *organizationEntity.Branch
-			err    error
-		}
 		tenantID string
+		setup    func(t *testing.T, repo *counterMocks.MockCounterRepository, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository, createdCounter **entity.Counter)
 		wantErr  error
-		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo)
+		assert   func(t *testing.T, res *model.CounterResponse, createdCounter *entity.Counter)
 	}{
 		{
-			name: "Positive_CreatesCounterWithSanitization",
-			req:  model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: " a1 ", Name: " Front Desk "},
-			stubBranchRepo: struct {
-				branch *organizationEntity.Branch
-				err    error
-			}{
-				branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive},
-				err:    nil,
-			},
+			name:     "Positive_CreatesCounterWithSanitization",
+			category: "positive",
+			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: " a1 ", Name: " Front Desk "},
 			tenantID: "tenant-1",
-			wantErr:  nil,
-			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo) {
+			setup: func(t *testing.T, repo *counterMocks.MockCounterRepository, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository, createdCounter **entity.Counter) {
+				branchRepo.On("FindByID", mock.Anything, "tenant-1", "550e8400-e29b-41d4-a716-446655440000").
+					Return(&organizationEntity.Branch{
+						ID:       "550e8400-e29b-41d4-a716-446655440000",
+						TenantID: "tenant-1",
+						Status:   organizationEntity.BranchStatusActive,
+					}, nil).Once()
+
+				repo.On("Create", mock.Anything, mock.MatchedBy(func(c *entity.Counter) bool {
+					*createdCounter = c
+					return c.Code == "A1" && c.Name == "Front Desk" && c.TenantID == "tenant-1"
+				})).Return(nil).Once()
+			},
+			wantErr: nil,
+			assert: func(t *testing.T, res *model.CounterResponse, createdCounter *entity.Counter) {
 				assert.Equal(t, "tenant-1", res.TenantID)
-				assert.Equal(t, "tenant-1", branchRepo.seen.tenantID)
-				assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", branchRepo.seen.branchID)
-				require.NotNil(t, repo.counter)
-				assert.Equal(t, "A1", repo.counter.Code)
-				assert.Equal(t, "Front Desk", repo.counter.Name)
+				require.NotNil(t, createdCounter)
+				assert.Equal(t, "A1", createdCounter.Code)
+				assert.Equal(t, "Front Desk", createdCounter.Name)
 			},
 		},
 		{
 			name:     "Negative_RequiresTenant",
+			category: "negative",
 			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
 			tenantID: "",
-			wantErr:  exception.ErrBadRequest,
+			setup: func(t *testing.T, repo *counterMocks.MockCounterRepository, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository, createdCounter **entity.Counter) {
+			},
+			wantErr: exception.ErrBadRequest,
 		},
 		{
-			name: "Vulnerability_RejectsCrossTenantBranch",
-			req:  model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
-			stubBranchRepo: struct {
-				branch *organizationEntity.Branch
-				err    error
-			}{
-				branch: nil,
-				err:    exception.ErrNotFound,
-			},
+			name:     "Edge_RejectsInactiveBranch",
+			category: "edge",
+			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
 			tenantID: "tenant-1",
-			wantErr:  exception.ErrForbidden,
-			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo, branchRepo *stubCounterBranchRepo) {
-				assert.Nil(t, repo.counter)
+			setup: func(t *testing.T, repo *counterMocks.MockCounterRepository, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository, createdCounter **entity.Counter) {
+				branchRepo.On("FindByID", mock.Anything, "tenant-1", "550e8400-e29b-41d4-a716-446655440000").
+					Return(&organizationEntity.Branch{
+						ID:       "550e8400-e29b-41d4-a716-446655440000",
+						TenantID: "tenant-1",
+						Status:   organizationEntity.BranchStatusInactive,
+					}, nil).Once()
+			},
+			wantErr: exception.ErrForbidden,
+		},
+		{
+			name:     "Vulnerability_RejectsCrossTenantBranch",
+			category: "vulnerability",
+			req:      model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk"},
+			tenantID: "tenant-1",
+			setup: func(t *testing.T, repo *counterMocks.MockCounterRepository, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository, createdCounter **entity.Counter) {
+				branchRepo.On("FindByID", mock.Anything, "tenant-1", "550e8400-e29b-41d4-a716-446655440000").
+					Return(nil, exception.ErrNotFound).Once()
+			},
+			wantErr: exception.ErrForbidden,
+			assert: func(t *testing.T, res *model.CounterResponse, createdCounter *entity.Counter) {
+				assert.Nil(t, createdCounter)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubCounterRepo{
-				counter: tt.stubRepo.counter,
-				err:     tt.stubRepo.err,
+			assert.NotEmpty(t, tt.category)
+			repo := counterMocks.NewMockCounterRepository(t)
+			branchRepo := orgMocks.NewMockBranchRepository(t)
+			bsRepo := serviceMocks.NewMockBranchServiceRepository(t)
+
+			var createdCounter *entity.Counter
+			if tt.setup != nil {
+				tt.setup(t, repo, branchRepo, bsRepo, &createdCounter)
 			}
-			branch := tt.stubBranchRepo.branch
-			if branch == nil && tt.stubBranchRepo.err == nil {
-				branch = &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}
-			}
-			branchRepo := &stubCounterBranchRepo{
-				branch: branch,
-				err:    tt.stubBranchRepo.err,
-			}
-			uc := NewCounterUseCase(repo, branchRepo, &stubCounterBranchServiceRepo{isActive: true})
+
+			uc := usecase.NewCounterUseCase(repo, branchRepo, bsRepo)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -195,14 +119,14 @@ func TestCreateCounter(t *testing.T) {
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
-				if tt.wantRes != nil {
-					tt.wantRes(t, res, repo, branchRepo)
+				if tt.assert != nil {
+					tt.assert(t, res, createdCounter)
 				}
 				return
 			}
 			require.NoError(t, err)
-			if tt.wantRes != nil {
-				tt.wantRes(t, res, repo, branchRepo)
+			if tt.assert != nil {
+				tt.assert(t, res, createdCounter)
 			}
 		})
 	}
@@ -214,43 +138,79 @@ func TestUpdateCounter(t *testing.T) {
 
 	tests := []struct {
 		name      string
+		category  string
 		counterID string
 		req       model.UpdateCounterRequest
-		stubRepo  struct {
-			counter *entity.Counter
-			err     error
-		}
-		tenantID string
-		wantErr  error
-		wantRes  func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo)
+		tenantID  string
+		setup     func(t *testing.T, repo *counterMocks.MockCounterRepository, updatedCounter **entity.Counter)
+		wantErr   error
+		assert    func(t *testing.T, res *model.CounterResponse, updatedCounter *entity.Counter)
 	}{
 		{
 			name:      "Positive_SanitizesFieldsOnUpdate",
+			category:  "positive",
 			counterID: "counter-1",
 			req:       model.UpdateCounterRequest{Code: &code, Name: &name},
-			stubRepo: struct {
-				counter *entity.Counter
-				err     error
-			}{
-				counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Desk", Status: entity.CounterStatusActive},
-				err:     nil,
+			tenantID:  "tenant-1",
+			setup: func(t *testing.T, repo *counterMocks.MockCounterRepository, updatedCounter **entity.Counter) {
+				repo.On("FindByID", mock.Anything, "tenant-1", "counter-1").
+					Return(&entity.Counter{
+						ID:       "counter-1",
+						TenantID: "tenant-1",
+						BranchID: "550e8400-e29b-41d4-a716-446655440000",
+						Code:     "A1",
+						Name:     "Desk",
+						Status:   entity.CounterStatusActive,
+					}, nil).Once()
+
+				repo.On("Update", mock.Anything, mock.MatchedBy(func(c *entity.Counter) bool {
+					*updatedCounter = c
+					return c.Code == "B2" && c.Name == "Front Office"
+				})).Return(nil).Once()
 			},
-			tenantID: "tenant-1",
-			wantErr:  nil,
-			wantRes: func(t *testing.T, res *model.CounterResponse, repo *stubCounterRepo) {
+			wantErr: nil,
+			assert: func(t *testing.T, res *model.CounterResponse, updatedCounter *entity.Counter) {
 				assert.Equal(t, "B2", res.Code)
 				assert.Equal(t, "Front Office", res.Name)
 			},
+		},
+		{
+			name:      "Negative_NotFound",
+			category:  "negative",
+			counterID: "counter-missing",
+			req:       model.UpdateCounterRequest{Code: &code, Name: &name},
+			tenantID:  "tenant-1",
+			setup: func(t *testing.T, repo *counterMocks.MockCounterRepository, updatedCounter **entity.Counter) {
+				repo.On("FindByID", mock.Anything, "tenant-1", "counter-missing").
+					Return(nil, exception.ErrNotFound).Once()
+			},
+			wantErr: exception.ErrNotFound,
+		},
+		{
+			name:      "Vulnerability_EmptyTenant",
+			category:  "vulnerability",
+			counterID: "counter-1",
+			req:       model.UpdateCounterRequest{Code: &code, Name: &name},
+			tenantID:  "",
+			setup: func(t *testing.T, repo *counterMocks.MockCounterRepository, updatedCounter **entity.Counter) {
+			},
+			wantErr: exception.ErrBadRequest,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubCounterRepo{
-				counter: tt.stubRepo.counter,
-				err:     tt.stubRepo.err,
+			assert.NotEmpty(t, tt.category)
+			repo := counterMocks.NewMockCounterRepository(t)
+			branchRepo := orgMocks.NewMockBranchRepository(t)
+			bsRepo := serviceMocks.NewMockBranchServiceRepository(t)
+
+			var updatedCounter *entity.Counter
+			if tt.setup != nil {
+				tt.setup(t, repo, &updatedCounter)
 			}
-			uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{isActive: true})
+
+			uc := usecase.NewCounterUseCase(repo, branchRepo, bsRepo)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -261,55 +221,43 @@ func TestUpdateCounter(t *testing.T) {
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
-				if tt.wantRes != nil {
-					tt.wantRes(t, res, repo)
+				if tt.assert != nil {
+					tt.assert(t, res, updatedCounter)
 				}
 				return
 			}
 			require.NoError(t, err)
-			if tt.wantRes != nil {
-				tt.wantRes(t, res, repo)
+			if tt.assert != nil {
+				tt.assert(t, res, updatedCounter)
 			}
 		})
 	}
 }
 
-type stubCounterBranchServiceRepo struct {
-	err      error
-	isActive bool
-}
-
-func (s *stubCounterBranchServiceRepo) Create(_ context.Context, bs *serviceEntity.BranchService) error {
-	return nil
-}
-func (s *stubCounterBranchServiceRepo) FindByID(_ context.Context, tenantID, branchID, id string) (*serviceEntity.BranchService, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	return &serviceEntity.BranchService{ID: id, TenantID: tenantID, BranchID: branchID, IsActive: s.isActive}, nil
-}
-func (s *stubCounterBranchServiceRepo) FindByService(_ context.Context, tenantID, branchID, serviceID string) (*serviceEntity.BranchService, error) {
-	return nil, nil
-}
-func (s *stubCounterBranchServiceRepo) FindAll(_ context.Context, tenantID, branchID string) ([]*serviceEntity.BranchService, error) {
-	return nil, nil
-}
-func (s *stubCounterBranchServiceRepo) Update(_ context.Context, bs *serviceEntity.BranchService) error {
-	return nil
-}
-func (s *stubCounterBranchServiceRepo) Delete(_ context.Context, tenantID, branchID, id string) error {
-	return nil
-}
-
 func TestCounterDeactivationEdgeCase(t *testing.T) {
-	// ponytail: no cascade — deactivating parent does not auto-deactivate counter
-	repo := &stubCounterRepo{}
-	branchRepo := &stubCounterBranchRepo{
-		branch: &organizationEntity.Branch{ID: "b-1", TenantID: "t-1", Status: organizationEntity.BranchStatusActive},
-	}
-	bsRepo := &stubCounterBranchServiceRepo{isActive: true}
-	uc := NewCounterUseCase(repo, branchRepo, bsRepo, nil)
+	repo := counterMocks.NewMockCounterRepository(t)
+	branchRepo := orgMocks.NewMockBranchRepository(t)
+	bsRepo := serviceMocks.NewMockBranchServiceRepository(t)
+
+	uc := usecase.NewCounterUseCase(repo, branchRepo, bsRepo, nil)
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
+
+	activeBranch := &organizationEntity.Branch{ID: "b-1", TenantID: "t-1", Status: organizationEntity.BranchStatusActive}
+	inactiveBranch := &organizationEntity.Branch{ID: "b-1", TenantID: "t-1", Status: organizationEntity.BranchStatusInactive}
+
+	branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(activeBranch, nil).Once()
+	bsRepo.On("FindByID", mock.Anything, "t-1", "b-1", "bs-1").Return(&serviceEntity.BranchService{
+		ID:       "bs-1",
+		TenantID: "t-1",
+		BranchID: "b-1",
+		IsActive: true,
+	}, nil).Once()
+
+	var createdCounter *entity.Counter
+	repo.On("Create", mock.Anything, mock.MatchedBy(func(c *entity.Counter) bool {
+		createdCounter = c
+		return c.Code == "C1" && c.Status == entity.CounterStatusActive
+	})).Return(nil).Once()
 
 	req := &model.CreateCounterRequest{
 		BranchID:        "b-1",
@@ -323,15 +271,14 @@ func TestCounterDeactivationEdgeCase(t *testing.T) {
 	require.NotNil(t, res)
 	assert.Equal(t, entity.CounterStatusActive, res.Status)
 
-	// Now deactivate branch — counter should still be active (no cascade)
-	branchRepo.branch.Status = organizationEntity.BranchStatusInactive
-
 	// Counter still accessible via GetCounter
+	repo.On("FindByID", mock.Anything, "t-1", res.ID).Return(createdCounter, nil).Once()
 	getRes, err := uc.GetCounter(ctx, res.ID)
 	require.NoError(t, err)
 	assert.Equal(t, entity.CounterStatusActive, getRes.Status, "counter remains active after branch deactivation (no cascade)")
 
-	// New counter creation should be rejected
+	// New counter creation on inactive branch should be rejected
+	branchRepo.On("FindByID", mock.Anything, "t-1", "b-1").Return(inactiveBranch, nil).Once()
 	req2 := &model.CreateCounterRequest{
 		BranchID:        "b-1",
 		BranchServiceID: "bs-1",
@@ -345,37 +292,41 @@ func TestCounterDeactivationEdgeCase(t *testing.T) {
 
 func TestCounterServiceRelationGuard(t *testing.T) {
 	tests := []struct {
-		name            string
-		req             model.CreateCounterRequest
-		stubBranchRepo  *stubCounterBranchRepo
-		stubServiceRepo *stubCounterBranchServiceRepo
-		wantError       error
+		name      string
+		category  string
+		req       model.CreateCounterRequest
+		setup     func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository)
+		wantError error
 	}{
 		{
-			name: "Vulnerability_RejectsInvalidBranchServiceRelation",
+			name:     "Vulnerability_RejectsInvalidBranchServiceRelation",
+			category: "vulnerability",
 			req: model.CreateCounterRequest{
 				BranchID:        "branch-1",
 				BranchServiceID: "service-unknown",
 				Code:            "A1",
 			},
-			stubBranchRepo: &stubCounterBranchRepo{
-				branch: &organizationEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive},
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository) {
+				branchRepo.On("FindByID", mock.Anything, "tenant-1", "branch-1").
+					Return(&organizationEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}, nil).Once()
+				bsRepo.On("FindByID", mock.Anything, "tenant-1", "branch-1", "service-unknown").
+					Return(nil, exception.ErrNotFound).Once()
 			},
-			stubServiceRepo: &stubCounterBranchServiceRepo{err: exception.ErrNotFound},
-			wantError:       exception.ErrForbidden,
+			wantError: exception.ErrForbidden,
 		},
 		{
-			name: "Vulnerability_RejectsInactiveBranchServiceRelation",
+			name:     "Vulnerability_RejectsInactiveBranchServiceRelation",
+			category: "vulnerability",
 			req: model.CreateCounterRequest{
 				BranchID:        "branch-1",
 				BranchServiceID: "service-inactive",
 				Code:            "A1",
 			},
-			stubBranchRepo: &stubCounterBranchRepo{
-				branch: &organizationEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive},
-			},
-			stubServiceRepo: &stubCounterBranchServiceRepo{
-				err: nil,
+			setup: func(t *testing.T, branchRepo *orgMocks.MockBranchRepository, bsRepo *serviceMocks.MockBranchServiceRepository) {
+				branchRepo.On("FindByID", mock.Anything, "tenant-1", "branch-1").
+					Return(&organizationEntity.Branch{ID: "branch-1", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}, nil).Once()
+				bsRepo.On("FindByID", mock.Anything, "tenant-1", "branch-1", "service-inactive").
+					Return(&serviceEntity.BranchService{ID: "service-inactive", TenantID: "tenant-1", BranchID: "branch-1", IsActive: false}, nil).Once()
 			},
 			wantError: exception.ErrForbidden,
 		},
@@ -383,17 +334,15 @@ func TestCounterServiceRelationGuard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &stubCounterRepo{}
-			uc := NewCounterUseCase(repo, tt.stubBranchRepo, tt.stubServiceRepo)
+			assert.NotEmpty(t, tt.category)
+			repo := counterMocks.NewMockCounterRepository(t)
+			branchRepo := orgMocks.NewMockBranchRepository(t)
+			bsRepo := serviceMocks.NewMockBranchServiceRepository(t)
 
+			tt.setup(t, branchRepo, bsRepo)
+
+			uc := usecase.NewCounterUseCase(repo, branchRepo, bsRepo)
 			ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
-
-			// Intercept stubServiceRepo to return inactive if needed
-			if tt.name == "Vulnerability_RejectsInactiveBranchServiceRelation" {
-				tt.stubServiceRepo.isActive = false
-			} else if tt.stubServiceRepo != nil && tt.stubServiceRepo.err == nil {
-				tt.stubServiceRepo.isActive = true
-			}
 
 			_, err := uc.CreateCounter(ctx, &tt.req)
 			assert.ErrorIs(t, err, tt.wantError)
@@ -405,21 +354,39 @@ func TestCounterAuditHooks(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 
 	t.Run("Positive_LogsAuditActivitiesForCreateUpdateDelete", func(t *testing.T) {
-		audit := &stubCounterAuditLogger{}
-		repo := &stubCounterRepo{counter: &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Status: entity.CounterStatusActive}}
-		uc := NewCounterUseCase(repo, &stubCounterBranchRepo{branch: &organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}}, &stubCounterBranchServiceRepo{isActive: true}, audit)
+		audit := counterMocks.NewMockAuditLogger(t)
+		repo := counterMocks.NewMockCounterRepository(t)
+		branchRepo := orgMocks.NewMockBranchRepository(t)
+		bsRepo := serviceMocks.NewMockBranchServiceRepository(t)
+
+		uc := usecase.NewCounterUseCase(repo, branchRepo, bsRepo, audit)
+
+		branchRepo.On("FindByID", mock.Anything, "tenant-1", "550e8400-e29b-41d4-a716-446655440000").
+			Return(&organizationEntity.Branch{ID: "550e8400-e29b-41d4-a716-446655440000", TenantID: "tenant-1", Status: organizationEntity.BranchStatusActive}, nil).Once()
+		repo.On("Create", mock.Anything, mock.Anything).Return(nil).Once()
+		audit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+			return req.Action == "COUNTER_CREATE" && req.Entity == "counter"
+		})).Return(nil).Once()
 
 		_, err := uc.CreateCounter(ctx, &model.CreateCounterRequest{BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Name: "Counter A"})
 		require.NoError(t, err)
+
+		existingCounter := &entity.Counter{ID: "counter-1", TenantID: "tenant-1", BranchID: "550e8400-e29b-41d4-a716-446655440000", Code: "A1", Status: entity.CounterStatusActive}
+		repo.On("FindByID", mock.Anything, "tenant-1", "counter-1").Return(existingCounter, nil).Once()
+		repo.On("Update", mock.Anything, mock.Anything).Return(nil).Once()
+		audit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+			return req.Action == "COUNTER_UPDATE" && req.Entity == "counter"
+		})).Return(nil).Once()
+
 		_, err = uc.UpdateCounter(ctx, "counter-1", &model.UpdateCounterRequest{})
 		require.NoError(t, err)
+
+		repo.On("Delete", mock.Anything, "tenant-1", "counter-1").Return(nil).Once()
+		audit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+			return req.Action == "COUNTER_DELETE" && req.Entity == "counter"
+		})).Return(nil).Once()
+
 		err = uc.DeleteCounter(ctx, "counter-1")
 		require.NoError(t, err)
-
-		require.Len(t, audit.entries, 3)
-		assert.Equal(t, "COUNTER_CREATE", audit.entries[0].Action)
-		assert.Equal(t, "COUNTER_UPDATE", audit.entries[1].Action)
-		assert.Equal(t, "COUNTER_DELETE", audit.entries[2].Action)
-		assert.Equal(t, "counter", audit.entries[0].Entity)
 	})
 }

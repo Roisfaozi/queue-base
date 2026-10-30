@@ -7,45 +7,12 @@ import (
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/pkg/storage/s3"
+	"github.com/Roisfaozi/queue-base/pkg/storage/s3/mocks"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// MockS3Client implements s3.S3ClientAPI
-type MockS3Client struct {
-	mock.Mock
-}
-
-func (m *MockS3Client) PutObject(ctx context.Context, params *awsS3.PutObjectInput, optFns ...func(*awsS3.Options)) (*awsS3.PutObjectOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*awsS3.PutObjectOutput), args.Error(1)
-}
-
-func (m *MockS3Client) DeleteObject(ctx context.Context, params *awsS3.DeleteObjectInput, optFns ...func(*awsS3.Options)) (*awsS3.DeleteObjectOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*awsS3.DeleteObjectOutput), args.Error(1)
-}
-
-// MockS3Presigner implements s3.S3PresignerAPI
-type MockS3Presigner struct {
-	mock.Mock
-}
-
-func (m *MockS3Presigner) PresignGetObject(ctx context.Context, params *awsS3.GetObjectInput, optFns ...func(*awsS3.PresignOptions)) (*v4.PresignedHTTPRequest, error) {
-	args := m.Called(ctx, params, optFns)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*v4.PresignedHTTPRequest), args.Error(1)
-}
 
 func TestUploadFile(t *testing.T) {
 	tests := []struct {
@@ -57,8 +24,8 @@ func TestUploadFile(t *testing.T) {
 			name:     "Success",
 			category: "positive",
 			run: func(t *testing.T) {
-				mockClient := new(MockS3Client)
-				mockPresigner := new(MockS3Presigner)
+				mockClient := new(mocks.MockS3ClientAPI)
+				mockPresigner := new(mocks.MockS3PresignerAPI)
 				storage := &s3.S3Storage{
 					Client:    mockClient,
 					Presigner: mockPresigner,
@@ -87,7 +54,7 @@ func TestUploadFile(t *testing.T) {
 			name:     "Upload Error",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockClient := new(MockS3Client)
+				mockClient := new(mocks.MockS3ClientAPI)
 				storage := &s3.S3Storage{
 					Client: mockClient,
 					Bucket: "test-bucket",
@@ -122,7 +89,7 @@ func TestDeleteFile(t *testing.T) {
 			name:     "Success",
 			category: "positive",
 			run: func(t *testing.T) {
-				mockClient := new(MockS3Client)
+				mockClient := new(mocks.MockS3ClientAPI)
 				storage := &s3.S3Storage{
 					Client: mockClient,
 					Bucket: "test-bucket",
@@ -140,7 +107,7 @@ func TestDeleteFile(t *testing.T) {
 			name:     "Error",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockClient := new(MockS3Client)
+				mockClient := new(mocks.MockS3ClientAPI)
 				storage := &s3.S3Storage{
 					Client: mockClient,
 					Bucket: "test-bucket",
@@ -206,7 +173,7 @@ func TestGetFileUrl(t *testing.T) {
 			name:     "Success",
 			category: "positive",
 			run: func(t *testing.T) {
-				mockPresigner := new(MockS3Presigner)
+				mockPresigner := new(mocks.MockS3PresignerAPI)
 				storage := &s3.S3Storage{
 					Presigner: mockPresigner,
 					Bucket:    "test-bucket",
@@ -224,7 +191,7 @@ func TestGetFileUrl(t *testing.T) {
 			name:     "Error",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockPresigner := new(MockS3Presigner)
+				mockPresigner := new(mocks.MockS3PresignerAPI)
 				storage := &s3.S3Storage{
 					Presigner: mockPresigner,
 					Bucket:    "test-bucket",

@@ -7,20 +7,11 @@ import (
 	"testing"
 
 	"github.com/Roisfaozi/queue-base/internal/middleware"
+	"github.com/Roisfaozi/queue-base/internal/middleware/test/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
-
-type MockCasbinEnforcer struct {
-	mock.Mock
-}
-
-func (m *MockCasbinEnforcer) Enforce(rvals ...interface{}) (bool, error) {
-	args := m.Called(rvals...)
-	return args.Bool(0), args.Error(1)
-}
 
 func TestCasbinMiddleware_Authorized(t *testing.T) {
 	tests := []struct {
@@ -45,7 +36,7 @@ func TestCasbinMiddleware_Authorized(t *testing.T) {
 				userID := "user-uuid-123"
 				c.Set("user_id", userID)
 
-				mockEnforcer := new(MockCasbinEnforcer)
+				mockEnforcer := new(mocks.MockCasbinEnforcer)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
@@ -86,7 +77,7 @@ func TestCasbinMiddleware_Unauthorized(t *testing.T) {
 				userID := "user-uuid-456"
 				c.Set("user_id", userID)
 
-				mockEnforcer := new(MockCasbinEnforcer)
+				mockEnforcer := new(mocks.MockCasbinEnforcer)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
@@ -128,7 +119,7 @@ func TestCasbinMiddleware_EnforcerError(t *testing.T) {
 				userID := "user-uuid-789"
 				c.Set("user_id", userID)
 
-				mockEnforcer := new(MockCasbinEnforcer)
+				mockEnforcer := new(mocks.MockCasbinEnforcer)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
@@ -169,7 +160,7 @@ func TestCasbinMiddleware_NoRoleInContext(t *testing.T) {
 
 				// No role or user-id set
 
-				mockEnforcer := new(MockCasbinEnforcer)
+				mockEnforcer := new(mocks.MockCasbinEnforcer)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
@@ -248,7 +239,7 @@ func TestCasbinMiddleware_WithOrganizationContext(t *testing.T) {
 				c.Set("user_id", userID)
 				c.Set("organization_id", orgID)
 
-				mockEnforcer := new(MockCasbinEnforcer)
+				mockEnforcer := new(mocks.MockCasbinEnforcer)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
@@ -289,7 +280,7 @@ func TestCasbinMiddleware_StripsTrailingSlashBeforeEnforce(t *testing.T) {
 				userID := "user-uuid-123"
 				c.Set("user_id", userID)
 
-				mockEnforcer := new(MockCasbinEnforcer)
+				mockEnforcer := new(mocks.MockCasbinEnforcer)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 
@@ -332,7 +323,7 @@ func TestCasbinMiddleware_WithInvalidOrganizationContext(t *testing.T) {
 				c.Set("user_id", userID)
 				c.Set("organization_id", 456)
 
-				mockEnforcer := new(MockCasbinEnforcer)
+				mockEnforcer := new(mocks.MockCasbinEnforcer)
 				logger := logrus.New()
 				logger.SetOutput(&NoOpWriter{})
 

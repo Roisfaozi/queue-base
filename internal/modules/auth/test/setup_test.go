@@ -40,7 +40,7 @@ type testDependencies struct {
 	validate        *validator.Validate
 	log             *logrus.Logger
 	taskDistributor *mocking.MockTaskDistributor
-	ticketManager   *mock_auth.MockTicketManager
+	ticketManager   *mocking.MockTicketManager
 	ssoProviders    map[string]sso.Provider
 }
 
@@ -58,7 +58,7 @@ func setupTest(t *testing.T) (usecase.AuthUseCase, *testDependencies) {
 		validate:        validator.New(),
 		log:             logrus.New(),
 		taskDistributor: new(mocking.MockTaskDistributor),
-		ticketManager:   new(mock_auth.MockTicketManager),
+		ticketManager:   new(mocking.MockTicketManager),
 		ssoProviders:    make(map[string]sso.Provider),
 	}
 

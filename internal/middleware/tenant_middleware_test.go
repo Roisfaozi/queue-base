@@ -9,104 +9,19 @@ import (
 	"time"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
+	orgMocks "github.com/Roisfaozi/queue-base/internal/modules/organization/test/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// MockOrganizationRepository is a mock implementation of OrganizationRepository
-type MockOrganizationRepository struct {
-	mock.Mock
-}
-
-func (m *MockOrganizationRepository) Create(ctx context.Context, org *entity.Organization, ownerRoleID string) error {
-	args := m.Called(ctx, org, ownerRoleID)
-	return args.Error(0)
-}
-
-func (m *MockOrganizationRepository) FindByID(ctx context.Context, id string) (*entity.Organization, error) {
-	hasExpectation := false
-	for _, call := range m.ExpectedCalls {
-		if call.Method == "FindByID" {
-			hasExpectation = true
-			break
-		}
-	}
-	if !hasExpectation {
-		return &entity.Organization{ID: id}, nil
-	}
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Organization), args.Error(1)
-}
-
-func (m *MockOrganizationRepository) FindBySlug(ctx context.Context, slug string) (*entity.Organization, error) {
-	args := m.Called(ctx, slug)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Organization), args.Error(1)
-}
-
-func (m *MockOrganizationRepository) SlugExists(ctx context.Context, slug string) (bool, error) {
-	args := m.Called(ctx, slug)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockOrganizationRepository) FindUserOrganizations(ctx context.Context, userID string) ([]*entity.Organization, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*entity.Organization), args.Error(1)
-}
-
-func (m *MockOrganizationRepository) Update(ctx context.Context, org *entity.Organization) error {
-	args := m.Called(ctx, org)
-	return args.Error(0)
-}
-
-func (m *MockOrganizationRepository) Delete(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockOrganizationRepository) Restore(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockOrganizationRepository) HardDelete(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-// MockOrganizationReader is a mock implementation of IOrganizationReader
-type MockOrganizationReader struct {
-	mock.Mock
-}
-
-func (m *MockOrganizationReader) ValidateMembership(ctx context.Context, orgID, userID string) (bool, error) {
-	args := m.Called(ctx, orgID, userID)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockOrganizationReader) GetMemberRole(ctx context.Context, orgID, userID string) (string, error) {
-	args := m.Called(ctx, orgID, userID)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockOrganizationReader) InvalidateMembershipCache(ctx context.Context, orgID, userID string) error {
-	args := m.Called(ctx, orgID, userID)
-	return args.Error(0)
-}
-
-func (m *MockOrganizationReader) InvalidateOrganizationCache(ctx context.Context, orgID string) error {
-	args := m.Called(ctx, orgID)
-	return args.Error(0)
+func newMockOrganizationRepository() *orgMocks.MockOrganizationRepository {
+	m := new(orgMocks.MockOrganizationRepository)
+	m.On("FindByID", mock.Anything, mock.Anything).Maybe().Return(func(_ context.Context, id string) *entity.Organization {
+		return &entity.Organization{ID: id}
+	}, nil)
+	return m
 }
 
 func setupTestRouter(middleware *TenantMiddleware) *gin.Engine {
@@ -130,8 +45,8 @@ func TestTenantMiddleware_RequireOrganization_Success(t *testing.T) {
 			category: "positive",
 			run: func(t *testing.T) {
 				// Setup mocks
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -189,8 +104,8 @@ func TestTenantMiddleware_RequireOrganization_MissingOrgHeader(t *testing.T) {
 			name:     "RequireOrganization_MissingOrgHeader",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -231,8 +146,8 @@ func TestTenantMiddleware_RequireOrganization_NotAuthenticated(t *testing.T) {
 			name:     "RequireOrganization_NotAuthenticated",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -270,8 +185,8 @@ func TestTenantMiddleware_RequireOrganization_NotMember(t *testing.T) {
 			name:     "RequireOrganization_NotMember",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -319,8 +234,8 @@ func TestTenantMiddleware_RequireOrganization_SlugLookup(t *testing.T) {
 			name:     "RequireOrganization_SlugLookup",
 			category: "positive",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -377,8 +292,8 @@ func TestTenantMiddleware_RequireOrganization_OrganizationRouteParamID(t *testin
 			name:     "RequireOrganization_OrganizationRouteParamID",
 			category: "positive",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -426,8 +341,8 @@ func TestTenantMiddleware_RequireOrganization_OrgNotFound(t *testing.T) {
 			name:     "RequireOrganization_OrgNotFound",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -475,8 +390,8 @@ func TestTenantMiddleware_RequireOrganization_Error(t *testing.T) {
 			name:     "RequireOrganization_Error",
 			category: "negative",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -571,8 +486,8 @@ func TestInvalidateMembershipCache(t *testing.T) {
 			name:     "InvalidateMembershipCache",
 			category: "positive",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -608,8 +523,8 @@ func TestTenantMiddleware_OptionalOrganization(t *testing.T) {
 			name:     "OptionalOrganization_Tests",
 			category: "edge",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -649,7 +564,7 @@ func TestTenantMiddleware_OptionalOrganization(t *testing.T) {
 				})
 
 				t.Run("slug lookup fails", func(t *testing.T) {
-					mockOrgRepo := new(MockOrganizationRepository)
+					mockOrgRepo := newMockOrganizationRepository()
 					mockOrgRepo.On("FindBySlug", mock.Anything, "bad-slug").Return(nil, errors.New("not found"))
 					m := NewTenantMiddleware(mockOrgRepo, mockReader, log)
 
@@ -673,7 +588,7 @@ func TestTenantMiddleware_OptionalOrganization(t *testing.T) {
 				})
 
 				t.Run("slug lookup returns nil", func(t *testing.T) {
-					mockOrgRepo := new(MockOrganizationRepository)
+					mockOrgRepo := newMockOrganizationRepository()
 					mockOrgRepo.On("FindBySlug", mock.Anything, "bad-slug2").Return(nil, nil)
 					m := NewTenantMiddleware(mockOrgRepo, mockReader, log)
 
@@ -697,7 +612,7 @@ func TestTenantMiddleware_OptionalOrganization(t *testing.T) {
 				})
 
 				t.Run("membership validation fails", func(t *testing.T) {
-					mockReader := new(MockOrganizationReader)
+					mockReader := new(orgMocks.MockIOrganizationReader)
 					mockReader.On("ValidateMembership", mock.Anything, "org123", "user123").Return(false, errors.New("error"))
 					m := NewTenantMiddleware(mockOrgRepo, mockReader, log)
 
@@ -721,7 +636,7 @@ func TestTenantMiddleware_OptionalOrganization(t *testing.T) {
 				})
 
 				t.Run("not a member", func(t *testing.T) {
-					mockReader := new(MockOrganizationReader)
+					mockReader := new(orgMocks.MockIOrganizationReader)
 					mockReader.On("ValidateMembership", mock.Anything, "org123", "user123").Return(false, nil)
 					m := NewTenantMiddleware(mockOrgRepo, mockReader, log)
 
@@ -745,7 +660,7 @@ func TestTenantMiddleware_OptionalOrganization(t *testing.T) {
 				})
 
 				t.Run("success with org ID", func(t *testing.T) {
-					mockReader := new(MockOrganizationReader)
+					mockReader := new(orgMocks.MockIOrganizationReader)
 					mockReader.On("ValidateMembership", mock.Anything, "org123", "user123").Return(true, nil)
 					mockReader.On("GetMemberRole", mock.Anything, "org123", "user123").Return("admin", nil)
 					m := NewTenantMiddleware(mockOrgRepo, mockReader, log)
@@ -790,8 +705,8 @@ func TestTenantMiddleware_RequireOrgRole(t *testing.T) {
 			name:     "RequireOrgRole_Tests",
 			category: "edge",
 			run: func(t *testing.T) {
-				mockOrgRepo := new(MockOrganizationRepository)
-				mockReader := new(MockOrganizationReader)
+				mockOrgRepo := newMockOrganizationRepository()
+				mockReader := new(orgMocks.MockIOrganizationReader)
 				log := logrus.New()
 
 				middleware := NewTenantMiddleware(mockOrgRepo, mockReader, log)

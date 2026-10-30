@@ -11,35 +11,38 @@ import (
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
 	"github.com/Roisfaozi/queue-base/internal/modules/queue_config/model"
+	"github.com/Roisfaozi/queue-base/internal/modules/queue_config/test/mocks"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	validationpkg "github.com/Roisfaozi/queue-base/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
-type stubQueueResolver struct {
-	values map[string]string
-}
+func newMockQueueResolver(t *testing.T, values map[string]string) *mocks.MockQueueSettingResolver {
+	resolver := mocks.NewMockQueueSettingResolver(t)
+	resolver.On("Resolve", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(func(ctx context.Context, key, branchID, serviceID, counterID string) string {
+			return values[key]
+		}, nil).Maybe()
 
-type stubSettingsAudit struct {
-	requests []auditModel.CreateAuditLogRequest
-}
+	resolver.On("ResolveDetailed", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(func(ctx context.Context, key, branchID, serviceID, counterID string) *model.ResolvedQueueSetting {
+			return &model.ResolvedQueueSetting{
+				Key:         key,
+				Value:       values[key],
+				Source:      "tenant",
+				Inherited:   branchID != "" || serviceID != "" || counterID != "",
+				CanOverride: true,
+				CanReset:    branchID != "" || serviceID != "" || counterID != "",
+			}
+		}, nil).Maybe()
 
-func (s *stubSettingsAudit) LogActivity(_ context.Context, req auditModel.CreateAuditLogRequest) error {
-	s.requests = append(s.requests, req)
-	return nil
-}
-
-func (s stubQueueResolver) Resolve(ctx context.Context, key string, branchID string, serviceID string, counterID string) (string, error) {
-	return s.values[key], nil
-}
-
-func (s stubQueueResolver) ResolveDetailed(ctx context.Context, key string, branchID string, serviceID string, counterID string) (*model.ResolvedQueueSetting, error) {
-	return &model.ResolvedQueueSetting{Key: key, Value: s.values[key], Source: "tenant", Inherited: branchID != "" || serviceID != "" || counterID != "", CanOverride: true, CanReset: branchID != "" || serviceID != "" || counterID != ""}, nil
+	return resolver
 }
 
 func newSettingsTestValidator(t *testing.T) *validator.Validate {
@@ -117,13 +120,14 @@ func TestQueueConfigController_EffectiveQueueConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{
+			resolver := newMockQueueResolver(t, map[string]string{
 				"queue_reset_time":           "04:00",
 				"ticket_prefix":              "A",
 				"numbering_strategy":         "daily_branch_sequence",
 				"default_estimated_duration": "5",
 				"auto_call_next":             "true",
-			}}, nil, newQueueConfigControllerTestDB(t), nil)
+			})
+			controller := NewQueueConfigController(newSettingsTestValidator(t), resolver, nil, newQueueConfigControllerTestDB(t), nil)
 
 			router := gin.New()
 			router.GET("/queue-config/effective", func(c *gin.Context) {
@@ -158,13 +162,14 @@ func TestQueueConfigController_EffectiveQueueConfig(t *testing.T) {
 
 func TestQueueConfigController_EffectiveConfigAliasPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{
+	resolver := newMockQueueResolver(t, map[string]string{
 		"queue_reset_time":           "04:00",
 		"ticket_prefix":              "A",
 		"numbering_strategy":         "daily_branch_sequence",
 		"default_estimated_duration": "5",
 		"auto_call_next":             "true",
-	}}, nil, newQueueConfigControllerTestDB(t), nil)
+	})
+	controller := NewQueueConfigController(newSettingsTestValidator(t), resolver, nil, newQueueConfigControllerTestDB(t), nil)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -203,8 +208,15 @@ func TestQueueConfigController_EffectiveConfigAliasPaths(t *testing.T) {
 func TestQueueConfigController_ResetQueueSetting(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newQueueConfigControllerTestDB(t)
-	audit := &stubSettingsAudit{}
-	controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, db, nil, audit)
+	resolver := newMockQueueResolver(t, map[string]string{})
+	mockAudit := mocks.NewMockAuditLogger(t)
+	var capturedRequests []auditModel.CreateAuditLogRequest
+	mockAudit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+		capturedRequests = append(capturedRequests, req)
+		return true
+	})).Return(nil)
+
+	controller := NewQueueConfigController(newSettingsTestValidator(t), resolver, nil, db, nil, mockAudit)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")
@@ -240,13 +252,14 @@ func TestQueueConfigController_ResetQueueSetting(t *testing.T) {
 			assert.Nil(t, value)
 		})
 	}
-	require.Len(t, audit.requests, len(tests))
-	assert.Equal(t, "SETTING_RESET", audit.requests[0].Action)
+	require.Len(t, capturedRequests, len(tests))
+	assert.Equal(t, "SETTING_RESET", capturedRequests[0].Action)
 }
 
 func TestQueueConfigController_ResetQueueSetting_InvalidField(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	controller := NewQueueConfigController(newSettingsTestValidator(t), stubQueueResolver{values: map[string]string{}}, nil, newQueueConfigControllerTestDB(t), nil)
+	resolver := newMockQueueResolver(t, map[string]string{})
+	controller := NewQueueConfigController(newSettingsTestValidator(t), resolver, nil, newQueueConfigControllerTestDB(t), nil)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		ctx := database.SetOrganizationContext(c.Request.Context(), "tenant-1")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Roisfaozi/queue-base/internal/mocking"
 	permissionMocks "github.com/Roisfaozi/queue-base/internal/modules/permission/test/mocks"
 	"github.com/Roisfaozi/queue-base/internal/modules/role/entity"
 	"github.com/Roisfaozi/queue-base/internal/modules/role/model"
@@ -15,21 +16,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockTransactionManager is a local mock for testing
-type MockTransactionManager struct {
-	mock.Mock
-}
-
-func (m *MockTransactionManager) WithinTransaction(ctx context.Context, fn func(context.Context) error) error {
-	// Simple implementation that executes the function directly
-	return fn(ctx)
-}
-
 func setupSecurityRoleTest() (*mocks.MockRoleRepository, *permissionMocks.MockIPermissionUseCase, usecase.RoleUseCase) {
 	mockRepo := new(mocks.MockRoleRepository)
 	mockPerm := new(permissionMocks.MockIPermissionUseCase)
 	logger := logrus.New()
-	mockTM := new(MockTransactionManager)
+	mockTM := new(mocking.MockWithTransactionManager)
+	mockTM.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
+		Return(func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(ctx)
+		})
 
 	uc := usecase.NewRoleUseCase(logger, mockTM, mockRepo, mockPerm)
 	return mockRepo, mockPerm, uc
