@@ -171,7 +171,7 @@ func (uc *organizationMemberUseCase) InviteMember(ctx context.Context, orgID str
 		payload := &tasks.SendEmailPayload{
 			To:      targetUser.Email,
 			Subject: "Invitation to join organization",
-			Body:    "You have been invited to join " + org.Name + ". Click here to accept: " + uc.frontendBaseURL + "/accept-invite?token=" + tokenString,
+			Body:    "You have been invited to join " + org.Name + ". Click here to accept: " + uc.frontendBaseURL + "/invite/" + tokenString,
 		}
 
 		if err := uc.taskDistributor.DistributeTaskSendEmail(txCtx, payload); err != nil {
