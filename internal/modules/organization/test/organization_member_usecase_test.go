@@ -103,10 +103,16 @@ func TestOrganizationMemberUseCase(t *testing.T) {
 					return m.UserID == user.ID && m.OrganizationID == orgID && m.Status == entity.MemberStatusInvited
 				})).Return(nil)
 				deps.InvitationRepo.On("DeleteByEmailAndOrg", ctx, req.Email, orgID).Return(nil)
-				deps.InvitationRepo.On("Create", ctx, mock.Anything).Return(nil)
-				deps.TaskDistributor.On("DistributeTaskSendEmail", ctx, mock.MatchedBy(func(p *tasks.SendEmailPayload) bool {
-					return p.To == req.Email
-				})).Return(nil)
+				var invitationToken string
+				deps.InvitationRepo.On("Create", ctx, mock.Anything).Run(func(args mock.Arguments) {
+					invitationToken = args.Get(1).(*entity.InvitationToken).Token
+					require.Len(t, invitationToken, 64)
+				}).Return(nil)
+				deps.TaskDistributor.On("DistributeTaskSendEmail", ctx, mock.Anything).Run(func(args mock.Arguments) {
+					payload := args.Get(1).(*tasks.SendEmailPayload)
+					assert.Equal(t, req.Email, payload.To)
+					assert.Equal(t, "You have been invited to join Org 1. Click here to accept: http://localhost:3000/invite/"+invitationToken, payload.Body)
+				}).Return(nil).Once()
 
 				res, err := uc.InviteMember(ctx, orgID, req)
 				require.NoError(t, err)
