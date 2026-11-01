@@ -285,6 +285,11 @@ const navItems: NavEntry[] = [
 	},
 	{ type: "separator" },
 	{
+		title: "Uploads",
+		href: "/dashboard/uploads",
+		iconName: "Upload",
+	},
+	{
 		title: "Showcase",
 		href: "/dashboard/showcase",
 		iconName: "Sparkles",

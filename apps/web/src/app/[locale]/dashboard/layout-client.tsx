@@ -3,6 +3,9 @@
 import { DashboardHeader } from "~/components/layout/dashboard/header";
 import { Sidebar } from "~/components/layout/sidebar";
 import { usePresence } from "~/hooks/use-presence";
+import { UploadManager, UploadDuplicateDialog } from "@casbin/ui";
+import { useUploadSideEffects } from "@casbin/hooks";
+import { toast } from "sonner";
 
 export function DashboardLayoutClient({
 	children,
@@ -10,6 +13,12 @@ export function DashboardLayoutClient({
 	children: React.ReactNode;
 }) {
 	usePresence();
+
+	useUploadSideEffects({
+		onToastSuccess: (msg) => toast.success(msg),
+		onToastError: (msg) => toast.error(msg),
+		onToastWarning: (msg) => toast.warning(msg),
+	});
 
 	return (
 		<div className="bg-background flex min-h-screen">
@@ -24,6 +33,10 @@ export function DashboardLayoutClient({
 					{children}
 				</main>
 			</div>
+
+			{/* Global Floating Upload Suite */}
+			<UploadManager />
+			<UploadDuplicateDialog />
 		</div>
 	);
 }

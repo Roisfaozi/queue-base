@@ -27,6 +27,7 @@ import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import { FileUpload, FileUploader, UploadQueue } from "@casbin/ui";
 
 type ShowcaseEntry = {
 	slug: string;
@@ -943,6 +944,15 @@ const showcaseEntries: ShowcaseEntry[] = [
 		path: "apps/web/src/components/magicui/word-pull-up.tsx",
 		variants: ["heading", "caption"],
 	},
+	{
+		slug: "upload",
+		title: "Upload Suite",
+		description: "Resumable TUS & Form file upload suite with AlignUI theme.",
+		category: "Input",
+		level: "Composed Component",
+		path: "packages/ui/src/upload/",
+		variants: ["file-uploader", "folder-uploader", "file-upload-form"],
+	},
 ];
 
 const hierarchyOrder: ShowcaseEntry["level"][] = [
@@ -978,6 +988,28 @@ function ComponentPreview({
 	variant?: string;
 }) {
 	const isVariantPreview = !!variant && variant !== "default";
+
+	if (entry.slug === "upload") {
+		if (variant === "folder-uploader") {
+			return (
+				<FileUploader
+					directory
+					title="Upload folder"
+					description="Select a directory to test TUS folder upload"
+					className="min-h-[160px]"
+				/>
+			);
+		}
+		if (variant === "file-upload-form") {
+			return <FileUpload accept="image/*,.pdf" multiple />;
+		}
+		return (
+			<div className="space-y-4">
+				<FileUploader />
+				<UploadQueue />
+			</div>
+		);
+	}
 
 	if (entry.slug === "button") {
 		return (
