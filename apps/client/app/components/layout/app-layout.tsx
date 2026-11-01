@@ -4,13 +4,16 @@ import { AppNavbar } from "./app-navbar";
 import { AppBreadcrumb } from "./app-breadcrumb";
 import { AppCommandPalette } from "@/components/navigation/app-command-palette";
 import { useRealtimeInit } from "@/hooks/use-realtime";
-import { UploadManager } from "@/components/upload/upload-manager";
-import { UploadDuplicateDialog } from "@/components/upload/upload-duplicate-dialog";
-import { useUploadSideEffects } from "@/lib/upload/use-upload-side-effects";
+import { UploadManager, UploadDuplicateDialog, toast } from "@casbin/ui";
+import { useUploadSideEffects } from "@casbin/hooks";
 
 export function AppLayout() {
 	useRealtimeInit();
-	useUploadSideEffects();
+	useUploadSideEffects({
+		onToastSuccess: (msg) => toast.success(msg),
+		onToastError: (msg) => toast.error(msg),
+		onToastWarning: (msg) => toast.warning(msg),
+	});
 
 	return (
 		<div className="bg-background flex min-h-screen w-full">

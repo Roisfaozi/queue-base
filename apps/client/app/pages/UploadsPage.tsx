@@ -1,9 +1,6 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { FileUploader } from "@/components/upload/file-uploader";
-import { UploadQueue } from "@/components/upload/upload-queue";
-import { FilePreview } from "@/components/upload/file-preview";
-import { useUploadStore } from "@/lib/upload/upload-store";
-import { NexusCard } from "@casbin/ui";
+import { FileUploader, UploadQueue, FilePreview, NexusCard } from "@casbin/ui";
+import { useUploadStore } from "@casbin/hooks";
 
 export default function UploadsPage() {
 	const items = useUploadStore((s) => s.uploadQueue);
