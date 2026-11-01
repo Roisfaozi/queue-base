@@ -68,3 +68,12 @@ export * from "./toast";
 export * from "./toggle-group";
 export * from "./toggle";
 export * from "./tooltip";
+
+// Upload Component Suite (AlignUI themed)
+export * from "./upload/file-uploader";
+export * from "./upload/upload-progress";
+export * from "./upload/upload-queue";
+export * from "./upload/upload-manager";
+export * from "./upload/upload-duplicate-dialog";
+export * from "./upload/file-preview";
+export * from "./upload/file-upload";
