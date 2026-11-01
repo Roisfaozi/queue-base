@@ -31,7 +31,9 @@ export async function ALL(
 
 	try {
 		const body =
-			request.method !== "GET" && request.method !== "HEAD"
+			request.method !== "GET" &&
+			request.method !== "HEAD" &&
+			request.method !== "OPTIONS"
 				? await request.blob()
 				: undefined;
 
@@ -44,10 +46,20 @@ export async function ALL(
 
 		const responseHeaders = new Headers();
 		response.headers.forEach((value, key) => {
+			const lower = key.toLowerCase();
 			if (
-				key.toLowerCase() === "set-cookie" ||
-				key.toLowerCase() === "content-type" ||
-				key.toLowerCase() === "cache-control"
+				lower === "set-cookie" ||
+				lower === "content-type" ||
+				lower === "cache-control" ||
+				lower === "location" ||
+				lower === "upload-offset" ||
+				lower === "upload-length" ||
+				lower === "upload-metadata" ||
+				lower === "upload-defer-length" ||
+				lower === "tus-resumable" ||
+				lower === "tus-version" ||
+				lower === "tus-extension" ||
+				lower === "tus-max-size"
 			) {
 				responseHeaders.append(key, value);
 			}
@@ -80,4 +92,12 @@ export async function ALL(
 	}
 }
 
-export { ALL as DELETE, ALL as GET, ALL as PATCH, ALL as POST, ALL as PUT };
+export {
+	ALL as DELETE,
+	ALL as GET,
+	ALL as HEAD,
+	ALL as OPTIONS,
+	ALL as PATCH,
+	ALL as POST,
+	ALL as PUT,
+};

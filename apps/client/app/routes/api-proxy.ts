@@ -8,8 +8,6 @@ async function handleRequest(request: Request, params: any) {
 	const url = new URL(request.url);
 	const targetUrl = `${BACKEND_BASE_URL}${url.pathname}${url.search}`;
 
-	console.log(`[Proxy] ${request.method} ${url.pathname} -> ${targetUrl}`);
-
 	const headers = new Headers(request.headers);
 	headers.delete("host");
 
@@ -18,7 +16,9 @@ async function handleRequest(request: Request, params: any) {
 			method: request.method,
 			headers,
 			body:
-				request.method !== "GET" && request.method !== "HEAD"
+				request.method !== "GET" &&
+				request.method !== "HEAD" &&
+				request.method !== "OPTIONS"
 					? await request.blob()
 					: undefined,
 		});
@@ -33,11 +33,21 @@ async function handleRequest(request: Request, params: any) {
 		}
 
 		response.headers.forEach((value, key) => {
+			const lower = key.toLowerCase();
 			if (
-				key.toLowerCase() !== "set-cookie" &&
-				(key.toLowerCase() === "content-type" ||
-					key.toLowerCase() === "cache-control" ||
-					key.toLowerCase() === "x-request-id")
+				lower === "set-cookie" ||
+				lower === "content-type" ||
+				lower === "cache-control" ||
+				lower === "x-request-id" ||
+				lower === "location" ||
+				lower === "upload-offset" ||
+				lower === "upload-length" ||
+				lower === "upload-metadata" ||
+				lower === "upload-defer-length" ||
+				lower === "tus-resumable" ||
+				lower === "tus-version" ||
+				lower === "tus-extension" ||
+				lower === "tus-max-size"
 			) {
 				responseHeaders.append(key, value);
 			}
