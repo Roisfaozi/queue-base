@@ -87,9 +87,12 @@ func TestValidateUploadMetadata_AllowsRegisteredType(t *testing.T) {
 			run: func(t *testing.T) {
 				registry := NewRegistry()
 				registry.Register("avatar", &MockHook{})
+				registry.Register("generic", &GenericHook{})
 
 				_, _, err := ValidateUploadMetadata(tusd.MetaData{"type": "avatar"}, registry)
+				require.NoError(t, err)
 
+				_, _, err = ValidateUploadMetadata(tusd.MetaData{"type": "generic"}, registry)
 				require.NoError(t, err)
 			},
 		},

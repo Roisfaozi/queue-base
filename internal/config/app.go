@@ -322,6 +322,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	tusRegistry := tus.NewRegistry()
 
 	tusRegistry.Register("avatar", &userUseCase.AvatarHook{UserUseCase: userModule.UserUseCase})
+	tusRegistry.Register("generic", &tus.GenericHook{Logger: logger})
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(),
 		awsconfig.WithRegion(cfg.Storage.S3.Region),
