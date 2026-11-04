@@ -150,12 +150,27 @@ func (h *QueueConfigController) resolveEffectiveQueueConfig(ctx context.Context,
 	}
 	defaultEstimatedDuration, _ := h.queueResolver.Resolve(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
 	autoCallNext, _ := h.queueResolver.Resolve(ctx, "auto_call_next", req.BranchID, req.ServiceID, req.CounterID)
+	allowForward, _ := h.queueResolver.Resolve(ctx, "allow_forward", req.BranchID, req.ServiceID, req.CounterID)
+	allowSkip, _ := h.queueResolver.Resolve(ctx, "allow_skip", req.BranchID, req.ServiceID, req.CounterID)
+	allowRecall, _ := h.queueResolver.Resolve(ctx, "allow_recall", req.BranchID, req.ServiceID, req.CounterID)
+	allowCancel, _ := h.queueResolver.Resolve(ctx, "allow_cancel", req.BranchID, req.ServiceID, req.CounterID)
+	requireCounter, _ := h.queueResolver.Resolve(ctx, "require_counter", req.BranchID, req.ServiceID, req.CounterID)
+	allowForwardFrom, _ := h.queueResolver.Resolve(ctx, "allow_forward_from", req.BranchID, req.ServiceID, req.CounterID)
+	allowForwardTo, _ := h.queueResolver.Resolve(ctx, "allow_forward_to", req.BranchID, req.ServiceID, req.CounterID)
+
 	effectiveLogoAssetID := h.resolveEffectiveLogoAssetID(ctx, tenantID, req.BranchID)
 	queueResetTimeResolved, _ := h.queueResolver.ResolveDetailed(ctx, "queue_reset_time", req.BranchID, req.ServiceID, req.CounterID)
 	ticketPrefixResolved, _ := h.queueResolver.ResolveDetailed(ctx, "ticket_prefix", req.BranchID, req.ServiceID, req.CounterID)
 	numberingStrategyResolved, _ := h.queueResolver.ResolveDetailed(ctx, "numbering_strategy", req.BranchID, req.ServiceID, req.CounterID)
 	defaultEstimatedDurationResolved, _ := h.queueResolver.ResolveDetailed(ctx, "default_estimated_duration", req.BranchID, req.ServiceID, req.CounterID)
 	autoCallNextPtr := parseBoolPtr(autoCallNext)
+	allowForwardPtr := parseBoolPtr(allowForward)
+	allowSkipPtr := parseBoolPtr(allowSkip)
+	allowRecallPtr := parseBoolPtr(allowRecall)
+	allowCancelPtr := parseBoolPtr(allowCancel)
+	requireCounterPtr := parseBoolPtr(requireCounter)
+	allowForwardFromPtr := parseBoolPtr(allowForwardFrom)
+	allowForwardToPtr := parseBoolPtr(allowForwardTo)
 
 	res := &model.EffectiveQueueConfigResponse{
 		TenantID:                          tenantID,
@@ -175,6 +190,13 @@ func (h *QueueConfigController) resolveEffectiveQueueConfig(ctx context.Context,
 		DefaultEstimatedDurationSource:    sourceOf(defaultEstimatedDurationResolved),
 		DefaultEstimatedDurationInherited: inheritedOf(defaultEstimatedDurationResolved),
 		AutoCallNext:                      autoCallNextPtr,
+		AllowForward:                      allowForwardPtr,
+		AllowSkip:                         allowSkipPtr,
+		AllowRecall:                       allowRecallPtr,
+		AllowCancel:                       allowCancelPtr,
+		RequireCounter:                    requireCounterPtr,
+		AllowForwardFrom:                  allowForwardFromPtr,
+		AllowForwardTo:                    allowForwardToPtr,
 		Tenant: model.EffectiveConfigTenant{
 			TenantID: tenantID,
 		},
@@ -188,6 +210,13 @@ func (h *QueueConfigController) resolveEffectiveQueueConfig(ctx context.Context,
 			NumberingStrategy:        safeResolved(numberingStrategyResolved),
 			DefaultEstimatedDuration: safeResolved(defaultEstimatedDurationResolved),
 			AutoCallNext:             autoCallNextPtr,
+			AllowForward:             allowForwardPtr,
+			AllowSkip:                allowSkipPtr,
+			AllowRecall:              allowRecallPtr,
+			AllowCancel:              allowCancelPtr,
+			RequireCounter:           requireCounterPtr,
+			AllowForwardFrom:         allowForwardFromPtr,
+			AllowForwardTo:           allowForwardToPtr,
 		},
 	}
 	return res, nil

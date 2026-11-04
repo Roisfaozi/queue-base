@@ -30,15 +30,17 @@ func newResolverTestDB(t *testing.T) *gorm.DB {
 func TestQueueConfigResolver_Resolve(t *testing.T) {
 	db := newResolverTestDB(t)
 
-	require.NoError(t, db.Create(&entity.TenantQueueSetting{ID: "ts-1", TenantID: "t-1", QueueResetTime: "04:00", DefaultTicketPrefix: "A"}).Error)
+	require.NoError(t, db.Create(&entity.TenantQueueSetting{ID: "ts-1", TenantID: "t-1", QueueResetTime: "04:00", DefaultTicketPrefix: "A", AllowRecall: true, AllowSkip: true, AllowCancel: true, AllowForward: true}).Error)
 	val0500 := "05:00"
 	valPrefixC := "C"
 	valPrefixNil := (*string)(nil)
 	autoCallNext := true
-	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", QueueResetTime: &val0500}).Error)
+	allowRecallFalse := false
+	allowSkipFalse := false
+	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-1", TenantID: "t-1", BranchID: "b-1", QueueResetTime: &val0500, AllowRecall: &allowRecallFalse}).Error)
 	require.NoError(t, db.Create(&entity.BranchQueueSetting{ID: "bs-2", TenantID: "t-1", BranchID: "b-2", TicketPrefix: valPrefixNil}).Error)
 	require.NoError(t, db.Create(&serviceEntity.BranchService{ID: "bsvc-1", TenantID: "t-1", BranchID: "b-1", ServiceID: "svc-1", IsActive: true}).Error)
-	require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{ID: "bss-1", TenantID: "t-1", BranchID: "b-1", BranchServiceID: "bsvc-1", DefaultEstimatedDuration: &[]int{20}[0], AutoCallNext: &autoCallNext}).Error)
+	require.NoError(t, db.Create(&entity.BranchServiceQueueSetting{ID: "bss-1", TenantID: "t-1", BranchID: "b-1", BranchServiceID: "bsvc-1", DefaultEstimatedDuration: &[]int{20}[0], AutoCallNext: &autoCallNext, AllowSkip: &allowSkipFalse}).Error)
 	require.NoError(t, db.Create(&entity.CounterQueueSetting{ID: "cs-1", TenantID: "t-1", CounterID: "c-1", TicketPrefix: &valPrefixC}).Error)
 
 	ctx := database.SetOrganizationContext(context.Background(), "t-1")
@@ -59,6 +61,10 @@ func TestQueueConfigResolver_Resolve(t *testing.T) {
 		{name: "Positive_ResolvesCounterOverride", category: "positive", key: "ticket_prefix", branchID: "b-1", counterID: "c-1", want: "C"},
 		{name: "Positive_ResolvesBranchServiceOverride", category: "positive", key: "default_estimated_duration", branchID: "b-1", serviceID: "svc-1", want: "20"},
 		{name: "Positive_ResolvesAutoCallNextFromTypedTable", category: "positive", key: "auto_call_next", branchID: "b-1", serviceID: "svc-1", want: "true"},
+		{name: "Positive_ResolvesBranchOverrideAllowRecall", category: "positive", key: "allow_recall", branchID: "b-1", want: "false"},
+		{name: "Positive_InheritsTenantAllowRecall", category: "positive", key: "allow_recall", branchID: "b-2", want: "true"},
+		{name: "Positive_ResolvesBranchServiceOverrideAllowSkip", category: "positive", key: "allow_skip", branchID: "b-1", serviceID: "svc-1", want: "false"},
+		{name: "Positive_InheritsTenantAllowForward", category: "positive", key: "allow_forward", branchID: "b-1", want: "true"},
 		{name: "Negative_NoGenericFallback", category: "negative", key: "custom_theme_color", branchID: "b-1", want: ""},
 		{name: "Negative_LogoFallbackMiss", category: "negative", key: "logo_url", branchID: "b-1", want: ""},
 	}

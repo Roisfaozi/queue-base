@@ -14,12 +14,19 @@ var typedConfigKeys = map[string]bool{
 	"queue_reset_time":            true,
 	"reset_time":                  true,
 	"ticket_prefix":               true,
+	"default_ticket_prefix":       true,
 	"numbering_strategy":          true,
 	"default_estimated_duration":  true,
 	"auto_call_next":              true,
 	"pharmacy_flow_enabled":       true,
 	"require_counter":             true,
 	"require_counter_for_service": true,
+	"allow_forward":               true,
+	"allow_skip":                  true,
+	"allow_recall":                true,
+	"allow_cancel":                true,
+	"allow_forward_from":          true,
+	"allow_forward_to":            true,
 }
 
 type QueueConfigResolver struct {
@@ -128,6 +135,14 @@ func typedField(row *entity.TenantQueueSetting, key string) *string {
 		return &row.DefaultTicketPrefix
 	case "numbering_strategy":
 		return &row.NumberingStrategy
+	case "allow_forward":
+		return boolPtrToString(&row.AllowForward)
+	case "allow_skip":
+		return boolPtrToString(&row.AllowSkip)
+	case "allow_recall":
+		return boolPtrToString(&row.AllowRecall)
+	case "allow_cancel":
+		return boolPtrToString(&row.AllowCancel)
 	default:
 		return nil
 	}
@@ -143,6 +158,18 @@ func typedFieldNullable(row any, key string) *string {
 			return r.TicketPrefix
 		case "numbering_strategy":
 			return r.NumberingStrategy
+		case "default_estimated_duration":
+			if r.DefaultEstimatedDuration != nil {
+				return strPtr(fmt.Sprintf("%d", *r.DefaultEstimatedDuration))
+			}
+		case "allow_forward":
+			return boolPtrToString(r.AllowForward)
+		case "allow_skip":
+			return boolPtrToString(r.AllowSkip)
+		case "allow_recall":
+			return boolPtrToString(r.AllowRecall)
+		case "allow_cancel":
+			return boolPtrToString(r.AllowCancel)
 		case "auto_call_next":
 			return boolPtrToString(r.AutoCallNext)
 		}
@@ -175,6 +202,18 @@ func typedFieldNullable(row any, key string) *string {
 			return r.TicketPrefix
 		case "numbering_strategy":
 			return r.NumberingStrategy
+		case "default_estimated_duration":
+			if r.DefaultEstimatedDuration != nil {
+				return strPtr(fmt.Sprintf("%d", *r.DefaultEstimatedDuration))
+			}
+		case "allow_forward":
+			return boolPtrToString(r.AllowForward)
+		case "allow_skip":
+			return boolPtrToString(r.AllowSkip)
+		case "allow_recall":
+			return boolPtrToString(r.AllowRecall)
+		case "allow_cancel":
+			return boolPtrToString(r.AllowCancel)
 		case "auto_call_next":
 			return boolPtrToString(r.AutoCallNext)
 		}
