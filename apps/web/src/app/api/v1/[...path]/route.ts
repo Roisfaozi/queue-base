@@ -61,9 +61,29 @@ export async function ALL(
 				lower === "tus-extension" ||
 				lower === "tus-max-size"
 			) {
-				responseHeaders.append(key, value);
+				let headerValue = value;
+				if (lower === "location") {
+					try {
+						const parsed = new URL(value);
+						headerValue = parsed.pathname + parsed.search;
+					} catch {
+						// already relative
+					}
+				}
+				responseHeaders.append(key, headerValue);
 			}
 		});
+
+		if (
+			response.status === 204 ||
+			response.status === 205 ||
+			response.status === 304
+		) {
+			return new NextResponse(null, {
+				status: response.status,
+				headers: responseHeaders,
+			});
+		}
 
 		const contentType = response.headers.get("content-type");
 		if (contentType && contentType.includes("application/json")) {
