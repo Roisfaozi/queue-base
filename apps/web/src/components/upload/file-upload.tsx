@@ -5,6 +5,7 @@ import { cn } from "~/lib/utils";
 import { Upload, X, File as FileIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { toast } from "sonner";
+import { isAcceptedFile } from "~/lib/upload";
 
 export interface FileUploadProps {
 	accept?: string;
@@ -29,18 +30,32 @@ export function FileUpload({
 		(incoming: FileList | null) => {
 			if (!incoming) return;
 			const all = Array.from(incoming);
+
+			// Validate file format (especially critical for drag & drop)
+			const rejectedFormat = all.filter((f) => !isAcceptedFile(f, accept));
+			if (rejectedFormat.length > 0) {
+				toast.error(
+					`Format berkas "${rejectedFormat[0].name}" tidak didukung (hanya menerima: ${accept}).`,
+				);
+			}
+
+			// Validate file size
 			const oversized = all.filter((f) => f.size > maxSize);
 			if (oversized.length > 0) {
 				toast.error(
 					`File "${oversized[0].name}" melebihi batas ukuran maksimal (${(maxSize / 1024 / 1024).toFixed(0)}MB).`,
 				);
 			}
-			const valid = all.filter((f) => f.size <= maxSize);
+
+			const valid = all
+				.filter((f) => isAcceptedFile(f, accept))
+				.filter((f) => f.size <= maxSize);
+
 			const next = multiple ? [...files, ...valid] : valid.slice(0, 1);
 			setFiles(next);
 			onChange?.(next);
 		},
-		[files, maxSize, multiple, onChange],
+		[accept, files, maxSize, multiple, onChange],
 	);
 
 	const removeFile = (index: number) => {
@@ -76,7 +91,8 @@ export function FileUpload({
 					<span className="text-primary font-medium">browse</span>
 				</p>
 				<p className="text-muted-foreground text-xs">
-					Max {(maxSize / 1024 / 1024).toFixed(0)}MB per file
+					{accept ? `Hanya format: ${accept} · ` : ""}Max{" "}
+					{(maxSize / 1024 / 1024).toFixed(0)}MB per file
 				</p>
 				<input
 					ref={inputRef}

@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useRef } from "react";
 import { cn } from "~/lib/utils";
-import { useUploadStore } from "~/lib/upload";
+import { useUploadStore, isAcceptedFile } from "~/lib/upload";
 import { Upload, FileUp, FolderUp } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,18 +37,33 @@ export function FileUploader({
 		(fileList: FileList | null) => {
 			if (!fileList) return;
 			const all = Array.from(fileList);
+
+			// Validate file format (especially critical for drag & drop)
+			const rejectedFormat = all.filter((f) => !isAcceptedFile(f, accept));
+			if (rejectedFormat.length > 0) {
+				toast.error(
+					`Format berkas "${rejectedFormat[0].name}" tidak didukung (hanya menerima: ${accept}).`,
+				);
+			}
+
+			// Validate file size
 			const oversized = all.filter((f) => f.size > maxSize);
 			if (oversized.length > 0) {
 				toast.error(
 					`File "${oversized[0].name}" melebihi batas ukuran maksimal (${Math.round(maxSize / 1024 / 1024)}MB).`,
 				);
 			}
-			const files = all.slice(0, maxFiles).filter((f) => f.size <= maxSize);
+
+			const files = all
+				.filter((f) => isAcceptedFile(f, accept))
+				.filter((f) => f.size <= maxSize)
+				.slice(0, maxFiles);
+
 			if (files.length > 0) {
 				addFiles(files, { targetFolderId, targetFolderName });
 			}
 		},
-		[addFiles, maxFiles, maxSize, targetFolderId, targetFolderName],
+		[accept, addFiles, maxFiles, maxSize, targetFolderId, targetFolderName],
 	);
 
 	const onDragOver = (e: React.DragEvent) => {
@@ -107,9 +122,9 @@ export function FileUploader({
 						: (title ??
 							(directory ? "Upload folder" : "Drag & drop files here"))}
 				</p>
-				<p className="text-muted-foreground mt-1 text-xs">
+				<p className="mt-1 text-xs text-muted-foreground">
 					{description ??
-						`or click to browse · Max ${Math.round(maxSize / 1024 / 1024)}MB per file`}
+						`or click to browse · ${accept ? `Format: ${accept} · ` : ""}Max ${Math.round(maxSize / 1024 / 1024)}MB per file`}
 				</p>
 			</div>
 			<input
