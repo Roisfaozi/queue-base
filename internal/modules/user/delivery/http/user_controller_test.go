@@ -465,8 +465,8 @@ func TestUpdateAvatar(t *testing.T) {
 					body := new(bytes.Buffer)
 					writer := multipart.NewWriter(body)
 					part, _ := writer.CreateFormFile("avatar", "test.jpg")
-					// Write exactly 2MB + 1 byte
-					largeData := strings.Repeat("a", (2*1024*1024)+1)
+					// Write exactly 15MB + 1 byte
+					largeData := strings.Repeat("a", (15*1024*1024)+1)
 					_, _ = part.Write([]byte(largeData))
 					_ = writer.Close()
 

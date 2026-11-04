@@ -5,6 +5,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/storage"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -14,6 +15,12 @@ type BranchModule struct {
 	BranchController *http.BranchController
 	BranchRepo       repository.BranchRepository
 	BranchUseCase    usecase.BranchUseCase
+	LogoController   *http.LogoController
+}
+
+// EnableLogoUpload wires the direct logo upload endpoints using the given storage provider.
+func (m *BranchModule) EnableLogoUpload(provider storage.Provider, log *logrus.Logger) {
+	m.LogoController = http.NewLogoController(usecase.NewLogoUseCase(provider, log), log)
 }
 
 func NewBranchModule(db *gorm.DB, validate *validator.Validate,

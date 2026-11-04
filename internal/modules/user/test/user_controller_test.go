@@ -1230,7 +1230,7 @@ func TestUserHandler_UpdateAvatar(t *testing.T) {
 					// To avoid allocating 3MB in memory, we can try to mock the header size if possible,
 					// but since we are using httptest, we actually need to send data or use a custom request that lies about size.
 					// Constructing a 3MB buffer is fine in test.
-					dummyData := make([]byte, 2*1024*1024+10) // 2MB + 10 bytes
+					dummyData := make([]byte, 15*1024*1024+10) // 15MB + 10 bytes
 					_, err := part.Write(dummyData)
 					require.NoError(t, err)
 

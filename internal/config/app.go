@@ -220,6 +220,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL, auditModule.AuditUseCase)
 	branchModule := organization.NewBranchModule(dbConnection, validate, logger, auditModule.AuditUseCase)
+	branchModule.EnableLogoUpload(storageProvider, logger)
 	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo, storageProvider, logger, auditModule.AuditUseCase)
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
 	queueModule := queue.NewQueueModule(dbConnection, validate, queueConfigModule.QueueConfigResolver, logger, auditModule.AuditUseCase)

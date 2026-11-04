@@ -258,6 +258,7 @@ func getAccessMap() map[string][]map[string]string {
 		},
 		"org:manage": {
 			{"Path": "/api/v1/tenant/profile", "Method": "PATCH"},
+			{"Path": "/api/v1/tenant/logo", "Method": "POST"},
 			{"Path": "/api/v1/organizations", "Method": "POST"},
 			{"Path": "/api/v1/organizations/:id", "Method": "PUT"},
 			{"Path": "/api/v1/organizations/:id", "Method": "DELETE"},
@@ -336,6 +337,7 @@ func getAccessMap() map[string][]map[string]string {
 		},
 		"branch:manage": {
 			{"Path": "/api/v1/branches", "Method": "POST"},
+			{"Path": "/api/v1/branches/logo", "Method": "POST"},
 			{"Path": "/api/v1/branches/:id", "Method": "PUT"},
 			{"Path": "/api/v1/branches/:id/profile", "Method": "PATCH"},
 			{"Path": "/api/v1/branches/:id", "Method": "DELETE"},

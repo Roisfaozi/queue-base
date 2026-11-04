@@ -14,6 +14,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// MaxDirectAvatarSize is the largest avatar accepted by the direct upload endpoint.
+const MaxDirectAvatarSize = 15 * 1024 * 1024
+
 type UserController struct {
 	UserUseCase usecase.UserUseCase
 	Log         *logrus.Logger
@@ -190,9 +193,9 @@ func (h *UserController) UpdateAvatar(c *gin.Context) {
 		_ = file.Close()
 	}()
 
-	// 2. Validate file size (max 2MB)
-	if header.Size > 2*1024*1024 {
-		response.BadRequest(c, errors.New("file too large"), "avatar size must be less than 2MB")
+	// 2. Validate file size (max 15MB; larger files must use the TUS endpoint)
+	if header.Size > MaxDirectAvatarSize {
+		response.BadRequest(c, errors.New("file too large"), "avatar size must be less than 15MB")
 		return
 	}
 

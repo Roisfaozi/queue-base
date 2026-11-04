@@ -87,6 +87,10 @@ packages:
         config:
           dir: internal/modules/organization/test/mocks
           filename: mock_branch_usecase.go
+      LogoUseCase:
+        config:
+          dir: internal/modules/organization/test/mocks
+          filename: mock_logo_usecase.go
       AuditLogger:
         config:
           dir: internal/modules/organization/test/mocks
