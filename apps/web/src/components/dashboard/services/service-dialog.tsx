@@ -256,6 +256,8 @@ export function ServiceDialog({
 										<FormLabel>Audio Pemanggilan (Bahasa Indonesia)</FormLabel>
 										<FormControl>
 											<FileUpload
+												compact
+												formatHint="MP3, WAV, OGG, M4A · Maks. 5MB"
 												accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac"
 												maxSize={5 * 1024 * 1024}
 												value={field.value}
@@ -283,6 +285,8 @@ export function ServiceDialog({
 										<FormLabel>Voice Announcement (English)</FormLabel>
 										<FormControl>
 											<FileUpload
+												compact
+												formatHint="MP3, WAV, OGG, M4A · Maks. 5MB"
 												accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac"
 												maxSize={5 * 1024 * 1024}
 												value={field.value}
