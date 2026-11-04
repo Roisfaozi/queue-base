@@ -48,7 +48,11 @@ func main() {
 	// 3. Authenticate as Superadmin to get the token
 	token, err := authenticateSuperadmin(cfg)
 	if err != nil {
-		log.Fatalf("Failed to authenticate as superadmin during seeding: %v", err)
+		log.Printf("Notice: Could not authenticate via API (%v). Seeding directly to database...", err)
+		seedAccessRightsAndPoliciesDirectly(db, getAccessMap(), getRoleToRights())
+		seedOrganizationsAndUsersDirectly(db)
+		log.Println("Direct database seeding completed successfully.")
+		return
 	}
 
 	// 4. Seed Access Rights, Endpoints, and Tiered Policies via API
@@ -207,10 +211,8 @@ func doJSONRequest(method, url string, payload interface{}, token string, expect
 	return result, nil
 }
 
-func seedAccessRightsAndPoliciesViaAPI(cfg *config.AppConfig, token string) {
-	apiBaseURL := fmt.Sprintf("http://localhost:%d/api/v1", cfg.Server.Port)
-
-	accessMap := map[string][]map[string]string{
+func getAccessMap() map[string][]map[string]string {
+	return map[string][]map[string]string{
 		"dashboard:view": {
 			{"Path": "/api/v1/stats/summary", "Method": "GET"},
 			{"Path": "/api/v1/stats/activity", "Method": "GET"},
@@ -300,9 +302,96 @@ func seedAccessRightsAndPoliciesViaAPI(cfg *config.AppConfig, token string) {
 			{"Path": "/api/v1/webhooks/:id", "Method": "DELETE"},
 			{"Path": "/api/v1/webhooks/:id/logs", "Method": "GET"},
 		},
+		"branch:view": {
+			{"Path": "/api/v1/branches", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/profile", "Method": "GET"},
+		},
+		"branch:manage": {
+			{"Path": "/api/v1/branches", "Method": "POST"},
+			{"Path": "/api/v1/branches/:id", "Method": "PUT"},
+			{"Path": "/api/v1/branches/:id/profile", "Method": "PATCH"},
+			{"Path": "/api/v1/branches/:id", "Method": "DELETE"},
+		},
+		"service:view": {
+			{"Path": "/api/v1/services", "Method": "GET"},
+			{"Path": "/api/v1/services/:id", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/services", "Method": "GET"},
+		},
+		"service:manage": {
+			{"Path": "/api/v1/services", "Method": "POST"},
+			{"Path": "/api/v1/services/:id", "Method": "PUT"},
+			{"Path": "/api/v1/services/audio", "Method": "POST"},
+			{"Path": "/api/v1/services/uploads", "Method": "POST"},
+			{"Path": "/api/v1/services/upload", "Method": "POST"},
+			{"Path": "/api/v1/services/:id/enable", "Method": "POST"},
+			{"Path": "/api/v1/services/:id/disable", "Method": "POST"},
+			{"Path": "/api/v1/services/:id", "Method": "DELETE"},
+			{"Path": "/api/v1/branches/:id/services", "Method": "POST"},
+			{"Path": "/api/v1/branches/:id/services/:branch_service_id", "Method": "PUT"},
+			{"Path": "/api/v1/branches/:id/services/:branch_service_id", "Method": "DELETE"},
+		},
+		"counter:view": {
+			{"Path": "/api/v1/counters", "Method": "GET"},
+			{"Path": "/api/v1/counters/:id", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/counters", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id", "Method": "GET"},
+		},
+		"counter:manage": {
+			{"Path": "/api/v1/counters", "Method": "POST"},
+			{"Path": "/api/v1/counters/:id", "Method": "PUT"},
+			{"Path": "/api/v1/counters/:id", "Method": "DELETE"},
+			{"Path": "/api/v1/branches/:id/counters", "Method": "POST"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id", "Method": "PUT"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id", "Method": "PATCH"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id", "Method": "DELETE"},
+		},
+		"queue-config:view": {
+			{"Path": "/api/v1/queue-config/effective", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/effective-config", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/services/:service_id/effective-config", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id/effective-config", "Method": "GET"},
+		},
+		"queue-config:manage": {
+			{"Path": "/api/v1/queue-config", "Method": "PATCH"},
+			{"Path": "/api/v1/branches/:id/queue-config", "Method": "PATCH"},
+			{"Path": "/api/v1/branches/:id/queue-config/:field", "Method": "DELETE"},
+			{"Path": "/api/v1/branches/:id/services/:branch_service_id/queue-config", "Method": "PATCH"},
+			{"Path": "/api/v1/branches/:id/services/:branch_service_id/queue-config/:field", "Method": "DELETE"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id/queue-config", "Method": "PATCH"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id/queue-config/:field", "Method": "DELETE"},
+		},
+		"queue:view": {
+			{"Path": "/api/v1/queues", "Method": "GET"},
+			{"Path": "/api/v1/queues/:id", "Method": "GET"},
+			{"Path": "/api/v1/queues/:id/visit-journeys", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/queue-stats", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/services/:service_id/queue-journeys", "Method": "GET"},
+			{"Path": "/api/v1/branches/:id/counters/:counter_id/queue-journeys", "Method": "GET"},
+		},
+		"queue:manage": {
+			{"Path": "/api/v1/queues", "Method": "POST"},
+			{"Path": "/api/v1/queues/:id/forward", "Method": "POST"},
+			{"Path": "/api/v1/queues/:id/transition", "Method": "POST"},
+		},
+		"operator_assignment:manage": {
+			{"Path": "/api/v1/operator-counter-assignments", "Method": "POST"},
+			{"Path": "/api/v1/operator-counter-assignments", "Method": "GET"},
+			{"Path": "/api/v1/operator-counter-assignments/:id", "Method": "DELETE"},
+		},
+		"qms_client:manage": {
+			{"Path": "/api/v1/qms-clients", "Method": "POST"},
+			{"Path": "/api/v1/qms-clients/credentials", "Method": "POST"},
+			{"Path": "/api/v1/qms-clients", "Method": "GET"},
+			{"Path": "/api/v1/qms-clients/:id", "Method": "GET"},
+			{"Path": "/api/v1/qms-clients/:id", "Method": "PATCH"},
+			{"Path": "/api/v1/qms-clients/:id", "Method": "DELETE"},
+		},
 	}
+}
 
-	roleToRights := map[string][]string{
+func getRoleToRights() map[string][]string {
+	return map[string][]string{
 		"role:admin": {
 			"dashboard:view",
 			"user:view", "user:manage",
@@ -313,11 +402,26 @@ func seedAccessRightsAndPoliciesViaAPI(cfg *config.AppConfig, token string) {
 			"permission:view", "permission:manage",
 			"access:view", "access:manage",
 			"webhook:manage",
+			"branch:view", "branch:manage",
+			"service:view", "service:manage",
+			"counter:view", "counter:manage",
+			"queue-config:view", "queue-config:manage",
+			"queue:view", "queue:manage",
+			"operator_assignment:manage",
+			"qms_client:manage",
 		},
 		"role:user": {
 			"dashboard:view", "org:view", "presence:view",
+			"queue:view", "queue:manage",
 		},
 	}
+}
+
+func seedAccessRightsAndPoliciesViaAPI(cfg *config.AppConfig, token string) {
+	apiBaseURL := fmt.Sprintf("http://localhost:%d/api/v1", cfg.Server.Port)
+
+	accessMap := getAccessMap()
+	roleToRights := getRoleToRights()
 
 	// 1. Seed Endpoints and AccessRights into DB
 	for arName, eps := range accessMap {
@@ -614,5 +718,130 @@ func seedOrganizationsAndUsers(cfg *config.AppConfig, token string) {
 			}
 		}
 	}
+}
 
+func seedAccessRightsAndPoliciesDirectly(db *gorm.DB, accessMap map[string][]map[string]string, roleToRights map[string][]string) {
+	now := time.Now().UnixMilli()
+	for arName, eps := range accessMap {
+		var arID string
+		row := db.Table("access_rights").Where("name = ?", arName).Select("id").Row()
+		_ = row.Scan(&arID)
+		if arID == "" {
+			arID = uuid.NewString()
+			if err := db.Table("access_rights").Create(map[string]interface{}{
+				"id":         arID,
+				"name":       arName,
+				"created_at": now,
+				"updated_at": now,
+			}).Error; err != nil {
+				log.Printf("Failed to create access right %s directly: %v", arName, err)
+				continue
+			}
+		}
+
+		for _, ep := range eps {
+			var epID string
+			row := db.Table("endpoints").Where("path = ? AND method = ?", ep["Path"], ep["Method"]).Select("id").Row()
+			_ = row.Scan(&epID)
+			if epID == "" {
+				epID = uuid.NewString()
+				if err := db.Table("endpoints").Create(map[string]interface{}{
+					"id":         epID,
+					"path":       ep["Path"],
+					"method":     ep["Method"],
+					"created_at": now,
+					"updated_at": now,
+					"deleted_at": 0,
+				}).Error; err != nil {
+					log.Printf("Failed to create endpoint %s %s directly: %v", ep["Method"], ep["Path"], err)
+					continue
+				}
+			}
+
+			db.Exec("INSERT IGNORE INTO access_right_endpoints (access_right_id, endpoint_id) VALUES (?, ?)", arID, epID)
+		}
+	}
+
+	for roleName, rights := range roleToRights {
+		for _, arName := range rights {
+			eps, exists := accessMap[arName]
+			if !exists {
+				continue
+			}
+			for _, ep := range eps {
+				ensurePolicy(db, "p", roleName, "global", ep["Path"], ep["Method"], "")
+			}
+		}
+	}
+}
+
+func seedOrganizationsAndUsersDirectly(db *gorm.DB) {
+	now := time.Now().UnixMilli()
+	var orgID string
+	row := db.Table("organizations").Where("slug = ?", "default-org").Select("id").Row()
+	_ = row.Scan(&orgID)
+	if orgID == "" {
+		orgID = uuid.NewString()
+		if err := db.Table("organizations").Create(map[string]interface{}{
+			"id":         orgID,
+			"name":       "Default Organization",
+			"slug":       "default-org",
+			"owner_id":   "system",
+			"status":     "active",
+			"created_at": now,
+			"updated_at": now,
+		}).Error; err != nil {
+			log.Printf("Failed to seed default organization directly: %v", err)
+			return
+		}
+	}
+
+	usersToSeed := []map[string]string{
+		{"username": "adminuser", "fullname": "Admin User", "email": "admin@example.com", "role": "role:admin"},
+		{"username": "regularuser", "fullname": "Regular User", "email": "user@example.com", "role": "role:user"},
+	}
+
+	for _, u := range usersToSeed {
+		var userID string
+		row := db.Table("users").Where("username = ?", u["username"]).Select("id").Row()
+		_ = row.Scan(&userID)
+		if userID == "" {
+			userID = uuid.NewString()
+			hashedPwd, _ := bcrypt.GenerateFromPassword([]byte("Password0!"), bcrypt.DefaultCost)
+			if err := db.Table("users").Create(map[string]interface{}{
+				"id":         userID,
+				"username":   u["username"],
+				"email":      u["email"],
+				"password":   string(hashedPwd),
+				"name":       u["fullname"],
+				"status":     "active",
+				"created_at": now,
+				"updated_at": now,
+			}).Error; err != nil {
+				log.Printf("Failed to seed user %s directly: %v", u["username"], err)
+				continue
+			}
+		}
+
+		var roleID string
+		row = db.Table("roles").Where("name = ?", u["role"]).Select("id").Row()
+		_ = row.Scan(&roleID)
+		if roleID != "" {
+			var memberCount int64
+			db.Table("organization_members").Where("organization_id = ? AND user_id = ?", orgID, userID).Count(&memberCount)
+			if memberCount == 0 {
+				db.Table("organization_members").Create(map[string]interface{}{
+					"id":              uuid.NewString(),
+					"organization_id": orgID,
+					"user_id":         userID,
+					"role_id":         roleID,
+					"status":          "active",
+					"created_at":      now,
+					"updated_at":      now,
+				})
+			}
+			ensurePolicy(db, "g", userID, u["role"], orgID, "", "")
+			ensurePolicy(db, "g", userID, u["role"], "global", "", "")
+		}
+	}
 }
