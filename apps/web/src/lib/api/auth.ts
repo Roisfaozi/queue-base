@@ -51,6 +51,17 @@ export const authApi = {
 		return api.post("/auth/resend-verification", {});
 	},
 
+	forgotPassword: (email: string) => {
+		return api.post<{ message: string }>("/auth/forgot-password", { email });
+	},
+
+	resetPassword: (token: string, newPassword: string) => {
+		return api.post<{ message: string }>("/auth/reset-password", {
+			token,
+			new_password: newPassword,
+		});
+	},
+
 	getWsTicket: (orgId?: string) => {
 		const url = orgId ? `/auth/ticket?org_id=${orgId}` : "/auth/ticket";
 		return api

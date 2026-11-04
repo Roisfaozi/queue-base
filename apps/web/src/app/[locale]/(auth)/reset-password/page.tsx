@@ -1,7 +1,8 @@
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
+import { Suspense } from "react";
+import Link from "next/link";
 import { AuthLayoutShell } from "~/components/auth/auth-layout-shell";
+import { ResetPasswordForm } from "~/components/auth/reset-password-form";
+import { Icon } from "~/components/shared/icon";
 
 export default function ResetPassword() {
 	return (
@@ -10,28 +11,25 @@ export default function ResetPassword() {
 			description="Enter your new password below"
 			brandingTitle="Almost there!"
 			brandingDescription="Once you update your password, you'll be able to sign in and access your workspace."
+			footer={
+				<Link
+					href="/login"
+					className="text-muted-foreground hover:text-primary flex items-center gap-2 text-sm font-medium transition-colors"
+				>
+					<Icon name="ChevronLeft" className="h-4 w-4" />
+					Back to login
+				</Link>
+			}
 		>
-			<div className="grid gap-4">
-				<div className="grid gap-2">
-					<Label htmlFor="password">New Password</Label>
-					<Input
-						id="password"
-						placeholder="••••••••"
-						type="password"
-						autoComplete="new-password"
-					/>
-				</div>
-				<div className="grid gap-2">
-					<Label htmlFor="confirmPassword">Confirm New Password</Label>
-					<Input
-						id="confirmPassword"
-						placeholder="••••••••"
-						type="password"
-						autoComplete="new-password"
-					/>
-				</div>
-				<Button className="mt-2 w-full">Update Password</Button>
-			</div>
+			<Suspense
+				fallback={
+					<div className="flex justify-center p-8">
+						<Icon name="Loader" className="text-primary h-6 w-6 animate-spin" />
+					</div>
+				}
+			>
+				<ResetPasswordForm />
+			</Suspense>
 		</AuthLayoutShell>
 	);
 }
