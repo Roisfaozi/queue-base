@@ -6,6 +6,7 @@ export interface Organization {
 	slug: string;
 	status: string;
 	owner_id: string;
+	logo_asset_id?: string;
 	settings?: OrganizationSettings;
 	created_at: number;
 	updated_at: number;
@@ -43,6 +44,7 @@ export const organizationsApi = {
 			name?: string;
 			status?: "active" | "suspended" | "inactive";
 			settings?: OrganizationSettings;
+			logo_asset_id?: string;
 		},
 	) => {
 		return api.put<{ data: Organization }>(`/organizations/${id}`, data);
@@ -88,6 +90,15 @@ export const organizationsApi = {
 
 	getPresence: (orgId: string) => {
 		return api.get<{ data: Member[] }>(`/organizations/${orgId}/presence`);
+	},
+
+	uploadLogo: (file: File) => {
+		const formData = new FormData();
+		formData.append("logo", file);
+		return api.request<{ data: { url: string } }>("/tenant/logo", {
+			method: "POST",
+			body: formData,
+		});
 	},
 };
 

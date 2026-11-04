@@ -5,3 +5,5 @@ export { UploadProgress, type UploadProgressProps } from "./upload-progress";
 export { UploadQueue, type UploadQueueProps } from "./upload-queue";
 export { UploadDuplicateDialog } from "./upload-duplicate-dialog";
 export { UploadManager } from "./upload-manager";
+export { AvatarUpload, type AvatarUploadProps } from "./avatar-upload";
+export { LogoUpload, type LogoUploadProps } from "./logo-upload";

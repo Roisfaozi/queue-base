@@ -124,6 +124,14 @@ export const branchesApi = {
 	update: (id: string, data: BranchUpsertPayload) =>
 		api.put<{ data: Branch }>(`/branches/${id}`, data),
 	delete: (id: string) => api.delete(`/branches/${id}`),
+	uploadLogo: (file: File) => {
+		const formData = new FormData();
+		formData.append("logo", file);
+		return api.request<{ data: { url: string } }>("/branches/logo", {
+			method: "POST",
+			body: formData,
+		});
+	},
 };
 
 // -----------------------------------------------------------------------------
