@@ -3,8 +3,8 @@
 import { DashboardHeader } from "~/components/layout/dashboard/header";
 import { Sidebar } from "~/components/layout/sidebar";
 import { usePresence } from "~/hooks/use-presence";
-import { UploadManager, UploadDuplicateDialog } from "@casbin/ui";
-import { useUploadSideEffects } from "@casbin/hooks";
+import { UploadManager, UploadDuplicateDialog } from "~/components/upload";
+import { useUploadSideEffects } from "~/lib/upload";
 import { toast } from "sonner";
 
 export function DashboardLayoutClient({

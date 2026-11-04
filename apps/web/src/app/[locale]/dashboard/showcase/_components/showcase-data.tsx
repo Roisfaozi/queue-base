@@ -27,7 +27,7 @@ import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { FileUpload, FileUploader, UploadQueue } from "@casbin/ui";
+import { FileUpload, FileUploader, UploadQueue } from "~/components/upload";
 
 type ShowcaseEntry = {
 	slug: string;
@@ -950,7 +950,7 @@ const showcaseEntries: ShowcaseEntry[] = [
 		description: "Resumable TUS & Form file upload suite with AlignUI theme.",
 		category: "Input",
 		level: "Composed Component",
-		path: "packages/ui/src/upload/",
+		path: "apps/web/src/components/upload/",
 		variants: ["file-uploader", "folder-uploader", "file-upload-form"],
 	},
 ];

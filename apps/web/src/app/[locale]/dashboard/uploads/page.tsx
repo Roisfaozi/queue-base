@@ -1,7 +1,8 @@
 "use client";
 
-import { FileUploader, UploadQueue, FilePreview, NexusCard } from "@casbin/ui";
-import { useUploadStore } from "@casbin/hooks";
+import { FileUploader, UploadQueue, FilePreview } from "~/components/upload";
+import { Card } from "~/components/ui/card";
+import { useUploadStore } from "~/lib/upload";
 
 export default function UploadsDashboardPage() {
 	const items = useUploadStore((s) => s.uploadQueue);
@@ -46,10 +47,10 @@ export default function UploadsDashboardPage() {
 			)}
 
 			{items.length === 0 && (
-				<NexusCard className="text-muted-foreground p-8 text-center text-sm">
+				<Card className="p-8 text-center text-sm text-muted-foreground">
 					No uploads yet. Drop files or folder above, or paste anywhere
 					(Ctrl+V).
-				</NexusCard>
+				</Card>
 			)}
 		</div>
 	);
