@@ -10,9 +10,11 @@ import {
 } from "~/components/ui/card";
 import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
+import { LogoUpload } from "~/components/upload";
 
 export function GeneralSettingsCard() {
-	const { name, setName, currentOrganization } = useSettings();
+	const { name, setName, logoAssetId, setLogoAssetId, currentOrganization } =
+		useSettings();
 
 	if (!currentOrganization) return null;
 
@@ -21,10 +23,22 @@ export function GeneralSettingsCard() {
 			<CardHeader>
 				<CardTitle>General Information</CardTitle>
 				<CardDescription>
-					The display name and identity of your organization.
+					The display name, brand logo, and identity of your organization.
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-4">
+			<CardContent className="space-y-6">
+				<div className="grid gap-2">
+					<Label>Organization Logo</Label>
+					<LogoUpload
+						scope="organization"
+						value={logoAssetId}
+						name={name}
+						onChange={(url) => setLogoAssetId(url)}
+						title="Upload Organization Logo"
+						description="PNG, JPG, WEBP, or GIF (<15MB direct upload, ≥15MB via TUS)"
+					/>
+				</div>
+
 				<div className="grid gap-2">
 					<Label htmlFor="name">Organization Name</Label>
 					<Input

@@ -9,6 +9,7 @@ import { useDashboardShell } from "~/app/[locale]/dashboard/_components/dashboar
 import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
+import { LogoUpload } from "~/components/upload";
 import {
 	Card,
 	CardContent,
@@ -425,9 +426,16 @@ export function BranchesContent() {
 									name="logo_asset_id"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>Logo Asset ID</FormLabel>
+											<FormLabel>Logo Cabang</FormLabel>
 											<FormControl>
-												<Input {...field} />
+												<LogoUpload
+													scope="branch"
+													value={field.value}
+													name={form.watch("name") || "Logo Cabang"}
+													onChange={field.onChange}
+													title="Unggah Logo Cabang"
+													description="Format PNG, JPG, WEBP, atau GIF (<15MB upload biasa, ≥15MB via TUS)"
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>

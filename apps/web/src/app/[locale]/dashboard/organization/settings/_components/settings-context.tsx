@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation";
 interface SettingsContextType {
 	name: string;
 	setName: (name: string) => void;
+	logoAssetId: string;
+	setLogoAssetId: (id: string) => void;
 	settings: OrganizationSettings;
 	updateSetting: (key: keyof OrganizationSettings, value: any) => void;
 	isLoading: boolean;
@@ -37,6 +39,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	const { currentOrganization, setCurrentOrganization } =
 		useOrganizationStore();
 	const [name, setName] = useState(currentOrganization?.name || "");
+	const [logoAssetId, setLogoAssetId] = useState(
+		currentOrganization?.logo_asset_id || "",
+	);
 	const [settings, setSettings] = useState<OrganizationSettings>(
 		currentOrganization?.settings || {},
 	);
@@ -47,6 +52,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		if (currentOrganization) {
 			setName(currentOrganization.name);
+			setLogoAssetId(currentOrganization.logo_asset_id || "");
 			setSettings(currentOrganization.settings || {});
 		}
 	}, [currentOrganization]);
@@ -65,6 +71,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			const resp = await organizationsApi.update(currentOrganization.id, {
 				name,
 				settings,
+				logo_asset_id: logoAssetId,
 			});
 			if (resp.data) {
 				setCurrentOrganization(resp.data);
@@ -101,6 +108,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
 	const hasChanges =
 		name !== currentOrganization?.name ||
+		logoAssetId !== (currentOrganization?.logo_asset_id || "") ||
 		JSON.stringify(settings) !==
 			JSON.stringify(currentOrganization?.settings || {});
 
@@ -109,6 +117,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 			value={{
 				name,
 				setName,
+				logoAssetId,
+				setLogoAssetId,
 				settings,
 				updateSetting,
 				isLoading,

@@ -12,6 +12,8 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Camera, Loader2, UploadCloud } from "lucide-react";
+import { uploadSingleFile } from "~/lib/upload";
+import { toast } from "sonner";
 
 interface ImageUploadModalProps {
 	onImageChange: (url: string) => void;
@@ -21,12 +23,14 @@ export default function ImageUploadModal({
 	onImageChange,
 }: ImageUploadModalProps) {
 	const [open, setOpen] = useState(false);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [preview, setPreview] = useState<string | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
+			setSelectedFile(file);
 			const reader = new FileReader();
 			reader.onload = (event) => {
 				setPreview(event.target?.result as string);
@@ -40,18 +44,17 @@ export default function ImageUploadModal({
 		setIsUploading(true);
 
 		try {
-			// In a real app, you would upload to TUS/S3 here
-			// const url = await uploadToCDN(preview);
-			// For now, we use the base64 string directly
-
-			// Artificial delay to simulate upload
-			await new Promise((resolve) => setTimeout(resolve, 800));
-
-			onImageChange(preview);
+			let url = preview;
+			if (selectedFile) {
+				url = await uploadSingleFile(selectedFile, { uploadType: "avatar" });
+			}
+			onImageChange(url);
 			setOpen(false);
 			setPreview(null);
-		} catch (error) {
-			console.error(error);
+			setSelectedFile(null);
+			toast.success("Gambar berhasil disimpan.");
+		} catch (error: any) {
+			toast.error(error.message || "Gagal mengunggah gambar.");
 		} finally {
 			setIsUploading(false);
 		}

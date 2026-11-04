@@ -15,10 +15,11 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { AvatarUpload } from "~/components/upload";
 import { toast } from "sonner";
 import { Icon } from "~/components/shared/icon";
 import { usersApi } from "~/lib/api/users";
+import { useAuthStore } from "~/stores/use-auth-store";
 
 const profileSchema = z.object({
 	name: z.string().min(2, "Name must be at least 2 characters."),
@@ -34,7 +35,6 @@ interface ProfileFormProps {
 
 export function ProfileForm({ user }: ProfileFormProps) {
 	const [isLoading, setIsLoading] = useState(false);
-	const [isUploading, setIsUploading] = useState(false);
 
 	const form = useForm<ProfileFormValues>({
 		resolver: zodResolver(profileSchema),
@@ -57,61 +57,35 @@ export function ProfileForm({ user }: ProfileFormProps) {
 		}
 	}
 
-	const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (!file) return;
-
-		setIsUploading(true);
-		try {
-			await usersApi.uploadAvatar(file);
-			toast.success("Avatar updated successfully");
-			// Reload page or update local state to see new avatar
-			window.location.reload();
-		} catch (error: any) {
-			toast.error(error.message || "Failed to upload avatar");
-		} finally {
-			setIsUploading(false);
-		}
-	};
-
 	return (
 		<Form {...form}>
 			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 				{/* Avatar Section */}
-				<div className="flex items-center gap-x-6">
-					<Avatar className="border-muted h-20 w-20 border-2">
-						<AvatarImage src={user?.avatar_url} />
-						<AvatarFallback className="bg-primary/5 text-lg">
-							{user?.username?.slice(0, 2).toUpperCase() || "JD"}
-						</AvatarFallback>
-					</Avatar>
-					<div className="relative">
-						<Input
-							type="file"
-							className="hidden"
-							id="avatar-upload"
-							accept="image/*"
-							onChange={handleAvatarChange}
-							disabled={isUploading}
-						/>
-						<label htmlFor="avatar-upload">
-							<Button
-								variant="outline"
-								type="button"
-								size="sm"
-								className="cursor-pointer"
-								asChild
-							>
-								<span>
-									{isUploading ? (
-										<Icon name="Loader" className="mr-2 h-4 w-4 animate-spin" />
-									) : (
-										<Icon name="Upload" className="mr-2 h-4 w-4" />
-									)}
-									Change Avatar
-								</span>
-							</Button>
-						</label>
+				<div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 border-b pb-6">
+					<AvatarUpload
+						value={user?.avatar_url}
+						name={user?.name || user?.username}
+						size="lg"
+						onChange={(url) => {
+							if (user) {
+								useAuthStore.getState().setUser({
+									...user,
+									avatar_url: url,
+								});
+							}
+						}}
+					/>
+					<div className="space-y-1">
+						<h4 className="text-sm font-semibold text-foreground">
+							Foto Profil
+						</h4>
+						<p className="text-xs text-muted-foreground">
+							Klik atau seret gambar baru untuk memperbarui avatar akun Anda.
+						</p>
+						<p className="text-[11px] text-muted-foreground/80">
+							Mendukung JPG, PNG, WEBP, atau GIF (&lt;15MB upload biasa,
+							&ge;15MB via TUS).
+						</p>
 					</div>
 				</div>
 

@@ -27,7 +27,13 @@ import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { FileUpload, FileUploader, UploadQueue } from "~/components/upload";
+import {
+	FileUpload,
+	FileUploader,
+	UploadQueue,
+	AvatarUpload,
+	LogoUpload,
+} from "~/components/upload";
 
 type ShowcaseEntry = {
 	slug: string;
@@ -951,7 +957,13 @@ const showcaseEntries: ShowcaseEntry[] = [
 		category: "Input",
 		level: "Composed Component",
 		path: "apps/web/src/components/upload/",
-		variants: ["file-uploader", "folder-uploader", "file-upload-form"],
+		variants: [
+			"file-uploader",
+			"folder-uploader",
+			"file-upload-form",
+			"avatar-upload",
+			"logo-upload",
+		],
 	},
 ];
 
@@ -1002,6 +1014,21 @@ function ComponentPreview({
 		}
 		if (variant === "file-upload-form") {
 			return <FileUpload accept="image/*,.pdf" multiple />;
+		}
+		if (variant === "avatar-upload") {
+			return (
+				<div className="flex flex-wrap items-center gap-8 p-4">
+					<AvatarUpload name="John Doe" size="lg" />
+					<AvatarUpload name="Jane Smith" size="md" shape="square" />
+				</div>
+			);
+		}
+		if (variant === "logo-upload") {
+			return (
+				<div className="max-w-md p-4">
+					<LogoUpload name="Sasklinik Utama" />
+				</div>
+			);
 		}
 		return (
 			<div className="space-y-4">
