@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Roisfaozi/queue-base/db/seeds/realworld"
 	"github.com/Roisfaozi/queue-base/internal/config"
 	roleEntity "github.com/Roisfaozi/queue-base/internal/modules/role/entity"
 	userEntity "github.com/Roisfaozi/queue-base/internal/modules/user/entity"
@@ -43,7 +44,7 @@ func main() {
 	seedRoles(db)
 
 	// 2. Seed Superadmin User
-	seedSuperAdmin(db)
+	superadminID := seedSuperAdmin(db)
 
 	// 3. Authenticate as Superadmin to get the token
 	token, err := authenticateSuperadmin(cfg)
@@ -51,6 +52,11 @@ func main() {
 		log.Printf("Notice: Could not authenticate via API (%v). Seeding directly to database...", err)
 		seedAccessRightsAndPoliciesDirectly(db, getAccessMap(), getRoleToRights())
 		seedOrganizationsAndUsersDirectly(db)
+		var defaultOrgID string
+		_ = db.Table("organizations").Where("slug = ?", "default-org").Select("id").Row().Scan(&defaultOrgID)
+		if defaultOrgID != "" {
+			_ = realworld.SeedRealWorldQMSData(db, defaultOrgID, superadminID)
+		}
 		log.Println("Direct database seeding completed successfully.")
 		return
 	}
@@ -61,14 +67,25 @@ func main() {
 	// 5. Seed Default Organization and Users via API
 	seedOrganizationsAndUsers(cfg, token)
 
+	// 6. Seed Real-World QMS Data
+	var defaultOrgID string
+	_ = db.Table("organizations").Where("slug = ?", "default-org").Select("id").Row().Scan(&defaultOrgID)
+	if defaultOrgID != "" {
+		_ = realworld.SeedRealWorldQMSData(db, defaultOrgID, superadminID)
+	}
+
 	log.Println("Seeding process completed successfully.")
 }
 
 func seedRoles(db *gorm.DB) {
 	roles := []roleEntity.Role{
-		{Name: "role:superadmin", Description: "Full Access", OrganizationID: ptrString("global")},
-		{Name: "role:admin", Description: "Org Administrator", OrganizationID: ptrString("global")},
-		{Name: "role:user", Description: "Org User", OrganizationID: ptrString("global")},
+		{Name: "role:superadmin", Description: "Full Access", OrganizationID: nil},
+		{Name: "role:admin", Description: "Org Administrator", OrganizationID: nil},
+		{Name: "role:doctor", Description: "Dokter Pemeriksa", OrganizationID: nil},
+		{Name: "role:operator", Description: "Petugas Loket / Pendaftaran", OrganizationID: nil},
+		{Name: "role:cashier", Description: "Petugas Kasir & Pembayaran", OrganizationID: nil},
+		{Name: "role:pharmacist", Description: "Apoteker & Penyerahan Obat", OrganizationID: nil},
+		{Name: "role:user", Description: "Org User", OrganizationID: nil},
 	}
 
 	for _, r := range roles {
@@ -87,7 +104,7 @@ func seedRoles(db *gorm.DB) {
 	}
 }
 
-func seedSuperAdmin(db *gorm.DB) {
+func seedSuperAdmin(db *gorm.DB) string {
 	adminUsername := "superadmin"
 	adminPassword := os.Getenv("SUPERADMIN_PASSWORD")
 	if adminPassword == "" {
@@ -127,6 +144,8 @@ func seedSuperAdmin(db *gorm.DB) {
 	ensurePolicy(db, "g", user.ID, "role:superadmin", "global", "", "")
 	// Policy: superadmin ROLE has all permission
 	ensurePolicy(db, "p", "role:superadmin", "global", "*", "*", "")
+
+	return user.ID
 }
 
 func authenticateSuperadmin(cfg *config.AppConfig) (string, error) {
@@ -219,23 +238,31 @@ func getAccessMap() map[string][]map[string]string {
 			{"Path": "/api/v1/stats/insights", "Method": "GET"},
 		},
 		"user:view": {
+			{"Path": "/api/v1/users", "Method": "GET"},
 			{"Path": "/api/v1/users/", "Method": "GET"},
+			{"Path": "/api/v1/users/me", "Method": "GET"},
 			{"Path": "/api/v1/users/search", "Method": "POST"},
 			{"Path": "/api/v1/users/:id", "Method": "GET"},
 		},
 		"user:manage": {
+			{"Path": "/api/v1/users/me", "Method": "PUT"},
+			{"Path": "/api/v1/users/me/avatar", "Method": "PATCH"},
 			{"Path": "/api/v1/users/:id/status", "Method": "PATCH"},
 			{"Path": "/api/v1/users/:id", "Method": "DELETE"},
 		},
 		"org:view": {
+			{"Path": "/api/v1/tenant/profile", "Method": "GET"},
 			{"Path": "/api/v1/organizations/:id", "Method": "GET"},
 			{"Path": "/api/v1/organizations/me", "Method": "GET"},
 			{"Path": "/api/v1/organizations/slug/:slug", "Method": "GET"},
 		},
 		"org:manage": {
+			{"Path": "/api/v1/tenant/profile", "Method": "PATCH"},
 			{"Path": "/api/v1/organizations", "Method": "POST"},
 			{"Path": "/api/v1/organizations/:id", "Method": "PUT"},
 			{"Path": "/api/v1/organizations/:id", "Method": "DELETE"},
+			{"Path": "/api/v1/organizations/:id/restore", "Method": "POST"},
+			{"Path": "/api/v1/organizations/:id/hard", "Method": "DELETE"},
 		},
 		"member:manage": {
 			{"Path": "/api/v1/organizations/:id/members/invite", "Method": "POST"},
@@ -387,6 +414,24 @@ func getAccessMap() map[string][]map[string]string {
 			{"Path": "/api/v1/qms-clients/:id", "Method": "PATCH"},
 			{"Path": "/api/v1/qms-clients/:id", "Method": "DELETE"},
 		},
+		"api_key:manage": {
+			{"Path": "/api/v1/api-keys", "Method": "POST"},
+			{"Path": "/api/v1/api-keys", "Method": "GET"},
+			{"Path": "/api/v1/api-keys/:id", "Method": "DELETE"},
+		},
+		"caller:call": {
+			{"Path": "/api/v1/caller/login", "Method": "POST"},
+			{"Path": "/api/v1/caller/me", "Method": "GET"},
+			{"Path": "/api/v1/caller/queue-journeys/:journey_id/action", "Method": "POST"},
+		},
+		"signage:view": {
+			{"Path": "/api/v1/signage/me", "Method": "GET"},
+			{"Path": "/api/v1/signage/current-calls", "Method": "GET"},
+			{"Path": "/api/v1/signage/queues", "Method": "GET"},
+		},
+		"scanner:operate": {
+			{"Path": "/api/v1/scanner/check-in", "Method": "POST"},
+		},
 	}
 }
 
@@ -402,6 +447,7 @@ func getRoleToRights() map[string][]string {
 			"permission:view", "permission:manage",
 			"access:view", "access:manage",
 			"webhook:manage",
+			"api_key:manage",
 			"branch:view", "branch:manage",
 			"service:view", "service:manage",
 			"counter:view", "counter:manage",
@@ -409,6 +455,50 @@ func getRoleToRights() map[string][]string {
 			"queue:view", "queue:manage",
 			"operator_assignment:manage",
 			"qms_client:manage",
+			"caller:call",
+			"signage:view",
+			"scanner:operate",
+		},
+		"role:doctor": {
+			"dashboard:view",
+			"org:view",
+			"branch:view",
+			"service:view",
+			"counter:view",
+			"queue:view",
+			"queue:manage",
+			"caller:call",
+		},
+		"role:operator": {
+			"dashboard:view",
+			"org:view",
+			"branch:view",
+			"service:view",
+			"counter:view",
+			"queue:view",
+			"queue:manage",
+			"caller:call",
+			"scanner:operate",
+		},
+		"role:cashier": {
+			"dashboard:view",
+			"org:view",
+			"branch:view",
+			"service:view",
+			"counter:view",
+			"queue:view",
+			"queue:manage",
+			"caller:call",
+		},
+		"role:pharmacist": {
+			"dashboard:view",
+			"org:view",
+			"branch:view",
+			"service:view",
+			"counter:view",
+			"queue:view",
+			"queue:manage",
+			"caller:call",
 		},
 		"role:user": {
 			"dashboard:view", "org:view", "presence:view",
@@ -586,10 +676,6 @@ func ensurePolicy(db *gorm.DB, ptype, v0, v1, v2, v3, v4 string) {
 			"ptype": ptype, "v0": v0, "v1": v1, "v2": v2, "v3": v3, "v4": v4,
 		})
 	}
-}
-
-func ptrString(s string) *string {
-	return &s
 }
 
 func seedOrganizationsAndUsers(cfg *config.AppConfig, token string) {
@@ -836,8 +922,7 @@ func seedOrganizationsAndUsersDirectly(db *gorm.DB) {
 					"user_id":         userID,
 					"role_id":         roleID,
 					"status":          "active",
-					"created_at":      now,
-					"updated_at":      now,
+					"joined_at":       now,
 				})
 			}
 			ensurePolicy(db, "g", userID, u["role"], orgID, "", "")

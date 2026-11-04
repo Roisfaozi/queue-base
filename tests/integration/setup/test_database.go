@@ -106,6 +106,10 @@ func SeedTestData(t *testing.T, db *gorm.DB) {
 	roles := []roleEntity.Role{
 		{ID: "role:superadmin", Name: "role:superadmin", OrganizationID: &globalOrg, Description: "Super Administrator role"},
 		{ID: "role:admin", Name: "role:admin", OrganizationID: &globalOrg, Description: "Administrator role"},
+		{ID: "role:doctor", Name: "role:doctor", OrganizationID: &globalOrg, Description: "Doctor role"},
+		{ID: "role:operator", Name: "role:operator", OrganizationID: &globalOrg, Description: "Operator role"},
+		{ID: "role:cashier", Name: "role:cashier", OrganizationID: &globalOrg, Description: "Cashier role"},
+		{ID: "role:pharmacist", Name: "role:pharmacist", OrganizationID: &globalOrg, Description: "Pharmacist role"},
 		{ID: "role:user", Name: "role:user", OrganizationID: &globalOrg, Description: "Regular user role"},
 		{ID: "role:org-owner", Name: "role:org-owner", OrganizationID: &globalOrg, Description: "Organization owner role"},
 		{ID: "role:moderator", Name: "role:moderator", OrganizationID: &globalOrg, Description: "Moderator role"},

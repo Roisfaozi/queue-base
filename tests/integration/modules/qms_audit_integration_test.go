@@ -36,7 +36,7 @@ func TestQMSAuditIntegration_CRUDVisibility(t *testing.T) {
 	validate := validator.New()
 	auditUC := auditUsecase.NewAuditUseCase(auditRepo.NewAuditRepository(env.DB, env.Logger), env.Logger, nil, nil)
 	branchRepo := branchRepoPkg.NewBranchRepository(env.DB)
-	serviceMod := serviceModule.NewServiceModule(env.DB, validate, branchRepo, env.Logger, auditUC)
+	serviceMod := serviceModule.NewServiceModule(env.DB, validate, branchRepo, nil, env.Logger, auditUC)
 	counterMod := counterModule.NewCounterModule(env.DB, validate, branchRepo, serviceMod.BranchServiceRepo, env.Logger, auditUC)
 
 	tenantID := uuid.New().String()
