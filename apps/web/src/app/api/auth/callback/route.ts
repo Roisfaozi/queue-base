@@ -1,11 +1,15 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSafeReturnTo } from "~/lib/utils";
 
 export async function GET(request: NextRequest) {
 	const searchParams = request.nextUrl.searchParams;
 	const token = searchParams.get("token");
 	const refreshToken = searchParams.get("refresh_token");
-	const returnTo = searchParams.get("returnTo") || "/dashboard";
+	const safeReturnTo = getSafeReturnTo(
+		searchParams.get("returnTo"),
+		"/dashboard",
+	);
 
 	if (!token) {
 		return NextResponse.redirect(
@@ -45,7 +49,5 @@ export async function GET(request: NextRequest) {
 		});
 	}
 
-	return NextResponse.redirect(
-		new URL(decodeURIComponent(returnTo), request.url),
-	);
+	return NextResponse.redirect(new URL(safeReturnTo, request.url));
 }

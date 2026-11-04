@@ -11,7 +11,7 @@ import { Button } from "~/components/ui/button";
 import { toast } from "~/hooks/use-toast";
 import { accessApi } from "~/lib/api/access";
 import { loginSchema } from "~/lib/api/auth";
-import { cn } from "~/lib/utils";
+import { cn, getSafeReturnTo } from "~/lib/utils";
 import { useAuthStore } from "~/stores/use-auth-store";
 import { usePermissionStore } from "~/stores/use-permission-store";
 import Icons from "../shared/icons";
@@ -26,7 +26,7 @@ export default function AuthForm() {
 	const setPermissions = usePermissionStore((state) => state.setPermissions);
 	const setUser = useAuthStore((state) => state.setUser);
 	const searchParams = useSearchParams();
-	const returnTo = searchParams.get("returnTo") || "/dashboard";
+	const returnTo = getSafeReturnTo(searchParams.get("returnTo"), "/dashboard");
 
 	const {
 		register,
@@ -69,7 +69,7 @@ export default function AuthForm() {
 			});
 
 			// Redirect to target page or dashboard
-			window.location.href = decodeURIComponent(returnTo);
+			window.location.href = returnTo;
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "Invalid username or password";
