@@ -34,7 +34,7 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { servicesApi, type Service } from "~/lib/api/qms";
-import { AudioUploadField } from "./audio-upload-field";
+import { FileUpload } from "~/components/upload";
 
 const serviceSchema = z.object({
 	code: z.string().min(2, "Code must be at least 2 characters.").max(50),
@@ -252,12 +252,26 @@ export function ServiceDialog({
 								control={form.control}
 								name="audio_id"
 								render={({ field }) => (
-									<AudioUploadField
-										label="Audio Pemanggilan (Bahasa Indonesia)"
-										description="File audio pemanggilan antrean untuk Bahasa Indonesia (.mp3, .wav, .ogg)."
-										value={field.value}
-										onChange={field.onChange}
-									/>
+									<FormItem>
+										<FormLabel>Audio Pemanggilan (Bahasa Indonesia)</FormLabel>
+										<FormControl>
+											<FileUpload
+												accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac"
+												maxSize={5 * 1024 * 1024}
+												value={field.value}
+												onValueChange={field.onChange}
+												onUpload={async (file) => {
+													const res = await servicesApi.uploadAudio(file);
+													return res.data?.url;
+												}}
+											/>
+										</FormControl>
+										<FormDescription>
+											Berkas audio pemanggilan antrean berbahasa Indonesia
+											(.mp3, .wav, .ogg).
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
 								)}
 							/>
 
@@ -265,12 +279,26 @@ export function ServiceDialog({
 								control={form.control}
 								name="audio_en"
 								render={({ field }) => (
-									<AudioUploadField
-										label="Voice Announcement (English)"
-										description="Audio announcement file for English queue calling (.mp3, .wav, .ogg)."
-										value={field.value}
-										onChange={field.onChange}
-									/>
+									<FormItem>
+										<FormLabel>Voice Announcement (English)</FormLabel>
+										<FormControl>
+											<FileUpload
+												accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac"
+												maxSize={5 * 1024 * 1024}
+												value={field.value}
+												onValueChange={field.onChange}
+												onUpload={async (file) => {
+													const res = await servicesApi.uploadAudio(file);
+													return res.data?.url;
+												}}
+											/>
+										</FormControl>
+										<FormDescription>
+											Audio announcement file for English queue calling (.mp3,
+											.wav, .ogg).
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
 								)}
 							/>
 
