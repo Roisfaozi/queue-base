@@ -5,26 +5,31 @@ import { useDashboardShell } from "../_components/dashboard-shell-context";
 import { OperatorAssignmentsContent } from "./_components/operator-assignments-content";
 
 export default function OperatorAssignmentsPage() {
-  const { currentOrganization, isLoading } = useDashboardShell();
+	const { currentOrganization, isLoading } = useDashboardShell();
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
-        <p className="text-muted-foreground">Loading organization context...</p>
-      </div>
-    );
-  }
+	if (isLoading) {
+		return (
+			<div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
+				<p className="text-muted-foreground">Loading organization context...</p>
+			</div>
+		);
+	}
 
-  if (!currentOrganization) {
-    return (
-      <div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
-        <div className="text-center">
-          <Icon name="Building2" className="text-muted-foreground/50 mx-auto h-8 w-8" />
-          <p className="text-muted-foreground mt-2">Please select an organization first.</p>
-        </div>
-      </div>
-    );
-  }
+	if (!currentOrganization) {
+		return (
+			<div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed">
+				<div className="text-center">
+					<Icon
+						name="Building2"
+						className="text-muted-foreground/50 mx-auto h-8 w-8"
+					/>
+					<p className="text-muted-foreground mt-2">
+						Please select an organization first.
+					</p>
+				</div>
+			</div>
+		);
+	}
 
-  return <OperatorAssignmentsContent />;
+	return <OperatorAssignmentsContent />;
 }
