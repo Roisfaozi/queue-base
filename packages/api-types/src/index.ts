@@ -226,6 +226,19 @@ export interface BranchService {
 	updated_at: number;
 }
 
+export interface CreateBranchServiceRequest {
+	service_id: string;
+	custom_name?: string;
+	is_active?: boolean;
+	sort_order?: number;
+}
+
+export interface UpdateBranchServiceRequest {
+	custom_name?: string;
+	is_active?: boolean;
+	sort_order?: number;
+}
+
 export interface Queue {
 	id: string;
 	tenant_id: string;

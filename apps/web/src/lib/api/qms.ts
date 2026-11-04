@@ -6,6 +6,7 @@ import type {
 	CallerLoginResponse,
 	CallerMeResponse,
 	Counter,
+	CreateBranchServiceRequest,
 	EffectiveQueueConfigResponse,
 	BranchResponse,
 	BranchUpsertRequest,
@@ -24,6 +25,7 @@ import type {
 	SignageMeResponse,
 	OperatorAssignmentRequest,
 	OperatorAssignmentResponse,
+	UpdateBranchServiceRequest,
 	VisitJourney,
 } from "@casbin/api-types";
 
@@ -38,6 +40,8 @@ export type {
 	CallerMeResponse,
 	Counter,
 	BranchService,
+	CreateBranchServiceRequest,
+	UpdateBranchServiceRequest,
 	QMSClientResponse,
 	QMSClientUpdateRequest,
 	Queue,
@@ -337,6 +341,19 @@ export const scannerApi = {
 export const branchServicesApi = {
 	getByBranch: (branchId: string) =>
 		api.get<{ data: BranchService[] }>(`/branches/${branchId}/services`),
+	create: (branchId: string, data: CreateBranchServiceRequest) =>
+		api.post<{ data: BranchService }>(`/branches/${branchId}/services`, data),
+	update: (
+		branchId: string,
+		branchServiceId: string,
+		data: UpdateBranchServiceRequest,
+	) =>
+		api.put<{ data: BranchService }>(
+			`/branches/${branchId}/services/${branchServiceId}`,
+			data,
+		),
+	delete: (branchId: string, branchServiceId: string) =>
+		api.delete(`/branches/${branchId}/services/${branchServiceId}`),
 };
 
 // -----------------------------------------------------------------------------

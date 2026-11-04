@@ -10,6 +10,7 @@ import { Icon } from "~/components/shared/icon";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { LogoUpload } from "~/components/upload";
+import { BranchServicesDialog } from "./branch-services-dialog";
 import {
 	Card,
 	CardContent,
@@ -90,6 +91,9 @@ export function BranchesContent() {
 	const [error, setError] = useState<any>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+	const [servicesDialogOpen, setServicesDialogOpen] = useState(false);
+	const [selectedBranchForServices, setSelectedBranchForServices] =
+		useState<Branch | null>(null);
 	const isEdit = !!selectedBranch;
 
 	const form = useForm<BranchFormValues>({
@@ -267,6 +271,17 @@ export function BranchesContent() {
 										</p>
 									</div>
 									<div className="flex items-center gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => {
+												setSelectedBranchForServices(branch);
+												setServicesDialogOpen(true);
+											}}
+										>
+											<Icon name="Globe" className="mr-1.5 h-3.5 w-3.5" />
+											Services
+										</Button>
 										<Button
 											variant="outline"
 											size="sm"
@@ -496,6 +511,13 @@ export function BranchesContent() {
 					</Form>
 				</DialogContent>
 			</Dialog>
+
+			<BranchServicesDialog
+				open={servicesDialogOpen}
+				onOpenChange={setServicesDialogOpen}
+				branch={selectedBranchForServices}
+				onSuccess={fetchBranches}
+			/>
 		</>
 	);
 }

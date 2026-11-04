@@ -53,7 +53,7 @@ const steps = [
 	{
 		key: "branch_service",
 		title: "Branch Services",
-		href: "/dashboard/queues",
+		href: "/dashboard/branches",
 		description: "Hubungkan service ke branch tujuan operasional.",
 		requirement: "Butuh branch active dan service active.",
 	},
