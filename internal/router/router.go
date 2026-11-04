@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/Roisfaozi/queue-base/internal/middleware"
 	"github.com/Roisfaozi/queue-base/internal/modules/access"
@@ -57,6 +58,7 @@ import (
 type RouterConfig struct {
 	AllowedOrigins   []string
 	TrustedProxies   []string
+	StorageLocalPath string
 	RateLimitEnabled bool
 	RateLimitRPS     float64
 	RateLimitBurst   int
@@ -275,6 +277,12 @@ func SetupRouter(
 		roleHttp.RegisterAuthorizedRoutes(authorized, roleModule.RoleController)
 		userHttp.RegisterAuthorizedRoutes(authorized, userModule.UserController)
 		auditHttp.RegisterAuthorizedRoutes(authorized, auditModule.AuditController)
+	}
+
+	// Static Uploads Serving (for local storage driver)
+	if cfg.StorageLocalPath != "" {
+		_ = os.MkdirAll(cfg.StorageLocalPath, 0755)
+		router.Static("/uploads", cfg.StorageLocalPath)
 	}
 
 	// TUS Upload Handler

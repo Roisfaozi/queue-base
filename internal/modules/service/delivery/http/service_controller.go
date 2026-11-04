@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/service/model"
@@ -158,6 +159,51 @@ func (h *ServiceController) setStatus(c *gin.Context, status string) {
 		return
 	}
 	response.Success(c, res)
+}
+
+// UploadAudio godoc
+// @Summary      Upload service audio file
+// @Description  Uploads an audio file for service announcement to storage and returns the storage URL.
+// @Tags         services
+// @Security     BearerAuth
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        X-Organization-ID header string true "Tenant ID"
+// @Param        audio formData file true "Audio file (.mp3, .wav, .ogg, max 5MB)"
+// @Success      200  {object}  response.SwaggerSuccessResponseWrapper
+// @Failure      400  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      422  {object}  response.SwaggerErrorResponseWrapper
+// @Failure      500  {object}  response.SwaggerErrorResponseWrapper
+// @Router       /services/audio [post]
+func (h *ServiceController) UploadAudio(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	file, header, err := c.Request.FormFile("audio")
+	if err != nil {
+		file, header, err = c.Request.FormFile("file")
+		if err != nil {
+			h.logError(err, "failed to get audio file from form")
+			response.BadRequest(c, exception.ErrBadRequest, "audio file is required")
+			return
+		}
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	if header.Size > 5*1024*1024 {
+		response.BadRequest(c, errors.New("file too large"), "audio file size must be less than 5MB")
+		return
+	}
+
+	url, err := h.useCase.UploadAudio(ctx, file, header.Filename, header.Header.Get("Content-Type"))
+	if err != nil {
+		h.logError(err, "failed to upload audio file")
+		response.HandleError(c, err, "failed to upload audio file")
+		return
+	}
+
+	response.Success(c, gin.H{"url": url})
 }
 
 // Delete godoc

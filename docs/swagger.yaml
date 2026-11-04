@@ -4523,6 +4523,47 @@ paths:
       summary: Update service
       tags:
       - services
+  /services/audio:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an audio file for service announcement to storage and returns
+        the storage URL.
+      parameters:
+      - description: Tenant ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      - description: Audio file (.mp3, .wav, .ogg, max 5MB)
+        in: formData
+        name: audio
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper'
+      security:
+      - BearerAuth: []
+      summary: Upload service audio file
+      tags:
+      - services
   /signage/current-calls:
     get:
       description: Returns active calling queues for the bound signage scope.

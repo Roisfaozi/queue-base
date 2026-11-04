@@ -4951,6 +4951,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/services/audio": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uploads an audio file for service announcement to storage and returns the storage URL.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "Upload service audio file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "X-Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Audio file (.mp3, .wav, .ogg, max 5MB)",
+                        "name": "audio",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerSuccessResponseWrapper"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Roisfaozi_queue-base_pkg_response.SwaggerErrorResponseWrapper"
+                        }
+                    }
+                }
+            }
+        },
         "/services/{id}": {
             "get": {
                 "security": [

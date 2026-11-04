@@ -220,7 +220,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 
 	organizationModule := organization.NewOrganizationModule(dbConnection, redisClient, taskDistributor, userModule.UserRepo, logger, validate, tm, enforcer, presenceManager, cfg.Server.FrontendBaseURL, auditModule.AuditUseCase)
 	branchModule := organization.NewBranchModule(dbConnection, validate, logger, auditModule.AuditUseCase)
-	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo, logger, auditModule.AuditUseCase)
+	serviceModule := service.NewServiceModule(dbConnection, validate, branchModule.BranchRepo, storageProvider, logger, auditModule.AuditUseCase)
 	counterModule := counter.NewCounterModule(dbConnection, validate, branchModule.BranchRepo, serviceModule.BranchServiceRepo, logger, auditModule.AuditUseCase)
 	queueModule := queue.NewQueueModule(dbConnection, validate, queueConfigModule.QueueConfigResolver, logger, auditModule.AuditUseCase)
 	queueModule.QueueUseCase.SetEventBroadcaster(sseManager)
@@ -355,6 +355,7 @@ func NewApplication(cfg *AppConfig) (*Application, error) {
 	configRouter := router.RouterConfig{
 		AllowedOrigins:   cfg.CORS.AllowedOrigins,
 		TrustedProxies:   cfg.Server.TrustedProxies,
+		StorageLocalPath: cfg.Storage.Local.RootPath,
 		RateLimitEnabled: cfg.RateLimit.Enabled,
 		RateLimitRPS:     cfg.RateLimit.RPS,
 		RateLimitBurst:   cfg.RateLimit.Burst,

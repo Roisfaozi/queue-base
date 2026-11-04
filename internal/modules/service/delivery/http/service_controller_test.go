@@ -3,6 +3,8 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -296,6 +298,104 @@ func TestServiceController(t *testing.T) {
 				router.ServeHTTP(w, req)
 
 				assert.Equal(t, http.StatusOK, w.Code)
+				uc.AssertExpectations(t)
+			})
+		}
+	})
+
+	t.Run("UploadAudio", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			fieldName   string
+			filename    string
+			fileContent []byte
+			setup       func(t *testing.T) *mocks.MockServiceUseCase
+			wantCode    int
+		}{
+			{
+				name:        "Positive_ValidAudioUpload",
+				fieldName:   "audio",
+				filename:    "chime.mp3",
+				fileContent: []byte("fake mp3 data"),
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("UploadAudio", mock.Anything, mock.Anything, "chime.mp3", mock.Anything).
+						Return("http://localhost:8080/uploads/chime.mp3", nil).Once()
+					return m
+				},
+				wantCode: http.StatusOK,
+			},
+			{
+				name:        "Positive_FallbackToFileField",
+				fieldName:   "file",
+				filename:    "chime.wav",
+				fileContent: []byte("fake wav data"),
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("UploadAudio", mock.Anything, mock.Anything, "chime.wav", mock.Anything).
+						Return("http://localhost:8080/uploads/chime.wav", nil).Once()
+					return m
+				},
+				wantCode: http.StatusOK,
+			},
+			{
+				name:        "Negative_MissingAudioFile",
+				fieldName:   "wrong_field",
+				filename:    "chime.wav",
+				fileContent: []byte("fake data"),
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					return mocks.NewMockServiceUseCase(t)
+				},
+				wantCode: http.StatusBadRequest,
+			},
+			{
+				name:        "Edge_FileTooLarge",
+				fieldName:   "audio",
+				filename:    "huge.mp3",
+				fileContent: make([]byte, 5*1024*1024+1),
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					return mocks.NewMockServiceUseCase(t)
+				},
+				wantCode: http.StatusBadRequest,
+			},
+			{
+				name:        "Vulnerability_UseCaseErrorReturns500",
+				fieldName:   "audio",
+				filename:    "chime.mp3",
+				fileContent: []byte("fake mp3 data"),
+				setup: func(t *testing.T) *mocks.MockServiceUseCase {
+					m := mocks.NewMockServiceUseCase(t)
+					m.On("UploadAudio", mock.Anything, mock.Anything, "chime.mp3", mock.Anything).
+						Return("", errors.New("storage fail")).Once()
+					return m
+				},
+				wantCode: http.StatusInternalServerError,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				uc := tt.setup(t)
+				controller := NewServiceController(uc, newTestValidator(t), nil)
+
+				body := &bytes.Buffer{}
+				writer := multipart.NewWriter(body)
+				part, err := writer.CreateFormFile(tt.fieldName, tt.filename)
+				require.NoError(t, err)
+				_, err = part.Write(tt.fileContent)
+				require.NoError(t, err)
+				err = writer.Close()
+				require.NoError(t, err)
+
+				router := gin.New()
+				router.POST("/services/audio", controller.UploadAudio)
+
+				req, _ := http.NewRequest("POST", "/services/audio", body)
+				req.Header.Set("Content-Type", writer.FormDataContentType())
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tt.wantCode, w.Code)
 				uc.AssertExpectations(t)
 			})
 		}

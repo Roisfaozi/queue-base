@@ -1,7 +1,12 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
@@ -11,6 +16,7 @@ import (
 	"github.com/Roisfaozi/queue-base/pkg/authcontext"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	"github.com/Roisfaozi/queue-base/pkg/storage"
 	"github.com/google/uuid"
 )
 
@@ -24,19 +30,21 @@ type ServiceUseCase interface {
 	ListServices(ctx context.Context) ([]model.ServiceResponse, error)
 	UpdateService(ctx context.Context, serviceID string, req *model.UpdateServiceRequest) (*model.ServiceResponse, error)
 	DeleteService(ctx context.Context, serviceID string) error
+	UploadAudio(ctx context.Context, file io.Reader, filename string, contentType string) (string, error)
 }
 
 type serviceUseCase struct {
-	repo  repository.ServiceRepository
-	audit AuditLogger
+	repo    repository.ServiceRepository
+	storage storage.Provider
+	audit   AuditLogger
 }
 
-func NewServiceUseCase(repo repository.ServiceRepository, audit ...AuditLogger) ServiceUseCase {
+func NewServiceUseCase(repo repository.ServiceRepository, storage storage.Provider, audit ...AuditLogger) ServiceUseCase {
 	var auditLogger AuditLogger
 	if len(audit) > 0 {
 		auditLogger = audit[0]
 	}
-	return &serviceUseCase{repo: repo, audit: auditLogger}
+	return &serviceUseCase{repo: repo, storage: storage, audit: auditLogger}
 }
 
 func (u *serviceUseCase) CreateService(ctx context.Context, req *model.CreateServiceRequest) (*model.ServiceResponse, error) {
@@ -205,4 +213,89 @@ func (u *serviceUseCase) mapToResponse(service *entity.Service) *model.ServiceRe
 		CreatedAt:                service.CreatedAt,
 		UpdatedAt:                service.UpdatedAt,
 	}
+}
+
+func (u *serviceUseCase) UploadAudio(ctx context.Context, file io.Reader, filename string, contentType string) (string, error) {
+	tenantID := database.GetTenantID(ctx)
+	if tenantID == "" {
+		return "", exception.ErrBadRequest
+	}
+	if u.storage == nil {
+		return "", exception.ErrInternalServer
+	}
+
+	buf := make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		return "", exception.ErrBadRequest
+	}
+	buf = buf[:n]
+
+	detectedType := http.DetectContentType(buf)
+	if strings.HasPrefix(detectedType, "text/plain") || detectedType == "application/octet-stream" {
+		if contentType != "" {
+			detectedType = contentType
+		}
+	}
+
+	allowedTypes := map[string]string{
+		"audio/mpeg":  ".mp3",
+		"audio/mp3":   ".mp3",
+		"audio/wav":   ".wav",
+		"audio/x-wav": ".wav",
+		"audio/wave":  ".wav",
+		"audio/ogg":   ".ogg",
+		"audio/x-m4a": ".m4a",
+		"audio/m4a":   ".m4a",
+		"audio/aac":   ".aac",
+		"audio/mp4":   ".mp4",
+		"video/ogg":   ".ogg",
+	}
+
+	ext, allowed := allowedTypes[detectedType]
+	if !allowed {
+		lowerName := strings.ToLower(filename)
+		switch {
+		case strings.HasSuffix(lowerName, ".mp3"):
+			ext = ".mp3"
+			detectedType = "audio/mpeg"
+		case strings.HasSuffix(lowerName, ".wav"):
+			ext = ".wav"
+			detectedType = "audio/wav"
+		case strings.HasSuffix(lowerName, ".ogg"):
+			ext = ".ogg"
+			detectedType = "audio/ogg"
+		case strings.HasSuffix(lowerName, ".m4a"):
+			ext = ".m4a"
+			detectedType = "audio/x-m4a"
+		case strings.HasSuffix(lowerName, ".aac"):
+			ext = ".aac"
+			detectedType = "audio/aac"
+		default:
+			return "", exception.ErrValidationError
+		}
+	}
+
+	file = io.MultiReader(bytes.NewReader(buf), file)
+	newFilename := fmt.Sprintf("services/audio/%s_%s%s", tenantID, uuid.New().String(), ext)
+
+	url, err := u.storage.UploadFile(ctx, file, newFilename, detectedType)
+	if err != nil {
+		return "", exception.ErrInternalServer
+	}
+
+	if u.audit != nil {
+		userID, _ := authcontext.UserIDFromContext(ctx)
+		_ = u.audit.LogActivity(ctx, auditModel.CreateAuditLogRequest{
+			UserID:   userID,
+			Action:   "UPLOAD_SERVICE_AUDIO",
+			Entity:   "Service",
+			EntityID: tenantID,
+			NewValues: map[string]interface{}{
+				"url": url,
+			},
+		})
+	}
+
+	return url, nil
 }

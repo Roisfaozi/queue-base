@@ -5,6 +5,7 @@ import (
 	serviceHttp "github.com/Roisfaozi/queue-base/internal/modules/service/delivery/http"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/repository"
 	"github.com/Roisfaozi/queue-base/internal/modules/service/usecase"
+	"github.com/Roisfaozi/queue-base/pkg/storage"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -19,10 +20,10 @@ type ServiceModule struct {
 	BranchServiceUseCase    usecase.BranchServiceUseCase
 }
 
-func NewServiceModule(db *gorm.DB, validate *validator.Validate, branchRepo branchRepository.BranchRepository, log *logrus.Logger, audit ...usecase.AuditLogger) *ServiceModule {
+func NewServiceModule(db *gorm.DB, validate *validator.Validate, branchRepo branchRepository.BranchRepository, storage storage.Provider, log *logrus.Logger, audit ...usecase.AuditLogger) *ServiceModule {
 	repo := repository.NewServiceRepository(db)
 	branchServiceRepo := repository.NewBranchServiceRepository(db)
-	uc := usecase.NewServiceUseCase(repo, audit...)
+	uc := usecase.NewServiceUseCase(repo, storage, audit...)
 	branchServiceUseCase := usecase.NewBranchServiceUseCase(branchServiceRepo, repo, branchRepo, audit...)
 	ctrl := serviceHttp.NewServiceController(uc, validate, log)
 	branchServiceCtrl := serviceHttp.NewBranchServiceController(branchServiceUseCase, validate, log)

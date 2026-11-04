@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	auditModel "github.com/Roisfaozi/queue-base/internal/modules/audit/model"
@@ -12,6 +13,7 @@ import (
 	"github.com/Roisfaozi/queue-base/internal/modules/service/usecase"
 	"github.com/Roisfaozi/queue-base/pkg/database"
 	"github.com/Roisfaozi/queue-base/pkg/exception"
+	storageMocks "github.com/Roisfaozi/queue-base/pkg/storage/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -21,7 +23,7 @@ func TestServiceAuditHooks(t *testing.T) {
 	ctx := database.SetOrganizationContext(context.Background(), "tenant-1")
 	audit := serviceMocks.NewMockAuditLogger(t)
 	repo := serviceMocks.NewMockServiceRepository(t)
-	uc := usecase.NewServiceUseCase(repo, audit)
+	uc := usecase.NewServiceUseCase(repo, nil, audit)
 
 	repo.On("Create", mock.Anything, mock.Anything).Return(nil).Once()
 	audit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
@@ -179,7 +181,7 @@ func TestCreateService(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup(t, repo, &createdService)
 			}
-			uc := usecase.NewServiceUseCase(repo)
+			uc := usecase.NewServiceUseCase(repo, nil)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -258,7 +260,7 @@ func TestGetService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := serviceMocks.NewMockServiceRepository(t)
 			tt.setup(t, repo)
-			uc := usecase.NewServiceUseCase(repo)
+			uc := usecase.NewServiceUseCase(repo, nil)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -324,7 +326,7 @@ func TestListServices(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := serviceMocks.NewMockServiceRepository(t)
 			tt.setup(t, repo)
-			uc := usecase.NewServiceUseCase(repo)
+			uc := usecase.NewServiceUseCase(repo, nil)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -453,7 +455,7 @@ func TestUpdateService(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup(t, repo, &updatedService)
 			}
-			uc := usecase.NewServiceUseCase(repo)
+			uc := usecase.NewServiceUseCase(repo, nil)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -525,7 +527,7 @@ func TestDeleteService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := serviceMocks.NewMockServiceRepository(t)
 			tt.setup(t, repo)
-			uc := usecase.NewServiceUseCase(repo)
+			uc := usecase.NewServiceUseCase(repo, nil)
 
 			ctx := context.Background()
 			if tt.tenantID != "" {
@@ -543,6 +545,96 @@ func TestDeleteService(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestServiceUseCase_UploadAudio(t *testing.T) {
+	tests := []struct {
+		name        string
+		tenantID    string
+		filename    string
+		contentType string
+		content     string
+		setup       func(t *testing.T, storage *storageMocks.MockProvider, audit *serviceMocks.MockAuditLogger)
+		wantURL     string
+		wantErr     error
+	}{
+		{
+			name:        "Positive_ValidAudioUpload",
+			tenantID:    "tenant-1",
+			filename:    "bell.mp3",
+			contentType: "audio/mpeg",
+			content:     "fake audio content",
+			setup: func(t *testing.T, storage *storageMocks.MockProvider, audit *serviceMocks.MockAuditLogger) {
+				storage.On("UploadFile", mock.Anything, mock.Anything, mock.MatchedBy(func(fn string) bool {
+					return strings.HasPrefix(fn, "services/audio/tenant-1_") && strings.HasSuffix(fn, ".mp3")
+				}), "audio/mpeg").Return("http://localhost:8080/uploads/services_audio_bell.mp3", nil).Once()
+				audit.On("LogActivity", mock.Anything, mock.MatchedBy(func(req auditModel.CreateAuditLogRequest) bool {
+					return req.Action == "UPLOAD_SERVICE_AUDIO" && req.Entity == "Service"
+				})).Return(nil).Once()
+			},
+			wantURL: "http://localhost:8080/uploads/services_audio_bell.mp3",
+			wantErr: nil,
+		},
+		{
+			name:        "Negative_InvalidFileType",
+			tenantID:    "tenant-1",
+			filename:    "script.sh",
+			contentType: "text/x-shellscript",
+			content:     "#!/bin/bash\necho bad",
+			setup:       func(t *testing.T, storage *storageMocks.MockProvider, audit *serviceMocks.MockAuditLogger) {},
+			wantURL:     "",
+			wantErr:     exception.ErrValidationError,
+		},
+		{
+			name:        "Edge_MissingTenantContext",
+			tenantID:    "",
+			filename:    "chime.wav",
+			contentType: "audio/wav",
+			content:     "fake audio content",
+			setup:       func(t *testing.T, storage *storageMocks.MockProvider, audit *serviceMocks.MockAuditLogger) {},
+			wantURL:     "",
+			wantErr:     exception.ErrBadRequest,
+		},
+		{
+			name:        "Vulnerability_StorageUploadFailure",
+			tenantID:    "tenant-1",
+			filename:    "chime.wav",
+			contentType: "audio/wav",
+			content:     "fake audio content",
+			setup: func(t *testing.T, storage *storageMocks.MockProvider, audit *serviceMocks.MockAuditLogger) {
+				storage.On("UploadFile", mock.Anything, mock.Anything, mock.Anything, "audio/wav").
+					Return("", errors.New("s3 connection failed")).Once()
+			},
+			wantURL: "",
+			wantErr: exception.ErrInternalServer,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage := storageMocks.NewMockProvider(t)
+			audit := serviceMocks.NewMockAuditLogger(t)
+			repo := serviceMocks.NewMockServiceRepository(t)
+			tt.setup(t, storage, audit)
+
+			uc := usecase.NewServiceUseCase(repo, storage, audit)
+
+			ctx := context.Background()
+			if tt.tenantID != "" {
+				ctx = database.SetOrganizationContext(ctx, tt.tenantID)
+			}
+
+			url, err := uc.UploadAudio(ctx, strings.NewReader(tt.content), tt.filename, tt.contentType)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Empty(t, url)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantURL, url)
 		})
 	}
 }
