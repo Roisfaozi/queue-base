@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"github.com/Roisfaozi/queue-base/internal/modules/organization/entity"
@@ -171,7 +172,7 @@ func (uc *organizationMemberUseCase) InviteMember(ctx context.Context, orgID str
 		payload := &tasks.SendEmailPayload{
 			To:      targetUser.Email,
 			Subject: "Invitation to join organization",
-			Body:    "You have been invited to join " + org.Name + ". Click here to accept: " + uc.frontendBaseURL + "/invite/" + tokenString,
+			Body:    "You have been invited to join " + org.Name + ". Click here to accept: " + strings.TrimRight(uc.frontendBaseURL, "/") + "/invite/" + tokenString,
 		}
 
 		if err := uc.taskDistributor.DistributeTaskSendEmail(txCtx, payload); err != nil {
