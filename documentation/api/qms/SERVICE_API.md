@@ -332,3 +332,111 @@ curl -X DELETE 'http://127.0.0.1:8080/api/v1/services/550e8400-e29b-41d4-a716-44
   -H 'Authorization: Bearer <access_token>' \
   -H 'X-Organization-ID: 550e8400-e29b-41d4-a716-446655440000'
 ```
+
+---
+
+## `POST /api/v1/services/audio`
+
+Upload service audio bell or announcement asset directly (multipart/form-data).
+
+### Request
+Multipart form with field `audio` (file, max 10MB, mime audio/mpeg, audio/wav, audio/ogg).
+
+### Response Fields
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `data.url` | string | Yes | Accessible URL / asset path for the uploaded audio |
+
+### Example success response
+```json
+{
+  "data": {
+    "url": "/uploads/services_audio_bell.mp3"
+  }
+}
+```
+
+---
+
+## Branch-Service Link Endpoints
+
+### `POST /api/v1/branches/{id}/services`
+Link a master service to an active branch.
+
+#### Body
+| Field | In | Type | Required | Notes |
+|---|---|---|---|---|
+| `service_id` | body | string (UUID) | Yes | Master service ID |
+| `custom_name` | body | string | Optional | Branch-specific override display name |
+| `is_active` | body | boolean | Optional | Default `true` |
+| `sort_order` | body | integer | Optional | Display order on branch kiosks/callers |
+
+#### Response Example
+```json
+{
+  "data": {
+    "id": "bs-uuid-1",
+    "tenant_id": "tenant-uuid-1",
+    "branch_id": "branch-uuid-1",
+    "service_id": "service-uuid-1",
+    "custom_name": "Poli Umum Lt. 1",
+    "is_active": true,
+    "sort_order": 1,
+    "created_at": 1761800000000,
+    "updated_at": 1761800000000
+  }
+}
+```
+
+### `GET /api/v1/branches/{id}/services`
+List all services operationalized at the specified branch.
+
+#### Response Example
+```json
+{
+  "data": [
+    {
+      "id": "bs-uuid-1",
+      "tenant_id": "tenant-uuid-1",
+      "branch_id": "branch-uuid-1",
+      "service_id": "service-uuid-1",
+      "custom_name": "Poli Umum Lt. 1",
+      "is_active": true,
+      "sort_order": 1,
+      "created_at": 1761800000000,
+      "updated_at": 1761800000000
+    }
+  ]
+}
+```
+
+### `PUT /api/v1/branches/{id}/services/{branch_service_id}`
+Update custom name, active status, or sort order of a branch service link.
+
+#### Body
+| Field | In | Type | Required | Notes |
+|---|---|---|---|---|
+| `custom_name` | body | string | Optional | Override display name |
+| `is_active` | body | boolean | Optional | Toggle operational availability |
+| `sort_order` | body | integer | Optional | Display order |
+
+#### Response Example
+```json
+{
+  "data": {
+    "id": "bs-uuid-1",
+    "tenant_id": "tenant-uuid-1",
+    "branch_id": "branch-uuid-1",
+    "service_id": "service-uuid-1",
+    "custom_name": "Poli Umum Lt. 1",
+    "is_active": false,
+    "sort_order": 2,
+    "created_at": 1761800000000,
+    "updated_at": 1761800100000
+  }
+}
+```
+
+### `DELETE /api/v1/branches/{id}/services/{branch_service_id}`
+Unlink service from the branch (Status: `204 No Content`).
+
