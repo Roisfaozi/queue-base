@@ -161,6 +161,14 @@ export const servicesApi = {
 		},
 	) => api.put<{ data: Service }>(`/services/${id}`, data),
 	delete: (id: string) => api.delete(`/services/${id}`),
+	uploadAudio: (file: File) => {
+		const formData = new FormData();
+		formData.append("audio", file);
+		return api.request<{ data: { url: string } }>("/services/audio", {
+			method: "POST",
+			body: formData,
+		});
+	},
 };
 
 // -----------------------------------------------------------------------------
@@ -383,10 +391,15 @@ export const settingsApi = {
 };
 
 export const operatorAssignmentsApi = {
-  create: (data: OperatorAssignmentRequest) =>
-    api.post<{ data: OperatorAssignmentResponse }>("/operator-counter-assignments", data),
-  getAll: () =>
-    api.get<{ data: OperatorAssignmentResponse[] }>("/operator-counter-assignments"),
-  delete: (id: string) =>
-    api.delete<{ data: void }>(`/operator-counter-assignments/${id}`),
+	create: (data: OperatorAssignmentRequest) =>
+		api.post<{ data: OperatorAssignmentResponse }>(
+			"/operator-counter-assignments",
+			data,
+		),
+	getAll: () =>
+		api.get<{ data: OperatorAssignmentResponse[] }>(
+			"/operator-counter-assignments",
+		),
+	delete: (id: string) =>
+		api.delete<{ data: void }>(`/operator-counter-assignments/${id}`),
 };

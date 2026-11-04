@@ -34,6 +34,7 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { servicesApi, type Service } from "~/lib/api/qms";
+import { AudioUploadField } from "./audio-upload-field";
 
 const serviceSchema = z.object({
 	code: z.string().min(2, "Code must be at least 2 characters.").max(50),
@@ -251,13 +252,12 @@ export function ServiceDialog({
 								control={form.control}
 								name="audio_id"
 								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Audio ID</FormLabel>
-										<FormControl>
-											<Input placeholder="audio-id" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
+									<AudioUploadField
+										label="Audio Pemanggilan (Bahasa Indonesia)"
+										description="File audio pemanggilan antrean untuk Bahasa Indonesia (.mp3, .wav, .ogg)."
+										value={field.value}
+										onChange={field.onChange}
+									/>
 								)}
 							/>
 
@@ -265,13 +265,12 @@ export function ServiceDialog({
 								control={form.control}
 								name="audio_en"
 								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Audio EN</FormLabel>
-										<FormControl>
-											<Input placeholder="audio-en" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
+									<AudioUploadField
+										label="Voice Announcement (English)"
+										description="Audio announcement file for English queue calling (.mp3, .wav, .ogg)."
+										value={field.value}
+										onChange={field.onChange}
+									/>
 								)}
 							/>
 
@@ -280,10 +279,17 @@ export function ServiceDialog({
 								name="narrative_instruction_id"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Narrative ID</FormLabel>
+										<FormLabel>Instruksi Narasi (Bahasa Indonesia)</FormLabel>
 										<FormControl>
-											<Input placeholder="narrative-id" {...field} />
+											<Input
+												placeholder="Contoh: Silakan menuju loket pendaftaran."
+												{...field}
+											/>
 										</FormControl>
+										<FormDescription>
+											Teks narasi instruksi untuk text-to-speech (TTS) atau teks
+											berjalan.
+										</FormDescription>
 										<FormMessage />
 									</FormItem>
 								)}
@@ -294,10 +300,17 @@ export function ServiceDialog({
 								name="narrative_instruction_en"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Narrative EN</FormLabel>
+										<FormLabel>Narrative Instruction (English)</FormLabel>
 										<FormControl>
-											<Input placeholder="narrative-en" {...field} />
+											<Input
+												placeholder="e.g. Please proceed to the registration counter."
+												{...field}
+											/>
 										</FormControl>
+										<FormDescription>
+											Narrative instruction text for English text-to-speech
+											(TTS).
+										</FormDescription>
 										<FormMessage />
 									</FormItem>
 								)}
